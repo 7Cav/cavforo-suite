@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<class_extensions>
+  <extension from_class="NF\Rosters\Pub\Controller\Roster" to_class="Cav7\RosterSearch\Pub\Controller\Roster" execute_order="10" active="1"/>
+</class_extensions>

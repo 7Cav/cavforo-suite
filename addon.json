@@ -1,0 +1,10 @@
+{
+    "title": "7Cav - Roster Gamertag Search",
+    "description": "Adds a gamertag/Cav name search page to the Milpacs roster section.",
+    "version_id": 1000200,
+    "version_string": "1.2.0",
+    "dev": "Cav7",
+    "addon_id": "Cav7/RosterSearch",
+    "namespace": "Cav7\\RosterSearch",
+    "setup": "Cav7\\RosterSearch\\Setup"
+}
