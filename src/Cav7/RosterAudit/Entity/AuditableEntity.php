@@ -2,6 +2,8 @@
 
 namespace Cav7\RosterAudit\Entity;
 
+use Cav7\RosterAudit\Repository\AuditLog as AuditLogRepo;
+
 /**
  * Audit hooks for NF/Rosters entities, attached via class extensions so the
  * vendor add-on is never modified. Apply this trait in an entity class
@@ -16,14 +18,6 @@ namespace Cav7\RosterAudit\Entity;
  */
 trait AuditableEntity
 {
-	/**
-	 * One-shot programmatic suppression: set immediately before a save() that
-	 * should not produce an audit entry. Consumed by the next audit attempt.
-	 * Caveat: a save that fails before _postSave() leaves the flag set, so it
-	 * would suppress the next successful save of this instance.
-	 */
-	public bool $skipAudit = false;
-
 	abstract protected function getAuditContentType(): string;
 
 	protected function getAuditRelationId(): int
@@ -55,15 +49,6 @@ trait AuditableEntity
 
 	protected function writeAuditLog(string $action): void
 	{
-		// Reset the one-shot suppression flag before any early return so a
-		// suppressed save cannot leak its suppression into a later save.
-		$skip = $this->skipAudit;
-		$this->skipAudit = false;
-		if ($skip)
-		{
-			return;
-		}
-
 		try
 		{
 			$visitor = \XF::visitor();
@@ -71,6 +56,10 @@ trait AuditableEntity
 			$newValues = [];
 			$excluded = $this->getAuditExcludedColumns();
 
+			// Snapshot raw column values only (getValue / toArray(false), never
+			// getters): getters can return arbitrary objects — RosterUser's
+			// custom_fields getter returns an XF\CustomField\Set — which neither
+			// the diff below nor json_encode can handle.
 			if ($action === AuditLog::ACTION_UPDATE)
 			{
 				foreach (array_keys($this->structure()->columns) as $col)
@@ -82,7 +71,7 @@ trait AuditableEntity
 					if ($this->isChanged($col))
 					{
 						$oldValues[$col] = $this->getExistingValue($col);
-						$newValues[$col] = $this->get($col);
+						$newValues[$col] = $this->getValue($col);
 					}
 				}
 				if (empty($oldValues))
@@ -92,11 +81,11 @@ trait AuditableEntity
 			}
 			elseif ($action === AuditLog::ACTION_CREATE)
 			{
-				$newValues = $this->toArray();
+				$newValues = $this->toArray(false);
 			}
 			elseif ($action === AuditLog::ACTION_DELETE)
 			{
-				$oldValues = $this->toArray();
+				$oldValues = $this->toArray(false);
 			}
 
 			if (isset($oldValues['custom_fields']) || isset($newValues['custom_fields']))
@@ -107,24 +96,36 @@ trait AuditableEntity
 			$ip = '';
 			try
 			{
-				$ip = \XF::app()->request()->getIp();
+				$ip = \XF::app()->request()->getIp() ?: '';
 			}
 			catch (\Throwable $e)
 			{
-				// No request context (CLI / cron / job): record the entry without an IP.
+				if (PHP_SAPI !== 'cli')
+				{
+					// CLI/cron simply has no request to read an IP from, but a
+					// failure during a web request means audit entries are losing
+					// their forensic IP and someone should know.
+					\XF::logException($e, false, 'Audit log IP lookup failed: ');
+				}
 			}
 
-			$primaryKey = $this->structure()->primaryKey;
-			$contentId = is_array($primaryKey)
-				? $this->get($primaryKey[0])
-				: $this->get($primaryKey);
-			// The insert below bypasses entity validation, so normalise to the
-			// varchar(50) columns here rather than risk a rejected insert.
-			$contentId = mb_substr((string) $contentId, 0, 50);
-			$username = mb_substr($visitor->username ?: 'System', 0, 50);
+			// All primary key parts, so a composite-key entity would log an
+			// unambiguous id rather than silently keeping only its first column.
+			$keyParts = [];
+			foreach ((array) $this->structure()->primaryKey as $keyColumn)
+			{
+				$keyParts[] = (string) $this->getValue($keyColumn);
+			}
+			// content_id and username are varchar(50); entity validation rejects
+			// over-length values, so truncate rather than lose the whole entry.
+			$contentId = mb_substr(implode('-', $keyParts), 0, 50);
+			// Empty username (guest/system context) stays empty; the templates
+			// substitute the localised cav7_raudit_system phrase on display.
+			$username = mb_substr($visitor->username, 0, 50);
 
-			$db = $this->db();
-			$db->insert('xf_cav7_roster_audit_log', [
+			/** @var AuditLogRepo $repo */
+			$repo = $this->repository('Cav7\RosterAudit:AuditLog');
+			$log = $repo->insertLogEntry([
 				'relation_id'  => $this->getAuditRelationId(),
 				'user_id'      => $visitor->user_id,
 				'username'     => $username,
@@ -133,7 +134,6 @@ trait AuditableEntity
 				'action'       => $action,
 				'log_date'     => \XF::$time,
 			]);
-			$logId = $db->lastInsertId();
 
 			// The JSONL file holds the change detail, correlated to the DB row by
 			// log_id. If the file write fails we attempt to delete the row we just
@@ -147,7 +147,7 @@ trait AuditableEntity
 			try
 			{
 				$line = json_encode([
-					'log_id'       => $logId,
+					'log_id'       => $log->log_id,
 					'relation_id'  => $this->getAuditRelationId(),
 					'user_id'      => $visitor->user_id,
 					'username'     => $username,
@@ -170,18 +170,11 @@ trait AuditableEntity
 					// the entry but flag that some values could not be encoded.
 					\XF::logError(sprintf(
 						'Audit log entry %d for %s#%s recorded with partial detail: %s',
-						$logId, $this->getAuditContentType(), $contentId, json_last_error_msg()
+						$log->log_id, $this->getAuditContentType(), $contentId, json_last_error_msg()
 					));
 				}
 
-				$internalDataPath = \XF::app()->config('internalDataPath');
-				$logDir = $internalDataPath . '/cav7_roster_audit/' . gmdate('Y', \XF::$time);
-				if (!is_dir($logDir) && !@mkdir($logDir, 0755, true) && !is_dir($logDir))
-				{
-					throw new \RuntimeException('Could not create audit log directory: ' . $logDir);
-				}
-
-				$logFile = $logDir . '/' . gmdate('m-d', \XF::$time) . '.jsonl';
+				$logFile = $repo->getWritableLogFilePath(\XF::$time);
 				$payload = $line . "\n";
 				$written = file_put_contents($logFile, $payload, FILE_APPEND | LOCK_EX);
 				if ($written === false || $written < strlen($payload))
@@ -195,13 +188,13 @@ trait AuditableEntity
 				// detail line.
 				try
 				{
-					$db->delete('xf_cav7_roster_audit_log', 'log_id = ?', $logId);
+					$log->delete();
 				}
 				catch (\Throwable $rollbackError)
 				{
 					// The orphaned row will surface as "detail unavailable" in the
 					// admin UI; leave a breadcrumb for whoever investigates it.
-					\XF::logException($rollbackError, false, "Audit log cleanup of orphaned row {$logId} failed: ");
+					\XF::logException($rollbackError, false, "Audit log cleanup of orphaned row {$log->log_id} failed: ");
 				}
 				throw $fileError;
 			}
@@ -215,11 +208,20 @@ trait AuditableEntity
 
 	protected function diffAuditCustomFields(array &$oldValues, array &$newValues): void
 	{
-		$oldRaw = $oldValues['custom_fields'] ?? null;
-		$newRaw = $newValues['custom_fields'] ?? null;
+		$oldFields = $this->decodeAuditCustomFields($oldValues['custom_fields'] ?? null);
+		$newFields = $this->decodeAuditCustomFields($newValues['custom_fields'] ?? null);
 
-		$oldFields = is_array($oldRaw) ? $oldRaw : (json_decode($oldRaw ?? '{}', true) ?: []);
-		$newFields = is_array($newRaw) ? $newRaw : (json_decode($newRaw ?? '{}', true) ?: []);
+		if ($oldFields === null || $newFields === null)
+		{
+			// Undecodable custom_fields payload: keep the raw value in the diff
+			// rather than dropping it — an entry that silently omits part of the
+			// change is worse than an ugly one — and leave a breadcrumb.
+			\XF::logError(sprintf(
+				'Audit log: undecodable custom_fields on %s, raw value recorded undiffed',
+				$this->getAuditContentType()
+			));
+			return;
+		}
 
 		unset($oldValues['custom_fields'], $newValues['custom_fields']);
 
@@ -233,5 +235,28 @@ trait AuditableEntity
 				$newValues["field:$key"] = $new;
 			}
 		}
+	}
+
+	/**
+	 * custom_fields is a JSON_ARRAY column, so raw values arrive as decoded
+	 * arrays and the string branch is purely defensive. Null means undecodable;
+	 * the caller decides what to do with the raw value.
+	 */
+	protected function decodeAuditCustomFields($raw): ?array
+	{
+		if (is_array($raw))
+		{
+			return $raw;
+		}
+		if ($raw === null || $raw === '')
+		{
+			return [];
+		}
+		if (!is_string($raw))
+		{
+			return null;
+		}
+		$decoded = json_decode($raw, true);
+		return is_array($decoded) ? $decoded : null;
 	}
 }

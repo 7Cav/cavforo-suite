@@ -1,6 +1,6 @@
 # Cav7/RosterAudit
 
-Audit trail for the [NF/Rosters](https://nixfifty.com/products/rosters-and-personnel-status-reports.5/) XenForo add-on, built as a companion add-on. It attaches to the vendor entities through XenForo class extensions and ships none of the vendor's code, so NF/Rosters can be updated independently.
+Audit trail for the [NF/Rosters](https://nixfifty.com/products/rosters-and-personnel-status-reports.5/) XenForo add-on, built as a companion add-on. It attaches to the vendor code through XenForo class extensions and ships none of the vendor's code, so NF/Rosters can be updated independently.
 
 ## What it does
 
@@ -11,13 +11,13 @@ Every create, update, and delete on the eleven roster entity types (rosters, ros
 
 Admins read the log at **admin.php?roster-audit/** (filterable by type, action, username, roster member, and date range). The entry appears under the Rosters section of the admin nav and requires the `nfManageRosters` admin permission.
 
-A daily cron prunes both stores. Retention is configurable (`cav7RAuditRetention`, default 1825 days) with a hard 30 day floor so a misconfigured value cannot wipe the history.
+A daily cron prunes both stores. Retention is configurable (`cav7RAuditRetention`, default 1825 days). Values under 30 days are treated as misconfiguration: the cron logs an error and keeps the default instead, so a bad value cannot wipe the history.
 
 ## Requirements
 
 - XenForo 2.2+
 - PHP 8.0+
-- NF/Rosters 2.1.x installed (declared as a dependency in `addon.json`)
+- NF/Rosters 2.1+ installed (declared as a dependency in `addon.json`)
 
 ## Installation
 
@@ -36,6 +36,8 @@ For release builds, generate hashes first: `php cmd.php xf-addon:build-release C
 
 **Image churn is excluded, not suppressed.** The image services stamp a timestamp column on every upload or removal (`award_image`, `rank_image`, `citation_date`, `uniform_date`). Those columns are excluded from update diffs, so image operations do not flood the log, but creates and deletes of the owning records are always recorded in full.
 
+**Two vendor gaps are patched.** First: the vendor's profile award and service record save actions skip the `canManageAwards()`/`canManageRecords()` permission checks that their Add, Edit, and Delete counterparts all perform. A small extension of the vendor's public Roster controller adds the missing check before the parent action runs. Second: deleting a position hard-deletes every roster member whose primary position it is, via raw SQL that bypasses entity hooks: their roster-membership group grants leak, their award and service record rows orphan, and nothing is audited. The Position entity extension refuses the delete while any member still holds the position, as primary or secondary, so admins reassign members deliberately (each reassignment audited) before removing it. If a vendor update fixes either issue, the corresponding patch becomes a redundant duplicate and can be dropped.
+
 **Uninstall keeps the files.** Uninstalling drops the DB table but leaves the JSONL files in `internal_data/cav7_roster_audit`, since they are audit evidence. Delete them manually if they are no longer needed.
 
 ## Layout
@@ -48,5 +50,6 @@ src/Cav7/RosterAudit/
   Admin/Controller/AuditLog.php list + detail views
   Cron/AuditLogPrune.php        daily retention prune
   NF/Rosters/Entity/*.php       11 entity class extensions (audit hooks)
+  NF/Rosters/Pub/Controller/    permission guard for the vendor profile save actions
   _data/*.xml                   routes, phrases, templates, options, cron, extensions
 ```

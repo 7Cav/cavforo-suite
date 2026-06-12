@@ -3,6 +3,7 @@
 namespace Cav7\RosterAudit\NF\Rosters\Entity;
 
 use Cav7\RosterAudit\Entity\AuditableEntity;
+use Cav7\RosterAudit\Repository\AuditLog as AuditLogRepo;
 
 class PositionGroup extends XFCP_PositionGroup
 {
@@ -10,6 +11,6 @@ class PositionGroup extends XFCP_PositionGroup
 
 	protected function getAuditContentType(): string
 	{
-		return 'position_group';
+		return AuditLogRepo::TYPE_POSITION_GROUP;
 	}
 }

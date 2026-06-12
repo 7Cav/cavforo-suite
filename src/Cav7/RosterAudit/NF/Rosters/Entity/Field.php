@@ -3,6 +3,7 @@
 namespace Cav7\RosterAudit\NF\Rosters\Entity;
 
 use Cav7\RosterAudit\Entity\AuditableEntity;
+use Cav7\RosterAudit\Repository\AuditLog as AuditLogRepo;
 
 class Field extends XFCP_Field
 {
@@ -10,6 +11,6 @@ class Field extends XFCP_Field
 
 	protected function getAuditContentType(): string
 	{
-		return 'field';
+		return AuditLogRepo::TYPE_FIELD;
 	}
 }

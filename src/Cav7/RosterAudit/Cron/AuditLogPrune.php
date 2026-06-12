@@ -14,9 +14,15 @@ class AuditLogPrune
 		$days = (int) (\XF::options()->cav7RAuditRetention ?? self::DEFAULT_RETENTION_DAYS);
 
 		// Guard against a misconfigured (0 / negative / implausibly low) value that
-		// would silently and irreversibly wipe the audit history.
+		// would silently and irreversibly wipe the audit history. The substitution
+		// must be loud: an admin who set a tight retention needs to know data is
+		// actually being kept for the 5-year default instead.
 		if ($days < self::MIN_RETENTION_DAYS)
 		{
+			\XF::logError(sprintf(
+				'cav7RAuditRetention=%d is below the %d-day minimum; using the %d-day default instead',
+				$days, self::MIN_RETENTION_DAYS, self::DEFAULT_RETENTION_DAYS
+			));
 			$days = self::DEFAULT_RETENTION_DAYS;
 		}
 

@@ -4,9 +4,7 @@
   <phrase title="cav7_raudit_action" version_id="1000010" version_string="1.0.0"><![CDATA[Action]]></phrase>
   <phrase title="cav7_raudit_action_create" version_id="1000010" version_string="1.0.0"><![CDATA[Created]]></phrase>
   <phrase title="cav7_raudit_action_delete" version_id="1000010" version_string="1.0.0"><![CDATA[Deleted]]></phrase>
-  <phrase title="cav7_raudit_action_move" version_id="1000010" version_string="1.0.0"><![CDATA[Moved]]></phrase>
   <phrase title="cav7_raudit_action_update" version_id="1000010" version_string="1.0.0"><![CDATA[Updated]]></phrase>
-  <phrase title="cav7_raudit_action_username_change" version_id="1000010" version_string="1.0.0"><![CDATA[Username changed]]></phrase>
   <phrase title="cav7_raudit_active" version_id="1000010" version_string="1.0.0"><![CDATA[Active]]></phrase>
   <phrase title="cav7_raudit_affected" version_id="1000010" version_string="1.0.0"><![CDATA[Affected]]></phrase>
   <phrase title="cav7_raudit_affected_roster_user" version_id="1000010" version_string="1.0.0"><![CDATA[Affected roster user]]></phrase>
@@ -30,6 +28,7 @@
   <phrase title="cav7_raudit_no_audit_entries" version_id="1000010" version_string="1.0.0"><![CDATA[No audit log entries match your filters.]]></phrase>
   <phrase title="cav7_raudit_no_change_details" version_id="1000010" version_string="1.0.0"><![CDATA[No change details recorded.]]></phrase>
   <phrase title="cav7_raudit_old_value" version_id="1000010" version_string="1.0.0"><![CDATA[Old value]]></phrase>
+  <phrase title="cav7_raudit_position_has_members" version_id="1000010" version_string="1.0.0"><![CDATA[This position is still assigned to {count} roster member(s), as a primary or secondary position. Remove those assignments first, then delete the position.]]></phrase>
   <phrase title="cav7_raudit_relation_id" version_id="1000010" version_string="1.0.0"><![CDATA[Relation ID]]></phrase>
   <phrase title="cav7_raudit_relation_id_explain" version_id="1000010" version_string="1.0.0"><![CDATA[Filter to events affecting a specific roster user record.]]></phrase>
   <phrase title="cav7_raudit_system" version_id="1000010" version_string="1.0.0"><![CDATA[System]]></phrase>

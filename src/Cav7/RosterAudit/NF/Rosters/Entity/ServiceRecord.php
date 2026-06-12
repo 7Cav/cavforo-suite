@@ -3,6 +3,7 @@
 namespace Cav7\RosterAudit\NF\Rosters\Entity;
 
 use Cav7\RosterAudit\Entity\AuditableEntity;
+use Cav7\RosterAudit\Repository\AuditLog as AuditLogRepo;
 
 class ServiceRecord extends XFCP_ServiceRecord
 {
@@ -10,7 +11,7 @@ class ServiceRecord extends XFCP_ServiceRecord
 
 	protected function getAuditContentType(): string
 	{
-		return 'service_record';
+		return AuditLogRepo::TYPE_SERVICE_RECORD;
 	}
 
 	protected function getAuditRelationId(): int

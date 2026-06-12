@@ -3,6 +3,7 @@
 namespace Cav7\RosterAudit\NF\Rosters\Entity;
 
 use Cav7\RosterAudit\Entity\AuditableEntity;
+use Cav7\RosterAudit\Repository\AuditLog as AuditLogRepo;
 
 class Rank extends XFCP_Rank
 {
@@ -10,7 +11,7 @@ class Rank extends XFCP_Rank
 
 	protected function getAuditContentType(): string
 	{
-		return 'rank';
+		return AuditLogRepo::TYPE_RANK;
 	}
 
 	protected function getAuditExcludedColumns(): array

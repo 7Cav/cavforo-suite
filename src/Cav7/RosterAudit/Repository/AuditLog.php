@@ -7,15 +7,35 @@ use XF\Mvc\Entity\Repository;
 
 class AuditLog extends Repository
 {
+	const TYPE_ROSTER = 'roster';
+	const TYPE_ROSTER_USER = 'roster_user';
+	const TYPE_USER_AWARD = 'user_award';
+	const TYPE_SERVICE_RECORD = 'service_record';
+	const TYPE_AWARD = 'award';
+	const TYPE_AWARD_GROUP = 'award_group';
+	const TYPE_POSITION = 'position';
+	const TYPE_POSITION_GROUP = 'position_group';
+	const TYPE_RANK = 'rank';
+	const TYPE_RECORD_TYPE = 'record_type';
+	const TYPE_FIELD = 'field';
+
 	/**
 	 * Single source of truth for audited content types. Each entry must match
 	 * a getAuditContentType() in the entity extensions, with a matching
-	 * cav7_raudit_type_<type> phrase.
+	 * cav7_raudit_type_<type> phrase; the AuditLog entity enforces membership
+	 * via allowedValues, so an unknown type fails at write time.
+	 *
+	 * Deliberately not audited: NF\Rosters' RosterPosition and RosterField are
+	 * roster<->position/field attachment rows edited as part of roster
+	 * configuration, not standalone records. To audit them, add extensions and
+	 * TYPE_ constants here — and note RosterPosition has a composite primary
+	 * key (roster_id, position_id), which the writer records as "a-b".
 	 */
 	const CONTENT_TYPES = [
-		'roster', 'roster_user', 'user_award', 'service_record',
-		'award', 'award_group', 'position', 'position_group',
-		'rank', 'record_type', 'field',
+		self::TYPE_ROSTER, self::TYPE_ROSTER_USER, self::TYPE_USER_AWARD,
+		self::TYPE_SERVICE_RECORD, self::TYPE_AWARD, self::TYPE_AWARD_GROUP,
+		self::TYPE_POSITION, self::TYPE_POSITION_GROUP, self::TYPE_RANK,
+		self::TYPE_RECORD_TYPE, self::TYPE_FIELD,
 	];
 
 	public function findAuditLogs(): Finder
@@ -28,6 +48,21 @@ class AuditLog extends Repository
 	{
 		return $this->findAuditLogs()
 			->where('relation_id', $relationId);
+	}
+
+	/**
+	 * The single write path for audit index rows. Goes through the entity so
+	 * its declared constraints (required, maxLength, allowedValues on action
+	 * and content_type) actually guard what reaches the table.
+	 */
+	public function insertLogEntry(array $values): \Cav7\RosterAudit\Entity\AuditLog
+	{
+		/** @var \Cav7\RosterAudit\Entity\AuditLog $log */
+		$log = $this->em->create('Cav7\RosterAudit:AuditLog');
+		$log->bulkSet($values);
+		$log->save();
+
+		return $log;
 	}
 
 	public function getLogDetail(int $logId): ?array
@@ -68,7 +103,7 @@ class AuditLog extends Repository
 					continue;
 				}
 				$entry = json_decode($line, true);
-				if (!$entry)
+				if (!is_array($entry))
 				{
 					$badLines++;
 					continue;
@@ -85,6 +120,11 @@ class AuditLog extends Repository
 			{
 				\XF::logError(sprintf('Audit detail file %s contains %d undecodable line(s)', $logFile, $badLines));
 			}
+
+			// Row exists, file exists, line absent: by the writer's ordering this
+			// is a crash artifact — the same integrity class as a missing file,
+			// so don't let it be the one variant that stays invisible.
+			\XF::logError(sprintf('Audit log row %d has no detail line in %s', $logId, $logFile));
 		}
 		catch (\Throwable $e)
 		{
@@ -128,7 +168,7 @@ class AuditLog extends Repository
 						continue;
 					}
 					$entry = json_decode($line, true);
-					if (!$entry)
+					if (!is_array($entry))
 					{
 						$badLines++;
 						continue;
@@ -144,6 +184,16 @@ class AuditLog extends Repository
 				if ($badLines)
 				{
 					\XF::logError(sprintf('Audit detail file %s contains %d undecodable line(s)', $file, $badLines));
+				}
+
+				$missing = array_diff_key($ids, $results);
+				if ($missing)
+				{
+					// Same crash-artifact class as in getLogDetail().
+					\XF::logError(sprintf(
+						'Audit detail file %s has no line for row(s): %s',
+						$file, implode(', ', array_keys($missing))
+					));
 				}
 			}
 			catch (\Throwable $e)
@@ -183,7 +233,7 @@ class AuditLog extends Repository
 			$cutoffYear = gmdate('Y', $cutoff);
 			$cutoffDayFile = gmdate('m-d', $cutoff) . '.jsonl';
 
-			$yearDirs = glob($basePath . '/*', GLOB_ONLYDIR) ?: [];
+			$yearDirs = $this->globOrLogFailure($basePath . '/*', GLOB_ONLYDIR) ?? [];
 			foreach ($yearDirs as $yearDir)
 			{
 				$year = basename($yearDir);
@@ -197,7 +247,7 @@ class AuditLog extends Repository
 
 				if ($year < $cutoffYear)
 				{
-					foreach (glob($yearDir . '/*.jsonl') ?: [] as $file)
+					foreach ($this->globOrLogFailure($yearDir . '/*.jsonl') ?? [] as $file)
 					{
 						$this->deleteLogFile($file);
 					}
@@ -207,7 +257,7 @@ class AuditLog extends Repository
 
 				if ($year === $cutoffYear)
 				{
-					foreach (glob($yearDir . '/*.jsonl') ?: [] as $file)
+					foreach ($this->globOrLogFailure($yearDir . '/*.jsonl') ?? [] as $file)
 					{
 						$name = basename($file);
 						// Guard against non MM-DD.jsonl names so the lexicographic
@@ -230,6 +280,23 @@ class AuditLog extends Repository
 		}
 	}
 
+	/**
+	 * glob() returning false is an error, not "no matches"; treating the two
+	 * the same would silently skip a prune pass over files holding usernames,
+	 * IPs and change payloads past their retention.
+	 */
+	protected function globOrLogFailure(string $pattern, int $flags = 0): ?array
+	{
+		$paths = glob($pattern, $flags);
+		if ($paths === false)
+		{
+			\XF::logError('Audit log prune: glob() failed for ' . $pattern);
+			return null;
+		}
+
+		return $paths;
+	}
+
 	protected function deleteLogFile(string $file): void
 	{
 		// A retention failure must be loud: a file that survives its prune holds
@@ -242,7 +309,7 @@ class AuditLog extends Repository
 
 	protected function removeYearDirIfEmpty(string $yearDir): void
 	{
-		$remaining = glob($yearDir . '/*');
+		$remaining = $this->globOrLogFailure($yearDir . '/*');
 		if ($remaining === [] && !@rmdir($yearDir))
 		{
 			\XF::logError('Audit log prune could not remove directory: ' . $yearDir);
@@ -262,17 +329,22 @@ class AuditLog extends Repository
 		return $entry;
 	}
 
+	/**
+	 * Normalises detail values to display strings. Empty values become '' —
+	 * the "—" placeholder is presentation and lives in the templates, so an
+	 * empty value stays distinguishable from a literal dash in the data.
+	 */
 	protected function flattenValues(array $values): array
 	{
 		foreach ($values as $k => $v)
 		{
-			if ($v === null || $v === '')
+			if ($v === null || $v === '' || $v === [])
 			{
-				$values[$k] = '—';
+				$values[$k] = '';
 			}
 			elseif (is_array($v))
 			{
-				$values[$k] = $v === [] ? '—' : json_encode($v, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+				$values[$k] = json_encode($v, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 			}
 			elseif (is_bool($v))
 			{
@@ -286,15 +358,33 @@ class AuditLog extends Repository
 		return $values;
 	}
 
-	protected function getLogBasePath(): string
+	public function getLogBasePath(): string
 	{
 		return \XF::app()->config('internalDataPath') . '/cav7_roster_audit';
 	}
 
-	protected function getLogFilePath(int $timestamp): string
+	public function getLogFilePath(int $timestamp): string
 	{
 		return $this->getLogBasePath()
 			. '/' . gmdate('Y', $timestamp)
 			. '/' . gmdate('m-d', $timestamp) . '.jsonl';
+	}
+
+	/**
+	 * Resolves the day file the writer appends to, creating its directory if
+	 * needed.
+	 *
+	 * @throws \RuntimeException if the directory cannot be created
+	 */
+	public function getWritableLogFilePath(int $timestamp): string
+	{
+		$logFile = $this->getLogFilePath($timestamp);
+		$logDir = dirname($logFile);
+		if (!is_dir($logDir) && !@mkdir($logDir, 0755, true) && !is_dir($logDir))
+		{
+			throw new \RuntimeException('Could not create audit log directory: ' . $logDir);
+		}
+
+		return $logFile;
 	}
 }

@@ -3,6 +3,7 @@
 namespace Cav7\RosterAudit\NF\Rosters\Entity;
 
 use Cav7\RosterAudit\Entity\AuditableEntity;
+use Cav7\RosterAudit\Repository\AuditLog as AuditLogRepo;
 
 class AwardGroup extends XFCP_AwardGroup
 {
@@ -10,6 +11,6 @@ class AwardGroup extends XFCP_AwardGroup
 
 	protected function getAuditContentType(): string
 	{
-		return 'award_group';
+		return AuditLogRepo::TYPE_AWARD_GROUP;
 	}
 }

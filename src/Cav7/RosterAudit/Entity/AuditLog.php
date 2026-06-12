@@ -2,6 +2,7 @@
 
 namespace Cav7\RosterAudit\Entity;
 
+use Cav7\RosterAudit\Repository\AuditLog as AuditLogRepo;
 use XF\Mvc\Entity\Entity;
 use XF\Mvc\Entity\Structure;
 
@@ -36,11 +37,17 @@ class AuditLog extends Entity
 			'relation_id' => ['type' => self::UINT, 'default' => 0],
 			'user_id' => ['type' => self::UINT, 'default' => 0],
 			'username' => ['type' => self::STR, 'maxLength' => 50, 'default' => ''],
-			'content_type' => ['type' => self::STR, 'maxLength' => 50, 'required' => true],
+			'content_type' => [
+				'type' => self::STR, 'maxLength' => 50, 'required' => true,
+				'allowedValues' => AuditLogRepo::CONTENT_TYPES,
+			],
 			// String, not int: content_id holds the audited entity's primary key, which
 			// may be non-numeric (e.g. Field#field_id is a varchar).
 			'content_id' => ['type' => self::STR, 'maxLength' => 50, 'required' => true],
-			'action' => ['type' => self::STR, 'maxLength' => 25, 'required' => true],
+			'action' => [
+				'type' => self::STR, 'maxLength' => 25, 'required' => true,
+				'allowedValues' => [self::ACTION_CREATE, self::ACTION_UPDATE, self::ACTION_DELETE],
+			],
 			'log_date' => ['type' => self::UINT, 'default' => \XF::$time],
 		];
 		$structure->getters = [];

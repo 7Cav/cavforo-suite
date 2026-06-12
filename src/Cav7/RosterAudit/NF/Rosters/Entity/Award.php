@@ -3,6 +3,7 @@
 namespace Cav7\RosterAudit\NF\Rosters\Entity;
 
 use Cav7\RosterAudit\Entity\AuditableEntity;
+use Cav7\RosterAudit\Repository\AuditLog as AuditLogRepo;
 
 class Award extends XFCP_Award
 {
@@ -10,7 +11,7 @@ class Award extends XFCP_Award
 
 	protected function getAuditContentType(): string
 	{
-		return 'award';
+		return AuditLogRepo::TYPE_AWARD;
 	}
 
 	protected function getAuditExcludedColumns(): array

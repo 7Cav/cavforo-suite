@@ -3,6 +3,7 @@
 namespace Cav7\RosterAudit\NF\Rosters\Entity;
 
 use Cav7\RosterAudit\Entity\AuditableEntity;
+use Cav7\RosterAudit\Repository\AuditLog as AuditLogRepo;
 
 class RosterUserAward extends XFCP_RosterUserAward
 {
@@ -10,7 +11,7 @@ class RosterUserAward extends XFCP_RosterUserAward
 
 	protected function getAuditContentType(): string
 	{
-		return 'user_award';
+		return AuditLogRepo::TYPE_USER_AWARD;
 	}
 
 	protected function getAuditRelationId(): int

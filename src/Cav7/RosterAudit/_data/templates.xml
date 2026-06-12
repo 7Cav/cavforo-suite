@@ -6,16 +6,12 @@
 <xf:set var="$actionClasses" value="{{ {
     'create': 'label--green',
     'update': 'label--accent',
-    'delete': 'label--red',
-    'move':   'label--olive',
-    'username_change': 'label--primary'
+    'delete': 'label--red'
 } }}" />
 <xf:set var="$actionLabels" value="{{ {
     'create': phrase('cav7_raudit_action_create'),
     'update': phrase('cav7_raudit_action_update'),
-    'delete': phrase('cav7_raudit_action_delete'),
-    'move':   phrase('cav7_raudit_action_move'),
-    'username_change': phrase('cav7_raudit_action_username_change')
+    'delete': phrase('cav7_raudit_action_delete')
 } }}" />
 <xf:set var="$typeLabels" value="{{ {
     'roster': phrase('cav7_raudit_type_roster'),
@@ -57,8 +53,6 @@
                 <xf:option value="create">{{ phrase('cav7_raudit_action_create') }}</xf:option>
                 <xf:option value="update">{{ phrase('cav7_raudit_action_update') }}</xf:option>
                 <xf:option value="delete">{{ phrase('cav7_raudit_action_delete') }}</xf:option>
-                <xf:option value="move">{{ phrase('cav7_raudit_action_move') }}</xf:option>
-                <xf:option value="username_change">{{ phrase('cav7_raudit_action_username_change') }}</xf:option>
             </xf:selectrow>
 
             <xf:textboxrow name="username" value="{$username}" label="{{ phrase('username') }}" ac="true" data-xf-init="auto-complete" data-single="true" />
@@ -118,13 +112,13 @@
                             <xf:if is="$detail">
                                 <xf:if is="{{ $entry.action == 'update' }}">
                                     <xf:if is="$detail.old && $detail.new">
-                                        <xf:set var="$keys" value="{{ array_unique(array_merge(array_keys($detail.old ?: []), array_keys($detail.new ?: []))) }}" />
+                                        <xf:set var="$keys" value="{{ array_keys(array_merge($detail.old ?: [], $detail.new ?: [])) }}" />
                                         <xf:foreach loop="$keys" value="$k" i="$i">
                                             <xf:if is="{{ $i <= 5 }}">
                                                 <div class="nfAuditChange"><code>{$k}</code>
-                                                    <span class="nfAuditValue nfAuditValue--old">{$detail.old.{$k}}</span>
+                                                    <span class="nfAuditValue nfAuditValue--old">{{ $detail.old.{$k} === null || $detail.old.{$k} === '' ? '—' : $detail.old.{$k} }}</span>
                                                     <span class="nfAuditChange-arrow">&rarr;</span>
-                                                    <span class="nfAuditValue nfAuditValue--new">{$detail.new.{$k}}</span>
+                                                    <span class="nfAuditValue nfAuditValue--new">{{ $detail.new.{$k} === null || $detail.new.{$k} === '' ? '—' : $detail.new.{$k} }}</span>
                                                 </div>
                                             <xf:elseif is="{{ $i == 6 }}" />
                                                 <div class="dataList-hint">{{ phrase('cav7_raudit_x_more_fields', {'count': count($keys) - 5}) }}</div>
@@ -135,7 +129,7 @@
                                     <xf:foreach loop="$detail.new" key="$k" value="$v" i="$i">
                                         <xf:if is="{{ $i <= 5 }}">
                                             <div class="nfAuditChange"><code>{$k}</code>
-                                                <span class="nfAuditValue nfAuditValue--new">{$v}</span>
+                                                <span class="nfAuditValue nfAuditValue--new">{{ $v === '' ? '—' : $v }}</span>
                                             </div>
                                         <xf:elseif is="{{ $i == 6 }}" />
                                             <div class="dataList-hint">{{ phrase('cav7_raudit_x_more_fields', {'count': count($detail.new) - 5}) }}</div>
@@ -145,7 +139,7 @@
                                     <xf:foreach loop="$detail.old" key="$k" value="$v" i="$i">
                                         <xf:if is="{{ $i <= 5 }}">
                                             <div class="nfAuditChange"><code>{$k}</code>
-                                                <span class="nfAuditValue nfAuditValue--old">{$v}</span>
+                                                <span class="nfAuditValue nfAuditValue--old">{{ $v === '' ? '—' : $v }}</span>
                                             </div>
                                         <xf:elseif is="{{ $i == 6 }}" />
                                             <div class="dataList-hint">{{ phrase('cav7_raudit_x_more_fields', {'count': count($detail.old) - 5}) }}</div>
@@ -189,16 +183,12 @@
 <xf:set var="$actionClass" value="{{ {
     'create': 'label--green',
     'update': 'label--accent',
-    'delete': 'label--red',
-    'move':   'label--olive',
-    'username_change': 'label--primary'
+    'delete': 'label--red'
 }.{$logEntry.action} ?: 'label--gray' }}" />
 <xf:set var="$actionLabels" value="{{ {
     'create': phrase('cav7_raudit_action_create'),
     'update': phrase('cav7_raudit_action_update'),
-    'delete': phrase('cav7_raudit_action_delete'),
-    'move':   phrase('cav7_raudit_action_move'),
-    'username_change': phrase('cav7_raudit_action_username_change')
+    'delete': phrase('cav7_raudit_action_delete')
 } }}" />
 <xf:set var="$typeLabels" value="{{ {
     'roster': phrase('cav7_raudit_type_roster'),
@@ -283,12 +273,12 @@
                             </tr>
                         </thead>
                         <tbody>
-                        <xf:set var="$keys" value="{{ array_unique(array_merge(array_keys($detail.old ?: []), array_keys($detail.new ?: []))) }}" />
+                        <xf:set var="$keys" value="{{ array_keys(array_merge($detail.old ?: [], $detail.new ?: [])) }}" />
                         <xf:foreach loop="$keys" value="$key">
                             <tr>
                                 <td><code>{$key}</code></td>
-                                <td><span class="nfAuditValue nfAuditValue--old">{$detail.old.{$key}}</span></td>
-                                <td><span class="nfAuditValue nfAuditValue--new">{$detail.new.{$key}}</span></td>
+                                <td><span class="nfAuditValue nfAuditValue--old">{{ $detail.old.{$key} === null || $detail.old.{$key} === '' ? '—' : $detail.old.{$key} }}</span></td>
+                                <td><span class="nfAuditValue nfAuditValue--new">{{ $detail.new.{$key} === null || $detail.new.{$key} === '' ? '—' : $detail.new.{$key} }}</span></td>
                             </tr>
                         </xf:foreach>
                         </tbody>
