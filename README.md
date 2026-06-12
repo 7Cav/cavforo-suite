@@ -1,6 +1,6 @@
 # 7Cav - User Groups Scope
 
-A XenForo 2.3 add-on that adds a `user:groups` OAuth scope, letting a client
+A XenForo 2.3 add-on that adds a `user:groups` OAuth scope so a client can
 read the authenticated user's own group membership through `GET /api/me`.
 
 ## Why
@@ -9,8 +9,8 @@ Stock XenForo 2.3 only includes `user_group_id` and `secondary_group_ids` in
 API responses when the authenticated user holds the `user` admin permission
 (or the request uses a super-user key). That makes group-based access control
 impossible for normal user tokens: an OAuth client can learn who a user is,
-but not what groups they belong to. This add-on closes that gap, and
-only for the user's own account.
+but not what groups they belong to. This add-on closes that gap for the
+user's own account only.
 
 The first consumer is MediaWiki SSO via PluggableAuth/WSOAuth, which maps
 XenForo group IDs to wiki groups.
@@ -53,8 +53,9 @@ Copy the add-on to `src/addons/Cav7/UserGroupsScope` and run:
 php cmd.php xf-addon:install Cav7/UserGroupsScope
 ```
 
-Requires XenForo 2.3.0+. No options, no schema changes; uninstalling removes
-the scope, class extension, and phrase with no residue.
+Requires XenForo 2.3.0+. The add-on has no options and makes no schema
+changes. Uninstalling removes the scope, the class extension, and the phrase
+completely.
 
 ## Verified behavior
 
@@ -78,6 +79,6 @@ as it bypasses all permission checks.)
 ## Note for integrators
 
 Do not test scope behavior with an account that holds the `user` admin
-permission — stock XenForo shows it the group fields under `user:read`
-alone, which will mislead you about what regular users receive. Always
-request `user:groups` when you need groups.
+permission. Stock XenForo shows that account the group fields under
+`user:read` alone, which will mislead you about what regular users receive.
+Always request `user:groups` when you need groups.
