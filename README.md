@@ -28,10 +28,6 @@ php <forum-root>/cmd.php xf-addon:install Cav7/RosterAudit
 
 For release builds, generate hashes first: `php cmd.php xf-addon:build-release Cav7/RosterAudit`.
 
-## Included hardening for NF/Rosters 2.1.x
-
-`Cav7\RosterAudit\NF\Rosters\Pub\Controller\Roster` guards two vendor actions that lack permission checks in 2.1.x: `actionAwardsSave` and `actionServiceRecordSave` accept POSTs from any user who can view rosters, while their Add/Edit/Delete counterparts check `canManageAwards()` / `canManageRecords()`. The extension adds the missing checks and also validates the submitted date format, which the vendor code passes unchecked into `DateTime::createFromFormat()->getTimestamp()` (a fatal on malformed input). If a vendor update fixes both, the extension degrades to a harmless duplicate check and can be removed. Consider reporting both issues upstream.
-
 ## Design notes
 
 **Fail-open by design.** A failed audit write is logged to the XF error log and the roster operation proceeds. The alternative (blocking roster operations when the audit store is down) was rejected. The cost: a persistent failure, such as wrong permissions on `internal_data/cav7_roster_audit`, leaves changes unaudited until someone reads the error log. Check the error log as part of routine maintenance.
@@ -52,6 +48,5 @@ src/Cav7/RosterAudit/
   Admin/Controller/AuditLog.php list + detail views
   Cron/AuditLogPrune.php        daily retention prune
   NF/Rosters/Entity/*.php       11 entity class extensions (audit hooks)
-  NF/Rosters/Pub/Controller/    vendor hardening (see above)
   _data/*.xml                   routes, phrases, templates, options, cron, extensions
 ```
