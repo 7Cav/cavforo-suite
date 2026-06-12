@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<phrases>
+  <phrase title="api_scope.user_groups" version_id="1000070" version_string="1.0.0"><![CDATA[Covers viewing the IDs of the user groups you belong to. Only ever applies to your own account.]]></phrase>
+</phrases>
