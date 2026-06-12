@@ -88,7 +88,7 @@
                         </xf:cell>
                         <xf:cell class="dataList-cell--min">
                             <xf:if is="$entry.User">
-                                <a href="{{ link('users', $entry.User) }}">{$entry.username}</a>
+                                <a href="{{ link('users/edit', $entry.User) }}">{$entry.username}</a>
                             <xf:else />
                                 {{ $entry.username ?: phrase('cav7_raudit_system') }}
                             </xf:if>
@@ -220,7 +220,7 @@
                 <dt>{{ phrase('user') }}</dt>
                 <dd>
                     <xf:if is="$logEntry.User">
-                        <a href="{{ link('users', $logEntry.User) }}">{$logEntry.username}</a>
+                        <a href="{{ link('users/edit', $logEntry.User) }}">{$logEntry.username}</a>
                     <xf:else />
                         {{ $logEntry.username ?: phrase('cav7_raudit_system') }}
                     </xf:if>
