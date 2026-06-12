@@ -1,0 +1,6 @@
+.claude/
+CLAUDE.md
+.remember/
+.DS_Store
+_releases/
+hashes.json

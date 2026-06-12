@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<options>
+  <option option_id="cav7RAuditRetention" edit_format="spinbox" data_type="unsigned_integer" advanced="0">
+    <default_value>1825</default_value>
+    <edit_format_params>min=30
+step=1</edit_format_params>
+    <relation group_id="cav7RosterAudit" display_order="10"/>
+  </option>
+</options>
