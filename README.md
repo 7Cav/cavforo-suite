@@ -41,6 +41,10 @@ XenForo group IDs to wiki groups.
 }
 ```
 
+The example is trimmed to the fields this add-on adds. Real responses also
+carry XenForo's standard user fields (avatar URLs, `can_*` booleans, and so
+on), and group IDs are specific to each installation.
+
 ## Install
 
 Copy the add-on to `src/addons/Cav7/UserGroupsScope` and run:
@@ -54,8 +58,8 @@ the scope, class extension, and phrase with no residue.
 
 ## Verified behavior
 
-Acceptance-tested on XenForo 2.3.10 against `GET /api/me` with a non-admin
-user:
+Acceptance-tested on XenForo 2.3.10 (June 2026) against `GET /api/me` with a
+non-admin user:
 
 | Credential | Scopes | Group fields |
 | --- | --- | --- |
@@ -67,7 +71,9 @@ user:
 | OAuth token | `user:read user:groups`, fetching another user via `/api/users/{id}` | absent |
 
 The API core refuses banned, rejected, and disabled users before this add-on
-runs, so a revoked member cannot fetch their groups at all.
+runs, so a revoked member cannot fetch their groups with their own token or
+key. (A super-user key acting on a banned user's behalf bypasses that check,
+as it bypasses all permission checks.)
 
 ## Note for integrators
 
