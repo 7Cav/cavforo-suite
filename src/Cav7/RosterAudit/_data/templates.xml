@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <templates>
-  <template type="admin" title="cav7_raudit_log_list" version_id="1000010" version_string="1.0.0"><![CDATA[<xf:title>{{ phrase('cav7_raudit_audit_log') }}</xf:title>
+  <template type="admin" title="cav7_raudit_log_list" version_id="1010070" version_string="1.1.0"><![CDATA[<xf:title>{{ phrase('cav7_raudit_audit_log') }}</xf:title>
 
 <xf:set var="$hasFilters" value="{{ $contentType || $action || $username || $relationId || $dateStart || $dateEnd }}" />
 <xf:set var="$actionClasses" value="{{ {
@@ -178,7 +178,7 @@
 .nfAuditValue--old { background: rgba(220, 53, 69, 0.12); text-decoration: line-through; opacity: 0.85; }
 .nfAuditValue--new { background: rgba(40, 167, 69, 0.15); }
 </style>]]></template>
-  <template type="admin" title="cav7_raudit_log_detail" version_id="1000010" version_string="1.0.0"><![CDATA[<xf:title>{{ phrase('cav7_raudit_audit_log_entry') }} #{$logEntry.log_id}</xf:title>
+  <template type="admin" title="cav7_raudit_log_detail" version_id="1010070" version_string="1.1.0"><![CDATA[<xf:title>{{ phrase('cav7_raudit_audit_log_entry') }} #{$logEntry.log_id}</xf:title>
 
 <xf:set var="$actionClass" value="{{ {
     'create': 'label--green',

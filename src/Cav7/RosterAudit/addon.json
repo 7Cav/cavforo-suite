@@ -1,8 +1,8 @@
 {
     "title": "[7Cav] Roster Audit Log",
     "description": "Companion add-on that adds an audit trail to NF/Rosters via class extensions, without modifying the vendor add-on.",
-    "version_id": 1000010,
-    "version_string": "1.0.0",
+    "version_id": 1010070,
+    "version_string": "1.1.0",
     "dev": "7Cav",
     "dev_url": "https://github.com/7Cav",
     "require": {
