@@ -16,7 +16,7 @@ jobs:
     outputs:
       addons: ${{ steps.list.outputs.addons }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: list
         run: |
           addons=$(for d in src/addons/Cav7/*/; do
@@ -42,7 +42,7 @@ jobs:
     env:
       ADDON: ${{ matrix.addon }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
@@ -70,7 +70,7 @@ jobs:
     env:
       ADDON: ${{ matrix.addon }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'

@@ -1,0 +1,18 @@
+# Keeps the GitHub Actions used by the ci and release workflows current. Actions
+# are the only managed dependency in this repo: the addons are XenForo PHP and
+# carry no Composer, npm, or Docker manifests, so there is nothing else to watch.
+# When a new ecosystem shows up (a composer.json, a Dockerfile), add a block here.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # One grouped PR for all action bumps rather than a separate PR per action.
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: ci
