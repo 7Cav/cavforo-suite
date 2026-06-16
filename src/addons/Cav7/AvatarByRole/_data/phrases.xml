@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<phrases>
+  <phrase title="option.cav7AbrMourningActive" version_id="1000010" version_string="1.0.0"><![CDATA[Mourning active]]></phrase>
+  <phrase title="option.cav7AbrMourningEnd" version_id="1000010" version_string="1.0.0"><![CDATA[Mourning end date]]></phrase>
+  <phrase title="option.cav7AbrMourningStart" version_id="1000010" version_string="1.0.0"><![CDATA[Mourning start date]]></phrase>
+  <phrase title="option_explain.cav7AbrMourningActive" version_id="1000010" version_string="1.0.0"><![CDATA[Enable mourning avatar variants during the configured period.]]></phrase>
+  <phrase title="option_explain.cav7AbrMourningEnd" version_id="1000010" version_string="1.0.0"><![CDATA[Any strtotime-compatible value. Empty = no end limit.]]></phrase>
+  <phrase title="option_explain.cav7AbrMourningStart" version_id="1000010" version_string="1.0.0"><![CDATA[Any strtotime-compatible value. Empty = no start limit.]]></phrase>
+  <phrase title="option_group.cav7AvatarByRole" version_id="1000010" version_string="1.0.0"><![CDATA[7Cav – Avatar by Role]]></phrase>
+  <phrase title="option_group_description.cav7AvatarByRole" version_id="1000010" version_string="1.0.0"><![CDATA[Configuration for role-based avatars and modifiers.]]></phrase>
+  <phrase title="user_field_desc.cav7_opt_out_mourning" version_id="1000010" version_string="1.0.0"><![CDATA[Check this to keep your regular avatar during mourning periods]]></phrase>
+  <phrase title="user_field_group.cav7AvatarByRole" version_id="1000010" version_string="1.0.0"><![CDATA[Avatar Settings]]></phrase>
+  <phrase title="user_field_group_desc.cav7AvatarByRole" version_id="1000010" version_string="1.0.0"><![CDATA[Configure your avatar preferences]]></phrase>
+  <phrase title="user_field_title.cav7_opt_out_mourning" version_id="1000010" version_string="1.0.0"><![CDATA[Opt out of mourning avatars]]></phrase>
+</phrases>

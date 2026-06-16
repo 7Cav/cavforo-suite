@@ -1,0 +1,1 @@
+Any strtotime-compatible value. Empty = no start limit.

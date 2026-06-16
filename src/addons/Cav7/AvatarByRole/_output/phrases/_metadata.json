@@ -1,0 +1,74 @@
+{
+    "option.cav7AbrMourningActive.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "2c33f7fdcd4da73fe59a24daa771b271"
+    },
+    "option.cav7AbrMourningEnd.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "732149dc35a3d98bc851ef2e88ec0fe2"
+    },
+    "option.cav7AbrMourningStart.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "eb01686fa8e464af99c26b69ccd6889c"
+    },
+    "option_explain.cav7AbrMourningActive.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "70d892e729202ce6baf7ba3b72b0e2c4"
+    },
+    "option_explain.cav7AbrMourningEnd.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "24b77d81b63e385e105c58d0fed842a5"
+    },
+    "option_explain.cav7AbrMourningStart.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "d551d0966ebbc1bbc4761617a6785c4e"
+    },
+    "option_group.cav7AvatarByRole.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "02ee34e486d9b0e599925beb31255371"
+    },
+    "option_group_description.cav7AvatarByRole.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "723ebf205a1ff4f00c7297d1734c8383"
+    },
+    "user_field_desc.cav7_opt_out_mourning.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "4bd2ca636f831603f25d468a2d016dcb"
+    },
+    "user_field_group.cav7AvatarByRole.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "f4cda59fdfe832035460dcc8e07bf4cf"
+    },
+    "user_field_group_desc.cav7AvatarByRole.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "55b638db7ffb65ca4c6b717a344395c2"
+    },
+    "user_field_title.cav7_opt_out_mourning.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "5d50a568c0e6c2403cc9db7b5da15bd7"
+    }
+}
