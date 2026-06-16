@@ -1,0 +1,178 @@
+<xf:title>{{ phrase('cav7_raudit_audit_log') }}</xf:title>
+
+<xf:set var="$hasFilters" value="{{ $contentType || $action || $username || $relationId || $dateStart || $dateEnd }}" />
+<xf:set var="$actionClasses" value="{{ {
+    'create': 'label--green',
+    'update': 'label--accent',
+    'delete': 'label--red'
+} }}" />
+<xf:set var="$actionLabels" value="{{ {
+    'create': phrase('cav7_raudit_action_create'),
+    'update': phrase('cav7_raudit_action_update'),
+    'delete': phrase('cav7_raudit_action_delete')
+} }}" />
+<xf:set var="$typeLabels" value="{{ {
+    'roster': phrase('cav7_raudit_type_roster'),
+    'roster_user': phrase('cav7_raudit_type_roster_user'),
+    'user_award': phrase('cav7_raudit_type_user_award'),
+    'service_record': phrase('cav7_raudit_type_service_record'),
+    'award': phrase('cav7_raudit_type_award'),
+    'award_group': phrase('cav7_raudit_type_award_group'),
+    'position': phrase('cav7_raudit_type_position'),
+    'position_group': phrase('cav7_raudit_type_position_group'),
+    'rank': phrase('cav7_raudit_type_rank'),
+    'record_type': phrase('cav7_raudit_type_record_type'),
+    'field': phrase('cav7_raudit_type_field')
+} }}" />
+
+<xf:pageaction>
+    <xf:if is="$hasFilters">
+        <xf:button href="{{ link('roster-audit') }}" icon="cancel">{{ phrase('cav7_raudit_clear_filters') }}</xf:button>
+    </xf:if>
+</xf:pageaction>
+
+<xf:form action="{{ link('roster-audit') }}" method="get" class="block">
+    <div class="block-container">
+        <h2 class="block-formSectionHeader">
+            <span class="block-formSectionHeader-aligner">
+                {{ phrase('cav7_raudit_filters') }}
+                <xf:if is="$hasFilters"><span class="label label--accent" style="margin-left:8px">{{ phrase('cav7_raudit_active') }}</span></xf:if>
+            </span>
+        </h2>
+        <div class="block-body">
+            <xf:selectrow name="content_type" value="{$contentType}" label="{{ phrase('cav7_raudit_content_type') }}">
+                <xf:foreach loop="$contentTypes" key="$value" value="$label">
+                    <xf:option value="{$value}">{$label}</xf:option>
+                </xf:foreach>
+            </xf:selectrow>
+
+            <xf:selectrow name="action" value="{$action}" label="{{ phrase('cav7_raudit_action') }}">
+                <xf:option value="">{{ phrase('cav7_raudit_all_actions') }}</xf:option>
+                <xf:option value="create">{{ phrase('cav7_raudit_action_create') }}</xf:option>
+                <xf:option value="update">{{ phrase('cav7_raudit_action_update') }}</xf:option>
+                <xf:option value="delete">{{ phrase('cav7_raudit_action_delete') }}</xf:option>
+            </xf:selectrow>
+
+            <xf:textboxrow name="username" value="{$username}" label="{{ phrase('username') }}" ac="true" data-xf-init="auto-complete" data-single="true" />
+
+            <xf:numberboxrow name="relation_id" value="{$relationId}" min="0" label="{{ phrase('cav7_raudit_relation_id') }}"
+                explain="{{ phrase('cav7_raudit_relation_id_explain') }}" />
+
+            <xf:textboxrow name="date_start" value="{$dateStart}" label="{{ phrase('cav7_raudit_date_from') }}" placeholder="YYYY-MM-DD" />
+            <xf:textboxrow name="date_end" value="{$dateEnd}" label="{{ phrase('cav7_raudit_date_to') }}" placeholder="YYYY-MM-DD" />
+        </div>
+        <xf:submitrow icon="search" sticky="true" />
+    </div>
+</xf:form>
+
+<div class="block">
+    <div class="block-container">
+        <div class="block-body">
+            <xf:datalist class="dataList--nfAudit">
+                <xf:datarow rowtype="header">
+                    <xf:cell>{{ phrase('date') }}</xf:cell>
+                    <xf:cell>{{ phrase('user') }}</xf:cell>
+                    <xf:cell>{{ phrase('cav7_raudit_action') }}</xf:cell>
+                    <xf:cell>{{ phrase('cav7_raudit_affected') }}</xf:cell>
+                    <xf:cell>{{ phrase('cav7_raudit_changes') }}</xf:cell>
+                </xf:datarow>
+                <xf:foreach loop="$entries" value="$entry">
+                    <xf:set var="$detail" value="{$details.{$entry.log_id}}" />
+                    <xf:set var="$actionClass" value="{{ $actionClasses.{$entry.action} ?: 'label--gray' }}" />
+                    <xf:datarow href="{{ link('roster-audit/detail', null, {'log_id': $entry.log_id}) }}" overlay="true">
+                        <xf:cell class="dataList-cell--min">
+                            <xf:date time="{$entry.log_date}" />
+                            <div class="dataList-hint">#{$entry.log_id}</div>
+                        </xf:cell>
+                        <xf:cell class="dataList-cell--min">
+                            <xf:if is="$entry.User">
+                                <a href="{{ link('users/edit', $entry.User) }}">{$entry.username}</a>
+                            <xf:else />
+                                {{ $entry.username ?: phrase('cav7_raudit_system') }}
+                            </xf:if>
+                        </xf:cell>
+                        <xf:cell class="dataList-cell--min">
+                            <span class="label {$actionClass}">{{ $actionLabels.{$entry.action} ?: $entry.action }}</span>
+                        </xf:cell>
+                        <xf:cell class="dataList-cell--min">
+                            <div>{{ $typeLabels.{$entry.content_type} ?: $entry.content_type }} <span class="u-muted">#{$entry.content_id}</span></div>
+                            <xf:if is="$entry.relation_id">
+                                <div class="dataList-hint">
+                                    <xf:if is="$entry.RosterUser && $entry.RosterUser.User">
+                                        <a href="{{ link('rosters/profile', $entry.RosterUser) }}">{$entry.RosterUser.User.username}</a>
+                                    <xf:else />
+                                        rel #{$entry.relation_id}
+                                    </xf:if>
+                                </div>
+                            </xf:if>
+                        </xf:cell>
+                        <xf:cell>
+                            <xf:if is="$detail">
+                                <xf:if is="{{ $entry.action == 'update' }}">
+                                    <xf:if is="$detail.old && $detail.new">
+                                        <xf:set var="$keys" value="{{ array_keys(array_merge($detail.old ?: [], $detail.new ?: [])) }}" />
+                                        <xf:foreach loop="$keys" value="$k" i="$i">
+                                            <xf:if is="{{ $i <= 5 }}">
+                                                <div class="nfAuditChange"><code>{$k}</code>
+                                                    <span class="nfAuditValue nfAuditValue--old">{{ $detail.old.{$k} === null || $detail.old.{$k} === '' ? '—' : $detail.old.{$k} }}</span>
+                                                    <span class="nfAuditChange-arrow">&rarr;</span>
+                                                    <span class="nfAuditValue nfAuditValue--new">{{ $detail.new.{$k} === null || $detail.new.{$k} === '' ? '—' : $detail.new.{$k} }}</span>
+                                                </div>
+                                            <xf:elseif is="{{ $i == 6 }}" />
+                                                <div class="dataList-hint">{{ phrase('cav7_raudit_x_more_fields', {'count': count($keys) - 5}) }}</div>
+                                            </xf:if>
+                                        </xf:foreach>
+                                    </xf:if>
+                                <xf:elseif is="{{ $entry.action == 'create' && $detail.new }}" />
+                                    <xf:foreach loop="$detail.new" key="$k" value="$v" i="$i">
+                                        <xf:if is="{{ $i <= 5 }}">
+                                            <div class="nfAuditChange"><code>{$k}</code>
+                                                <span class="nfAuditValue nfAuditValue--new">{{ $v === '' ? '—' : $v }}</span>
+                                            </div>
+                                        <xf:elseif is="{{ $i == 6 }}" />
+                                            <div class="dataList-hint">{{ phrase('cav7_raudit_x_more_fields', {'count': count($detail.new) - 5}) }}</div>
+                                        </xf:if>
+                                    </xf:foreach>
+                                <xf:elseif is="{{ $entry.action == 'delete' && $detail.old }}" />
+                                    <xf:foreach loop="$detail.old" key="$k" value="$v" i="$i">
+                                        <xf:if is="{{ $i <= 5 }}">
+                                            <div class="nfAuditChange"><code>{$k}</code>
+                                                <span class="nfAuditValue nfAuditValue--old">{{ $v === '' ? '—' : $v }}</span>
+                                            </div>
+                                        <xf:elseif is="{{ $i == 6 }}" />
+                                            <div class="dataList-hint">{{ phrase('cav7_raudit_x_more_fields', {'count': count($detail.old) - 5}) }}</div>
+                                        </xf:if>
+                                    </xf:foreach>
+                                </xf:if>
+                            <xf:else />
+                                <span class="u-muted">{{ phrase('cav7_raudit_no_change_details') }}</span>
+                            </xf:if>
+                        </xf:cell>
+                    </xf:datarow>
+                <xf:else />
+                    <xf:datarow rowclass="dataList-row--noHover dataList-row--note">
+                        <xf:cell colspan="5">{{ phrase('cav7_raudit_no_audit_entries') }}</xf:cell>
+                    </xf:datarow>
+                </xf:foreach>
+            </xf:datalist>
+        </div>
+        <div class="block-footer block-footer--split">
+            <span class="block-footer-counter">{{ display_totals($total) }}</span>
+            <span class="block-footer-controls">
+                <xf:pagenav page="{$page}" perpage="{$perPage}" total="{$total}"
+                    link="roster-audit"
+                    params="{{ {'content_type': $contentType, 'action': $action, 'username': $username, 'relation_id': $relationId, 'date_start': $dateStart, 'date_end': $dateEnd} }}" />
+            </span>
+        </div>
+    </div>
+</div>
+
+<style>
+.dataList--nfAudit .dataList-cell { vertical-align: top; padding-top: 10px; padding-bottom: 10px; }
+.nfAuditChange { margin: 2px 0; line-height: 1.6; }
+.nfAuditChange code { font-size: 11px; background: rgba(128,128,128,0.15); padding: 1px 5px; border-radius: 2px; margin-right: 4px; }
+.nfAuditChange-arrow { color: var(--xf-textMutedColor); margin: 0 4px; }
+.nfAuditValue { display: inline-block; padding: 1px 6px; border-radius: 3px; word-break: break-word; max-width: 400px; vertical-align: baseline; }
+.nfAuditValue--old { background: rgba(220, 53, 69, 0.12); text-decoration: line-through; opacity: 0.85; }
+.nfAuditValue--new { background: rgba(40, 167, 69, 0.15); }
+</style>

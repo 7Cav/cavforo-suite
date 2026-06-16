@@ -1,0 +1,123 @@
+<xf:title>{{ phrase('cav7_raudit_audit_log_entry') }} #{$logEntry.log_id}</xf:title>
+
+<xf:set var="$actionClass" value="{{ {
+    'create': 'label--green',
+    'update': 'label--accent',
+    'delete': 'label--red'
+}.{$logEntry.action} ?: 'label--gray' }}" />
+<xf:set var="$actionLabels" value="{{ {
+    'create': phrase('cav7_raudit_action_create'),
+    'update': phrase('cav7_raudit_action_update'),
+    'delete': phrase('cav7_raudit_action_delete')
+} }}" />
+<xf:set var="$typeLabels" value="{{ {
+    'roster': phrase('cav7_raudit_type_roster'),
+    'roster_user': phrase('cav7_raudit_type_roster_user'),
+    'user_award': phrase('cav7_raudit_type_user_award'),
+    'service_record': phrase('cav7_raudit_type_service_record'),
+    'award': phrase('cav7_raudit_type_award'),
+    'award_group': phrase('cav7_raudit_type_award_group'),
+    'position': phrase('cav7_raudit_type_position'),
+    'position_group': phrase('cav7_raudit_type_position_group'),
+    'rank': phrase('cav7_raudit_type_rank'),
+    'record_type': phrase('cav7_raudit_type_record_type'),
+    'field': phrase('cav7_raudit_type_field')
+} }}" />
+
+<xf:pageaction>
+    <xf:button href="{{ link('roster-audit') }}" icon="previous">{{ phrase('cav7_raudit_back_to_audit_log') }}</xf:button>
+</xf:pageaction>
+
+<div class="block">
+    <div class="block-container">
+        <h2 class="block-formSectionHeader"><span class="block-formSectionHeader-aligner">{{ phrase('cav7_raudit_event_details') }}</span></h2>
+        <div class="block-body">
+            <dl class="pairs pairs--rows pairs--fixedSmall">
+                <dt>{{ phrase('date') }}</dt>
+                <dd><xf:date time="{$logEntry.log_date}" time="true" /></dd>
+            </dl>
+            <dl class="pairs pairs--rows pairs--fixedSmall">
+                <dt>{{ phrase('user') }}</dt>
+                <dd>
+                    <xf:if is="$logEntry.User">
+                        <a href="{{ link('users/edit', $logEntry.User) }}">{$logEntry.username}</a>
+                    <xf:else />
+                        {{ $logEntry.username ?: phrase('cav7_raudit_system') }}
+                    </xf:if>
+                    <span class="u-muted">(ID: {$logEntry.user_id})</span>
+                </dd>
+            </dl>
+            <dl class="pairs pairs--rows pairs--fixedSmall">
+                <dt>{{ phrase('cav7_raudit_action') }}</dt>
+                <dd><span class="label {$actionClass}">{{ $actionLabels.{$logEntry.action} ?: $logEntry.action }}</span></dd>
+            </dl>
+            <dl class="pairs pairs--rows pairs--fixedSmall">
+                <dt>{{ phrase('cav7_raudit_content_type') }}</dt>
+                <dd>{{ $typeLabels.{$logEntry.content_type} ?: $logEntry.content_type }} <span class="u-muted">#{$logEntry.content_id}</span></dd>
+            </dl>
+            <xf:if is="$logEntry.relation_id">
+                <dl class="pairs pairs--rows pairs--fixedSmall">
+                    <dt>{{ phrase('cav7_raudit_affected_roster_user') }}</dt>
+                    <dd>
+                        <xf:if is="$logEntry.RosterUser && $logEntry.RosterUser.User">
+                            <a href="{{ link('rosters/profile', $logEntry.RosterUser) }}">{$logEntry.RosterUser.User.username}</a>
+                            <span class="u-muted">(rel #{$logEntry.relation_id})</span>
+                        <xf:else />
+                            <span class="u-muted">rel #{$logEntry.relation_id} ({{ phrase('cav7_raudit_deleted') }})</span>
+                        </xf:if>
+                    </dd>
+                </dl>
+            </xf:if>
+            <xf:if is="$detail && $detail.ip">
+                <dl class="pairs pairs--rows pairs--fixedSmall">
+                    <dt>{{ phrase('ip_address') }}</dt>
+                    <dd><code>{$detail.ip}</code></dd>
+                </dl>
+            </xf:if>
+        </div>
+    </div>
+</div>
+
+<xf:if is="$detail">
+    <div class="block">
+        <div class="block-container">
+            <h2 class="block-formSectionHeader"><span class="block-formSectionHeader-aligner">{{ phrase('cav7_raudit_changes') }}</span></h2>
+            <div class="block-body">
+                <xf:if is="$detail.old || $detail.new">
+                    <table class="dataList-table" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>{{ phrase('cav7_raudit_field') }}</th>
+                                <th>{{ phrase('cav7_raudit_old_value') }}</th>
+                                <th>{{ phrase('cav7_raudit_new_value') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <xf:set var="$keys" value="{{ array_keys(array_merge($detail.old ?: [], $detail.new ?: [])) }}" />
+                        <xf:foreach loop="$keys" value="$key">
+                            <tr>
+                                <td><code>{$key}</code></td>
+                                <td><span class="nfAuditValue nfAuditValue--old">{{ $detail.old.{$key} === null || $detail.old.{$key} === '' ? '—' : $detail.old.{$key} }}</span></td>
+                                <td><span class="nfAuditValue nfAuditValue--new">{{ $detail.new.{$key} === null || $detail.new.{$key} === '' ? '—' : $detail.new.{$key} }}</span></td>
+                            </tr>
+                        </xf:foreach>
+                        </tbody>
+                    </table>
+                <xf:else />
+                    <div class="blockMessage blockMessage--empty">{{ phrase('cav7_raudit_no_change_details') }}</div>
+                </xf:if>
+            </div>
+        </div>
+    </div>
+<xf:else />
+    <div class="blockMessage blockMessage--notice">{{ phrase('cav7_raudit_audit_detail_unavailable') }}</div>
+</xf:if>
+
+<style>
+.nfAuditValue { display: inline-block; padding: 2px 6px; border-radius: 3px; word-break: break-word; max-width: 100%; }
+.nfAuditValue--old { background: rgba(220, 53, 69, 0.12); text-decoration: line-through; opacity: 0.85; }
+.nfAuditValue--new { background: rgba(40, 167, 69, 0.15); }
+.nfAuditChange { margin: 2px 0; line-height: 1.4; }
+.nfAuditChange code { font-size: 11px; background: rgba(128,128,128,0.15); padding: 1px 4px; border-radius: 2px; }
+.nfAuditChange-arrow { color: var(--xf-textMutedColor); margin: 0 4px; }
+</style>

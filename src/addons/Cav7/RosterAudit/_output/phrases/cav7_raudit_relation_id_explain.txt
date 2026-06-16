@@ -1,0 +1,1 @@
+Filter to events affecting a specific roster user record.

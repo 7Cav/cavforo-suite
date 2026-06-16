@@ -1,0 +1,11 @@
+{
+    "route_type": "admin",
+    "route_prefix": "roster-audit",
+    "sub_name": "",
+    "format": "",
+    "build_class": "",
+    "build_method": "",
+    "controller": "Cav7\\RosterAudit:AuditLog",
+    "context": "",
+    "action_prefix": ""
+}

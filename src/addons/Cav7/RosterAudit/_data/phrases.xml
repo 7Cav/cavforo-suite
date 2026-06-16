@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<phrases>
+  <phrase title="admin_navigation.cav7RosterAudit" version_id="1000010" version_string="1.0.0"><![CDATA[Audit log]]></phrase>
+  <phrase title="cav7_raudit_action" version_id="1000010" version_string="1.0.0"><![CDATA[Action]]></phrase>
+  <phrase title="cav7_raudit_action_create" version_id="1000010" version_string="1.0.0"><![CDATA[Created]]></phrase>
+  <phrase title="cav7_raudit_action_delete" version_id="1000010" version_string="1.0.0"><![CDATA[Deleted]]></phrase>
+  <phrase title="cav7_raudit_action_update" version_id="1000010" version_string="1.0.0"><![CDATA[Updated]]></phrase>
+  <phrase title="cav7_raudit_active" version_id="1000010" version_string="1.0.0"><![CDATA[Active]]></phrase>
+  <phrase title="cav7_raudit_affected" version_id="1000010" version_string="1.0.0"><![CDATA[Affected]]></phrase>
+  <phrase title="cav7_raudit_affected_roster_user" version_id="1000010" version_string="1.0.0"><![CDATA[Affected roster user]]></phrase>
+  <phrase title="cav7_raudit_all_actions" version_id="1000010" version_string="1.0.0"><![CDATA[All actions]]></phrase>
+  <phrase title="cav7_raudit_all_types" version_id="1000010" version_string="1.0.0"><![CDATA[All types]]></phrase>
+  <phrase title="cav7_raudit_audit_detail_unavailable" version_id="1000010" version_string="1.0.0"><![CDATA[Change details are unavailable (log file may have been pruned).]]></phrase>
+  <phrase title="cav7_raudit_audit_log" version_id="1000010" version_string="1.0.0"><![CDATA[Audit log]]></phrase>
+  <phrase title="cav7_raudit_audit_log_entry" version_id="1000010" version_string="1.0.0"><![CDATA[Audit log entry]]></phrase>
+  <phrase title="cav7_raudit_back_to_audit_log" version_id="1000010" version_string="1.0.0"><![CDATA[Back to audit log]]></phrase>
+  <phrase title="cav7_raudit_changes" version_id="1000010" version_string="1.0.0"><![CDATA[Changes]]></phrase>
+  <phrase title="cav7_raudit_clear_filters" version_id="1000010" version_string="1.0.0"><![CDATA[Clear filters]]></phrase>
+  <phrase title="cav7_raudit_content_type" version_id="1000010" version_string="1.0.0"><![CDATA[Content type]]></phrase>
+  <phrase title="cav7_raudit_date_from" version_id="1000010" version_string="1.0.0"><![CDATA[Date from]]></phrase>
+  <phrase title="cav7_raudit_date_to" version_id="1000010" version_string="1.0.0"><![CDATA[Date to]]></phrase>
+  <phrase title="cav7_raudit_deleted" version_id="1000010" version_string="1.0.0"><![CDATA[deleted]]></phrase>
+  <phrase title="cav7_raudit_event_details" version_id="1000010" version_string="1.0.0"><![CDATA[Event details]]></phrase>
+  <phrase title="cav7_raudit_field" version_id="1000010" version_string="1.0.0"><![CDATA[Field]]></phrase>
+  <phrase title="cav7_raudit_filters" version_id="1000010" version_string="1.0.0"><![CDATA[Filters]]></phrase>
+  <phrase title="cav7_raudit_invalid_date" version_id="1000010" version_string="1.0.0"><![CDATA[Please enter a valid date in YYYY-MM-DD format.]]></phrase>
+  <phrase title="cav7_raudit_new_value" version_id="1000010" version_string="1.0.0"><![CDATA[New value]]></phrase>
+  <phrase title="cav7_raudit_no_audit_entries" version_id="1000010" version_string="1.0.0"><![CDATA[No audit log entries match your filters.]]></phrase>
+  <phrase title="cav7_raudit_no_change_details" version_id="1000010" version_string="1.0.0"><![CDATA[No change details recorded.]]></phrase>
+  <phrase title="cav7_raudit_old_value" version_id="1000010" version_string="1.0.0"><![CDATA[Old value]]></phrase>
+  <phrase title="cav7_raudit_position_has_members" version_id="1010070" version_string="1.1.0"><![CDATA[This position is still assigned to {count} roster member(s), as a primary or secondary position. Remove those assignments first, then delete the position.]]></phrase>
+  <phrase title="cav7_raudit_relation_id" version_id="1000010" version_string="1.0.0"><![CDATA[Relation ID]]></phrase>
+  <phrase title="cav7_raudit_relation_id_explain" version_id="1000010" version_string="1.0.0"><![CDATA[Filter to events affecting a specific roster user record.]]></phrase>
+  <phrase title="cav7_raudit_system" version_id="1000010" version_string="1.0.0"><![CDATA[System]]></phrase>
+  <phrase title="cav7_raudit_type_award" version_id="1000010" version_string="1.0.0"><![CDATA[Award]]></phrase>
+  <phrase title="cav7_raudit_type_award_group" version_id="1000010" version_string="1.0.0"><![CDATA[Award group]]></phrase>
+  <phrase title="cav7_raudit_type_field" version_id="1000010" version_string="1.0.0"><![CDATA[Custom field]]></phrase>
+  <phrase title="cav7_raudit_type_position" version_id="1000010" version_string="1.0.0"><![CDATA[Position]]></phrase>
+  <phrase title="cav7_raudit_type_position_group" version_id="1000010" version_string="1.0.0"><![CDATA[Position group]]></phrase>
+  <phrase title="cav7_raudit_type_rank" version_id="1000010" version_string="1.0.0"><![CDATA[Rank]]></phrase>
+  <phrase title="cav7_raudit_type_record_type" version_id="1000010" version_string="1.0.0"><![CDATA[Record type]]></phrase>
+  <phrase title="cav7_raudit_type_roster" version_id="1000010" version_string="1.0.0"><![CDATA[Roster]]></phrase>
+  <phrase title="cav7_raudit_type_roster_user" version_id="1000010" version_string="1.0.0"><![CDATA[Roster user]]></phrase>
+  <phrase title="cav7_raudit_type_service_record" version_id="1000010" version_string="1.0.0"><![CDATA[Service record]]></phrase>
+  <phrase title="cav7_raudit_type_user_award" version_id="1000010" version_string="1.0.0"><![CDATA[Award record]]></phrase>
+  <phrase title="cav7_raudit_x_more_fields" version_id="1000010" version_string="1.0.0"><![CDATA[+{count} more field|s]]></phrase>
+  <phrase title="cron_entry.cav7RAuditPrune" version_id="1000010" version_string="1.0.0"><![CDATA[Prune roster audit logs]]></phrase>
+  <phrase title="opt_group_description.cav7RosterAudit" version_id="1000010" version_string="1.0.0"><![CDATA[Settings for the 7Cav roster audit log companion add-on.]]></phrase>
+  <phrase title="opt_group_title.cav7RosterAudit" version_id="1000010" version_string="1.0.0"><![CDATA[Roster audit log]]></phrase>
+  <phrase title="option.cav7RAuditRetention" version_id="1000010" version_string="1.0.0"><![CDATA[Audit log retention (days)]]></phrase>
+  <phrase title="option_explain.cav7RAuditRetention" version_id="1000010" version_string="1.0.0"><![CDATA[Audit log entries (and their detail files) older than this many days are removed by the daily prune cron. The minimum is 30 days; lower or invalid values fall back to the default of 1825 (5 years).]]></phrase>
+</phrases>

@@ -1,0 +1,38 @@
+{
+    "NF-Rosters-Entity-AwardGroup_Cav7-RosterAudit-NF-Rosters-Entity-AwardGroup.json": {
+        "hash": "d7e33b093647f6f738054329e4f5bd42"
+    },
+    "NF-Rosters-Entity-Award_Cav7-RosterAudit-NF-Rosters-Entity-Award.json": {
+        "hash": "9cb83928cc663b611cb02739000a69a9"
+    },
+    "NF-Rosters-Entity-Field_Cav7-RosterAudit-NF-Rosters-Entity-Field.json": {
+        "hash": "f082b8419e1ee861f55fb2c982ca2b08"
+    },
+    "NF-Rosters-Entity-PositionGroup_Cav7-RosterAudit-NF-Rosters-Entity-PositionGroup.json": {
+        "hash": "b13d8b571904b6574816f4e1b7e6a606"
+    },
+    "NF-Rosters-Entity-Position_Cav7-RosterAudit-NF-Rosters-Entity-Position.json": {
+        "hash": "9c235463f8fa117118d82e18994b8933"
+    },
+    "NF-Rosters-Entity-Rank_Cav7-RosterAudit-NF-Rosters-Entity-Rank.json": {
+        "hash": "d700216b349e9d1563156bfcd481c513"
+    },
+    "NF-Rosters-Entity-RecordType_Cav7-RosterAudit-NF-Rosters-Entity-RecordType.json": {
+        "hash": "13ecdcab10d7911884aba25a8487d69c"
+    },
+    "NF-Rosters-Entity-RosterUserAward_Cav7-RosterAudit-NF-Rosters-Entity-RosterUserAward.json": {
+        "hash": "b15c025b8e95cae40d4203173ee22cc8"
+    },
+    "NF-Rosters-Entity-RosterUser_Cav7-RosterAudit-NF-Rosters-Entity-RosterUser.json": {
+        "hash": "2e3e3f755eb3c26796905b4bc35668ba"
+    },
+    "NF-Rosters-Entity-Roster_Cav7-RosterAudit-NF-Rosters-Entity-Roster.json": {
+        "hash": "a13e95e5b4d777f00126f6cdf71319ee"
+    },
+    "NF-Rosters-Entity-ServiceRecord_Cav7-RosterAudit-NF-Rosters-Entity-ServiceRecord.json": {
+        "hash": "9b38043d8275f8198a072b6272f8c890"
+    },
+    "NF-Rosters-Pub-Controller-Roster_Cav7-RosterAudit-NF-Rosters-Pub-Controller-Roster.json": {
+        "hash": "696ec372670ebfd6f04c234921650913"
+    }
+}

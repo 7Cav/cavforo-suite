@@ -1,0 +1,17 @@
+{
+    "cron_class": "Cav7\\RosterAudit\\Cron\\AuditLogPrune",
+    "cron_method": "run",
+    "run_rules": {
+        "day_type": "dom",
+        "dom": [
+            -1
+        ],
+        "hours": [
+            3
+        ],
+        "minutes": [
+            40
+        ]
+    },
+    "active": true
+}
