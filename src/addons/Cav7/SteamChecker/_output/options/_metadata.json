@@ -1,0 +1,17 @@
+{
+    "steamCheckerAllowedRoleIds.json": {
+        "hash": "1480d6d81e9605d03d872a2c01b9bbdd"
+    },
+    "steamCheckerApiKey.json": {
+        "hash": "105c25aba12cfb3c8c3091be05818c8d"
+    },
+    "steamCheckerBotUserId.json": {
+        "hash": "cf7b9f2b7bd1b541fd878af469bf2e40"
+    },
+    "steamCheckerDebugLog.json": {
+        "hash": "e85373fe77722718d05441a01799e0c5"
+    },
+    "steamCheckerNodeId.json": {
+        "hash": "8a4140cf9b558272db08fa7be0f81351"
+    }
+}

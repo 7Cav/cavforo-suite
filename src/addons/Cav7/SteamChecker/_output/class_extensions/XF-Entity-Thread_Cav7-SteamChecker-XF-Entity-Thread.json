@@ -1,0 +1,6 @@
+{
+    "from_class": "XF\\Entity\\Thread",
+    "to_class": "Cav7\\SteamChecker\\XF\\Entity\\Thread",
+    "execute_order": 0,
+    "active": true
+}

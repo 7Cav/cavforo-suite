@@ -1,0 +1,1 @@
+The forum node ID where enlistment applications are posted. New threads created in this node will trigger a Steam VAC check. Default: 325.

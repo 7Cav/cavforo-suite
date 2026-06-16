@@ -1,0 +1,1 @@
+The XenForo user ID of the account that will post VAC check results in each enlistment thread. Set to 0 to disable posting.
