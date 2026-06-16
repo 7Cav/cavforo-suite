@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option_groups>
+  <group group_id="cav7AvatarByRole"
+         display_order="100"
+         debug_only="0"
+         addon_id="Cav7/AvatarByRole">
+    <title><![CDATA[7Cav - Avatar By Role]]></title>
+    <description><![CDATA[Settings for avatar overrides and modifiers.]]></description>
+  </group>
+</option_groups>

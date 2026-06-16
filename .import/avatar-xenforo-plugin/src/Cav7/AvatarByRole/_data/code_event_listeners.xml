@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<code_event_listeners>
+	<listener event_id="templater_setup"
+	          execute_order="10"
+	          callback_class="Cav7\AvatarByRole\Infrastructure\Xenforo\Template\TemplateOverrides"
+	          callback_method="templaterSetup"
+              addon_id="Cav7/AvatarByRole"
+	          active="true" />
+</code_event_listeners>
