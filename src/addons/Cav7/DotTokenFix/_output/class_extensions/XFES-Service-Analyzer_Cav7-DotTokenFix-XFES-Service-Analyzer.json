@@ -1,0 +1,6 @@
+{
+    "from_class": "XFES\\Service\\Analyzer",
+    "to_class": "Cav7\\DotTokenFix\\XFES\\Service\\Analyzer",
+    "execute_order": 7200,
+    "active": true
+}

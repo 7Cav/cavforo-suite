@@ -8,7 +8,7 @@ Without this addon, usernames like `Molitor.K` are indexed as a single token `mo
 
 ## Solution
 
-Injects a `pattern_replace` char filter into the ElasticSearch analyzer that splits dots between alphanumeric characters into spaces before tokenization. `Molitor.K` becomes `Molitor K`, producing tokens `molitor` and `k` — so searching for `molitor`, `k`, or `molitor.k` all match.
+Injects a `pattern_replace` char filter into the ElasticSearch analyzer that splits dots between alphanumeric characters into spaces before tokenization. `Molitor.K` becomes `Molitor K`, producing tokens `molitor` and `k`, so searching for `molitor`, `k`, or `molitor.k` all match.
 
 ## Requirements
 
@@ -23,4 +23,8 @@ Injects a `pattern_replace` char filter into the ElasticSearch analyzer that spl
 
 ## License
 
-MIT
+MIT, see [LICENSE](LICENSE).
+
+## Provenance
+
+Imported from https://github.com/7Cav/DotTokenFix at commit e4b52797dce9ee704e9aff33149c30dea69385dd.

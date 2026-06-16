@@ -1,11 +1,14 @@
 {
+    "legacy_addon_id": "",
     "title": "7Cav - Dot Token Fix",
     "description": "Extends the ElasticSearch Essentials analyzer to split dots between alphanumeric characters (e.g. Molitor.K) into separate tokens, so searching a bare last name matches username-formatted content.",
     "version_id": 1000010,
     "version_string": "1.0.0",
     "dev": "Cav7",
-    "addon_id": "Cav7/DotTokenFix",
-    "namespace": "Cav7\\DotTokenFix",
+    "dev_url": "https://github.com/7Cav",
+    "faq_url": "",
+    "support_url": "",
+    "extra_urls": [],
     "require": {
         "SV/ElasticSearchEssentials": [
             1000000,
@@ -16,5 +19,5 @@
             "XenForo Enhanced Search 2.1.0+"
         ]
     },
-    "license": "MIT"
+    "icon": ""
 }
