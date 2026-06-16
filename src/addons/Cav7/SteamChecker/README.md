@@ -50,3 +50,7 @@ All options live under **Admin CP → Options → Steam VAC Checker**:
 ## License
 
 [MIT](LICENSE) © 2026 7Cav
+
+## Provenance
+
+Imported from https://github.com/7Cav/vac_checker at commit 51b58a7f85e55619eac1849a894be909d68cbbf1.
