@@ -1,0 +1,1 @@
+Delete this scope? All keys currently granted this scope will lose it. Continue?

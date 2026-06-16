@@ -1,0 +1,53 @@
+<xf:title>{{ phrase('cav7_api_key') }}</xf:title>
+<xf:wrap template="account_wrapper"/>
+
+<xf:if is="$apiKey">
+	<div class="block">
+		<div class="block-container">
+			<div class="block-body">
+				<xf:inforow label="Key"><code>{{ $apiKey.key_prefix }}...</code></xf:inforow>
+				<xf:inforow label="Created">{{ date_time($apiKey.created_date) }}</xf:inforow>
+				<xf:if is="$apiKey.last_used_date">
+					<xf:inforow label="Last used">{{ date_time($apiKey.last_used_date) }}</xf:inforow>
+				</xf:if>
+				<xf:inforow label="{{ phrase('cav7_api_key_permissions') }}"
+					hint="{{ phrase('cav7_api_key_permissions_explain') }}">
+					<xf:if is="$apiKey.Scopes is not empty">
+						<xf:foreach loop="$apiKey.Scopes" value="$grant">
+							<span class="label" title="{{ $grant.ScopeDef.description }}">{{ $grant.ScopeDef.title }}</span>
+						</xf:foreach>
+					<xf:else />
+						<em>{{ phrase('cav7_api_key_no_scopes') }}</em>
+					</xf:if>
+				</xf:inforow>
+			</div>
+			<div class="block-rowMessage block-rowMessage--warning">
+				Keep your API key secret. It grants access to the 7Cav API on your behalf.
+			</div>
+			<div class="block-footer block-footer--separated">
+				<form method="post" action="{{ link('account/api-key-rotate') }}" data-xf-submit-confirm="{{ phrase('cav7_api_key_rotate_confirm') }}" style="display:inline-block;margin-right:8px;">
+					<xf:csrf />
+					<button type="submit" class="button">Rotate Key</button>
+				</form>
+				<form method="post" action="{{ link('account/api-key-revoke') }}" data-xf-submit-confirm="{{ phrase('cav7_api_key_revoke_confirm') }}" style="display:inline-block;">
+					<xf:csrf />
+					<button type="submit" class="button button--danger">Revoke Key</button>
+				</form>
+			</div>
+		</div>
+	</div>
+<xf:else />
+	<div class="block">
+		<div class="block-container">
+			<div class="block-body">
+				<xf:inforow>You don't have an API key yet. Generate one to authenticate with the 7Cav API.</xf:inforow>
+			</div>
+			<div class="block-footer block-footer--separated">
+				<form method="post" action="{{ link('account/api-key-create') }}">
+					<xf:csrf />
+					<button type="submit" class="button button--cta">Generate API Key</button>
+				</form>
+			</div>
+		</div>
+	</div>
+</xf:if>

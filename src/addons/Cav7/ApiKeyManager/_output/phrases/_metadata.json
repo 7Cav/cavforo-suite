@@ -1,0 +1,140 @@
+{
+    "cav7_api_key.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "d876ff8da67c3731ae25d8335a4168b4"
+    },
+    "cav7_api_key_already_exists.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "63d616991866ca379bd60ed8fa8c8def"
+    },
+    "cav7_api_key_manager.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "8c9fe9a996b93a1b9d3cfec8d9e48268"
+    },
+    "cav7_api_key_new_key_warning.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "b0d8e229cbfa10c58d189385085dc2b6"
+    },
+    "cav7_api_key_no_scopes.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "3bb5234083ff3623320b57819b043d68"
+    },
+    "cav7_api_key_not_found.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "fd14a1f65fad5876eeea1ac1ee68effb"
+    },
+    "cav7_api_key_permissions.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "d08ccf52b4cdd08e41cfb99ec42e0b29"
+    },
+    "cav7_api_key_permissions_explain.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "6fecb01503e571299872fdc6f73caac1"
+    },
+    "cav7_api_key_revoke_confirm.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "b3010b3aa29530a5111cbd54c7c8eed1"
+    },
+    "cav7_api_key_rotate_confirm.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "6405d5b0a4641ee2667a02a9db5e84fd"
+    },
+    "cav7_api_keys.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "b4717f6ab3c2357c13c0c2cd32dfc4ca"
+    },
+    "cav7_api_scope.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "371e7bb5a1dded203f3d49f0e1a612c3"
+    },
+    "cav7_api_scope_delete_confirm.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "bc2e7b9ac1edb64efb0c1bc1272a3fa4"
+    },
+    "cav7_api_scope_description_explain.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "ca2ad84e3fa8a003b12e19ca24309d80"
+    },
+    "cav7_api_scope_name.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "78055b0c03ba9f67e801b91b3653f355"
+    },
+    "cav7_api_scope_name_explain.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "2b48ee695f0db39abecae8bea18c7054"
+    },
+    "cav7_api_scope_name_invalid.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "945db621c416a8ad7cc83a827268b425"
+    },
+    "cav7_api_scope_no_scopes.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "ee2fa28208d3ddca9d650c242af3f437"
+    },
+    "cav7_api_scope_not_found.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "9d0274374555cf6d114b225f1e9e2734"
+    },
+    "cav7_api_scope_title_explain.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "fe95afe893eb25e4605644d3d1a0ee20"
+    },
+    "cav7_api_scope_user_groups.txt": {
+        "global_cache": false,
+        "version_id": 1020010,
+        "version_string": "1.2.0",
+        "hash": "daa904ab809a55f9b7a01a3ea15c2756"
+    },
+    "cav7_api_scope_user_groups_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020010,
+        "version_string": "1.2.0",
+        "hash": "99e5c129c405caddbc512f4d45b4a44c"
+    },
+    "cav7_api_scopes.txt": {
+        "global_cache": false,
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "6c625ad89b6c294a19a475c81ff3bca8"
+    }
+}

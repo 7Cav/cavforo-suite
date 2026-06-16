@@ -1,0 +1,10 @@
+<xf:title>{{ phrase('cav7_api_scope') }}: {{ $scope.title }}</xf:title>
+
+<xf:form action="{{ link('cav7-api-scopes/delete', $scope) }}" class="block">
+	<div class="block-container">
+		<div class="block-body">
+			<div class="block-rowMessage">{{ phrase('cav7_api_scope_delete_confirm') }}</div>
+		</div>
+		<xf:submitrow icon="delete" sticky="true" />
+	</div>
+</xf:form>

@@ -1,0 +1,41 @@
+<xf:title>{{ phrase('cav7_api_scope') }}<xf:if is="$scope.scope_id">: {$scope.title}</xf:if></xf:title>
+
+<xf:form action="{{ link('cav7-api-scopes/save', $scope) }}" ajax="true" class="block">
+	<div class="block-container">
+		<div class="block-body">
+			<xf:if is="$scope.scope_id">
+				<xf:inforow label="{{ phrase('cav7_api_scope_name') }}">
+					<code>{{ $scope.scope_name }}</code>
+				</xf:inforow>
+			<xf:else />
+				<xf:textboxrow name="scope_name" value="{$scope.scope_name}"
+					label="{{ phrase('cav7_api_scope_name') }}"
+					explain="{{ phrase('cav7_api_scope_name_explain') }}" />
+			</xf:if>
+
+			<xf:textboxrow name="title" value="{$scope.title}"
+				label="Title"
+				explain="{{ phrase('cav7_api_scope_title_explain') }}" />
+
+			<xf:textarearow name="description" value="{$scope.description}"
+				label="Description" rows="3"
+				explain="{{ phrase('cav7_api_scope_description_explain') }}" />
+
+			<xf:formrow label="{{ phrase('cav7_api_scope_user_groups') }}" explain="{{ phrase('cav7_api_scope_user_groups_explain') }}">
+				<xf:select name="user_group_ids[]" multiple="true" value="{{ explode(',', $scope.user_group_ids) }}" size="8">
+					<xf:foreach loop="$userGroups" key="$groupId" value="$groupTitle">
+						<xf:option value="{$groupId}">{$groupTitle}</xf:option>
+					</xf:foreach>
+				</xf:select>
+			</xf:formrow>
+
+			<xf:numberboxrow name="display_order" value="{$scope.display_order}"
+				label="Display order" min="0" />
+
+			<xf:checkboxrow>
+				<xf:option name="is_active" value="1" selected="{$scope.is_active}" label="Active" />
+			</xf:checkboxrow>
+		</div>
+		<xf:submitrow icon="save" sticky="true" />
+	</div>
+</xf:form>

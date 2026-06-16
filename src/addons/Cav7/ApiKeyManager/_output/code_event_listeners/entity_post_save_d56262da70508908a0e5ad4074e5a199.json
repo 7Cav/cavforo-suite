@@ -1,0 +1,9 @@
+{
+    "event_id": "entity_post_save",
+    "execute_order": 10,
+    "callback_class": "Cav7\\ApiKeyManager\\Listener",
+    "callback_method": "entityPostSave",
+    "active": true,
+    "hint": "XF\\Entity\\User",
+    "description": "Recompute API key scopes when a user's group membership changes"
+}

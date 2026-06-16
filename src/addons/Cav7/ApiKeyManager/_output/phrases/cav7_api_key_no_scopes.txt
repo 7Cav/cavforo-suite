@@ -1,0 +1,1 @@
+No active permissions — your key cannot currently access any API endpoint.

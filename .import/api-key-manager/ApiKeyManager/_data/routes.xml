@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<routes>
-  <route route_type="admin" route_prefix="cav7-api-keys" controller="Cav7\ApiKeyManager\Admin\Controller\ApiKey" action_prefix=""/>
-  <route route_type="admin" route_prefix="cav7-api-scopes" controller="Cav7\ApiKeyManager\Admin\Controller\ApiScope" action_prefix=""/>
-</routes>

@@ -1,0 +1,1 @@
+Scope name must match ^[a-z][a-z0-9_:]*$.

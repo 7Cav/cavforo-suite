@@ -1,0 +1,1 @@
+What this scope authorizes. Shown to admins; surfaced to users as tooltip.

@@ -1,0 +1,1 @@
+You already have an active API key. Rotate your existing key if you need a new one.

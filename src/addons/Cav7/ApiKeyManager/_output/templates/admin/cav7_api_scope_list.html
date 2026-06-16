@@ -1,0 +1,55 @@
+<xf:title>{{ phrase('cav7_api_scopes') }}</xf:title>
+
+<xf:pageaction>
+	<xf:button href="{{ link('cav7-api-scopes/add') }}" icon="add">Add scope</xf:button>
+</xf:pageaction>
+
+<div class="block">
+	<div class="block-container">
+		<xf:if is="$scopes.count()">
+			<table class="dataList">
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Title</th>
+						<th>Gated to groups</th>
+						<th>Active</th>
+						<th>Order</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					<xf:foreach loop="$scopes" value="$scope">
+						<tr>
+							<td><code>{{ $scope.scope_name }}</code></td>
+							<td>{{ $scope.title }}</td>
+							<td>
+								<xf:if is="$scope.is_gated">
+									<code>{{ $scope.user_group_ids }}</code>
+								<xf:else />
+									<em>Ungated (everyone with a key)</em>
+								</xf:if>
+							</td>
+							<td>
+								<xf:if is="$scope.is_active">
+									<span class="label label--success">Active</span>
+								<xf:else />
+									<span class="label">Disabled</span>
+								</xf:if>
+							</td>
+							<td>{{ $scope.display_order }}</td>
+							<td class="dataList-col--action">
+								<a class="button button--small" href="{{ link('cav7-api-scopes/edit', $scope) }}">Edit</a>
+								<a class="button button--small button--danger" href="{{ link('cav7-api-scopes/delete', $scope) }}">Delete</a>
+							</td>
+						</tr>
+					</xf:foreach>
+				</tbody>
+			</table>
+		<xf:else />
+			<div class="block-body">
+				<div class="block-rowMessage">{{ phrase('cav7_api_scope_no_scopes') }}</div>
+			</div>
+		</xf:if>
+	</div>
+</div>
