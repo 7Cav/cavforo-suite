@@ -2,22 +2,22 @@
 
 One home for the 7th Cavalry's XenForo addons, plus `Cav7/Core`, a shared library the addons will lean on over time.
 
-The addons were scattered across separate repositories, each with its own layout and tooling. This repo brings them together under one structure so they are easier to maintain and so new addons can follow the same pattern. See issue #1 for the migration plan and progress.
+The addons were scattered across separate repositories, each with its own layout and tooling. This repo brings them together under one structure so they are easier to maintain and so new addons can follow the same pattern.
 
 ## What lives here
 
 Addons sit at `src/addons/Cav7/<AddonId>/`, mirroring a XenForo install's tree, so a dev install can symlink `src/addons/Cav7` straight at this repo.
 
-| Addon | What it does | Status |
-|---|---|---|
-| `Cav7/Core` | Shared library for the suite | Placeholder, code extracted later |
-| `Cav7/SteamChecker` | Steam VAC/game-ban checks on enlistment | Migrating (#3) |
-| `Cav7/ApiKeyManager` | Personal API keys for the external API | Migrating (#4) |
-| `Cav7/RosterAudit` | Audit trail for NF/Rosters changes | Migrating (#5) |
-| `Cav7/RosterSearch` | Gamertag/name search over the roster | Migrating (#6) |
-| `Cav7/UserGroupsScope` | `user:groups` API scope | Migrating (#7) |
-| `Cav7/DotTokenFix` | Dot-splitting fix for ElasticSearch | Migrating (#8) |
-| `Cav7/AvatarByRole` | Forces avatars to match 7Cav rank | Migrating (#9) |
+| Addon | What it does |
+|---|---|
+| `Cav7/Core` | Shared library for the suite (placeholder until shared code is extracted) |
+| `Cav7/SteamChecker` | Steam VAC/game-ban checks on enlistment |
+| `Cav7/ApiKeyManager` | Personal API keys for the external API |
+| `Cav7/RosterAudit` | Audit trail for NF/Rosters changes |
+| `Cav7/RosterSearch` | Gamertag/name search over the roster |
+| `Cav7/UserGroupsScope` | `user:groups` API scope |
+| `Cav7/DotTokenFix` | Dot-splitting fix for ElasticSearch |
+| `Cav7/AvatarByRole` | Forces avatars to match 7Cav rank |
 
 The vendor prefix is `Cav7`, not `7Cav`, because a PHP namespace cannot start with a digit. The GitHub org is `7Cav`; the code vendor is `Cav7`.
 

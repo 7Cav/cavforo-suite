@@ -14,16 +14,12 @@ Each addon under `src/addons/Cav7/<AddonId>/` owns:
 - `CONTEXT.md`: its domain glossary.
 - `docs/adr/`: decisions specific to that addon, including any it arrived with when migrated.
 
-| Context | Path | Status |
-|---|---|---|
-| Suite-wide | `docs/adr/`, `CONTEXT.md` | active |
-| `Cav7/Core` | `src/addons/Cav7/Core/` | placeholder |
-| `Cav7/SteamChecker` | `src/addons/Cav7/SteamChecker/` | pending migration (#3) |
-| `Cav7/ApiKeyManager` | `src/addons/Cav7/ApiKeyManager/` | pending migration (#4) |
-| `Cav7/RosterAudit` | `src/addons/Cav7/RosterAudit/` | pending migration (#5) |
-| `Cav7/RosterSearch` | `src/addons/Cav7/RosterSearch/` | pending migration (#6) |
-| `Cav7/UserGroupsScope` | `src/addons/Cav7/UserGroupsScope/` | pending migration (#7) |
-| `Cav7/DotTokenFix` | `src/addons/Cav7/DotTokenFix/` | pending migration (#8) |
-| `Cav7/AvatarByRole` | `src/addons/Cav7/AvatarByRole/` | pending migration (#9) |
+| Context | Path |
+|---|---|
+| Suite-wide | `docs/adr/`, `CONTEXT.md` |
+| `Cav7/Core` | `src/addons/Cav7/Core/` |
+| Each addon | `src/addons/Cav7/<AddonId>/` |
 
-These docs are created when terms or decisions actually arise (see [docs/agents/domain.md](docs/agents/domain.md)), not upfront, so most per-addon `CONTEXT.md` and `docs/adr/` paths will not exist until an addon is migrated and someone records something.
+The addons themselves are listed in [README.md](README.md); this map only points at where each context lives, so it does not repeat that list.
+
+These docs are created when terms or decisions actually arise (see [docs/agents/domain.md](docs/agents/domain.md)), not upfront, so most per-addon `CONTEXT.md` and `docs/adr/` paths will not exist until someone records something for that addon.
