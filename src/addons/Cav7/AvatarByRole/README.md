@@ -46,16 +46,21 @@ future `Cav7/Core` roster lookup (noted in issue #9, not extracted here).
 
 ## Notes
 
-- **Dormant class extensions.** The add-on ships three class extension classes
-  under `Infrastructure/Xenforo/` (a `XF\Service\User\Avatar` override that blocks
-  members from uploading their own avatar, plus `XF\Entity\User` and
-  `XF\Pub\Controller\Account` overrides). They were declared through a
-  non-standard `extensions` key in `addon.json` rather than a
-  `class_extensions.xml`, so XenForo never registered them and they have never
-  run on the live forum. The visible avatar override comes entirely from the
-  templater listener above. The migration preserves this behavior as-is and does
-  not wire the extensions up; activating them is a behavior change and belongs in
-  a separate follow-up.
+- **Blocking avatar uploads.** Because every avatar is forced to the rank image
+  at render time, an avatar a member uploads never shows. To stop members from
+  storing dead files and staring at an upload control that does nothing, the
+  add-on extends `XF\Entity\User` and returns `false` from `canUploadAvatar()`.
+  XenForo gates the avatar editor, the `account/avatar` action, and the API
+  avatar endpoint on that one method, so the editor is hidden and uploads are
+  refused everywhere. The extension is registered in `_data/class_extensions.xml`.
+  An earlier version of the add-on instead shipped three extensions (overrides of
+  `XF\Service\User\Avatar`, `XF\Entity\User`, and `XF\Pub\Controller\Account`)
+  declared through a non-standard `extensions` key that XenForo ignores, so they
+  never ran. Two of them targeted classes XenForo 2.3 renamed or merged away
+  (`Avatar` became `AvatarService`; the per-action avatar handlers folded into a
+  single `AccountController::actionAvatar()`), so they were dropped in favour of
+  the single `canUploadAvatar()` override, which covers the same ground. See
+  issue #20.
 - **Version.** The source repository's last release tag was `v1.0.3`; the bump to
   1.0.4 was committed there but never tagged. The monorepo released it as
   `AvatarByRole-v1.0.4`.
