@@ -1,0 +1,26 @@
+<xf:title>Gamertag Search</xf:title>
+
+<form method="get" action="{{ link('rosters/search') }}">
+    <div class="block-container">
+        <div class="block-body">
+            <div class="formRow">
+                <div class="formRow-main">
+                    <input
+                        type="text"
+                        name="q"
+                        class="input u-sizeFull"
+                        placeholder="Search by Cav name or console gamertag&hellip;"
+                        autocomplete="off"
+                        autofocus="autofocus"
+                    />
+                </div>
+            </div>
+        </div>
+        <div class="block-footer">
+            <button type="submit" class="button button--primary">
+                <i class="fa--xf fa fa-search" aria-hidden="true"></i> Search
+            </button>
+            <p class="block-footer-note u-muted">Only members with a console gamertag on their milpac will appear in results.</p>
+        </div>
+    </div>
+</form>

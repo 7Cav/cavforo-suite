@@ -1,0 +1,11 @@
+{
+    "route_type": "public",
+    "route_prefix": "rosters",
+    "sub_name": "search-overlay",
+    "format": "search-overlay",
+    "build_class": "",
+    "build_method": "",
+    "controller": "NF\\Rosters:Roster",
+    "context": "nfRosters",
+    "action_prefix": "SearchOverlay"
+}

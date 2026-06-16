@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<template_modifications>
+  <modification type="public" template="nf_rosters_roster_index" modification_key="cav7RosterSearchButton" description="Adds Gamertag Search button to roster index page actions" execution_order="10" enabled="1" action="str_replace">
+    <find><![CDATA[<xf:pageaction if="$xf.visitor.canManageRosterUsers()">
+    <xf:button href="{{ link('rosters/add-user', $selectedRoster) }}" class="button--cta" icon="add">
+        {{ phrase('add_user') }}
+    </xf:button>
+</xf:pageaction>]]></find>
+    <replace><![CDATA[<xf:pageaction>
+    <xf:button href="{{ link('rosters/search-overlay') }}" icon="search" overlay="true">Gamertag Search</xf:button>
+    <xf:if is="$xf.visitor.canManageRosterUsers()">
+        <xf:button href="{{ link('rosters/add-user', $selectedRoster) }}" class="button--cta" icon="add">
+            {{ phrase('add_user') }}
+        </xf:button>
+    </xf:if>
+</xf:pageaction>]]></replace>
+  </modification>
+</template_modifications>
