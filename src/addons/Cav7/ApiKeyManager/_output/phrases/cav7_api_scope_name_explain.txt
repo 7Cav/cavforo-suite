@@ -1,0 +1,1 @@
+Lowercase identifier used by the API service. Letters, digits, underscore, colon. Must start with a letter. Example: write:roster

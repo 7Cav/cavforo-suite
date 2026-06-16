@@ -1,0 +1,32 @@
+{
+    "admin/cav7_api_key_list.html": {
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "d4704a49cedfb2ceabfc3fbc1c4d994c"
+    },
+    "admin/cav7_api_scope_delete.html": {
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "50866257577fac754063ff05bcd2f02f"
+    },
+    "admin/cav7_api_scope_edit.html": {
+        "version_id": 1020010,
+        "version_string": "1.2.0",
+        "hash": "65cae097b5b5c4e9fd94c80fe75d5a5c"
+    },
+    "admin/cav7_api_scope_list.html": {
+        "version_id": 1020010,
+        "version_string": "1.2.0",
+        "hash": "42345584c094ce8b40761d67724811e6"
+    },
+    "public/cav7_api_key_account.html": {
+        "version_id": 1010010,
+        "version_string": "1.1.0",
+        "hash": "d5d6aa17d2e56e9a346dfc1f7f438c51"
+    },
+    "public/cav7_api_key_account_newkey.html": {
+        "version_id": 1020110,
+        "version_string": "1.2.1",
+        "hash": "281820d44afbf185b059ba8c8832e130"
+    }
+}

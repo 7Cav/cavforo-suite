@@ -1,0 +1,9 @@
+{
+    "template": "account_wrapper",
+    "description": "Adds API Key link to account sidebar navigation",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "str_replace",
+    "find": "<h3 class=\"block-minorHeader\">{{ phrase('settings') }}</h3>",
+    "replace": "<h3 class=\"block-minorHeader\">{{ phrase('cav7_api_key_manager') }}</h3>\n\t<div class=\"block-body\">\n\t\t<a class=\"blockLink {{ $pageSelected == 'cav7_api_key' ? 'is-selected' : '' }}\" href=\"{{ link('account/api-key') }}\">\n\t\t\t{{ phrase('cav7_api_key') }}\n\t\t</a>\n\t</div>\n$0"
+}

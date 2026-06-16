@@ -1,0 +1,9 @@
+{
+    "event_id": "entity_post_save",
+    "execute_order": 10,
+    "callback_class": "Cav7\\ApiKeyManager\\Listener",
+    "callback_method": "entityPostSave",
+    "active": true,
+    "hint": "Cav7\\ApiKeyManager\\Entity\\ApiKeyScopeDef",
+    "description": "Recompute affected keys when a scope definition changes"
+}

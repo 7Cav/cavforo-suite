@@ -1,0 +1,1 @@
+Leave empty to grant this scope to every key. Select one or more groups to restrict it to members of those groups (any-of).

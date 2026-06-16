@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<template_modifications>
+  <modification type="public" template="account_wrapper" modification_key="cav7_api_key_account_wrapper" description="Adds API Key link to account sidebar navigation" execution_order="10" enabled="1" action="str_replace">
+    <find><![CDATA[<h3 class="block-minorHeader">{{ phrase('settings') }}</h3>]]></find>
+    <replace><![CDATA[<h3 class="block-minorHeader">{{ phrase('cav7_api_key_manager') }}</h3>
+	<div class="block-body">
+		<a class="blockLink {{ $pageSelected == 'cav7_api_key' ? 'is-selected' : '' }}" href="{{ link('account/api-key') }}">
+			{{ phrase('cav7_api_key') }}
+		</a>
+	</div>
+$0]]></replace>
+  </modification>
+</template_modifications>

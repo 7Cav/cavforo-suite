@@ -1,0 +1,63 @@
+<xf:title>{{ phrase('cav7_api_keys') }}</xf:title>
+
+<div class="block">
+	<div class="block-container">
+		<h2 class="block-header">{{ phrase('cav7_api_keys') }}</h2>
+		<xf:if is="$apiKeys.count()">
+			<table class="dataList">
+				<thead>
+					<tr>
+						<th>User</th>
+						<th>Key Prefix</th>
+						<th>Scopes</th>
+						<th>Created</th>
+						<th>Last Used</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					<xf:foreach loop="$apiKeys" value="$key">
+						<tr>
+							<td>
+								<xf:if is="$key.User">
+									<a href="{{ link('users/edit', $key.User) }}">{{ $key.User.username }}</a>
+								<xf:else />
+									<em>Unknown (user_id: {{ $key.user_id }})</em>
+								</xf:if>
+							</td>
+							<td><code>{{ $key.key_prefix }}...</code></td>
+							<td>
+								<xf:if is="$key.Scopes is not empty">
+									<xf:foreach loop="$key.Scopes" value="$grant">
+										<span class="label" title="{{ $grant.ScopeDef.scope_name }}">{{ $grant.ScopeDef.title }}</span>
+									</xf:foreach>
+								<xf:else />
+									<em>None</em>
+								</xf:if>
+							</td>
+							<td>{{ date_time($key.created_date) }}</td>
+							<td>
+								<xf:if is="$key.last_used_date">
+									{{ date_time($key.last_used_date) }}
+								<xf:else />
+									<em>Never</em>
+								</xf:if>
+							</td>
+							<td class="dataList-col--action">
+								<form method="post" action="{{ link('cav7-api-keys/revoke') }}" data-xf-submit-confirm="Revoke this user's API key? They will lose API access immediately.">
+									<input type="hidden" name="key_id" value="{{ $key.key_id }}" />
+									<xf:csrf />
+									<button type="submit" class="button button--danger button--small">Revoke</button>
+								</form>
+							</td>
+						</tr>
+					</xf:foreach>
+				</tbody>
+			</table>
+		<xf:else />
+			<div class="block-body">
+				<div class="block-rowMessage">No API keys have been generated yet.</div>
+			</div>
+		</xf:if>
+	</div>
+</div>

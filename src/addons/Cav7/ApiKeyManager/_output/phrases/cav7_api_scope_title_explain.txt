@@ -1,0 +1,1 @@
+Human-readable label shown to users and admins.

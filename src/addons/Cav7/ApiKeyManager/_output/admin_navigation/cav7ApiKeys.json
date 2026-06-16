@@ -1,0 +1,11 @@
+{
+    "parent_navigation_id": "serviceProviders",
+    "display_order": 700,
+    "link": "cav7-api-keys",
+    "icon": "fa-key",
+    "admin_permission_id": "user",
+    "debug_only": false,
+    "development_only": false,
+    "super_admin_only": false,
+    "hide_no_children": false
+}

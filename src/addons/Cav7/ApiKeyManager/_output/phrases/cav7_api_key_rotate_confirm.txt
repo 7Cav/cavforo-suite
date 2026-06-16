@@ -1,0 +1,1 @@
+Rotating your key will immediately invalidate your current key. Any integrations using it will stop working until updated. Continue?
