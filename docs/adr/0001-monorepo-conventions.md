@@ -16,9 +16,9 @@ A few choices shape everything else: where addons sit, how their code arrives, a
 
 **Import with `git subtree`, preserving history.** Each addon comes in with its commits and authorship intact, then a follow-up commit moves its files into the standard path. Several addons were written by people other than the suite maintainers, and the first act of the monorepo should not be to erase who wrote them. Source repositories are archived rather than deleted so the record stays accessible.
 
-**`_output/` is the editable source; `_data/` is built.** Contributors edit XenForo data (options, phrases, templates) through the admin control panel with development mode on, which writes to `_output/`. `xf-addon:build` compiles that into `_data/*.xml`. Both are committed so an addon installs from a fresh clone, but `_data/` is never hand-edited. This follows XenForo's intended workflow instead of the hand-authored XML the source repos used.
+**Commit both XenForo data forms; never hand-edit them.** Contributors edit XenForo data (options, phrases, templates) through the admin control panel with development mode on, which writes the per-item `_output/` tree. `xf-addon:export` writes the `_data/*.xml` bundle XenForo installs from. Both are exported from the database (one is not compiled from the other), and both are committed so an addon installs from a fresh clone. Neither is hand-edited. This follows XenForo's intended workflow instead of the hand-authored XML the source repos used.
 
-**Release tags are per addon.** A tag of the form `<AddonId>-vX.Y.Z` builds and publishes that one addon. `addon_id`, `version_id`, and `namespace` stay stable so existing installs upgrade rather than reinstall.
+**Release tags are per addon.** A tag of the form `<AddonId>-vX.Y.Z` builds and publishes that one addon. The directory path and `version_id` stay stable, which fixes the derived `addon_id` and namespace, so existing installs upgrade rather than reinstall.
 
 ## Consequences
 

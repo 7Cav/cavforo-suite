@@ -23,26 +23,29 @@ The vendor is `Cav7` and the PHP namespace root is `Cav7\<AddonId>`. It is `Cav7
 
 ### addon.json
 
+Match XenForo's own schema, the one `xf-addon:create` writes and `xf-addon:validate-json` checks:
+
 ```json
 {
+    "legacy_addon_id": "",
     "title": "7Cav - Example",
     "description": "One sentence on what the addon does.",
     "version_id": 1000070,
     "version_string": "1.0.0",
     "dev": "Cav7",
     "dev_url": "https://github.com/7Cav",
-    "addon_id": "Cav7/Example",
-    "namespace": "Cav7\\Example",
-    "setup": "Cav7\\Example\\Setup",
+    "faq_url": "",
+    "support_url": "",
+    "extra_urls": [],
     "require": {
         "XF": [2030070, "XenForo 2.3.0+"]
     },
-    "license": "MIT"
+    "icon": ""
 }
 ```
 
-- Keep `addon_id`, `version_id`, and `namespace` stable once an addon ships. Existing installs upgrade by `version_id`, so changing it forces a reinstall.
-- Drop the `setup` key if the addon has no `Setup.php`.
+- The add-on id is the directory path (`Cav7/Example`), the namespace follows from it (`Cav7\Example`), and the setup class is whatever `Cav7\Example\Setup` resolves to if that class exists. XenForo derives all three, so do not add `addon_id`, `namespace`, or `setup` keys. `xf-addon:validate-json` flags them as unexpected and rewrites the file.
+- Keep `version_id` and the directory path stable once an addon ships. Existing installs upgrade by `version_id`, so changing either forces a reinstall.
 - Declare every hard dependency in `require`, including the XenForo floor and any third-party addons (for example `NF/Rosters`, `XFES`, `SV/ElasticSearchEssentials`). An addon that needs another addon but does not declare it can install into a broken state.
 
 ### README provenance note
@@ -53,21 +56,21 @@ Each addon was imported from its own repository with `git subtree`, so its histo
 Imported from https://github.com/7Cav/<source-repo> at commit <sha>.
 ```
 
-## XenForo data: `_output/` is the source, `_data/` is built
+## XenForo data: `_data/` and `_output/`
 
-XenForo stores an addon's options, phrases, templates, routes, permissions, and similar as XML. There are two forms:
+XenForo stores an addon's options, phrases, templates, routes, permissions, and similar as XML. It keeps two on-disk forms, and both are exported from the database. One is not compiled from the other.
 
-- `_output/` is the development-mode export tree, one file per item. This is what you edit.
-- `_data/*.xml` is the bundle XenForo installs from. It is generated from `_output/` by `xf-addon:build`.
+- `_data/*.xml` is the bundle XenForo installs from, and what `xf-addon:install` reads. It is always the full set of data-type files (around 27), including empty ones for types the addon does not use. `xf-addon:export` writes it.
+- `_output/` is the development tree: one file per item, grouped by type, with only the types the addon actually uses. It diffs cleanly in version control. `xf-dev:export` writes it, and with development mode on, XenForo also writes to it as you edit through the admin control panel.
 
 The workflow:
 
-1. Turn on development mode in your XenForo dev install.
-2. Edit options, phrases, templates, and so on through the admin control panel. XenForo writes them to `_output/`.
-3. Run `xf-addon:build Cav7/<AddonId>` to compile `_output/` into `_data/`.
+1. Turn on development mode in your XenForo dev install (`$config['development']['enabled'] = true`).
+2. Edit options, phrases, templates, and so on through the admin control panel. XenForo writes the changes to `_output/`.
+3. Refresh the install bundle with `php cmd.php xf-addon:export Cav7/<AddonId>`. To (re)generate `_output/` explicitly, for example for an addon imported with only `_data/`, run `php cmd.php xf-dev:export --addon Cav7/<AddonId>`.
 4. Commit both `_output/` and the regenerated `_data/`.
 
-Do not hand-edit `_data/`. Treat it as build output that happens to be committed so the addon installs from a fresh clone.
+Do not hand-edit either tree. Treat them as exports that happen to be committed so the addon installs from a fresh clone. There is no `xf-addon:build`. The only build command is `xf-addon:build-release`, which packages `_data/` into a release zip.
 
 ## Versioning and release tags
 
