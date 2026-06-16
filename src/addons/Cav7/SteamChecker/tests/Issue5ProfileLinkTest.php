@@ -83,7 +83,7 @@ namespace Issue5Tests {
 // ---------------------------------------------------------------------------
 
 namespace Cav7\SteamChecker {
-    require __DIR__ . '/../src/addons/Cav7/SteamChecker/SteamChecker.php';
+    require __DIR__ . '/../SteamChecker.php';
 
     class Issue5TestableChecker extends SteamChecker
     {

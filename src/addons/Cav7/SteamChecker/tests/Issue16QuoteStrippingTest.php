@@ -121,7 +121,7 @@ namespace {
         }
     }
 
-    require __DIR__ . '/../src/addons/Cav7/SteamChecker/XF/Entity/Post.php';
+    require __DIR__ . '/../XF/Entity/Post.php';
 
     // -----------------------------------------------------------------------
     // PCRE-JIT pre-warm (test infrastructure for the final-match guard below).

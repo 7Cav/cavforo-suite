@@ -1,0 +1,79 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Enumerate the addons once and hand the list to the matrixed jobs below.
+  # Names are restricted to [A-Za-z0-9_] so a directory name can never inject
+  # into the run: steps that consume the matrix value.
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      addons: ${{ steps.list.outputs.addons }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: |
+          addons=$(for d in src/addons/Cav7/*/; do
+            name=$(basename "$d")
+            [ -f "$d/addon.json" ] || continue
+            case "$name" in
+              *[!A-Za-z0-9_]*) echo "skipping unsafe addon dir name: $name" >&2; continue ;;
+            esac
+            echo "$name"
+          done | jq -R . | jq -cs .)
+          echo "addons=$addons" >> "$GITHUB_OUTPUT"
+          echo "Addons: $addons"
+
+  # Static build check: lint, manifest and XML validation, _output/_data
+  # consistency, and a dry-run of the release zip. No XenForo.
+  build:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        addon: ${{ fromJson(needs.discover.outputs.addons) }}
+    env:
+      ADDON: ${{ matrix.addon }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Lint PHP
+        run: find "src/addons/Cav7/$ADDON" -name '*.php' -print0 | xargs -0 -r -n1 php -l
+      - name: Validate addon.json and _data XML
+        run: php tools/validate-addon.php "src/addons/Cav7/$ADDON"
+      - name: Check _output / _data consistency
+        run: php tools/check-data-consistency.php "src/addons/Cav7/$ADDON"
+      - name: Package release zip (dry-run)
+        run: |
+          zip=$(tools/package-addon.sh "$ADDON" --out "/tmp/$ADDON.zip")
+          echo "Built $zip"
+          unzip -l "$zip" | tail -n 5
+
+  # Standalone PHP tests per addon. Addons without a tests/ directory are a no-op.
+  test:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        addon: ${{ fromJson(needs.discover.outputs.addons) }}
+    env:
+      ADDON: ${{ matrix.addon }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Run tests
+        run: tools/run-tests.sh "$ADDON"

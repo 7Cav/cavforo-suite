@@ -75,7 +75,7 @@ Do not hand-edit either tree. Treat them as exports that happen to be committed 
 ## Versioning and release tags
 
 - `version_string` is the human version (`1.2.0`); `version_id` is XenForo's integer form used for upgrade ordering.
-- Release tags are per addon and use the form `<AddonId>-vX.Y.Z`, for example `SteamChecker-v1.1.4`. The shared release workflow (tracked in #10) turns one of these tags into that addon's release zip.
+- Release tags are per addon and use the form `<AddonId>-vX.Y.Z`, for example `SteamChecker-v1.1.4`. The shared release workflow ([`.github/workflows/release.yml`](../.github/workflows/release.yml)) turns one of these tags into that addon's release zip, laid out as `upload/src/addons/Cav7/<Id>/` so it installs through the admin panel's "Install/upgrade from archive". The tag version must match `version_string`.
 
 ## What belongs at the addon level vs the suite level
 
@@ -83,7 +83,7 @@ Per-repo scaffolding from the original repositories does not all carry over the 
 
 The suite handles these once, at the root:
 
-- CI workflows (the shared build and CI is tracked in #10).
+- CI and release workflows ([`.github/workflows/`](../.github/workflows/)) and the shared scripts in [`tools/`](../tools/).
 - Dev harnesses such as Docker compose setups.
 - Agent and suite-wide governance docs (`AGENTS.md`, `docs/agents/`, `CLAUDE.md`).
 - Suite-wide architecture decisions, under [`docs/adr/`](adr/).
