@@ -1,0 +1,4 @@
+{
+    "api_scope_id": "user:groups",
+    "usable_with_oauth_clients": true
+}

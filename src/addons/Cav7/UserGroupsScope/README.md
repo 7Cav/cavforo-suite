@@ -82,3 +82,7 @@ Do not test scope behavior with an account that holds the `user` admin
 permission. Stock XenForo shows that account the group fields under
 `user:read` alone, which will mislead you about what regular users receive.
 Always request `user:groups` when you need groups.
+
+## Provenance
+
+Imported from https://github.com/7Cav/UserGroupsScope at commit 15d267bd2db8314c563b1786ed6eb583c2673ae7.

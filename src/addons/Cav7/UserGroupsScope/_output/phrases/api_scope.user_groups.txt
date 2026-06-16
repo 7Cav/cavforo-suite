@@ -1,0 +1,1 @@
+Covers viewing the IDs of the user groups you belong to. Only ever applies to your own account.
