@@ -1,0 +1,1 @@
+User group IDs whose members may invoke the bot by posting <code>!vac your-steam64id-or-profile-url</code> in an enlistment thread. Enter one ID per line or separate with commas (e.g. <code>4, 7</code>). Leave blank to disable the command entirely. Find group IDs under Admin &gt; Users &gt; User Groups.

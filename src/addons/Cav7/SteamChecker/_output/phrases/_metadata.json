@@ -1,0 +1,74 @@
+{
+    "option.steamCheckerAllowedRoleIds.txt": {
+        "global_cache": false,
+        "version_id": 1010431,
+        "version_string": "1.1.4",
+        "hash": "6df6131549801e3c4b32929aa5958aaa"
+    },
+    "option.steamCheckerApiKey.txt": {
+        "global_cache": false,
+        "version_id": 1010431,
+        "version_string": "1.1.4",
+        "hash": "25d6ec3aa7c5109ef78426345635d723"
+    },
+    "option.steamCheckerBotUserId.txt": {
+        "global_cache": false,
+        "version_id": 1010431,
+        "version_string": "1.1.4",
+        "hash": "b8b2edf0855beacc8329e1c904fff2b5"
+    },
+    "option.steamCheckerDebugLog.txt": {
+        "global_cache": false,
+        "version_id": 1010431,
+        "version_string": "1.1.4",
+        "hash": "94f9484602f5d45638f0a1ef69fcc4dd"
+    },
+    "option.steamCheckerNodeId.txt": {
+        "global_cache": false,
+        "version_id": 1010431,
+        "version_string": "1.1.4",
+        "hash": "d6d685d954a785044a87bdd6aeced8dd"
+    },
+    "option_explain.steamCheckerAllowedRoleIds.txt": {
+        "global_cache": false,
+        "version_id": 1010431,
+        "version_string": "1.1.4",
+        "hash": "a7b76896dd972db8bac2a4c521a58e92"
+    },
+    "option_explain.steamCheckerApiKey.txt": {
+        "global_cache": false,
+        "version_id": 1010431,
+        "version_string": "1.1.4",
+        "hash": "352e652d92ad5799b808e0cebc5c3caf"
+    },
+    "option_explain.steamCheckerBotUserId.txt": {
+        "global_cache": false,
+        "version_id": 1010431,
+        "version_string": "1.1.4",
+        "hash": "e7d4878fe6c8766bace90820d9666b7b"
+    },
+    "option_explain.steamCheckerDebugLog.txt": {
+        "global_cache": false,
+        "version_id": 1010431,
+        "version_string": "1.1.4",
+        "hash": "a1eaec2e810fe19b377ef85e5dddab95"
+    },
+    "option_explain.steamCheckerNodeId.txt": {
+        "global_cache": false,
+        "version_id": 1010431,
+        "version_string": "1.1.4",
+        "hash": "bc88766b16134c8846c30ddee28b9beb"
+    },
+    "option_group.steamChecker.txt": {
+        "global_cache": false,
+        "version_id": 1010431,
+        "version_string": "1.1.4",
+        "hash": "f89576af28fe532a20a1fbffd4d34918"
+    },
+    "option_group_description.steamChecker.txt": {
+        "global_cache": false,
+        "version_id": 1010431,
+        "version_string": "1.1.4",
+        "hash": "a6a951f6ca6dea792a0e4274e06f387e"
+    }
+}

@@ -1,0 +1,1 @@
+Logs each step of the VAC check to the server error log. Turn off in production once everything is confirmed working.

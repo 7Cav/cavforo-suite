@@ -1,0 +1,6 @@
+{
+    "from_class": "XF\\Entity\\Post",
+    "to_class": "Cav7\\SteamChecker\\XF\\Entity\\Post",
+    "execute_order": 0,
+    "active": true
+}
