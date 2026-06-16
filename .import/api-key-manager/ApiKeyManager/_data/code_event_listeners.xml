@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<code_event_listeners>
+  <listener event_id="entity_post_save" execute_order="10" callback_class="Cav7\ApiKeyManager\Listener" callback_method="entityPostSave" active="1" hint="XF\Entity\User" description="Recompute API key scopes when a user's group membership changes"/>
+  <listener event_id="entity_post_save" execute_order="10" callback_class="Cav7\ApiKeyManager\Listener" callback_method="entityPostSave" active="1" hint="Cav7\ApiKeyManager\Entity\ApiKeyScopeDef" description="Recompute affected keys when a scope definition changes"/>
+</code_event_listeners>

@@ -1,0 +1,8 @@
+# Local Claude Code workspace — contains personal filesystem paths
+.claude/
+
+# Superpowers plan/build transcripts — working notes, not user-facing docs
+docs/superpowers/
+
+# Working notes for the AI-assisted dev loop; README is the public surface
+CLAUDE.md
