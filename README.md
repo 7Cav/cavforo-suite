@@ -27,7 +27,7 @@ You need a XenForo dev install to run and build addons. The short version:
 
 1. Point a XenForo install at this repo (symlink `src/addons/Cav7`, details in [CONTRIBUTING.md](CONTRIBUTING.md)).
 2. Turn on development mode in that install.
-3. Edit the addon, export to `_output/`, and rebuild `_data/` with `xf-addon:build`.
+3. Edit the addon through the admin control panel, then refresh `_data/` with `xf-addon:export` (and `_output/` with `xf-dev:export`).
 
 Full setup, the addon format, and how to add a new addon are in [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/addon-format.md](docs/addon-format.md).
 

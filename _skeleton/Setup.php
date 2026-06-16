@@ -10,8 +10,8 @@ use XF\AddOn\StepRunnerUninstallTrait;
 /**
  * Install, upgrade, and uninstall steps for the addon.
  *
- * Delete this file and remove the "setup" key from addon.json if the addon
- * has no install state (no tables, options, user fields, and so on).
+ * Delete this file if the addon has no install state (no tables, options,
+ * user fields, and so on). XenForo only runs a setup class when one exists.
  */
 class Setup extends AbstractSetup
 {
