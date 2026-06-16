@@ -1,0 +1,19 @@
+{
+    "legacy_addon_id": "",
+    "title": "7Cav - User Groups Scope",
+    "description": "Adds a user:groups OAuth scope so clients can read the authenticated user's own group membership.",
+    "version_id": 1000070,
+    "version_string": "1.0.0",
+    "dev": "Cav7",
+    "dev_url": "https://github.com/7Cav",
+    "faq_url": "",
+    "support_url": "",
+    "extra_urls": [],
+    "require": {
+        "XF": [
+            2030070,
+            "XenForo 2.3.0+"
+        ]
+    },
+    "icon": ""
+}
