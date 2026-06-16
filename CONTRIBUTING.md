@@ -4,7 +4,7 @@ This repo holds the 7th Cavalry's XenForo addons in one place. Before you start,
 
 ## Dev setup
 
-You need a working XenForo 2.3 install to run, edit, and build addons. Some addons also need third-party addons present to install (NF/Rosters, XenForo Enhanced Search, SV/ElasticSearchEssentials); each addon's README lists what it requires.
+You need a working XenForo 2.3 install to run an addon, or to change anything that lives in XenForo data (options, phrases, templates, and the like). Pure PHP changes do not need one: you can edit the code and run an addon's tests with just `php`. If you need a stack and do not have one, contact the maintainers. Some addons also need third-party addons present to install (NF/Rosters, XenForo Enhanced Search, SV/ElasticSearchEssentials); each addon's README lists what it requires.
 
 1. Install XenForo somewhere local. A common layout is a `xenforo/` directory beside this repo, which `.gitignore` already keeps out of version control.
 2. Point the install's addon tree at this repo so it loads every addon:
@@ -41,7 +41,15 @@ There is more detail on the `_output/` and `_data/` split in [docs/addon-format.
 
 ## Build, test, and release
 
-The shared build, test, and release tooling is being set up in #10. Until it lands, export an addon's data locally with `xf-addon:export` and package a release with `xf-addon:build-release`, as described above. Release tags are per addon and use `<AddonId>-vX.Y.Z`.
+Shared scripts live in [`tools/`](tools/); [tools/README.md](tools/README.md) has the details.
+
+- Run an addon's tests: `tools/run-tests.sh <AddonId>`. These are standalone PHP scripts and need only `php`.
+- Build a release zip the canonical way (needs a XenForo install): `tools/build.sh <AddonId>`. It wraps `xf-addon:build-release` (export to `_data/`, then package). Point it at your install with `XF_ROOT` or `XF_CMD`.
+- Package a zip from committed files with no XenForo install: `tools/package-addon.sh <AddonId>`. CI and the release workflow use this, and it produces the same `upload/...` layout the admin panel installs from.
+
+CI runs the tests and a static build check on every push and pull request: lint, `addon.json` and `_data/` validation, an `_output/`-to-`_data/` consistency check, and a packaging dry-run. None of it runs XenForo. It trusts the committed `_data/`, so re-export and commit `_data/` whenever you change XenForo data, or the consistency check will fail.
+
+Release tags are per addon and use `<AddonId>-vX.Y.Z` (for example `SteamChecker-v1.1.4`). Pushing one builds that addon's zip and publishes it as a GitHub release. The tag version must match the addon's `addon.json` `version_string`.
 
 ## A note on the vendor name
 

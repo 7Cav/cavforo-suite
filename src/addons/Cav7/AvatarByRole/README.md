@@ -56,10 +56,9 @@ future `Cav7/Core` roster lookup (noted in issue #9, not extracted here).
   templater listener above. The migration preserves this behavior as-is and does
   not wire the extensions up; activating them is a behavior change and belongs in
   a separate follow-up.
-- **Version.** `addon.json` and the deployed install are at `1.0.4`
-  (`version_id` 1000010). The source repository's last release tag was `v1.0.3`;
-  the bump to 1.0.4 was committed but never tagged. The shared release workflow
-  (issue #10) should cut the `AvatarByRole-v1.0.4` tag to close the gap.
+- **Version.** The source repository's last release tag was `v1.0.3`; the bump to
+  1.0.4 was committed there but never tagged. The monorepo released it as
+  `AvatarByRole-v1.0.4`.
 
 ## License
 

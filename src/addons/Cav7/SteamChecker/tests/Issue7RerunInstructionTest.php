@@ -40,7 +40,7 @@ namespace {
         }
     }
 
-    require __DIR__ . '/../src/addons/Cav7/SteamChecker/SteamChecker.php';
+    require __DIR__ . '/../SteamChecker.php';
 
     /**
      * Network spy: overrides both outbound-I/O paths reachable from
@@ -482,7 +482,7 @@ PIN,
 
     // Missing-entity diagnosis: fail with ONE clear label if Post.php moved
     // or was renamed, instead of eight misleading "pipeline changed?" failures.
-    $entityPath   = __DIR__ . '/../src/addons/Cav7/SteamChecker/XF/Entity/Post.php';
+    $entityPath   = __DIR__ . '/../XF/Entity/Post.php';
     $entityExists = is_file($entityPath);
     $check('BYTE-SYNC PIN: entity file Post.php exists at pinned path'
         . ' (entity file missing — moved/renamed? update the path here)',

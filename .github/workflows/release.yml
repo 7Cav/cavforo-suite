@@ -1,0 +1,66 @@
+name: release
+
+# Per-addon release tags: <AddonId>-vX.Y.Z (e.g. AvatarByRole-v1.0.4). Old-style
+# v* tags do not match and will not trigger a release.
+on:
+  push:
+    tags:
+      - '*-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: tag
+        name: Parse and validate the tag
+        run: |
+          tag="$GITHUB_REF_NAME"
+          addon="${tag%-v*}"
+          version="${tag##*-v}"
+          if [ "$addon" = "$tag" ] || [ -z "$addon" ] || [ -z "$version" ]; then
+            echo "::error::tag '$tag' is not in the form <AddonId>-vX.Y.Z"
+            exit 1
+          fi
+          case "$addon" in
+            *[!A-Za-z0-9_]*) echo "::error::addon id '$addon' has unexpected characters"; exit 1 ;;
+          esac
+          case "$version" in
+            *[!0-9.]*) echo "::error::version '$version' has unexpected characters"; exit 1 ;;
+          esac
+          echo "addon=$addon" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check the addon exists and the tag matches addon.json
+        env:
+          ADDON: ${{ steps.tag.outputs.addon }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          dir="src/addons/Cav7/$ADDON"
+          [ -f "$dir/addon.json" ] || { echo "::error::no addon at $dir"; exit 1; }
+          manifest=$(sed -n 's/.*"version_string"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$dir/addon.json" | head -n1)
+          if [ "$manifest" != "$VERSION" ]; then
+            echo "::error::tag version $VERSION does not match addon.json version_string $manifest"
+            exit 1
+          fi
+
+      - id: build
+        name: Build the release zip
+        env:
+          ADDON: ${{ steps.tag.outputs.addon }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          zip=$(tools/package-addon.sh "$ADDON" --out "Cav7-$ADDON-v$VERSION.zip")
+          sha256sum "$zip" > "$zip.sha256"
+          echo "zip=$zip" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ steps.build.outputs.zip }}
+            ${{ steps.build.outputs.zip }}.sha256

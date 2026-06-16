@@ -24,5 +24,5 @@ A few choices shape everything else: where addons sit, how their code arrives, a
 
 - A contributor can copy `_skeleton/`, follow [docs/addon-format.md](../addon-format.md), and end up with an addon shaped like every other one.
 - The repo carries each addon's full history, including the binary history of `AvatarByRole`'s image assets. That weight is small and worth the preserved authorship.
-- Shared build, release, and CI still need to be built (#10), since no source repo brought tooling that fits a multi-addon repo.
+- Shared build, release, and CI were not brought by any source repo, so they were built for the monorepo separately (#10).
 - Pulling shared code into `Cav7/Core` is a separate effort, taken up once everything is in one place.

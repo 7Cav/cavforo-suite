@@ -180,8 +180,8 @@ namespace {
         }
     }
 
-    require __DIR__ . '/../src/addons/Cav7/SteamChecker/SteamChecker.php';
-    require __DIR__ . '/../src/addons/Cav7/SteamChecker/XF/Entity/Post.php';
+    require __DIR__ . '/../SteamChecker.php';
+    require __DIR__ . '/../XF/Entity/Post.php';
 
     // -----------------------------------------------------------------------
     // Harness
@@ -318,7 +318,7 @@ namespace {
     // instruction literal must appear exactly once in SteamChecker.php
     // (inside buildRerunInstructionLine()).
     $checkerSource = (string) file_get_contents(
-        __DIR__ . '/../src/addons/Cav7/SteamChecker/SteamChecker.php'
+        __DIR__ . '/../SteamChecker.php'
     );
     $check('re-run instruction text appears exactly once in SteamChecker.php (no fork)',
         substr_count($checkerSource, 'Staff can re-run this check by replying in this thread with') === 1);

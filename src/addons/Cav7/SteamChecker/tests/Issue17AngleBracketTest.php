@@ -128,7 +128,7 @@ namespace {
         }
     }
 
-    require __DIR__ . '/../src/addons/Cav7/SteamChecker/XF/Entity/Post.php';
+    require __DIR__ . '/../XF/Entity/Post.php';
 
     // -----------------------------------------------------------------------
     // Harness
@@ -316,7 +316,7 @@ namespace {
     // appears in CODE (doc comments may still reference it historically).
     // -----------------------------------------------------------------------
     $postSource = (string) file_get_contents(
-        __DIR__ . '/../src/addons/Cav7/SteamChecker/XF/Entity/Post.php'
+        __DIR__ . '/../XF/Entity/Post.php'
     );
     $stripTagsInCode = false;
     foreach (token_get_all($postSource) as $token) {
