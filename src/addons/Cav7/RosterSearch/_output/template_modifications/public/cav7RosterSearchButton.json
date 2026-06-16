@@ -1,0 +1,9 @@
+{
+    "template": "nf_rosters_roster_index",
+    "description": "Adds Gamertag Search button to roster index page actions",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "str_replace",
+    "find": "<xf:pageaction if=\"$xf.visitor.canManageRosterUsers()\">\n    <xf:button href=\"{{ link('rosters/add-user', $selectedRoster) }}\" class=\"button--cta\" icon=\"add\">\n        {{ phrase('add_user') }}\n    </xf:button>\n</xf:pageaction>",
+    "replace": "<xf:pageaction>\n    <xf:button href=\"{{ link('rosters/search-overlay') }}\" icon=\"search\" overlay=\"true\">Gamertag Search</xf:button>\n    <xf:if is=\"$xf.visitor.canManageRosterUsers()\">\n        <xf:button href=\"{{ link('rosters/add-user', $selectedRoster) }}\" class=\"button--cta\" icon=\"add\">\n            {{ phrase('add_user') }}\n        </xf:button>\n    </xf:if>\n</xf:pageaction>"
+}

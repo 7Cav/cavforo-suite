@@ -4,7 +4,7 @@ A XenForo addon that adds a gamertag/Cav name search page to the [NF Rosters](ht
 
 ## Features
 
-- **Search overlay** — triggered by a "Gamertag Search" button injected into the roster index page actions bar
+- **Search overlay**, triggered by a "Gamertag Search" button injected into the roster index page actions bar
 - Searches both **username** and **console gamertag** (`consoleGamertag` custom field) with a single query
 - Displays **rank**, **roster name**, and **gamertag** for each result
 - Minimum 2-character query, results capped at 50
@@ -18,7 +18,7 @@ A XenForo addon that adds a gamertag/Cav name search page to the [NF Rosters](ht
 
 1. Upload the `Cav7/RosterSearch` directory into your XenForo `src/addons/` folder so the path is `src/addons/Cav7/RosterSearch/`.
 2. In the XenForo Admin CP go to **Add-ons → Install/Upgrade from Archive** (or **Manage Add-ons → Install**) and select this addon.
-3. No database changes are made — install and uninstall are safe.
+3. No database changes are made, so install and uninstall are safe.
 
 ## Routes Added
 
@@ -45,3 +45,7 @@ A XenForo addon that adds a gamertag/Cav name search page to the [NF Rosters](ht
 ## License
 
 See [LICENSE.md](LICENSE.md).
+
+## Provenance
+
+Imported from https://github.com/7Cav/RosterSearch at commit 7ad8a00a8ab34e3cf60e78c6630daa8afafb2354.

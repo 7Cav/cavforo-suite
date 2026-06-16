@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates>
+  <template type="public" title="cav7_roster_search" version_id="1000200" version_string="1.2.0"><![CDATA[<xf:title>Gamertag Search</xf:title>
+<xf:breadcrumb href="{{ link('rosters') }}">Milpacs</xf:breadcrumb>
+
+<xf:css src="nf_rosters.less" />
+
+<div class="block">
+    <div class="block-container">
+        <form method="get" action="{{ link('rosters/search') }}">
+            <div class="block-body">
+                <div class="formRow">
+                    <div class="formRow-main">
+                        <input
+                            type="text"
+                            name="q"
+                            value="{$query}"
+                            class="input"
+                            placeholder="Search by Cav name or console gamertag&hellip;"
+                            autocomplete="off"
+                            autofocus="autofocus"
+                        />
+                        <div class="formRow-explain">Only members with a console gamertag on their milpac will appear in results.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="block-footer">
+                <div class="buttonGroup">
+                    <button type="submit" class="button button--primary">
+                        <i class="fa--xf fa fa-search" aria-hidden="true"></i> Search
+                    </button>
+                    <xf:if is="$query">
+                        <a href="{{ link('rosters/search') }}" class="button">Clear</a>
+                    </xf:if>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<xf:if is="$searched">
+    <xf:if is="count($results)">
+        <div class="block">
+            <div class="block-container">
+                <xf:if is="count($results) == 50">
+                    <div class="block-outer">
+                        <p class="block-outer-opposite u-muted">Showing first 50 results &mdash; refine your search for more specific results.</p>
+                    </div>
+                </xf:if>
+                <xf:datalist>
+                    <xf:datarow rowtype="header">
+                        <xf:cell>Rank</xf:cell>
+                        <xf:cell>Cav Name</xf:cell>
+                        <xf:cell>Console Gamertag</xf:cell>
+                        <xf:cell>Roster</xf:cell>
+                    </xf:datarow>
+                    <xf:foreach loop="$results" value="$result">
+                        <xf:datarow href="{{ link('rosters/profile', null, {'unique_id': $result.relation_id}) }}">
+                            <xf:cell class="dataList-cell--min">
+                                {$result.rank_title}
+                            </xf:cell>
+                            <xf:cell>
+                                <a href="{{ link('rosters/profile', null, {'unique_id': $result.relation_id}) }}">
+                                    {$result.username}
+                                </a>
+                            </xf:cell>
+                            <xf:cell>
+                                <xf:if is="$result.gamertag">
+                                    {$result.gamertag}
+                                <xf:else />
+                                    <span class="u-muted">—</span>
+                                </xf:if>
+                            </xf:cell>
+                            <xf:cell>{$result.roster_name}</xf:cell>
+                        </xf:datarow>
+                    </xf:foreach>
+                </xf:datalist>
+            </div>
+        </div>
+    <xf:else />
+        <div class="blockMessage">
+            No results found for <strong>{$query}</strong>.
+        </div>
+    </xf:if>
+<xf:else />
+    <xf:if is="$query">
+        <div class="blockMessage blockMessage--warning">
+            Please enter at least 2 characters to search.
+        </div>
+    </xf:if>
+</xf:if>]]></template>
+  <template type="public" title="cav7_roster_search_overlay" version_id="1000200" version_string="1.2.0"><![CDATA[<xf:title>Gamertag Search</xf:title>
+
+<form method="get" action="{{ link('rosters/search') }}">
+    <div class="block-container">
+        <div class="block-body">
+            <div class="formRow">
+                <div class="formRow-main">
+                    <input
+                        type="text"
+                        name="q"
+                        class="input u-sizeFull"
+                        placeholder="Search by Cav name or console gamertag&hellip;"
+                        autocomplete="off"
+                        autofocus="autofocus"
+                    />
+                </div>
+            </div>
+        </div>
+        <div class="block-footer">
+            <button type="submit" class="button button--primary">
+                <i class="fa--xf fa fa-search" aria-hidden="true"></i> Search
+            </button>
+            <p class="block-footer-note u-muted">Only members with a console gamertag on their milpac will appear in results.</p>
+        </div>
+    </div>
+</form>]]></template>
+</templates>

@@ -1,32 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<templates>
-  <template type="public" title="cav7_roster_search_overlay" version_id="1000200" version_string="1.2.0"><![CDATA[<xf:title>Gamertag Search</xf:title>
-
-<form method="get" action="{{ link('rosters/search') }}">
-    <div class="block-container">
-        <div class="block-body">
-            <div class="formRow">
-                <div class="formRow-main">
-                    <input
-                        type="text"
-                        name="q"
-                        class="input u-sizeFull"
-                        placeholder="Search by Cav name or console gamertag&hellip;"
-                        autocomplete="off"
-                        autofocus="autofocus"
-                    />
-                </div>
-            </div>
-        </div>
-        <div class="block-footer">
-            <button type="submit" class="button button--primary">
-                <i class="fa--xf fa fa-search" aria-hidden="true"></i> Search
-            </button>
-            <p class="block-footer-note u-muted">Only members with a console gamertag on their milpac will appear in results.</p>
-        </div>
-    </div>
-</form>]]></template>
-  <template type="public" title="cav7_roster_search" version_id="1000200" version_string="1.2.0"><![CDATA[<xf:title>Gamertag Search</xf:title>
+<xf:title>Gamertag Search</xf:title>
 <xf:breadcrumb href="{{ link('rosters') }}">Milpacs</xf:breadcrumb>
 
 <xf:css src="nf_rosters.less" />
@@ -114,5 +86,4 @@
             Please enter at least 2 characters to search.
         </div>
     </xf:if>
-</xf:if>]]></template>
-</templates>
+</xf:if>
