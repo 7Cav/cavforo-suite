@@ -1,0 +1,6 @@
+{
+    "from_class": "NF\\Rosters\\Entity\\Roster",
+    "to_class": "Cav7\\RosterAudit\\NF\\Rosters\\Entity\\Roster",
+    "execute_order": 10,
+    "active": true
+}

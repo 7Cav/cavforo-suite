@@ -1,0 +1,296 @@
+{
+    "admin_navigation.cav7RosterAudit.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "9a0fd8208acdc142faf1e8499e5086ce"
+    },
+    "cav7_raudit_action.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "004bf6c9a40003140292e97330236c53"
+    },
+    "cav7_raudit_action_create.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "0eceeb45861f9585dd7a97a3e36f85c6"
+    },
+    "cav7_raudit_action_delete.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "5fe6005bf6e415c950c011fb65f12b8f"
+    },
+    "cav7_raudit_action_update.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "ff0a3b7f3daef040faf89a88fdac01b7"
+    },
+    "cav7_raudit_active.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "4d3d769b812b6faa6b76e1a8abaece2d"
+    },
+    "cav7_raudit_affected.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "2c92a9a6a5dbf570825e62eabcdecd8d"
+    },
+    "cav7_raudit_affected_roster_user.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "d1aea403a30635ab07c7204cd56cd19a"
+    },
+    "cav7_raudit_all_actions.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "2701bbdc7ebed3bba6e85534149c85b1"
+    },
+    "cav7_raudit_all_types.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "134353eb582d3f9bfd506fffd830814d"
+    },
+    "cav7_raudit_audit_detail_unavailable.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "76ab0d2f2da4c4f68214034044f59aee"
+    },
+    "cav7_raudit_audit_log.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "9a0fd8208acdc142faf1e8499e5086ce"
+    },
+    "cav7_raudit_audit_log_entry.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "5720379c9653a86d4790d8b6e04634ce"
+    },
+    "cav7_raudit_back_to_audit_log.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "34668cfb719ad7af61755524d7b6c7fd"
+    },
+    "cav7_raudit_changes.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "c112bb3542e98308d12d5ecb10a67abc"
+    },
+    "cav7_raudit_clear_filters.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "0b275442d6556cff30b75f37f1918899"
+    },
+    "cav7_raudit_content_type.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "266ba14af58a3dfa4b9e1c90a8879dfb"
+    },
+    "cav7_raudit_date_from.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "50d9d560b468ec07f8b4fe721fcae24e"
+    },
+    "cav7_raudit_date_to.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "bad39a65b5302bb8628585aae59da36b"
+    },
+    "cav7_raudit_deleted.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "da602f0b162fccbf6b150cfcfc7a7379"
+    },
+    "cav7_raudit_event_details.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "5c94a66b78fcfd4484f237769108cc12"
+    },
+    "cav7_raudit_field.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "6f16a5f8ff5d75ab84c018adacdfcbb7"
+    },
+    "cav7_raudit_filters.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "f3f43e30c8c7d78c6ac0173515e57a00"
+    },
+    "cav7_raudit_invalid_date.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "61621b4f9c7838a9eee3ccc0393f8e09"
+    },
+    "cav7_raudit_new_value.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "37af51ac36d04d2f4054df050dd29e14"
+    },
+    "cav7_raudit_no_audit_entries.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "7c629f09139250c86f796efa0210bf48"
+    },
+    "cav7_raudit_no_change_details.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "9e83e657761048c3b0767189c7da3cd2"
+    },
+    "cav7_raudit_old_value.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "17b7b1a688adc9d659a1a39925949e96"
+    },
+    "cav7_raudit_position_has_members.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "9ce2890594a3ea2894d6cf419c3ec6af"
+    },
+    "cav7_raudit_relation_id.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "0b444d63ba74c58f9f99dcab70524933"
+    },
+    "cav7_raudit_relation_id_explain.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "ff06d1290a02b368865e4863d88df320"
+    },
+    "cav7_raudit_system.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "a45da96d0bf6575970f2d27af22be28a"
+    },
+    "cav7_raudit_type_award.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "4557b1b1c73eaa76e61f12f4f02a26c8"
+    },
+    "cav7_raudit_type_award_group.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "3da11e4957cc2e25d58df9838526133d"
+    },
+    "cav7_raudit_type_field.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "d5255642a07f3ac10f6962c53fe55aca"
+    },
+    "cav7_raudit_type_position.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "52f5e0bc3859bc5f5e25130b6c7e8881"
+    },
+    "cav7_raudit_type_position_group.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "514150322d309c3ce28d0f8623be255e"
+    },
+    "cav7_raudit_type_rank.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "021da1b20f73dc252361a54d80497ef3"
+    },
+    "cav7_raudit_type_record_type.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "e3ceba76ed8ceac08631ebe7c9bc3f98"
+    },
+    "cav7_raudit_type_roster.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "a908f5fe48e0124fec3428653366a157"
+    },
+    "cav7_raudit_type_roster_user.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "2d29f71ec8ee7b8bc11e27453d4d6788"
+    },
+    "cav7_raudit_type_service_record.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "118ca5acf84b5563fb1131e8dbce87cf"
+    },
+    "cav7_raudit_type_user_award.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "f2ef45cb91a06f00b5a2e61d0d69b0f9"
+    },
+    "cav7_raudit_x_more_fields.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "53c6893f79564301e420a25dba6676d6"
+    },
+    "cron_entry.cav7RAuditPrune.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "51abd42c2f201fd2a24ee78937d06206"
+    },
+    "opt_group_description.cav7RosterAudit.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "894edcf1293821fc16f620a77e91c746"
+    },
+    "opt_group_title.cav7RosterAudit.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "3f3d7def12979f39686c9da0d4edbb90"
+    },
+    "option.cav7RAuditRetention.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "fe5c728057cf80c6ae458c325d143d5a"
+    },
+    "option_explain.cav7RAuditRetention.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "ffcc5c0f4dc7a5d63e1006fdf7b20de8"
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "admin/cav7_raudit_log_detail.html": {
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "f18d8dc26a82aa0ae99f6c88bf06fa9d"
+    },
+    "admin/cav7_raudit_log_list.html": {
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "4ba190968a697b721a011299ec572611"
+    }
+}
