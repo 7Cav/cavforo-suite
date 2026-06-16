@@ -1,0 +1,1 @@
+Enable mourning avatar variants during the configured period.

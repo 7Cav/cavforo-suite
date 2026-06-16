@@ -1,0 +1,1 @@
+Configuration for role-based avatars and modifiers.

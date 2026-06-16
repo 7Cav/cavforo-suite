@@ -1,0 +1,23 @@
+{
+    "legacy_addon_id": "",
+    "title": "7Cav - Force Avatar By Role",
+    "description": "This addon forces the avatar of a player to match their role in the 7Cav.",
+    "version_id": 1000010,
+    "version_string": "1.0.4",
+    "dev": "Cav7",
+    "dev_url": "https://github.com/7Cav",
+    "faq_url": "",
+    "support_url": "",
+    "extra_urls": [],
+    "require": {
+        "php": [
+            "8.0.0",
+            "PHP 8.0+"
+        ],
+        "XF": [
+            2020070,
+            "XenForo 2.2.0+"
+        ]
+    },
+    "icon": ""
+}
