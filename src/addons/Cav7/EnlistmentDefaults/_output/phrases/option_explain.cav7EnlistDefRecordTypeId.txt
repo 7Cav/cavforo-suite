@@ -1,0 +1,1 @@
+The service record type used for the first record written on a new milpac. Defaults to the Transfer type. Set this if a vendor rebuild renumbers the record types.

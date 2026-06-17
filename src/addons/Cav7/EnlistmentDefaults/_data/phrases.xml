@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<phrases>
+  <phrase title="opt_group_description.cav7EnlistmentDefaults" version_id="1000070" version_string="1.0.0"><![CDATA[Settings for the 7Cav enlistment defaults companion add-on, which grants the standing PUC set and writes the first service record when a milpac is created.]]></phrase>
+  <phrase title="opt_group_title.cav7EnlistmentDefaults" version_id="1000070" version_string="1.0.0"><![CDATA[Enlistment defaults]]></phrase>
+  <phrase title="option.cav7EnlistDefPucAwardId" version_id="1000070" version_string="1.0.0"><![CDATA[PUC award id]]></phrase>
+  <phrase title="option.cav7EnlistDefRecordTypeId" version_id="1000070" version_string="1.0.0"><![CDATA[Enlistment record type id]]></phrase>
+  <phrase title="option.cav7EnlistDefSystemUserId" version_id="1000070" version_string="1.0.0"><![CDATA[System fallback user id]]></phrase>
+  <phrase title="option_explain.cav7EnlistDefPucAwardId" version_id="1000070" version_string="1.0.0"><![CDATA[The NF/Rosters award granted on each bundled PUC date when a milpac is created. Defaults to 61 (Army & Air Force Presidential Unit Citation). Set this if a vendor rebuild renumbers the award.]]></phrase>
+  <phrase title="option_explain.cav7EnlistDefRecordTypeId" version_id="1000070" version_string="1.0.0"><![CDATA[The service record type used for the first record written on a new milpac. Defaults to the Transfer type. Set this if a vendor rebuild renumbers the record types.]]></phrase>
+  <phrase title="option_explain.cav7EnlistDefSystemUserId" version_id="1000070" version_string="1.0.0"><![CDATA[The user a granted PUC award is attributed to when a milpac is created with no acting visitor (CLI or cron). When there is a session, the acting visitor is used. 0 leaves the vendor default.]]></phrase>
+</phrases>
