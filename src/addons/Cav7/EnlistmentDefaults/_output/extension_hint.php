@@ -12,3 +12,8 @@ namespace Cav7\EnlistmentDefaults\NF\Rosters\Entity
 {
 	class XFCP_RosterUser extends \NF\Rosters\Entity\RosterUser {}
 }
+
+namespace Cav7\EnlistmentDefaults\NF\Rosters\Pub\Controller
+{
+	class XFCP_Roster extends \NF\Rosters\Pub\Controller\Roster {}
+}

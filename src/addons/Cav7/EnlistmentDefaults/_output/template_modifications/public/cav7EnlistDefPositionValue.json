@@ -1,0 +1,9 @@
+{
+    "template": "nf_rosters_user_add",
+    "description": "Prefill the position select with the configured default position",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "str_replace",
+    "find": "<xf:selectrow label=\"{{ phrase('nf_rosters_position') }}\" name=\"position_id\"",
+    "replace": "<xf:selectrow label=\"{{ phrase('nf_rosters_position') }}\" name=\"position_id\" value=\"{$rosterUser.position_id}\""
+}

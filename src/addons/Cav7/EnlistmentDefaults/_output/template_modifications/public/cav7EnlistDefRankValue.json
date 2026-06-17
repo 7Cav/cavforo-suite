@@ -1,0 +1,9 @@
+{
+    "template": "nf_rosters_user_add",
+    "description": "Prefill the rank select with the configured default rank",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "str_replace",
+    "find": "<xf:selectrow label=\"{{ phrase('nf_rosters_rank') }}\" name=\"rank_id\">",
+    "replace": "<xf:selectrow label=\"{{ phrase('nf_rosters_rank') }}\" name=\"rank_id\" value=\"{$rosterUser.rank_id}\">"
+}

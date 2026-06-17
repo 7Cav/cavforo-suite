@@ -1,5 +1,8 @@
 {
     "NF-Rosters-Entity-RosterUser_Cav7-EnlistmentDefaults-NF-Rosters-Entity-RosterUser.json": {
         "hash": "99dd86f36ef5d3174ea2a8086264bc4d"
+    },
+    "NF-Rosters-Pub-Controller-Roster_Cav7-EnlistmentDefaults-NF-Rosters-Pub-Controller-Roster.json": {
+        "hash": "53dda204c9fcc488be25dae9c5df8e64"
     }
 }
