@@ -1,2 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<template_modifications/>
+<template_modifications>
+  <modification type="public" template="nf_rosters_user_add" modification_key="cav7EnlistDefRankValue" description="Prefill the rank select with the configured default rank" execution_order="10" enabled="1" action="str_replace">
+    <find><![CDATA[<xf:selectrow label="{{ phrase('nf_rosters_rank') }}" name="rank_id">]]></find>
+    <replace><![CDATA[<xf:selectrow label="{{ phrase('nf_rosters_rank') }}" name="rank_id" value="{$rosterUser.rank_id}">]]></replace>
+  </modification>
+  <modification type="public" template="nf_rosters_user_add" modification_key="cav7EnlistDefPositionValue" description="Prefill the position select with the configured default position" execution_order="10" enabled="1" action="str_replace">
+    <find><![CDATA[<xf:selectrow label="{{ phrase('nf_rosters_position') }}" name="position_id"]]></find>
+    <replace><![CDATA[<xf:selectrow label="{{ phrase('nf_rosters_position') }}" name="position_id" value="{$rosterUser.position_id}"]]></replace>
+  </modification>
+</template_modifications>

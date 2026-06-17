@@ -65,4 +65,52 @@ class EnlistmentDecisions
     {
         return $visitorUserId > 0 ? $visitorUserId : $systemFallbackUserId;
     }
+
+    /**
+     * The epoch the enlistment record is dated to. The record follows the
+     * milpac's submitted Join Date: a 'Y-m-d' field is read as midnight on that
+     * calendar day in board time, so a backdated enlistment gets a record dated
+     * to the real join date rather than the creation moment.
+     *
+     * The returned epoch is the local-midnight instant on the Join Date in the
+     * board timezone.
+     *
+     * The creation date is the fallback, used when the Join Date is blank or
+     * cannot be parsed (an imported or API-created milpac with no usable field),
+     * and also when the board timezone is itself unusable (empty or an unknown
+     * zone). A bad value never throws and never produces a junk date — it just
+     * falls back — so the record write stays as safe as the creation-dated one
+     * it replaces, and the date and timezone fallback paths are uniform.
+     *
+     * @param string $rawJoinDate the raw Join Date custom field ('Y-m-d', or blank)
+     * @param int    $creationDate the milpac's creation timestamp, the fallback
+     * @param string $timezone    the board timezone the Join Date is read in
+     */
+    public static function enlistmentRecordDate(string $rawJoinDate, int $creationDate, string $timezone): int
+    {
+        $value = trim($rawJoinDate);
+        if ($value === '') {
+            return $creationDate;
+        }
+
+        // An empty or unknown timezone throws in DateTimeZone; treat it the same
+        // as a blank or unparseable date and fall back to the creation date, so
+        // this method keeps its never-throws contract on every input.
+        try {
+            $tz = new \DateTimeZone($timezone);
+        } catch (\Throwable $e) {
+            return $creationDate;
+        }
+
+        // Strict 'Y-m-d' at midnight ('!' zeroes the time): createFromFormat is
+        // lenient (it rolls 2012-13-45 over into the next year), so we reject any
+        // value that did not round-trip back to the exact input. Anything that
+        // is not a clean calendar date falls back to the creation date.
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value, $tz);
+        if ($date === false || $date->format('Y-m-d') !== $value) {
+            return $creationDate;
+        }
+
+        return $date->getTimestamp();
+    }
 }

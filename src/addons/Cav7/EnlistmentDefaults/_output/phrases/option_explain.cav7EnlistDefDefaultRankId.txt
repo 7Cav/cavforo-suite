@@ -1,0 +1,1 @@
+The rank the add-milpac form starts on. Defaults to 23 (Recruit). The recruiter can still pick a different rank before saving. Set this if a vendor rebuild renumbers the ranks.

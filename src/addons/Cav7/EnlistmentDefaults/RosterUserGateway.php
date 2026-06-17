@@ -70,6 +70,20 @@ class RosterUserGateway implements EnlistmentGateway
         return (int) $this->rosterUser->added_date;
     }
 
+    public function joinDate(): string
+    {
+        // The milpac's Join Date custom field, stored as a 'Y-m-d' string. A
+        // milpac created with no Join Date (import, API) leaves it blank, and
+        // EnlistmentDecisions::enlistmentRecordDate falls the record back to the
+        // creation date.
+        return (string) ($this->rosterUser->custom_fields->joinDate ?? '');
+    }
+
+    public function boardTimezone(): string
+    {
+        return (string) \XF::options()->guestTimeZone;
+    }
+
     public function grantAward(int $awardId, int $awardDate, int $fromUserId, string $citationPath): void
     {
         /** @var RosterUserAward $award */

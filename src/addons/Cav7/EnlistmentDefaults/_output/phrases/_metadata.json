@@ -1,4 +1,16 @@
 {
+    "option.cav7EnlistDefDefaultPositionId.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "cd05041a692bcbb91fe3d6ebf24e5c16"
+    },
+    "option.cav7EnlistDefDefaultRankId.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "0117d47996bc19ccdd9083e5243d48c2"
+    },
     "option.cav7EnlistDefPucAwardId.txt": {
         "global_cache": false,
         "version_id": 1000070,
@@ -16,6 +28,18 @@
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "88cb3ab6ed896002d171f6b92cfda019"
+    },
+    "option_explain.cav7EnlistDefDefaultPositionId.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "b281eff10c8217bea5fa94e2a004be57"
+    },
+    "option_explain.cav7EnlistDefDefaultRankId.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "342c302a3252011f66fa968768b23959"
     },
     "option_explain.cav7EnlistDefPucAwardId.txt": {
         "global_cache": false,
