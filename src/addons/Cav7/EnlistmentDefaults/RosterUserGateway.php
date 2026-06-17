@@ -29,7 +29,14 @@ class RosterUserGateway implements EnlistmentGateway
 
         foreach ($this->rosterUser->Awards as $award)
         {
-            if ($award->award_id === $pucAwardId)
+            // Compare as ints, not with ===. The vendor declares award_id as an
+            // INT column so the getter normally returns an int, but a strict
+            // compare against the int-cast option silently misses if the value
+            // ever arrives as a string (a freshly-set value, a different DB
+            // driver). A miss here would skip an already-granted PUC and let the
+            // idempotency guard re-grant a duplicate — exactly the invariant AC6
+            // protects — so the guard is kept type-safe.
+            if ((int) $award->award_id === $pucAwardId)
             {
                 $dates[] = (int) $award->award_date;
             }
@@ -77,28 +84,73 @@ class RosterUserGateway implements EnlistmentGateway
         $award->save();
 
         // The award row must exist before its citation: the image service needs
-        // the saved record_id to build the citation path. So if attaching the
-        // citation fails, roll the award row back to keep a grant all-or-nothing
-        // for its date — a citationless grant would otherwise stick and the
-        // idempotency guard would skip it forever, leaving it permanently
-        // imageless. Rolling back lets a future re-run retry the whole grant.
-        try
-        {
-            /** @var Image $imageService */
-            $imageService = \XF::service('NF\Rosters:AwardRecord\Image', $award);
-            if (!$imageService->setImage($citationPath))
+        // the saved record_id to build the citation path. Attaching the citation
+        // and rolling the grant back on failure (so a date stays all-or-nothing
+        // and a re-run retries it cleanly) is the intricate part, so it lives in
+        // CitationAttacher; here we only adapt the vendor types to its seams.
+        /** @var Image $imageService */
+        $imageService = \XF::service('NF\Rosters:AwardRecord\Image', $award);
+
+        $attacher = new CitationAttacher(
+            static fn (\Throwable $e, string $prefix) => \XF::logException($e, false, $prefix)
+        );
+        $attacher->attach(
+            $this->citationAward($award),
+            $this->citationImage($imageService),
+            $citationPath
+        );
+    }
+
+    /** Adapt the vendor award row to the CitationAward seam. */
+    private function citationAward(RosterUserAward $award): CitationAward
+    {
+        return new class ($award) implements CitationAward {
+            public function __construct(private RosterUserAward $award) {}
+
+            public function delete(): void
             {
-                throw new \RuntimeException(
-                    'citation image rejected: ' . $this->errorText($imageService->getError())
-                );
+                $this->award->delete();
             }
-            $imageService->updateImage();
-        }
-        catch (\Throwable $e)
-        {
-            $award->delete();
-            throw $e;
-        }
+        };
+    }
+
+    /** Adapt the vendor AwardRecord\Image service to the CitationImage seam. */
+    private function citationImage(Image $imageService): CitationImage
+    {
+        $errorText = fn () => $this->errorText($imageService->getError());
+
+        return new class ($imageService, $errorText) implements CitationImage {
+            /** @param callable(): string $errorText */
+            public function __construct(
+                private Image $imageService,
+                private $errorText
+            ) {}
+
+            public function setImage(string $path): bool
+            {
+                return $this->imageService->setImage($path);
+            }
+
+            public function errorText(): string
+            {
+                return ($this->errorText)();
+            }
+
+            public function updateImage(): void
+            {
+                $this->imageService->updateImage();
+            }
+
+            public function deleteFile(): void
+            {
+                // deleteImageForAwardDelete() removes the copied citation JPG
+                // only when citation_date is set on the award. updateImage()
+                // sets citation_date in memory right after the copy, so a save()
+                // failure still leaves it truthy and the file is cleaned; a
+                // setImage() rejection never copied anything and this no-ops.
+                $this->imageService->deleteImageForAwardDelete();
+            }
+        };
     }
 
     public function writeServiceRecord(int $recordTypeId, string $body, int $recordDate): void

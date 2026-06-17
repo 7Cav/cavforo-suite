@@ -3,6 +3,7 @@
 namespace Cav7\EnlistmentDefaults\NF\Rosters\Entity;
 
 use Cav7\EnlistmentDefaults\EnlistmentApplier;
+use Cav7\EnlistmentDefaults\EnlistmentDecisions;
 use Cav7\EnlistmentDefaults\RosterUserGateway;
 
 /**
@@ -24,7 +25,11 @@ class RosterUser extends XFCP_RosterUser
     {
         parent::_postSave();
 
-        if (!$this->isInsert())
+        // The insert-only rule has one home: the pure, tested
+        // EnlistmentDecisions::shouldApply(). Routing the gate through it keeps
+        // the shipped gate and the unit test from drifting (AC3/AC4: no re-apply
+        // on a move or an edit).
+        if (!EnlistmentDecisions::shouldApply($this->isInsert()))
         {
             return;
         }

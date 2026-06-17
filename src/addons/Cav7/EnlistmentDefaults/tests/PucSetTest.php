@@ -116,6 +116,40 @@ try {
 }
 check('citationPath() rejects a date outside the bundled set', $threw);
 
+// --- A malformed date is rejected by awardDateTimestamp() ------------------
+// The award_date column is an int; a date that does not parse must throw rather
+// than silently stamp a wrong (or zero) timestamp on a grant.
+$threwMalformed = false;
+try {
+    PucSet::awardDateTimestamp('not-a-date');
+} catch (\InvalidArgumentException $e) {
+    $threwMalformed = true;
+}
+check('awardDateTimestamp() rejects a malformed date', $threwMalformed);
+
+// --- The bundled default record-type option is the Transfer type id --------
+// This addon exists to stop the historical drift where the first record was
+// written under the wrong type. Pin the shipped default so a stray edit to
+// _data/options.xml fails CI. CONTEXT.md fixes the Transfer type id at 3.
+$optionsXml = simplexml_load_file(__DIR__ . '/../_data/options.xml');
+check(
+    'options.xml could be read',
+    $optionsXml !== false
+);
+$recordTypeDefault = null;
+if ($optionsXml !== false) {
+    foreach ($optionsXml->option as $option) {
+        if ((string) $option['option_id'] === 'cav7EnlistDefRecordTypeId') {
+            $recordTypeDefault = (string) $option->default_value;
+        }
+    }
+}
+check(
+    'the default enlistment record-type option is the Transfer type id (3)',
+    $recordTypeDefault === '3',
+    'got: ' . var_export($recordTypeDefault, true)
+);
+
 // --- Summary --------------------------------------------------------------
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
