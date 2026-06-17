@@ -15,7 +15,8 @@
  *  - A fresh milpac gets one PUC grant per bundled date, each with its citation
  *    attached, in earned order, all attributed to the resolved user.
  *  - Exactly one Transfer-typed enlistment record is written, with the canonical
- *    body, dated to the milpac's creation.
+ *    body, dated from the milpac's submitted Join Date (falling back to the
+ *    creation date when the Join Date is blank or unparseable).
  *  - Fail-open: a grant that throws is logged and the remaining grants and the
  *    record still proceed; apply() never throws.
  *  - A failing record write is logged and does not abort; apply() never throws.
@@ -101,7 +102,9 @@ class FakeGateway implements EnlistmentGateway
         public int $recordTypeId = 3,
         public int $visitorUserId = 42,
         public int $systemFallbackUserId = 1,
-        public int $creationDate = 1600000000
+        public int $creationDate = 1600000000,
+        public string $joinDate = '',
+        public string $boardTimezone = 'UTC'
     ) {}
 
     public function existingPucAwardDates(): array
@@ -114,6 +117,8 @@ class FakeGateway implements EnlistmentGateway
     public function visitorUserId(): int { return $this->visitorUserId; }
     public function systemFallbackUserId(): int { return $this->systemFallbackUserId; }
     public function creationDate(): int { return $this->creationDate; }
+    public function joinDate(): string { return $this->joinDate; }
+    public function boardTimezone(): string { return $this->boardTimezone; }
 
     public function grantAward(int $awardId, int $awardDate, int $fromUserId, string $citationPath): void
     {
@@ -179,11 +184,36 @@ check('every grant carries its date-matched bundled citation', $allCitations);
 
 check('exactly one service record is written', count($gw->records) === 1);
 check(
-    'the record is Transfer-typed with the canonical body, dated to creation',
+    'the record is Transfer-typed with the canonical body, dated from the gateway',
     count($gw->records) === 1
         && $gw->records[0]->recordTypeId === 3
-        && $gw->records[0]->body === EnlistmentDecisions::ENLISTMENT_RECORD_BODY
-        && $gw->records[0]->recordDate === 1600000000,
+        && $gw->records[0]->body === EnlistmentDecisions::ENLISTMENT_RECORD_BODY,
+    var_export($gw->records, true)
+);
+check(
+    'with no Join Date submitted, the record falls back to the creation date',
+    count($gw->records) === 1 && $gw->records[0]->recordDate === 1600000000,
+    var_export($gw->records, true)
+);
+
+// --- The enlistment record follows the submitted Join Date ---------------
+$gw = new FakeGateway(joinDate: '2012-05-18', boardTimezone: 'UTC');
+(new EnlistmentApplier($gw))->apply();
+$expected = EnlistmentDecisions::enlistmentRecordDate('2012-05-18', 1600000000, 'UTC');
+check(
+    'a submitted Join Date dates the enlistment record (not the creation moment)',
+    count($gw->records) === 1
+        && $gw->records[0]->recordDate === $expected
+        && $gw->records[0]->recordDate !== 1600000000,
+    var_export($gw->records, true)
+);
+
+// An unparseable Join Date still produces a valid record, dated to creation.
+$gw = new FakeGateway(joinDate: 'not-a-date');
+(new EnlistmentApplier($gw))->apply();
+check(
+    'an unparseable Join Date falls back to the creation date for the record',
+    count($gw->records) === 1 && $gw->records[0]->recordDate === 1600000000,
     var_export($gw->records, true)
 );
 

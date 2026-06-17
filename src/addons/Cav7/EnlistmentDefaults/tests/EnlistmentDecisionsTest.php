@@ -115,6 +115,52 @@ check(
         === 'Enlisted in the 7th Cavalry Regiment, Assigned Boot Camp'
 );
 
+// --- enlistmentRecordDate(): the record follows the Join Date ------------
+// A submitted Join Date parses as midnight on that calendar day in board time.
+$creation = 1600000000; // a creation moment that must be ignored when a date is given
+$midnightUtc = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', '2012-05-18 00:00:00', new \DateTimeZone('UTC'))
+    ->getTimestamp();
+check(
+    'a valid Y-m-d Join Date resolves to midnight board time (UTC)',
+    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, 'UTC') === $midnightUtc,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, 'UTC')
+);
+
+// The timezone is applied: midnight on the same day in New York is four hours
+// later than midnight UTC (UTC-4 on 2012-05-18, DST).
+$midnightNy = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', '2012-05-18 00:00:00', new \DateTimeZone('America/New_York'))
+    ->getTimestamp();
+check(
+    'the Join Date is parsed as midnight in the supplied board timezone',
+    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, 'America/New_York') === $midnightNy,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, 'America/New_York')
+);
+check(
+    'a New York Join Date differs from a UTC one by the offset (timezone is real)',
+    $midnightNy === $midnightUtc + 4 * 3600
+);
+
+// A blank Join Date falls back to the creation date.
+check(
+    'a blank Join Date falls back to the creation date',
+    EnlistmentDecisions::enlistmentRecordDate('', $creation, 'UTC') === $creation
+);
+check(
+    'a whitespace-only Join Date falls back to the creation date',
+    EnlistmentDecisions::enlistmentRecordDate('   ', $creation, 'UTC') === $creation
+);
+
+// An unparseable value falls back to the creation date (no exception, no junk date).
+check(
+    'an unparseable Join Date falls back to the creation date',
+    EnlistmentDecisions::enlistmentRecordDate('not-a-date', $creation, 'UTC') === $creation
+);
+check(
+    'a malformed date with the right shape but bad values falls back',
+    EnlistmentDecisions::enlistmentRecordDate('2012-13-45', $creation, 'UTC') === $creation,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-13-45', $creation, 'UTC')
+);
+
 // --- Summary --------------------------------------------------------------
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
