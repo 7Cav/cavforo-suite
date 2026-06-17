@@ -1,0 +1,9 @@
+{
+    "template": "member_view",
+    "description": "Adds a mini-milpac (rank, position, roster status) to the member profile, linking to the milpac",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "str_replace",
+    "find": "\t\t\t\t\t\t\t<xf:if contentcheck=\"true\">\n\t\t\t\t\t\t\t\t<div class=\"memberHeader-blurb\">\n\t\t\t\t\t\t\t\t\t<dl class=\"pairs pairs--inline\">\n\t\t\t\t\t\t\t\t\t\t<dt>{{ phrase('last_seen') }}</dt>\n\t\t\t\t\t\t\t\t\t\t<dd dir=\"auto\">\n\t\t\t\t\t\t\t\t\t\t\t<xf:contentcheck><xf:useractivity user=\"$user\" class=\"pairs--plainLabel\" /></xf:contentcheck>\n\t\t\t\t\t\t\t\t\t\t</dd>\n\t\t\t\t\t\t\t\t\t</dl>\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t</xf:if>",
+    "replace": "\t\t\t\t\t\t\t$0\n\t\t\t\t\t\t\t<xf:if contentcheck=\"true\">\n\t\t\t\t\t\t\t\t<div class=\"memberHeader-blurb\">\n\t\t\t\t\t\t\t\t\t<xf:contentcheck>\n\t\t\t\t\t\t\t\t\t\t<xf:callback class=\"Cav7\\\\MilpacTooltip\\\\Template\\\\MemberMilpacTooltip\" method=\"renderMilpac\" params=\"[$user]\"></xf:callback>\n\t\t\t\t\t\t\t\t\t</xf:contentcheck>\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t</xf:if>"
+}

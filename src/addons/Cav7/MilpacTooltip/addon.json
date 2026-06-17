@@ -1,0 +1,23 @@
+{
+    "legacy_addon_id": "",
+    "title": "7Cav - Milpac Tooltip",
+    "description": "Adds a member's milpac (rank, position and roster status) to their hovercard tooltip, linking to their NF/Rosters profile.",
+    "version_id": 1000070,
+    "version_string": "1.0.0",
+    "dev": "Cav7",
+    "dev_url": "https://github.com/7Cav",
+    "faq_url": "",
+    "support_url": "",
+    "extra_urls": [],
+    "require": {
+        "XF": [
+            2020070,
+            "XenForo 2.2.0+"
+        ],
+        "NF/Rosters": [
+            2010000,
+            "Rosters and Personnel Status Reports 2.1+"
+        ]
+    },
+    "icon": ""
+}
