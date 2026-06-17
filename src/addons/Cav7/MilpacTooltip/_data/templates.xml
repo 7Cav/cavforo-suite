@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates>
+  <template type="public" title="cav7_milpac" version_id="1000070" version_string="1.0.0"><![CDATA[<xf:css src="cav7_milpac.less" />
+
+<a class="cav7Milpac" href="{{ link('rosters/profile', $milpac) }}" title="{{ phrase('cav7_milpac_view')|for_attr }}">
+	<xf:if is="$milpac.Rank.rank_image">
+		<span class="cav7Milpac-insignia"><img src="{{ $milpac.Rank.getImageUrl() }}" alt="" aria-hidden="true" /></span>
+	</xf:if>
+	<span class="cav7Milpac-body">
+		<span class="cav7Milpac-rankLine">
+			<span class="cav7Milpac-rank">{$milpac.Rank.title}</span>
+			<xf:if is="$milpac.Roster.title">
+				<span class="label label--accent cav7Milpac-status">{$milpac.Roster.title}</span>
+			</xf:if>
+		</span>
+		<xf:if is="$milpac.Position.position_title">
+			<span class="cav7Milpac-position">{$milpac.Position.position_title}</span>
+		</xf:if>
+		<xf:if is="$mos">
+			<span class="cav7Milpac-meta">{{ phrase('cav7_milpac_mos') }}: {$mos}</span>
+		</xf:if>
+		<xf:if is="$enlistDate">
+			<span class="cav7Milpac-meta">{{ phrase('cav7_milpac_enlist_date') }}: {$enlistDate}</span>
+		</xf:if>
+	</span>
+</a>]]></template>
+  <template type="public" title="cav7_milpac.less" version_id="1000070" version_string="1.0.0"><![CDATA[.cav7Milpac
+{
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 4px;
+	color: @xf-textColor;
+
+	&:hover { text-decoration: none; }
+
+	.cav7Milpac-insignia img
+	{
+		display: block;
+		height: 34px;
+		width: auto;
+	}
+
+	.cav7Milpac-body
+	{
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		line-height: @xf-lineHeightDefault;
+	}
+
+	.cav7Milpac-rankLine
+	{
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+
+	.cav7Milpac-rank { font-weight: @xf-fontWeightHeavy; }
+
+	.cav7Milpac-status { font-size: @xf-fontSizeSmallest; }
+
+	.cav7Milpac-position
+	{
+		color: @xf-textColorMuted;
+		font-size: @xf-fontSizeSmaller;
+	}
+
+	.cav7Milpac-meta
+	{
+		color: @xf-textColorMuted;
+		font-size: @xf-fontSizeSmallest;
+	}
+}]]></template>
+</templates>

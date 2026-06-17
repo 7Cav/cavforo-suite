@@ -1,0 +1,49 @@
+.cav7Milpac
+{
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 4px;
+	color: @xf-textColor;
+
+	&:hover { text-decoration: none; }
+
+	.cav7Milpac-insignia img
+	{
+		display: block;
+		height: 34px;
+		width: auto;
+	}
+
+	.cav7Milpac-body
+	{
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		line-height: @xf-lineHeightDefault;
+	}
+
+	.cav7Milpac-rankLine
+	{
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+
+	.cav7Milpac-rank { font-weight: @xf-fontWeightHeavy; }
+
+	.cav7Milpac-status { font-size: @xf-fontSizeSmallest; }
+
+	.cav7Milpac-position
+	{
+		color: @xf-textColorMuted;
+		font-size: @xf-fontSizeSmaller;
+	}
+
+	.cav7Milpac-meta
+	{
+		color: @xf-textColorMuted;
+		font-size: @xf-fontSizeSmallest;
+	}
+}

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<template_modifications>
+  <modification type="public" template="member_tooltip" modification_key="cav7MilpacTooltipLink" description="Adds a mini-milpac (rank, position, roster status) to the member hovercard, linking to the milpac" execution_order="10" enabled="1" action="str_replace">
+    <find><![CDATA[					<xf:if contentcheck="true">
+						<div class="memberTooltip-blurb">
+							<dl class="pairs pairs--inline">
+								<dt>{{ phrase('last_seen') }}</dt>
+								<dd dir="auto">
+									<xf:contentcheck><xf:useractivity user="$user" class="pairs--plainLabel" /></xf:contentcheck>
+								</dd>
+							</dl>
+						</div>
+					</xf:if>]]></find>
+    <replace><![CDATA[					$0
+					<xf:if contentcheck="true">
+						<div class="memberTooltip-blurb">
+							<xf:contentcheck>
+								<xf:callback class="Cav7\\MilpacTooltip\\Template\\MemberMilpacTooltip" method="renderMilpac" params="[$user]"></xf:callback>
+							</xf:contentcheck>
+						</div>
+					</xf:if>
+]]></replace>
+  </modification>
+  <modification type="public" template="member_view" modification_key="cav7MilpacProfile" description="Adds a mini-milpac (rank, position, roster status) to the member profile, linking to the milpac" execution_order="10" enabled="1" action="str_replace">
+    <find><![CDATA[							<xf:if contentcheck="true">
+								<div class="memberHeader-blurb">
+									<dl class="pairs pairs--inline">
+										<dt>{{ phrase('last_seen') }}</dt>
+										<dd dir="auto">
+											<xf:contentcheck><xf:useractivity user="$user" class="pairs--plainLabel" /></xf:contentcheck>
+										</dd>
+									</dl>
+								</div>
+							</xf:if>]]></find>
+    <replace><![CDATA[							$0
+							<xf:if contentcheck="true">
+								<div class="memberHeader-blurb">
+									<xf:contentcheck>
+										<xf:callback class="Cav7\\MilpacTooltip\\Template\\MemberMilpacTooltip" method="renderMilpac" params="[$user]"></xf:callback>
+									</xf:contentcheck>
+								</div>
+							</xf:if>]]></replace>
+  </modification>
+</template_modifications>

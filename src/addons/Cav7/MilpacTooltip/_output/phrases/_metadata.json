@@ -1,0 +1,20 @@
+{
+    "cav7_milpac_enlist_date.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "c22ddc58dc1375a4e5626225c1765f84"
+    },
+    "cav7_milpac_mos.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "392ed769e01493d6f9f1f9d3a5c295bc"
+    },
+    "cav7_milpac_view.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "bde89701171b05f538d8870e70ef66ff"
+    }
+}

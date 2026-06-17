@@ -1,0 +1,24 @@
+<xf:css src="cav7_milpac.less" />
+
+<a class="cav7Milpac" href="{{ link('rosters/profile', $milpac) }}" title="{{ phrase('cav7_milpac_view')|for_attr }}">
+	<xf:if is="$milpac.Rank.rank_image">
+		<span class="cav7Milpac-insignia"><img src="{{ $milpac.Rank.getImageUrl() }}" alt="" aria-hidden="true" /></span>
+	</xf:if>
+	<span class="cav7Milpac-body">
+		<span class="cav7Milpac-rankLine">
+			<span class="cav7Milpac-rank">{$milpac.Rank.title}</span>
+			<xf:if is="$milpac.Roster.title">
+				<span class="label label--accent cav7Milpac-status">{$milpac.Roster.title}</span>
+			</xf:if>
+		</span>
+		<xf:if is="$milpac.Position.position_title">
+			<span class="cav7Milpac-position">{$milpac.Position.position_title}</span>
+		</xf:if>
+		<xf:if is="$mos">
+			<span class="cav7Milpac-meta">{{ phrase('cav7_milpac_mos') }}: {$mos}</span>
+		</xf:if>
+		<xf:if is="$enlistDate">
+			<span class="cav7Milpac-meta">{{ phrase('cav7_milpac_enlist_date') }}: {$enlistDate}</span>
+		</xf:if>
+	</span>
+</a>
