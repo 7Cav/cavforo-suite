@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <phrases>
+  <phrase title="admin_navigation.cav7ApiKeys" version_id="1020110" version_string="1.2.1"><![CDATA[API Keys]]></phrase>
+  <phrase title="admin_navigation.cav7ApiScopes" version_id="1020110" version_string="1.2.1"><![CDATA[API Scopes]]></phrase>
   <phrase title="cav7_api_key" version_id="1000010" version_string="1.0.0"><![CDATA[API Key]]></phrase>
   <phrase title="cav7_api_key_already_exists" version_id="1000010" version_string="1.0.0"><![CDATA[You already have an active API key. Rotate your existing key if you need a new one.]]></phrase>
   <phrase title="cav7_api_key_manager" version_id="1000010" version_string="1.0.0"><![CDATA[API Key Manager]]></phrase>
