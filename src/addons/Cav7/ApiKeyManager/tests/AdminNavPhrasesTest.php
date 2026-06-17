@@ -43,8 +43,8 @@ if ($phrasesXml !== false) {
 
 // --- Each nav entry has a matching admin_navigation.<id> title phrase --------
 $expected = [
-    'admin_navigation.cav7ApiKeys' => 'API Keys',
-    'admin_navigation.cav7ApiScopes' => 'API Scopes',
+    'admin_navigation.cav7ApiKeys' => '7Cav API Keys',
+    'admin_navigation.cav7ApiScopes' => '7Cav API Scopes',
 ];
 foreach ($expected as $title => $label) {
     check(

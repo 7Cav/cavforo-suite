@@ -1,15 +1,15 @@
 {
     "admin_navigation.cav7ApiKeys.txt": {
         "global_cache": false,
-        "version_id": 1020110,
-        "version_string": "1.2.1",
-        "hash": "b4717f6ab3c2357c13c0c2cd32dfc4ca"
+        "version_id": 1020310,
+        "version_string": "1.2.3",
+        "hash": "a6223128d191333753234ea35b45e655"
     },
     "admin_navigation.cav7ApiScopes.txt": {
         "global_cache": false,
-        "version_id": 1020110,
-        "version_string": "1.2.1",
-        "hash": "6c625ad89b6c294a19a475c81ff3bca8"
+        "version_id": 1020310,
+        "version_string": "1.2.3",
+        "hash": "c5d297c770c19f3c5acb9179c36e3908"
     },
     "cav7_api_key.txt": {
         "global_cache": false,
