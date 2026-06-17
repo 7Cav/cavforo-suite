@@ -161,6 +161,31 @@ check(
     'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-13-45', $creation, 'UTC')
 );
 
+// An unusable board timezone (empty or unknown) falls back to the creation date
+// the same way a blank or unparseable date does: never throws, never junk. This
+// holds for both a valid and an invalid Join Date, so the date and timezone
+// fallback paths are uniform.
+check(
+    'an empty timezone with a valid Join Date falls back to the creation date',
+    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, '') === $creation,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, '')
+);
+check(
+    'an unknown timezone with a valid Join Date falls back to the creation date',
+    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, 'Not/AZone') === $creation,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, 'Not/AZone')
+);
+check(
+    'an empty timezone with an invalid Join Date falls back to the creation date',
+    EnlistmentDecisions::enlistmentRecordDate('not-a-date', $creation, '') === $creation,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('not-a-date', $creation, '')
+);
+check(
+    'an unknown timezone with an invalid Join Date falls back to the creation date',
+    EnlistmentDecisions::enlistmentRecordDate('not-a-date', $creation, 'Not/AZone') === $creation,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('not-a-date', $creation, 'Not/AZone')
+);
+
 // --- Summary --------------------------------------------------------------
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";

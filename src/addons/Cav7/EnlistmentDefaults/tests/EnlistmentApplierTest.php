@@ -208,6 +208,21 @@ check(
     var_export($gw->records, true)
 );
 
+// A non-UTC board timezone is carried through to the record date: the record is
+// dated to the Join Date at that zone's midnight, distinct from the UTC instant.
+// This pins the gateway-timezone -> decision wiring at the applier level.
+$gw = new FakeGateway(joinDate: '2012-05-18', boardTimezone: 'America/New_York');
+(new EnlistmentApplier($gw))->apply();
+$expectedNy = EnlistmentDecisions::enlistmentRecordDate('2012-05-18', 1600000000, 'America/New_York');
+$expectedUtc = EnlistmentDecisions::enlistmentRecordDate('2012-05-18', 1600000000, 'UTC');
+check(
+    'the board timezone is passed through to the record date (non-UTC midnight, distinct from UTC)',
+    count($gw->records) === 1
+        && $gw->records[0]->recordDate === $expectedNy
+        && $gw->records[0]->recordDate !== $expectedUtc,
+    var_export($gw->records, true)
+);
+
 // An unparseable Join Date still produces a valid record, dated to creation.
 $gw = new FakeGateway(joinDate: 'not-a-date');
 (new EnlistmentApplier($gw))->apply();
