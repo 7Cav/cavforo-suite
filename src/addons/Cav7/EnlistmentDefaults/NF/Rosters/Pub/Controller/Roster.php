@@ -5,6 +5,9 @@ namespace Cav7\EnlistmentDefaults\NF\Rosters\Pub\Controller;
 use Cav7\EnlistmentDefaults\EnlistmentFormDefaults;
 use NF\Rosters\Entity\RosterUser;
 use XF\Mvc\ParameterBag;
+use XF\Mvc\Reply\AbstractReply;
+use XF\Mvc\Reply\Error;
+use XF\Mvc\Reply\Redirect;
 use XF\Mvc\Reply\View;
 
 /**
@@ -25,7 +28,7 @@ use XF\Mvc\Reply\View;
  */
 class Roster extends XFCP_Roster
 {
-    public function actionAddUser(ParameterBag $params)
+    public function actionAddUser(ParameterBag $params): Redirect|View|Error|AbstractReply
     {
         $reply = parent::actionAddUser($params);
 
