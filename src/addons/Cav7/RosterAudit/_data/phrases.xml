@@ -45,8 +45,8 @@
   <phrase title="cav7_raudit_type_user_award" version_id="1000010" version_string="1.0.0"><![CDATA[Award record]]></phrase>
   <phrase title="cav7_raudit_x_more_fields" version_id="1000010" version_string="1.0.0"><![CDATA[+{count} more field|s]]></phrase>
   <phrase title="cron_entry.cav7RAuditPrune" version_id="1000010" version_string="1.0.0"><![CDATA[Prune roster audit logs]]></phrase>
-  <phrase title="opt_group_description.cav7RosterAudit" version_id="1000010" version_string="1.0.0"><![CDATA[Settings for the 7Cav roster audit log companion add-on.]]></phrase>
-  <phrase title="opt_group_title.cav7RosterAudit" version_id="1000010" version_string="1.0.0"><![CDATA[Roster audit log]]></phrase>
   <phrase title="option.cav7RAuditRetention" version_id="1000010" version_string="1.0.0"><![CDATA[Audit log retention (days)]]></phrase>
   <phrase title="option_explain.cav7RAuditRetention" version_id="1000010" version_string="1.0.0"><![CDATA[Audit log entries (and their detail files) older than this many days are removed by the daily prune cron. The minimum is 30 days; lower or invalid values fall back to the default of 1825 (5 years).]]></phrase>
+  <phrase title="option_group.cav7RosterAudit" version_id="1000010" version_string="1.0.0"><![CDATA[Roster audit log]]></phrase>
+  <phrase title="option_group_description.cav7RosterAudit" version_id="1000010" version_string="1.0.0"><![CDATA[Settings for the 7Cav roster audit log companion add-on.]]></phrase>
 </phrases>

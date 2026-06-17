@@ -269,18 +269,6 @@
         "version_string": "1.0.0",
         "hash": "51abd42c2f201fd2a24ee78937d06206"
     },
-    "opt_group_description.cav7RosterAudit.txt": {
-        "global_cache": false,
-        "version_id": 1000010,
-        "version_string": "1.0.0",
-        "hash": "894edcf1293821fc16f620a77e91c746"
-    },
-    "opt_group_title.cav7RosterAudit.txt": {
-        "global_cache": false,
-        "version_id": 1000010,
-        "version_string": "1.0.0",
-        "hash": "3f3d7def12979f39686c9da0d4edbb90"
-    },
     "option.cav7RAuditRetention.txt": {
         "global_cache": false,
         "version_id": 1000010,
@@ -292,5 +280,17 @@
         "version_id": 1000010,
         "version_string": "1.0.0",
         "hash": "ffcc5c0f4dc7a5d63e1006fdf7b20de8"
+    },
+    "option_group.cav7RosterAudit.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "3f3d7def12979f39686c9da0d4edbb90"
+    },
+    "option_group_description.cav7RosterAudit.txt": {
+        "global_cache": false,
+        "version_id": 1000010,
+        "version_string": "1.0.0",
+        "hash": "894edcf1293821fc16f620a77e91c746"
     }
 }
