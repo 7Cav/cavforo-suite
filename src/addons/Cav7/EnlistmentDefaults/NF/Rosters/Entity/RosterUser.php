@@ -13,8 +13,9 @@ use Cav7\EnlistmentDefaults\RosterUserGateway;
  *
  * Insert-only by design. A move between rosters and an edit are both UPDATEs of
  * an existing row (Service\Profile\Mover saves the same RosterUser, the profile
- * edit saves it too), so they fall through the isInsert() gate and apply
- * nothing — re-applying the set to an existing milpac is never done.
+ * edit saves it too), so EnlistmentDecisions::shouldApply() returns false for
+ * them and applies nothing — re-applying the set to an existing milpac is never
+ * done.
  *
  * Fail-open: the applier isolates and logs each grant and the record write, so a
  * failure is recorded in the XF error log and the milpac save still succeeds.

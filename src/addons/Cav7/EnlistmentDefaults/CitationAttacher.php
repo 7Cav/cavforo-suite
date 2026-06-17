@@ -78,10 +78,12 @@ class CitationAttacher
         {
             // setImage() rejected the file before anything was copied, so there
             // is nothing to clean beyond the saved row. Roll it back so the date
-            // stays pending for a re-run.
+            // stays pending for a re-run. rollback() always throws; the return
+            // keeps the no-fall-through local rather than relying on that.
             $this->rollback($award, $image, new \RuntimeException(
                 'citation image rejected: ' . $image->errorText()
             ));
+            return;
         }
 
         try
@@ -106,6 +108,9 @@ class CitationAttacher
      */
     private function rollback(CitationAward $award, CitationImage $image, \Throwable $original): void
     {
+        // File before row: the image service reads the award's citation_date to
+        // decide there is a copied file to remove, so clean the file while the
+        // row is still intact, then delete the row.
         try
         {
             $image->deleteFile();
