@@ -61,6 +61,17 @@ check(
 );
 check('the rank still passes through on a roster missing the position', $d['rank_id'] === 23);
 
+// Position ids can arrive as strings (the roster source hands them back as
+// strings). The configured int position still matches and passes through, which
+// pins the intval normalization so a future "simplification" can't silently
+// break it.
+$d = EnlistmentFormDefaults::compute(23, 193, ['10', '193'], $now, 'UTC');
+check(
+    'a configured position matches even when the roster ids arrive as strings',
+    $d['position_id'] === 193,
+    'got: ' . var_export($d['position_id'], true)
+);
+
 // An empty position list (a roster with no positions) also yields null.
 $d = EnlistmentFormDefaults::compute(23, 193, [], $now, 'UTC');
 check(

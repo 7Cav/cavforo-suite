@@ -1,7 +1,7 @@
 {
     "legacy_addon_id": "",
     "title": "7Cav - Enlistment Defaults",
-    "description": "Companion add-on that grants the standing PUC set and writes the first service record when a milpac is created, via NF/Rosters class extensions, without modifying the vendor add-on.",
+    "description": "Companion add-on that prefills the add-milpac form, grants the standing PUC set, and writes the first service record when a milpac is created, via NF/Rosters class extensions, without modifying the vendor add-on.",
     "version_id": 1000070,
     "version_string": "1.0.0",
     "dev": "Cav7",
