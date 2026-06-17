@@ -1,16 +1,4 @@
 {
-    "opt_group_description.cav7EnlistmentDefaults.txt": {
-        "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "7040aeb6146466bd8aa38e286cd380b8"
-    },
-    "opt_group_title.cav7EnlistmentDefaults.txt": {
-        "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "d06b13da87fe771450c75b149a993017"
-    },
     "option.cav7EnlistDefPucAwardId.txt": {
         "global_cache": false,
         "version_id": 1000070,
@@ -46,5 +34,17 @@
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "db4e8c12936ad829876f2d6f3b30ab08"
+    },
+    "option_group.cav7EnlistmentDefaults.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "d06b13da87fe771450c75b149a993017"
+    },
+    "option_group_description.cav7EnlistmentDefaults.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "7040aeb6146466bd8aa38e286cd380b8"
     }
 }
