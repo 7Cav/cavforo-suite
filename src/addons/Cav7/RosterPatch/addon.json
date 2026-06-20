@@ -1,0 +1,17 @@
+{
+    "legacy_addon_id": "",
+    "title": "7Cav - Roster Patches",
+    "description": "Companion add-on that patches behavioural gaps in NF/Rosters through class extensions, without modifying the vendor add-on. First fix: a position's group grants are re-applied to its current holders when the position's group list is edited.",
+    "version_id": 1000070,
+    "version_string": "1.0.0",
+    "dev": "Cav7",
+    "dev_url": "https://github.com/7Cav",
+    "faq_url": "",
+    "support_url": "",
+    "extra_urls": [],
+    "require": {
+        "XF": [2030070, "XenForo 2.3.0+"],
+        "NF/Rosters": [2010000, "Rosters and Personnel Status Reports 2.1+"]
+    },
+    "icon": ""
+}
