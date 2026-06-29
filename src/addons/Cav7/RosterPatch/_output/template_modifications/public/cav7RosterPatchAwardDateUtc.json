@@ -1,0 +1,9 @@
+{
+    "template": "nf_rosters_user_view",
+    "description": "Render the milpac award date in UTC so it reads the same for every viewer and matches the edit form",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "str_replace",
+    "find": "<xf:cell>{{ date($award.award_date, 'Y-m-d') }}</xf:cell>",
+    "replace": "<xf:cell>{$award.getAwardDate()}</xf:cell>"
+}

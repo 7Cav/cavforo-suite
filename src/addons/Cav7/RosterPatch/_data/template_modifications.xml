@@ -1,2 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<template_modifications/>
+<template_modifications>
+  <modification type="public" template="nf_rosters_user_view" modification_key="cav7RosterPatchRecordDateUtc" description="Render the milpac service-record date in UTC so it reads the same for every viewer and matches the edit form" execution_order="10" enabled="1" action="str_replace">
+    <find><![CDATA[<xf:cell>{{ date($record.record_date, 'Y-m-d') }}</xf:cell>]]></find>
+    <replace><![CDATA[<xf:cell>{$record.getRecordDate()}</xf:cell>]]></replace>
+  </modification>
+  <modification type="public" template="nf_rosters_user_view" modification_key="cav7RosterPatchAwardDateUtc" description="Render the milpac award date in UTC so it reads the same for every viewer and matches the edit form" execution_order="10" enabled="1" action="str_replace">
+    <find><![CDATA[<xf:cell>{{ date($award.award_date, 'Y-m-d') }}</xf:cell>]]></find>
+    <replace><![CDATA[<xf:cell>{$award.getAwardDate()}</xf:cell>]]></replace>
+  </modification>
+</template_modifications>
