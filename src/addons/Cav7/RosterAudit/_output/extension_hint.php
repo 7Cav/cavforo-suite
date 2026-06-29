@@ -22,8 +22,3 @@ namespace Cav7\RosterAudit\NF\Rosters\Entity
 	class XFCP_RosterUserAward extends \NF\Rosters\Entity\RosterUserAward {}
 	class XFCP_ServiceRecord extends \NF\Rosters\Entity\ServiceRecord {}
 }
-
-namespace Cav7\RosterAudit\NF\Rosters\Pub\Controller
-{
-	class XFCP_Roster extends \NF\Rosters\Pub\Controller\Roster {}
-}

@@ -18,14 +18,18 @@ class Position extends XFCP_Position
 	{
 		parent::_preDelete();
 
-		// The vendor's Position::_postDelete() raw-deletes every roster member
-		// whose primary position is this one (DELETE FROM xf_nf_rosters_user),
-		// bypassing entity hooks: the members' roster-membership group grants
-		// leak, their award/service-record rows orphan, and nothing is audited.
-		// Secondary holders survive the cascade but keep a stale id in their
-		// secondary_position_ids list. Refuse the delete while ANY member still
-		// references the position, primary or secondary; the admin removes the
-		// assignments deliberately and each change is audited as a normal update.
+		// As of NF/Rosters 2.1.5 deleting a position is destructive: the vendor's
+		// Position::deletePrimaryHolders() calls ->delete() on every member whose
+		// primary position is this one, removing them from the roster along with
+		// their awards, service records, field values and uniform; secondary
+		// holders have the id and its group grant scrubbed. Those deletes now run
+		// through entity hooks, so they are audited, but the loss is real and
+		// irreversible (the vendor's delete dialog warns of this, though only for
+		// the primary holders). Refuse the
+		// delete while ANY member still references the position, primary or
+		// secondary, so an admin can't wipe members and their record history by
+		// removing a position; they reassign deliberately first, and each
+		// reassignment is audited as a normal update.
 		$memberCount = (int) $this->db()->fetchOne(
 			'SELECT COUNT(*) FROM xf_nf_rosters_user
 				WHERE position_id = ? OR FIND_IN_SET(?, secondary_position_ids)',

@@ -11,5 +11,4 @@
   <extension from_class="NF\Rosters\Entity\RosterUser" to_class="Cav7\RosterAudit\NF\Rosters\Entity\RosterUser" execute_order="10" active="1"/>
   <extension from_class="NF\Rosters\Entity\RosterUserAward" to_class="Cav7\RosterAudit\NF\Rosters\Entity\RosterUserAward" execute_order="10" active="1"/>
   <extension from_class="NF\Rosters\Entity\ServiceRecord" to_class="Cav7\RosterAudit\NF\Rosters\Entity\ServiceRecord" execute_order="10" active="1"/>
-  <extension from_class="NF\Rosters\Pub\Controller\Roster" to_class="Cav7\RosterAudit\NF\Rosters\Pub\Controller\Roster" execute_order="10" active="1"/>
 </class_extensions>
