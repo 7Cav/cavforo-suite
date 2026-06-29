@@ -2,8 +2,8 @@
     "legacy_addon_id": "",
     "title": "7Cav - Roster Audit Log",
     "description": "Companion add-on that adds an audit trail to NF/Rosters via class extensions, without modifying the vendor add-on.",
-    "version_id": 1010170,
-    "version_string": "1.1.1",
+    "version_id": 1010270,
+    "version_string": "1.1.2",
     "dev": "Cav7",
     "dev_url": "https://github.com/7Cav",
     "faq_url": "",
@@ -19,8 +19,8 @@
             "XenForo 2.2.0+"
         ],
         "NF/Rosters": [
-            2010000,
-            "Rosters and Personnel Status Reports 2.1+"
+            2010570,
+            "Rosters and Personnel Status Reports 2.1.5+"
         ]
     },
     "icon": ""

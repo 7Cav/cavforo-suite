@@ -17,7 +17,7 @@ A daily cron prunes both stores. Retention is configurable (`cav7RAuditRetention
 
 - XenForo 2.2+
 - PHP 8.0+
-- NF/Rosters 2.1+ installed (declared as a dependency in `addon.json`)
+- NF/Rosters 2.1.5+ installed (declared as a dependency in `addon.json`)
 
 ## Installation
 
@@ -34,7 +34,9 @@ For release builds, generate hashes first: `php cmd.php xf-addon:build-release C
 
 **Image churn is excluded, not suppressed.** The image services stamp a timestamp column on every upload or removal (`award_image`, `rank_image`, `citation_date`, `uniform_date`). Those columns are excluded from update diffs, so image operations do not flood the log, but creates and deletes of the owning records are always recorded in full.
 
-**Two vendor gaps are patched.** First: the vendor's profile award and service record save actions skip the `canManageAwards()`/`canManageRecords()` permission checks that their Add, Edit, and Delete counterparts all perform. A small extension of the vendor's public Roster controller adds the missing check before the parent action runs. Second: deleting a position hard-deletes every roster member whose primary position it is, via raw SQL that bypasses entity hooks: their roster-membership group grants leak, their award and service record rows orphan, and nothing is audited. The Position entity extension refuses the delete while any member still holds the position, as primary or secondary, so admins reassign members deliberately (each reassignment audited) before removing it. If a vendor update fixes either issue, the corresponding patch becomes a redundant duplicate and can be dropped.
+**Position deletion is blocked while members hold it.** From NF/Rosters 2.1.5, deleting a position is destructive: the vendor removes every member whose primary position it is from the roster, together with their awards, service records, field values, and uniform, and scrubs the id from secondary holders. Those deletes run through entity hooks, so they are audited, but the loss is permanent (the vendor's delete dialog warns of this for the primary holders it removes). The Position entity extension refuses the delete while any member still holds the position, primary or secondary, so admins reassign members deliberately (each reassignment audited) before removing it. It is a deliberate policy layered on the vendor's softer warning, not a bug fix.
+
+(Through NF/Rosters 2.1.4 this add-on also added a missing `canManageAwards()`/`canManageRecords()` check to the vendor's profile award and service record save actions. 2.1.5 enforces those checks itself, so the shim was removed.)
 
 **Uninstall keeps the files.** Uninstalling drops the DB table but leaves the JSONL files in `internal_data/cav7_roster_audit`, since they are audit evidence. Delete them manually if they are no longer needed.
 
@@ -47,8 +49,7 @@ src/addons/Cav7/RosterAudit/
   Repository/AuditLog.php       reads, batched pruning, file handling
   Admin/Controller/AuditLog.php list + detail views
   Cron/AuditLogPrune.php        daily retention prune
-  NF/Rosters/Entity/*.php       11 entity class extensions (audit hooks)
-  NF/Rosters/Pub/Controller/    permission guard for the vendor profile save actions
+  NF/Rosters/Entity/*.php       11 entity class extensions (audit hooks + position-delete guard)
   _data/*.xml                   routes, phrases, templates, options, cron, extensions
 ```
 
