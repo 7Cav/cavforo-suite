@@ -1,9 +1,9 @@
 <?php
 
 /**
- * Issue #24 — the pure decision rules behind PUC automation, isolated from the
- * XenForo entities they ultimately drive so every acceptance criterion that is
- * a decision (not a database write) is covered without booting XenForo.
+ * Issues #24 and #45 — the pure decision rules behind PUC automation, isolated
+ * from the XenForo entities they ultimately drive so every acceptance criterion
+ * that is a decision (not a database write) is covered without booting XenForo.
  *
  * Rules under test (all on Cav7\EnlistmentDefaults\EnlistmentDecisions):
  *
@@ -15,6 +15,10 @@
  *  - attributionUserId(): the acting visitor when there is a session, else the
  *    configured system fallback user id (CLI, no visitor).
  *  - The canonical enlistment record: a fixed Transfer-typed body.
+ *  - enlistmentRecordDate() (#45): the record follows the submitted Join Date,
+ *    stamped at midnight UTC of that calendar day independent of the board
+ *    timezone, and falls back to midnight UTC of the creation day when the Join
+ *    Date is blank or unparseable.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -115,75 +119,82 @@ check(
         === 'Enlisted in the 7th Cavalry Regiment, Assigned Boot Camp'
 );
 
-// --- enlistmentRecordDate(): the record follows the Join Date ------------
-// A submitted Join Date parses as midnight on that calendar day in board time.
+// --- enlistmentRecordDate(): the record follows the Join Date, at midnight UTC --
+// Issue #45: the submitted Join Date is a bare calendar day, stamped at midnight
+// UTC of that day independent of the board timezone — the same convention
+// PucSet::awardDateTimestamp() follows — so RosterPatch's UTC floor and
+// rendering leave the entered day unchanged on any board.
 $creation = 1600000000; // a creation moment that must be ignored when a date is given
-$midnightUtc = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', '2012-05-18 00:00:00', new \DateTimeZone('UTC'))
+$midnightUtc = \DateTimeImmutable::createFromFormat('!Y-m-d', '2012-05-18', new \DateTimeZone('UTC'))
     ->getTimestamp();
 check(
-    'a valid Y-m-d Join Date resolves to midnight board time (UTC)',
-    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, 'UTC') === $midnightUtc,
-    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, 'UTC')
+    'a valid Y-m-d Join Date resolves to midnight UTC of that day',
+    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation) === $midnightUtc,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation)
+);
+// Same expectation, pinned to the known epoch as a literal rather than the same
+// createFromFormat the code uses — so a regression cannot hide behind a matching
+// computation. 1337299200 is 2012-05-18 00:00:00 UTC.
+check(
+    '2012-05-18 resolves to its literal midnight-UTC epoch (1337299200)',
+    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation) === 1337299200,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation)
+);
+// A valid Join Date with surrounding whitespace is trimmed, then accepted: the
+// trim()-then-parse branch yields the same midnight-UTC epoch, not the fallback.
+check(
+    'a valid Join Date with surrounding whitespace resolves to midnight UTC',
+    EnlistmentDecisions::enlistmentRecordDate('  2012-05-18  ', $creation) === 1337299200,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('  2012-05-18  ', $creation)
 );
 
-// The timezone is applied: midnight on the same day in New York is four hours
-// later than midnight UTC (UTC-4 on 2012-05-18, DST).
-$midnightNy = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', '2012-05-18 00:00:00', new \DateTimeZone('America/New_York'))
+// The stamp does not depend on the board timezone. Parsed at local midnight, a
+// board ahead of UTC (Pacific/Auckland, UTC+12) would have landed on the
+// PREVIOUS UTC day, and a board behind UTC (America/New_York, UTC-4) hours past
+// midnight UTC — the day-early shift #45 fixes. Neither happens now: the Join
+// Date yields the one midnight-UTC instant whatever the board timezone.
+$aheadLocalMidnight = \DateTimeImmutable::createFromFormat('!Y-m-d', '2012-05-18', new \DateTimeZone('Pacific/Auckland'))
+    ->getTimestamp();
+$behindLocalMidnight = \DateTimeImmutable::createFromFormat('!Y-m-d', '2012-05-18', new \DateTimeZone('America/New_York'))
     ->getTimestamp();
 check(
-    'the Join Date is parsed as midnight in the supplied board timezone',
-    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, 'America/New_York') === $midnightNy,
-    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, 'America/New_York')
+    'a board ahead of UTC stamps midnight UTC, not the previous day',
+    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation) === $midnightUtc
+        && $midnightUtc !== $aheadLocalMidnight,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation)
 );
 check(
-    'a New York Join Date differs from a UTC one by the offset (timezone is real)',
-    $midnightNy === $midnightUtc + 4 * 3600
-);
-
-// A blank Join Date falls back to the creation date.
-check(
-    'a blank Join Date falls back to the creation date',
-    EnlistmentDecisions::enlistmentRecordDate('', $creation, 'UTC') === $creation
-);
-check(
-    'a whitespace-only Join Date falls back to the creation date',
-    EnlistmentDecisions::enlistmentRecordDate('   ', $creation, 'UTC') === $creation
+    'a board behind UTC stamps midnight UTC, not hours past it',
+    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation) === $midnightUtc
+        && $midnightUtc !== $behindLocalMidnight,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation)
 );
 
-// An unparseable value falls back to the creation date (no exception, no junk date).
+// The creation-date fallback resolves to midnight UTC of the creation DAY, not
+// the raw wall-clock instant: $creation is partway through 2020-09-13, so the
+// record is dated to that day's midnight UTC, an earlier and distinct value.
+$creationFloored = \DateTimeImmutable::createFromFormat('!Y-m-d', gmdate('Y-m-d', $creation), new \DateTimeZone('UTC'))
+    ->getTimestamp();
 check(
-    'an unparseable Join Date falls back to the creation date',
-    EnlistmentDecisions::enlistmentRecordDate('not-a-date', $creation, 'UTC') === $creation
+    'a blank Join Date falls back to midnight UTC of the creation day (not the instant)',
+    EnlistmentDecisions::enlistmentRecordDate('', $creation) === $creationFloored
+        && $creationFloored !== $creation,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('', $creation)
+);
+check(
+    'a whitespace-only Join Date falls back to midnight UTC of the creation day',
+    EnlistmentDecisions::enlistmentRecordDate('   ', $creation) === $creationFloored
+);
+
+// An unparseable value falls back the same way (no exception, no junk date).
+check(
+    'an unparseable Join Date falls back to midnight UTC of the creation day',
+    EnlistmentDecisions::enlistmentRecordDate('not-a-date', $creation) === $creationFloored
 );
 check(
     'a malformed date with the right shape but bad values falls back',
-    EnlistmentDecisions::enlistmentRecordDate('2012-13-45', $creation, 'UTC') === $creation,
-    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-13-45', $creation, 'UTC')
-);
-
-// An unusable board timezone (empty or unknown) falls back to the creation date
-// the same way a blank or unparseable date does: never throws, never junk. This
-// holds for both a valid and an invalid Join Date, so the date and timezone
-// fallback paths are uniform.
-check(
-    'an empty timezone with a valid Join Date falls back to the creation date',
-    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, '') === $creation,
-    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, '')
-);
-check(
-    'an unknown timezone with a valid Join Date falls back to the creation date',
-    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, 'Not/AZone') === $creation,
-    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation, 'Not/AZone')
-);
-check(
-    'an empty timezone with an invalid Join Date falls back to the creation date',
-    EnlistmentDecisions::enlistmentRecordDate('not-a-date', $creation, '') === $creation,
-    'got: ' . EnlistmentDecisions::enlistmentRecordDate('not-a-date', $creation, '')
-);
-check(
-    'an unknown timezone with an invalid Join Date falls back to the creation date',
-    EnlistmentDecisions::enlistmentRecordDate('not-a-date', $creation, 'Not/AZone') === $creation,
-    'got: ' . EnlistmentDecisions::enlistmentRecordDate('not-a-date', $creation, 'Not/AZone')
+    EnlistmentDecisions::enlistmentRecordDate('2012-13-45', $creation) === $creationFloored,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-13-45', $creation)
 );
 
 // --- Summary --------------------------------------------------------------

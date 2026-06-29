@@ -33,8 +33,9 @@ interface EnlistmentGateway
     public function systemFallbackUserId(): int;
 
     /**
-     * The milpac's creation timestamp. The enlistment record falls back to this
-     * when the Join Date is blank or unparseable.
+     * The milpac's creation timestamp. The enlistment record falls back to
+     * midnight UTC of the day this timestamp falls on when the Join Date is
+     * blank or unparseable.
      */
     public function creationDate(): int;
 
@@ -43,9 +44,6 @@ interface EnlistmentGateway
      * enlistment record is dated from this when it is a usable date.
      */
     public function joinDate(): string;
-
-    /** The board timezone the Join Date is read in (e.g. 'America/New_York'). */
-    public function boardTimezone(): string;
 
     /**
      * Grant one PUC award on the milpac: create the award row (award id,

@@ -79,11 +79,6 @@ class RosterUserGateway implements EnlistmentGateway
         return (string) ($this->rosterUser->custom_fields->joinDate ?? '');
     }
 
-    public function boardTimezone(): string
-    {
-        return (string) \XF::options()->guestTimeZone;
-    }
-
     public function grantAward(int $awardId, int $awardDate, int $fromUserId, string $citationPath): void
     {
         /** @var RosterUserAward $award */

@@ -63,18 +63,17 @@ class EnlistmentApplier
 
     /**
      * Write the one enlistment record. The record is dated from the milpac's
-     * submitted Join Date (falling back to the creation date when that field is
-     * blank or unparseable), so a backdated enlistment gets a correctly-dated
-     * record. Isolated for the same fail-open reason: a failed record write is
-     * logged and the milpac save still succeeds.
+     * submitted Join Date at midnight UTC (falling back to midnight UTC of the
+     * creation day when that field is blank or unparseable), so a backdated
+     * enlistment gets a correctly-dated record. Isolated for the same fail-open
+     * reason: a failed record write is logged and the milpac save still succeeds.
      */
     private function writeEnlistmentRecord(): void
     {
         try {
             $recordDate = EnlistmentDecisions::enlistmentRecordDate(
                 $this->gateway->joinDate(),
-                $this->gateway->creationDate(),
-                $this->gateway->boardTimezone()
+                $this->gateway->creationDate()
             );
 
             $this->gateway->writeServiceRecord(

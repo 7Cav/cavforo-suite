@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Issue #24 — the EnlistmentApplier orchestration: what happens, in what order,
- * and what is resilient to failure, when a new milpac is enlisted.
+ * Issues #24 and #45 — the EnlistmentApplier orchestration: what happens, in
+ * what order, and what is resilient to failure, when a new milpac is enlisted.
  *
  * The applier is the deep module that turns the pure decisions into concrete
  * grants and the enlistment record. Its collaborators (the entity world: award
@@ -15,8 +15,9 @@
  *  - A fresh milpac gets one PUC grant per bundled date, each with its citation
  *    attached, in earned order, all attributed to the resolved user.
  *  - Exactly one Transfer-typed enlistment record is written, with the canonical
- *    body, dated from the milpac's submitted Join Date (falling back to the
- *    creation date when the Join Date is blank or unparseable).
+ *    body, dated from the milpac's submitted Join Date at midnight UTC (falling
+ *    back to midnight UTC of the creation day when the Join Date is blank or
+ *    unparseable).
  *  - Fail-open: a grant that throws is logged and the remaining grants and the
  *    record still proceed; apply() never throws.
  *  - A failing record write is logged and does not abort; apply() never throws.
@@ -103,8 +104,7 @@ class FakeGateway implements EnlistmentGateway
         public int $visitorUserId = 42,
         public int $systemFallbackUserId = 1,
         public int $creationDate = 1600000000,
-        public string $joinDate = '',
-        public string $boardTimezone = 'UTC'
+        public string $joinDate = ''
     ) {}
 
     public function existingPucAwardDates(): array
@@ -118,7 +118,6 @@ class FakeGateway implements EnlistmentGateway
     public function systemFallbackUserId(): int { return $this->systemFallbackUserId; }
     public function creationDate(): int { return $this->creationDate; }
     public function joinDate(): string { return $this->joinDate; }
-    public function boardTimezone(): string { return $this->boardTimezone; }
 
     public function grantAward(int $awardId, int $awardDate, int $fromUserId, string $citationPath): void
     {
@@ -190,16 +189,18 @@ check(
         && $gw->records[0]->body === EnlistmentDecisions::ENLISTMENT_RECORD_BODY,
     var_export($gw->records, true)
 );
+$creationDayMidnight = \DateTimeImmutable::createFromFormat('!Y-m-d', gmdate('Y-m-d', 1600000000), new \DateTimeZone('UTC'))
+    ->getTimestamp();
 check(
-    'with no Join Date submitted, the record falls back to the creation date',
-    count($gw->records) === 1 && $gw->records[0]->recordDate === 1600000000,
+    'with no Join Date submitted, the record falls back to midnight UTC of the creation day',
+    count($gw->records) === 1 && $gw->records[0]->recordDate === $creationDayMidnight,
     var_export($gw->records, true)
 );
 
-// --- The enlistment record follows the submitted Join Date ---------------
-$gw = new FakeGateway(joinDate: '2012-05-18', boardTimezone: 'UTC');
+// --- The enlistment record follows the submitted Join Date, at midnight UTC ---
+$gw = new FakeGateway(joinDate: '2012-05-18');
 (new EnlistmentApplier($gw))->apply();
-$expected = EnlistmentDecisions::enlistmentRecordDate('2012-05-18', 1600000000, 'UTC');
+$expected = EnlistmentDecisions::enlistmentRecordDate('2012-05-18', 1600000000);
 check(
     'a submitted Join Date dates the enlistment record (not the creation moment)',
     count($gw->records) === 1
@@ -208,27 +209,26 @@ check(
     var_export($gw->records, true)
 );
 
-// A non-UTC board timezone is carried through to the record date: the record is
-// dated to the Join Date at that zone's midnight, distinct from the UTC instant.
-// This pins the gateway-timezone -> decision wiring at the applier level.
-$gw = new FakeGateway(joinDate: '2012-05-18', boardTimezone: 'America/New_York');
-(new EnlistmentApplier($gw))->apply();
-$expectedNy = EnlistmentDecisions::enlistmentRecordDate('2012-05-18', 1600000000, 'America/New_York');
-$expectedUtc = EnlistmentDecisions::enlistmentRecordDate('2012-05-18', 1600000000, 'UTC');
+// Issue #45: the record is stamped at midnight UTC of the Join Date's day,
+// independent of the board timezone (not consulted for the stamp). It lands on
+// the same instant PucSet stamps a PUC grant for the same calendar day, so
+// EnlistmentDefaults and RosterPatch agree on any board.
 check(
-    'the board timezone is passed through to the record date (non-UTC midnight, distinct from UTC)',
+    'the Join Date stamps midnight UTC, matching the PUC grant convention',
     count($gw->records) === 1
-        && $gw->records[0]->recordDate === $expectedNy
-        && $gw->records[0]->recordDate !== $expectedUtc,
+        && $gw->records[0]->recordDate === PucSet::awardDateTimestamp('2012-05-18'),
     var_export($gw->records, true)
 );
 
-// An unparseable Join Date still produces a valid record, dated to creation.
+// An unparseable Join Date still produces a valid record, dated to midnight UTC
+// of the creation day (issue #45: the fallback floors, it is not the raw instant).
 $gw = new FakeGateway(joinDate: 'not-a-date');
 (new EnlistmentApplier($gw))->apply();
 check(
-    'an unparseable Join Date falls back to the creation date for the record',
-    count($gw->records) === 1 && $gw->records[0]->recordDate === 1600000000,
+    'an unparseable Join Date falls back to midnight UTC of the creation day',
+    count($gw->records) === 1
+        && $gw->records[0]->recordDate === $creationDayMidnight
+        && $gw->records[0]->recordDate !== 1600000000,
     var_export($gw->records, true)
 );
 
