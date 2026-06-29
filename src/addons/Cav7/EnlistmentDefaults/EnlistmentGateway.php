@@ -33,8 +33,9 @@ interface EnlistmentGateway
     public function systemFallbackUserId(): int;
 
     /**
-     * The milpac's creation timestamp. The enlistment record falls back to this
-     * when the Join Date is blank or unparseable.
+     * The milpac's creation timestamp. The enlistment record falls back to
+     * midnight UTC of the day this timestamp falls on when the Join Date is
+     * blank or unparseable.
      */
     public function creationDate(): int;
 

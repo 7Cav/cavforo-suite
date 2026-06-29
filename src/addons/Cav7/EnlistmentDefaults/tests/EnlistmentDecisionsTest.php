@@ -1,9 +1,9 @@
 <?php
 
 /**
- * Issue #24 — the pure decision rules behind PUC automation, isolated from the
- * XenForo entities they ultimately drive so every acceptance criterion that is
- * a decision (not a database write) is covered without booting XenForo.
+ * Issues #24 and #45 — the pure decision rules behind PUC automation, isolated
+ * from the XenForo entities they ultimately drive so every acceptance criterion
+ * that is a decision (not a database write) is covered without booting XenForo.
  *
  * Rules under test (all on Cav7\EnlistmentDefaults\EnlistmentDecisions):
  *
@@ -15,6 +15,10 @@
  *  - attributionUserId(): the acting visitor when there is a session, else the
  *    configured system fallback user id (CLI, no visitor).
  *  - The canonical enlistment record: a fixed Transfer-typed body.
+ *  - enlistmentRecordDate() (#45): the record follows the submitted Join Date,
+ *    stamped at midnight UTC of that calendar day independent of the board
+ *    timezone, and falls back to midnight UTC of the creation day when the Join
+ *    Date is blank or unparseable.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -127,6 +131,21 @@ check(
     'a valid Y-m-d Join Date resolves to midnight UTC of that day',
     EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation) === $midnightUtc,
     'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation)
+);
+// Same expectation, pinned to the known epoch as a literal rather than the same
+// createFromFormat the code uses — so a regression cannot hide behind a matching
+// computation. 1337299200 is 2012-05-18 00:00:00 UTC.
+check(
+    '2012-05-18 resolves to its literal midnight-UTC epoch (1337299200)',
+    EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation) === 1337299200,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('2012-05-18', $creation)
+);
+// A valid Join Date with surrounding whitespace is trimmed, then accepted: the
+// trim()-then-parse branch yields the same midnight-UTC epoch, not the fallback.
+check(
+    'a valid Join Date with surrounding whitespace resolves to midnight UTC',
+    EnlistmentDecisions::enlistmentRecordDate('  2012-05-18  ', $creation) === 1337299200,
+    'got: ' . EnlistmentDecisions::enlistmentRecordDate('  2012-05-18  ', $creation)
 );
 
 // The stamp does not depend on the board timezone. Parsed at local midnight, a

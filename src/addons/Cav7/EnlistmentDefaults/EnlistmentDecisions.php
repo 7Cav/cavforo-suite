@@ -107,12 +107,14 @@ class EnlistmentDecisions
      * Parse a bare calendar day to the midnight-UTC epoch of that day, or null
      * if it is blank or not a clean 'Y-m-d'.
      *
-     * Strict '!Y-m-d' in UTC ('!' zeroes the time of day), with a round-trip
-     * guard: createFromFormat is lenient (it rolls 2012-13-45 over into the next
-     * year), so any value that does not format back to the exact input is
-     * rejected rather than silently accepted. This mirrors the pattern in
-     * PucSet::awardDateTimestamp() and Cav7\RosterPatch\MilpacDate without
-     * taking a runtime dependency on either.
+     * Strict '!Y-m-d' in UTC ('!' zeroes the time of day): the same midnight-UTC
+     * stamping convention PucSet::awardDateTimestamp() uses. On top of that, a
+     * round-trip guard: createFromFormat is lenient (it rolls 2012-13-45 over
+     * into the next year), so any value that does not format back to the exact
+     * input is rejected rather than silently accepted. That guard mirrors
+     * Cav7\RosterPatch\MilpacDate alone; PucSet has no round-trip guard and
+     * throws on a bad date rather than falling back. Neither dependency is taken
+     * at runtime.
      */
     private static function midnightUtc(string $day): ?int
     {

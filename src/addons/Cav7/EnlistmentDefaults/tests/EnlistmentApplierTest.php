@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Issue #24 — the EnlistmentApplier orchestration: what happens, in what order,
- * and what is resilient to failure, when a new milpac is enlisted.
+ * Issues #24 and #45 — the EnlistmentApplier orchestration: what happens, in
+ * what order, and what is resilient to failure, when a new milpac is enlisted.
  *
  * The applier is the deep module that turns the pure decisions into concrete
  * grants and the enlistment record. Its collaborators (the entity world: award
@@ -210,9 +210,9 @@ check(
 );
 
 // Issue #45: the record is stamped at midnight UTC of the Join Date's day,
-// independent of the board timezone (which is no longer consulted for the
-// stamp). It lands on the same instant PucSet stamps a PUC grant for the same
-// calendar day, so EnlistmentDefaults and RosterPatch agree on any board.
+// independent of the board timezone (not consulted for the stamp). It lands on
+// the same instant PucSet stamps a PUC grant for the same calendar day, so
+// EnlistmentDefaults and RosterPatch agree on any board.
 check(
     'the Join Date stamps midnight UTC, matching the PUC grant convention',
     count($gw->records) === 1
