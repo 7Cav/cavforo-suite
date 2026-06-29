@@ -1,0 +1,6 @@
+{
+    "from_class": "NF\\Rosters\\Pub\\Controller\\Roster",
+    "to_class": "Cav7\\RosterPatch\\NF\\Rosters\\Pub\\Controller\\Roster",
+    "execute_order": 10,
+    "active": true
+}

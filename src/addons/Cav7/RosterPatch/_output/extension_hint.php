@@ -11,4 +11,11 @@
 namespace Cav7\RosterPatch\NF\Rosters\Entity
 {
 	class XFCP_Position extends \NF\Rosters\Entity\Position {}
+	class XFCP_RosterUserAward extends \NF\Rosters\Entity\RosterUserAward {}
+	class XFCP_ServiceRecord extends \NF\Rosters\Entity\ServiceRecord {}
+}
+
+namespace Cav7\RosterPatch\NF\Rosters\Pub\Controller
+{
+	class XFCP_Roster extends \NF\Rosters\Pub\Controller\Roster {}
 }

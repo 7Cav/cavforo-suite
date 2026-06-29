@@ -12,6 +12,14 @@ The vendor applies a position's extra user groups to a member only at the moment
 
 A class extension on `NF\Rosters\Entity\Position` adds the `_postSave` hook the vendor is missing. When a position's group list changes, the add-on re-applies it to every current holder (primary and secondary) through XenForo's own user-group-change service — the same path the vendor uses. Because that service diffs across all of a member's grants, it never strips a group the member still holds through another position, roster, or rank.
 
+**Award and service-record dates are fixed calendar days now.**
+
+An award or service record carries a date with no time of day. The vendor stored that day at whatever time it was saved and rendered it in each viewer's timezone, so the same entry could read a day early or a day late depending on who was looking, and a staffer outside UTC often saw the wrong day before they touched the form.
+
+The fix treats the date as one calendar day throughout. The submitted day is parsed at midnight UTC and rejected when it is not a real date, so 2026-13-40 is an error rather than a silent roll into 2027. The entity stores it at midnight UTC, the profile renders it in UTC to match the edit form, and every viewer reads the same day. A new entry's date defaults to the editor's own today in their timezone instead of UTC's.
+
+This also reaches the PUC grants and the enlistment record that [EnlistmentDefaults](../EnlistmentDefaults/) stamps, though the two are stored differently. PUC grants are written at midnight UTC, so flooring leaves them on the same day for any board. The enlistment record is different: it is written at midnight in the board timezone, or at the milpac's creation time when the Join Date is blank or unusable. Flooring moves that record to its UTC calendar day, which matches the day shown before only on a board at or behind UTC. The live board is UTC+0 today, so nothing shifts. A board ahead of UTC would see such a record land on the previous UTC day. The template change also renders every row through the UTC getter for all viewers, so a historical row stored close to a UTC day boundary can read a different day to a viewer outside UTC than it did under the old per-viewer rendering. The calendar-day logic lives in `MilpacDate`, a pure class with no XenForo dependency, so the round trip is tested directly, and the entity, controller, and template wiring stays thin around it. Historical dates saved under the old behaviour are left as they are, and re-saving an entry through the corrected form stores it correctly.
+
 ## Reconciling the existing backlog
 
 The hook fixes drift from the moment it is installed, but it only fires when a position's group list actually changes. Positions whose list is already correct yet stale on the members — the backlog that built up before the hook existed — need a one-time pass:
@@ -48,11 +56,15 @@ For release builds, generate hashes first: `php cmd.php xf-addon:build-release C
 
 ```
 src/addons/Cav7/RosterPatch/
-  NF/Rosters/Entity/Position.php        the _postSave hook (class extension)
-  Repository/PositionGroupSync.php      holder query + the re-apply logic
-  Cli/Command/SyncPositionGroups.php    one-off backlog reconcile
-  tests/                                shape guard, no stack required
-  _data/, _output/                      class-extension registration
+  MilpacDate.php                         calendar-day parse/render/floor logic (pure)
+  NF/Rosters/Entity/Position.php         position group-grant re-sync hook
+  NF/Rosters/Entity/RosterUserAward.php  floor award_date to midnight UTC on save
+  NF/Rosters/Entity/ServiceRecord.php    floor record_date to midnight UTC on save
+  NF/Rosters/Pub/Controller/Roster.php   reject bad dates, default a new entry to the editor's today
+  Repository/PositionGroupSync.php       holder query + the re-apply logic
+  Cli/Command/SyncPositionGroups.php     one-off backlog reconcile
+  tests/                                 pure-logic tests + shape guards, no stack required
+  _data/, _output/                       class-extension + template-modification registration
 ```
 
 ## License
