@@ -219,11 +219,13 @@ check(
 
 // --- editorToday(): the offset follows the season (DST) ---------------------
 // Sydney is AEDT (UTC+11) in its January summer, a different offset from the
-// June AEST (UTC+10) case above, so the day-flip math has to read the seasonal
-// offset rather than a fixed one.
+// June AEST (UTC+10) case above. 13:30 UTC sits in the one hour where the two
+// offsets disagree on the local day: +11 rolls it to 2026-01-16, +10 keeps it
+// on 2026-01-15. So this fails if the day-flip math reads a fixed offset
+// instead of the seasonal one.
 check(
     'an editor in summer DST sees the offset for that season (Australia/Sydney, AEDT)',
-    MilpacDate::editorToday(midnightUtc('2026-01-15') + 22 * 3600, 'Australia/Sydney') === '2026-01-16'
+    MilpacDate::editorToday(midnightUtc('2026-01-15') + 13 * 3600 + 1800, 'Australia/Sydney') === '2026-01-16'
 );
 
 // --- parseEnteredDay(): trimming and strict formatting ----------------------
