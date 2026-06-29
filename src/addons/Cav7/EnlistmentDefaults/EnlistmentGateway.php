@@ -44,9 +44,6 @@ interface EnlistmentGateway
      */
     public function joinDate(): string;
 
-    /** The board timezone the Join Date is read in (e.g. 'America/New_York'). */
-    public function boardTimezone(): string;
-
     /**
      * Grant one PUC award on the milpac: create the award row (award id,
      * award_date, from_user_id) and attach the bundled citation JPG, which
