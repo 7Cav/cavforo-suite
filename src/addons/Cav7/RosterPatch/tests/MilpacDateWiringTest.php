@@ -114,7 +114,7 @@ foreach (['actionProfileAwardsAdd', 'actionProfileServiceRecordAdd'] as $action)
 check(
     "the prefill uses the editor's timezone (\\XF::language()->getTimeZone())",
     str_contains($ctrl, '\XF::language()->getTimeZone()'),
-    "defaulting to UTC's today would reintroduce cause #3"
+    "defaulting to UTC's today would reopen the wrong-day-for-non-UTC-staff bug"
 );
 check(
     'the prefill value comes from MilpacDate::editorTodayTimestamp',

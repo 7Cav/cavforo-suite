@@ -14,9 +14,12 @@ use Cav7\RosterPatch\MilpacDate;
  * round-trips through.
  *
  * Flooring runs whenever the column is set (an insert, or an edit that touched
- * the date). It is display-invariant: it never changes the UTC day the value
- * falls on, only the time of day, so the enlistment record Cav7/EnlistmentDefaults
- * writes keeps the day it already shows.
+ * the date), and never changes the UTC day the value falls on, only the time of
+ * day. It agrees with the enlistment record Cav7/EnlistmentDefaults writes only
+ * while the board timezone offset is at or behind UTC (true for the live UTC+0
+ * board); EnlistmentDefaults stamps that record at board-local midnight, so on a
+ * board ahead of UTC its midnight lands on the previous UTC day and flooring
+ * plus UTC rendering would show that earlier day.
  */
 class ServiceRecord extends XFCP_ServiceRecord
 {

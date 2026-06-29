@@ -184,6 +184,72 @@ check(
     MilpacDate::editorTodayTimestamp($nyNow, 'America/New_York') === midnightUtc('2026-06-28')
 );
 
+// --- editorToday(): the local-midnight day-flip boundary --------------------
+// America/New_York is EDT (UTC-4) in June, so its local day rolls over at
+// 04:00 UTC. One second before, the editor is still on the prior day; at the
+// instant itself they are on the new day.
+check(
+    'one second before the local-midnight rollover is still the prior day (EDT)',
+    MilpacDate::editorToday(midnightUtc('2026-06-29') + 4 * 3600 - 1, 'America/New_York') === '2026-06-28'
+);
+check(
+    'at the local-midnight rollover the editor is on the new day (EDT)',
+    MilpacDate::editorToday(midnightUtc('2026-06-29') + 4 * 3600, 'America/New_York') === '2026-06-29'
+);
+
+// --- editorToday(): the far ends of the offset range ------------------------
+// Kiritimati is UTC+14 (the furthest ahead), Pago Pago UTC-11 (the furthest
+// behind), so the same instant lands on three different calendar days.
+check(
+    'an editor at UTC+14 sees the next day (Pacific/Kiritimati)',
+    MilpacDate::editorToday(midnightUtc('2026-06-29') + 10 * 3600, 'Pacific/Kiritimati') === '2026-06-30'
+);
+check(
+    'an editor at UTC-11 sees the previous day (Pacific/Pago_Pago)',
+    MilpacDate::editorToday(midnightUtc('2026-06-29') + 10 * 3600, 'Pacific/Pago_Pago') === '2026-06-28'
+);
+// The prefill default round-trips at the extreme ahead-of-UTC offset too: the
+// editor's day is stored midnight UTC and renders back as that same day.
+check(
+    "the new-entry default renders as the editor's own today at UTC+14",
+    MilpacDate::render(
+        MilpacDate::editorTodayTimestamp(midnightUtc('2026-06-29') + 10 * 3600, 'Pacific/Kiritimati')
+    ) === '2026-06-30'
+);
+
+// --- editorToday(): the offset follows the season (DST) ---------------------
+// Sydney is AEDT (UTC+11) in its January summer, a different offset from the
+// June AEST (UTC+10) case above, so the day-flip math has to read the seasonal
+// offset rather than a fixed one.
+check(
+    'an editor in summer DST sees the offset for that season (Australia/Sydney, AEDT)',
+    MilpacDate::editorToday(midnightUtc('2026-01-15') + 22 * 3600, 'Australia/Sydney') === '2026-01-16'
+);
+
+// --- parseEnteredDay(): trimming and strict formatting ----------------------
+check(
+    'surrounding whitespace is trimmed before parsing',
+    MilpacDate::parseEnteredDay(' 2026-06-29 ') === midnightUtc('2026-06-29')
+);
+check(
+    'a non-zero-padded day is rejected (2026-6-9 does not round-trip)',
+    MilpacDate::parseEnteredDay('2026-6-9') === null,
+    'got: ' . var_export(MilpacDate::parseEnteredDay('2026-6-9'), true)
+);
+
+// --- parseEnteredDay(): the century leap rule -------------------------------
+// 1900 is divisible by 100 but not 400, so it is not a leap year; 2000 is
+// divisible by 400, so it is.
+check(
+    'a century non-leap-year Feb 29 is rejected (1900-02-29)',
+    MilpacDate::parseEnteredDay('1900-02-29') === null,
+    'got: ' . var_export(MilpacDate::parseEnteredDay('1900-02-29'), true)
+);
+check(
+    'a 400-year leap day is accepted (2000-02-29)',
+    MilpacDate::parseEnteredDay('2000-02-29') === midnightUtc('2000-02-29')
+);
+
 // --- Summary --------------------------------------------------------------
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";

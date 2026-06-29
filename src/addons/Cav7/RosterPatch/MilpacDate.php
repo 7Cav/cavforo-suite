@@ -18,89 +18,101 @@ namespace Cav7\RosterPatch;
  */
 class MilpacDate
 {
-    /**
-     * Parse a submitted calendar day to the midnight-UTC epoch of that day.
-     *
-     * Strict '!Y-m-d' in UTC ('!' zeroes the time of day), with the same
-     * round-trip guard Cav7/EnlistmentDefaults uses: createFromFormat is lenient
-     * and rolls an out-of-range value over (2026-13-40 becomes 2027-02-09), so
-     * any value that does not format back to the exact input is rejected rather
-     * than silently accepted. Returns null for a blank, malformed, or
-     * out-of-range value so the caller can reject it instead of storing junk.
-     */
-    public static function parseEnteredDay(string $raw): ?int
-    {
-        $value = trim($raw);
-        if ($value === '') {
-            return null;
-        }
+	/**
+	 * Parse a submitted calendar day to the midnight-UTC epoch of that day.
+	 *
+	 * Strict '!Y-m-d' in UTC ('!' zeroes the time of day), with the same
+	 * round-trip guard Cav7/EnlistmentDefaults uses: createFromFormat is lenient
+	 * and rolls an out-of-range value over (2026-13-40 becomes 2027-02-09), so
+	 * any value that does not format back to the exact input is rejected rather
+	 * than silently accepted. Returns null for a blank, malformed, or
+	 * out-of-range value so the caller can reject it instead of storing junk.
+	 */
+	public static function parseEnteredDay(string $raw): ?int
+	{
+		$value = trim($raw);
+		if ($value === '') {
+			return null;
+		}
 
-        $date = \DateTimeImmutable::createFromFormat(
-            '!Y-m-d',
-            $value,
-            new \DateTimeZone('UTC')
-        );
+		$date = \DateTimeImmutable::createFromFormat(
+			'!Y-m-d',
+			$value,
+			new \DateTimeZone('UTC')
+		);
 
-        if ($date === false || $date->format('Y-m-d') !== $value) {
-            return null;
-        }
+		if ($date === false || $date->format('Y-m-d') !== $value) {
+			return null;
+		}
 
-        return $date->getTimestamp();
-    }
+		return $date->getTimestamp();
+	}
 
-    /**
-     * The calendar day a stored timestamp falls on, in UTC, as 'Y-m-d'. This is
-     * the single day every viewer sees, and it matches the vendor's own
-     * getAwardDate()/getRecordDate() getters (PHP date() under XenForo's UTC
-     * default timezone). gmdate keeps the result independent of the process
-     * timezone, so the test reads the same on any machine.
-     */
-    public static function render(int $timestamp): string
-    {
-        return gmdate('Y-m-d', $timestamp);
-    }
+	/**
+	 * The calendar day a stored timestamp falls on, in UTC, as 'Y-m-d'. This is
+	 * the single day every viewer sees. render() uses gmdate (always UTC), so
+	 * the result is independent of the process timezone and reads the same on
+	 * any machine, which is what keeps the round trip testable in plain PHP. It
+	 * agrees with the vendor's own getAwardDate()/getRecordDate() getters, which
+	 * use date() (the process timezone), only while that process timezone is
+	 * UTC, as it is under XenForo's default boot.
+	 */
+	public static function render(int $timestamp): string
+	{
+		return gmdate('Y-m-d', $timestamp);
+	}
 
-    /**
-     * Normalise a stored timestamp to midnight UTC of the UTC day it falls on:
-     * the canonical storage form for a calendar date. Display-invariant
-     * (render() is unchanged, since the UTC day does not move) and idempotent,
-     * so flooring an already-canonical value, or a value written by another
-     * add-on, is safe and never shifts the day shown.
-     */
-    public static function floorToMidnightUtc(int $timestamp): int
-    {
-        // render() always yields a real 'Y-m-d', which parseEnteredDay always
-        // accepts, so the result is never null.
-        return (int) self::parseEnteredDay(self::render($timestamp));
-    }
+	/**
+	 * Normalise a stored timestamp to midnight UTC of the UTC day it falls on:
+	 * the canonical storage form for a calendar date. Display-invariant
+	 * (render() is unchanged, since the UTC day does not move) and idempotent,
+	 * so flooring an already-canonical value, or a value written by another
+	 * add-on, is safe and never shifts the day shown.
+	 */
+	public static function floorToMidnightUtc(int $timestamp): int
+	{
+		// render() always yields a real 'Y-m-d', which parseEnteredDay always
+		// accepts, so the coalesce never fires for a real input. The throw is a
+		// guard: if that invariant ever broke it would fail loudly here rather
+		// than silently coercing null to 0 and stamping the date to 1970.
+		return self::parseEnteredDay(self::render($timestamp))
+			?? throw new \LogicException(
+				'MilpacDate::floorToMidnightUtc: render() must always produce a parseable Y-m-d'
+			);
+	}
 
-    /**
-     * The editor's own today as 'Y-m-d', read in their configured timezone, so a
-     * new entry opens pre-filled with the day it is for the staffer rather than
-     * UTC's today. Falls back to UTC's today when the timezone is empty or
-     * unknown; never throws.
-     */
-    public static function editorToday(int $now, string $timezone): string
-    {
-        try {
-            $tz = new \DateTimeZone(trim($timezone));
-        } catch (\Throwable $e) {
-            $tz = new \DateTimeZone('UTC');
-        }
+	/**
+	 * The editor's own today as 'Y-m-d', read in their configured timezone, so a
+	 * new entry opens pre-filled with the day it is for the staffer rather than
+	 * UTC's today. Falls back to UTC's today when the timezone is empty or
+	 * unknown; never throws.
+	 */
+	public static function editorToday(int $now, string $timezone): string
+	{
+		try {
+			$tz = new \DateTimeZone(trim($timezone));
+		} catch (\Throwable $e) {
+			$tz = new \DateTimeZone('UTC');
+		}
 
-        return (new \DateTimeImmutable('@' . $now))
-            ->setTimezone($tz)
-            ->format('Y-m-d');
-    }
+		return (new \DateTimeImmutable('@' . $now))
+			->setTimezone($tz)
+			->format('Y-m-d');
+	}
 
-    /**
-     * The midnight-UTC epoch of the editor's today: the value a new award or
-     * service record defaults its date to, so the add form's date field shows
-     * the editor's day. Stored midnight UTC, it renders back to that same day.
-     */
-    public static function editorTodayTimestamp(int $now, string $timezone): int
-    {
-        // editorToday() always yields a real 'Y-m-d', so the parse is never null.
-        return (int) self::parseEnteredDay(self::editorToday($now, $timezone));
-    }
+	/**
+	 * The midnight-UTC epoch of the editor's today: the value a new award or
+	 * service record defaults its date to, so the add form's date field shows
+	 * the editor's day. Stored midnight UTC, it renders back to that same day.
+	 */
+	public static function editorTodayTimestamp(int $now, string $timezone): int
+	{
+		// editorToday() always yields a real 'Y-m-d', so the coalesce never
+		// fires for a real input. The throw guards the invariant: a future break
+		// fails loudly here instead of silently stamping the date to 1970.
+		return self::parseEnteredDay(self::editorToday($now, $timezone))
+			?? throw new \LogicException(
+				'MilpacDate::editorTodayTimestamp: editorToday() must always produce a parseable Y-m-d'
+			);
+	}
 }

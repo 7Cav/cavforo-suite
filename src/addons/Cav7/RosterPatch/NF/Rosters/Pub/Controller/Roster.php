@@ -92,9 +92,11 @@ class Roster extends XFCP_Roster
 	 * day. The vendor getter renders that column in UTC, so it reads back as the
 	 * same day.
 	 *
-	 * Fail-open: a bad timezone or option is logged and the form still renders;
-	 * a missing prefill costs the staffer a correction, it must never break the
-	 * add form.
+	 * Fail-open: a bad timezone never reaches here, since MilpacDate::editorToday()
+	 * already falls back to UTC, so this catch is a defensive backstop for an
+	 * unexpected entity or param error. A missing prefill only costs the staffer
+	 * a correction, so it is logged and the add form still renders rather than
+	 * breaking.
 	 */
 	protected function prefillEditorToday(AbstractReply $reply, string $column): void
 	{
