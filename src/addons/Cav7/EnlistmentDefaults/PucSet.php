@@ -66,7 +66,15 @@ class PucSet
      * The unix timestamp for a PUC date's award_date column: midnight UTC on
      * that calendar day. Stored as an int, it round-trips back to the date.
      *
-     * @throws \InvalidArgumentException if the date is malformed
+     * Strict '!Y-m-d' in UTC ('!' zeroes the time of day), with the same
+     * round-trip guard the sibling parsers carry (EnlistmentDecisions::
+     * midnightUtc() and Cav7\RosterPatch\MilpacDate::parseEnteredDay()):
+     * createFromFormat is lenient and rolls an out-of-range value over
+     * ('2024-15-01' becomes '2025-03-01'), so any value that does not format
+     * back to the exact input is rejected rather than silently accepted. Unlike
+     * those siblings, which return null, this one throws on a bad date.
+     *
+     * @throws \InvalidArgumentException if the date is malformed or out of range
      */
     public static function awardDateTimestamp(string $date): int
     {
@@ -76,8 +84,8 @@ class PucSet
             new \DateTimeZone('UTC')
         );
 
-        if ($dt === false) {
-            throw new \InvalidArgumentException("Malformed PUC date '$date'");
+        if ($dt === false || $dt->format('Y-m-d') !== $date) {
+            throw new \InvalidArgumentException("Invalid or out-of-range PUC date '$date'");
         }
 
         return $dt->getTimestamp();

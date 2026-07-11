@@ -127,6 +127,51 @@ try {
 }
 check('awardDateTimestamp() rejects a malformed date', $threwMalformed);
 
+// An empty string is a plainly malformed value too, and must throw.
+$threwEmpty = false;
+try {
+    PucSet::awardDateTimestamp('');
+} catch (\InvalidArgumentException $e) {
+    $threwEmpty = true;
+}
+check('awardDateTimestamp() rejects an empty string', $threwEmpty);
+
+// --- An out-of-range date is rejected, not silently rolled over (issue #48) -
+// createFromFormat('!Y-m-d', ...) is lenient: '2024-15-01' does not fail, it
+// rolls the 15th month over into 2025-03-01 and returns a valid timestamp. A
+// typo in a bundled DATES entry must throw loudly rather than stamp a silently
+// wrong award_date, so the round-trip guard rejects any value that does not
+// format back to the exact input.
+$threwRollover = false;
+try {
+    PucSet::awardDateTimestamp('2024-15-01');
+} catch (\InvalidArgumentException $e) {
+    $threwRollover = true;
+}
+check('awardDateTimestamp() rejects an out-of-range date instead of rolling it over', $threwRollover);
+
+// A day-overflow value rolls over the same way: createFromFormat('!Y-m-d', ...)
+// turns '2024-02-30' into '2024-03-01'. The round-trip guard must reject it too.
+$threwDayOverflow = false;
+try {
+    PucSet::awardDateTimestamp('2024-02-30');
+} catch (\InvalidArgumentException $e) {
+    $threwDayOverflow = true;
+}
+check('awardDateTimestamp() rejects a day-overflow date instead of rolling it over', $threwDayOverflow);
+
+// The case the guard exists for: createFromFormat accepts a single-digit
+// '2024-1-1' and parses it to a real date, so '!Y-m-d' does not fail. Only the
+// format('Y-m-d') !== $date round-trip guard rejects it — proof the guard is
+// load-bearing and not redundant with createFromFormat's own validation.
+$threwSingleDigit = false;
+try {
+    PucSet::awardDateTimestamp('2024-1-1');
+} catch (\InvalidArgumentException $e) {
+    $threwSingleDigit = true;
+}
+check('awardDateTimestamp() rejects a single-digit date the format guard alone catches', $threwSingleDigit);
+
 // --- The bundled default record-type option is the Transfer type id --------
 // This addon exists to stop the historical drift where the first record was
 // written under the wrong type. Pin the shipped default so a stray edit to
