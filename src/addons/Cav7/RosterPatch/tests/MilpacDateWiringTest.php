@@ -46,6 +46,7 @@ if ($extXml !== false) {
 }
 
 $expectedExtensions = [
+    'NF\Rosters\Entity\Position'          => 'Cav7\RosterPatch\NF\Rosters\Entity\Position',
     'NF\Rosters\Entity\RosterUserAward'   => 'Cav7\RosterPatch\NF\Rosters\Entity\RosterUserAward',
     'NF\Rosters\Entity\ServiceRecord'     => 'Cav7\RosterPatch\NF\Rosters\Entity\ServiceRecord',
     'NF\Rosters\Pub\Controller\Roster'    => 'Cav7\RosterPatch\NF\Rosters\Pub\Controller\Roster',
