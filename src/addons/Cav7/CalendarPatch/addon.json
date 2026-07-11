@@ -1,0 +1,17 @@
+{
+    "legacy_addon_id": "",
+    "title": "7Cav - Calendar Patches",
+    "description": "Companion add-on that patches NF/Calendar behaviour through class extensions, without modifying the vendor add-on. Fixes so far: the wait-list joiner no longer crashes on construction, so members can join an event's wait list again.",
+    "version_id": 1000070,
+    "version_string": "1.0.0",
+    "dev": "Cav7",
+    "dev_url": "https://github.com/7Cav",
+    "faq_url": "",
+    "support_url": "",
+    "extra_urls": [],
+    "require": {
+        "XF": [2030070, "XenForo 2.3.0+"],
+        "NF/Calendar": [2060270, "NF/Calendar 2.6.2+"]
+    },
+    "icon": ""
+}

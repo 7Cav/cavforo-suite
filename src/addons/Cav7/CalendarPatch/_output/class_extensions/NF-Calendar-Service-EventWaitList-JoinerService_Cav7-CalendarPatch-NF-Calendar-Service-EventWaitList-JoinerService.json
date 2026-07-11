@@ -1,0 +1,6 @@
+{
+    "from_class": "NF\\Calendar\\Service\\EventWaitList\\JoinerService",
+    "to_class": "Cav7\\CalendarPatch\\NF\\Calendar\\Service\\EventWaitList\\JoinerService",
+    "execute_order": 10,
+    "active": true
+}
