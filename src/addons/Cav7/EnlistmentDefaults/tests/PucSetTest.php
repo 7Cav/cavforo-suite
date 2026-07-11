@@ -127,6 +127,29 @@ try {
 }
 check('awardDateTimestamp() rejects a malformed date', $threwMalformed);
 
+// An empty string is a plainly malformed value too, and must throw.
+$threwEmpty = false;
+try {
+    PucSet::awardDateTimestamp('');
+} catch (\InvalidArgumentException $e) {
+    $threwEmpty = true;
+}
+check('awardDateTimestamp() rejects an empty string', $threwEmpty);
+
+// --- An out-of-range date is rejected, not silently rolled over (issue #48) -
+// createFromFormat('!Y-m-d', ...) is lenient: '2024-15-01' does not fail, it
+// rolls the 15th month over into 2025-03-01 and returns a valid timestamp. A
+// typo in a bundled DATES entry must throw loudly rather than stamp a silently
+// wrong award_date, so the round-trip guard rejects any value that does not
+// format back to the exact input.
+$threwRollover = false;
+try {
+    PucSet::awardDateTimestamp('2024-15-01');
+} catch (\InvalidArgumentException $e) {
+    $threwRollover = true;
+}
+check('awardDateTimestamp() rejects an out-of-range date instead of rolling it over', $threwRollover);
+
 // --- The bundled default record-type option is the Transfer type id --------
 // This addon exists to stop the historical drift where the first record was
 // written under the wrong type. Pin the shipped default so a stray edit to

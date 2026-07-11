@@ -111,10 +111,11 @@ class EnlistmentDecisions
      * stamping convention PucSet::awardDateTimestamp() uses. On top of that, a
      * round-trip guard: createFromFormat is lenient (it rolls 2012-13-45 over
      * into the next year), so any value that does not format back to the exact
-     * input is rejected rather than silently accepted. That guard mirrors
-     * Cav7\RosterPatch\MilpacDate alone; PucSet has no round-trip guard and
-     * throws on a bad date rather than falling back. Neither dependency is taken
-     * at runtime.
+     * input is rejected rather than silently accepted. That guard mirrors both
+     * Cav7\RosterPatch\MilpacDate::parseEnteredDay() and
+     * PucSet::awardDateTimestamp(); the only difference is the failure mode —
+     * this one and MilpacDate return null, PucSet throws on a bad date. Neither
+     * dependency is taken at runtime.
      */
     private static function midnightUtc(string $day): ?int
     {
