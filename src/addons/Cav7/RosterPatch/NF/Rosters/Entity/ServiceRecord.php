@@ -19,6 +19,12 @@ use Cav7\RosterPatch\MilpacDate;
  * any board timezone: EnlistmentDefaults now stamps that record at midnight UTC
  * (and its blank/unparseable fallback at midnight UTC of the creation day), so
  * the value is already canonical and floorToMidnightUtc() is a no-op for it.
+ *
+ * Display is symmetric with storage. The vendor's getRecordDate() reads the
+ * column with date(), which follows the PHP process timezone, so it and
+ * RosterPatch's own UTC rendering only agree while that timezone is UTC. We
+ * override it to render through MilpacDate::render() (UTC), so the stored
+ * midnight-UTC day shows as the same calendar day whatever the process timezone.
  */
 class ServiceRecord extends XFCP_ServiceRecord
 {
@@ -30,5 +36,10 @@ class ServiceRecord extends XFCP_ServiceRecord
 		}
 
 		parent::_preSave();
+	}
+
+	public function getRecordDate(): string
+	{
+		return MilpacDate::render((int) $this->record_date);
 	}
 }

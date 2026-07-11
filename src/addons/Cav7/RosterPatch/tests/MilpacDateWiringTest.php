@@ -70,6 +70,9 @@ check(
 );
 
 // --- entity hooks floor the date to midnight UTC and chain the parent -------
+// Each entity also overrides the vendor's date getter to render the stored value
+// in UTC, so display no longer follows the PHP process timezone (issue #47).
+$dateGetters = ['award_date' => 'getAwardDate', 'record_date' => 'getRecordDate'];
 foreach (['RosterUserAward' => 'award_date', 'ServiceRecord' => 'record_date'] as $entity => $column) {
     $src = file_get_contents("$root/NF/Rosters/Entity/$entity.php");
     check("$entity extension reads", $src !== false);
@@ -85,6 +88,13 @@ foreach (['RosterUserAward' => 'award_date', 'ServiceRecord' => 'record_date'] a
         "$entity floor is guarded on insert or a changed $column",
         (bool) preg_match('/isInsert\(\)\s*\|\|\s*\$this->isChanged\(\s*\'' . $column . '\'\s*\)/', (string) $src),
         'an unguarded floor would rewrite the date on every unrelated save'
+    );
+    $getter = $dateGetters[$column];
+    check(
+        "$entity overrides $getter() to render $column in UTC via MilpacDate::render",
+        (bool) preg_match('/function\s+' . $getter . '\s*\(/', (string) $src)
+            && str_contains((string) $src, 'MilpacDate::render'),
+        'the getter must render the stored date in UTC so display no longer follows the process timezone'
     );
 }
 
