@@ -20,6 +20,12 @@ use Cav7\RosterPatch\MilpacDate;
  * value falls on, only the time of day, so a grant written by another add-on
  * (for example a Cav7/EnlistmentDefaults PUC grant) keeps the day it already
  * shows.
+ *
+ * Display is symmetric with storage. The vendor's getAwardDate() reads the
+ * column with date(), which follows the PHP process timezone, so it and
+ * RosterPatch's own UTC rendering only agree while that timezone is UTC. We
+ * override it to render through MilpacDate::render() (UTC), so the stored
+ * midnight-UTC day shows as the same calendar day whatever the process timezone.
  */
 class RosterUserAward extends XFCP_RosterUserAward
 {
@@ -31,5 +37,10 @@ class RosterUserAward extends XFCP_RosterUserAward
 		}
 
 		parent::_preSave();
+	}
+
+	public function getAwardDate(): string
+	{
+		return MilpacDate::render((int) $this->award_date);
 	}
 }

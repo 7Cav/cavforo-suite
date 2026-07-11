@@ -52,10 +52,10 @@ class MilpacDate
 	 * The calendar day a stored timestamp falls on, in UTC, as 'Y-m-d'. This is
 	 * the single day every viewer sees. render() uses gmdate (always UTC), so
 	 * the result is independent of the process timezone and reads the same on
-	 * any machine, which is what keeps the round trip testable in plain PHP. It
-	 * agrees with the vendor's own getAwardDate()/getRecordDate() getters, which
-	 * use date() (the process timezone), only while that process timezone is
-	 * UTC, as it is under XenForo's default boot.
+	 * any machine, which is what keeps the round trip testable in plain PHP. The
+	 * RosterPatch entity extensions override the vendor's getAwardDate()/
+	 * getRecordDate() getters to render through here, so those getters agree with
+	 * this UTC day whatever the process timezone, rather than only while it is UTC.
 	 */
 	public static function render(int $timestamp): string
 	{

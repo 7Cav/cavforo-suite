@@ -70,6 +70,9 @@ check(
 );
 
 // --- entity hooks floor the date to midnight UTC and chain the parent -------
+// Each entity also overrides the vendor's date getter to render the stored value
+// in UTC, so display no longer follows the PHP process timezone (issue #47).
+$dateGetters = ['award_date' => 'getAwardDate', 'record_date' => 'getRecordDate'];
 foreach (['RosterUserAward' => 'award_date', 'ServiceRecord' => 'record_date'] as $entity => $column) {
     $src = file_get_contents("$root/NF/Rosters/Entity/$entity.php");
     check("$entity extension reads", $src !== false);
@@ -85,6 +88,19 @@ foreach (['RosterUserAward' => 'award_date', 'ServiceRecord' => 'record_date'] a
         "$entity floor is guarded on insert or a changed $column",
         (bool) preg_match('/isInsert\(\)\s*\|\|\s*\$this->isChanged\(\s*\'' . $column . '\'\s*\)/', (string) $src),
         'an unguarded floor would rewrite the date on every unrelated save'
+    );
+    $getter = $dateGetters[$column];
+    // Bind MilpacDate::render to the getter's BODY reading the raw column, not
+    // the class docblock (which also names MilpacDate::render). [^}]*? cannot
+    // cross the getter's closing brace, so a body reverted to the vendor
+    // date('Y-m-d', $this->column) form fails this even with the docblock intact.
+    check(
+        "$entity overrides $getter() to render $column in UTC via MilpacDate::render",
+        (bool) preg_match(
+            '/function\s+' . $getter . '\b[^}]*?MilpacDate::render\(\s*\(int\)\s*\\$this->' . $column . '\b/',
+            (string) $src
+        ),
+        'the getter body must render the stored date via MilpacDate::render((int) $this->' . $column . '), so display no longer follows the process timezone'
     );
 }
 
