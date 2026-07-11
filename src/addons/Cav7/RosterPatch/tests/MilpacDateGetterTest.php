@@ -136,6 +136,15 @@ namespace Cav7\RosterPatch\Tests {
         $award->getAwardDate() === '2026-06-29',
         'got: ' . $award->getAwardDate()
     );
+    // The same sharp discriminator for record_date: 03:00 UTC on 2026-06-29 is
+    // 23:00 on 2026-06-28 in New York, so the vendor date() path renders
+    // 2026-06-28. getRecordDate() must still show the stored UTC day.
+    $record->record_date = $dayTs + 3 * 3600;
+    check(
+        'getRecordDate() renders the UTC day for a mid-day timestamp, not the process-tz day',
+        $record->getRecordDate() === '2026-06-29',
+        'got: ' . $record->getRecordDate()
+    );
 
     // --- under a UTC process tz the getters are unchanged -------------------
     // The whole point is that display no longer depends on the process timezone;

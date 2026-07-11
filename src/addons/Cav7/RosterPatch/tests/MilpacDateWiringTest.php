@@ -90,11 +90,17 @@ foreach (['RosterUserAward' => 'award_date', 'ServiceRecord' => 'record_date'] a
         'an unguarded floor would rewrite the date on every unrelated save'
     );
     $getter = $dateGetters[$column];
+    // Bind MilpacDate::render to the getter's BODY reading the raw column, not
+    // the class docblock (which also names MilpacDate::render). [^}]*? cannot
+    // cross the getter's closing brace, so a body reverted to the vendor
+    // date('Y-m-d', $this->column) form fails this even with the docblock intact.
     check(
         "$entity overrides $getter() to render $column in UTC via MilpacDate::render",
-        (bool) preg_match('/function\s+' . $getter . '\s*\(/', (string) $src)
-            && str_contains((string) $src, 'MilpacDate::render'),
-        'the getter must render the stored date in UTC so display no longer follows the process timezone'
+        (bool) preg_match(
+            '/function\s+' . $getter . '\b[^}]*?MilpacDate::render\(\s*\(int\)\s*\\$this->' . $column . '\b/',
+            (string) $src
+        ),
+        'the getter body must render the stored date via MilpacDate::render((int) $this->' . $column . '), so display no longer follows the process timezone'
     );
 }
 
