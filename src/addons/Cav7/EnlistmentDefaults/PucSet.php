@@ -85,7 +85,7 @@ class PucSet
         );
 
         if ($dt === false || $dt->format('Y-m-d') !== $date) {
-            throw new \InvalidArgumentException("Malformed PUC date '$date'");
+            throw new \InvalidArgumentException("Invalid or out-of-range PUC date '$date'");
         }
 
         return $dt->getTimestamp();
