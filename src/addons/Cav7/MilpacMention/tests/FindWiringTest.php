@@ -124,15 +124,28 @@ check(
     str_contains($controllerSrc, 'MilpacResolver::isFindQueryLongEnough'),
     'a q shorter than 2 characters must not run the query (§4.3)'
 );
+// The empty path assigns both $users = [] and $q = ''. Their order carries no
+// behavioral meaning, so assert each statement exists independently rather than
+// pinning one before the other with exact spacing.
 check(
-    "actionFind blanks q and returns no users when the guard fails, mirroring MemberController",
-    (bool) preg_match('/\$users\s*=\s*\[\]\s*;\s*\$q\s*=\s*\'\'\s*;/s', $controllerSrc),
+    "actionFind blanks q when the guard fails, mirroring MemberController",
+    (bool) preg_match('/\$q\s*=\s*\'\'\s*;/', $controllerSrc),
+    'XF returns {q:"", results:[]} for a too-short query'
+);
+check(
+    "actionFind returns no users when the guard fails",
+    (bool) preg_match('/\$users\s*=\s*\[\s*\]\s*;/', $controllerSrc),
     'XF returns {q:"", results:[]} for a too-short query'
 );
 check(
     'actionFind builds the milpac-owning finder through the shared resolver (reuse, not a second impl)',
     str_contains($controllerSrc, 'MilpacResolver::findMilpacOwningUsers'),
     'the roster join is reused from MilpacResolver (§4.3)'
+);
+check(
+    'actionFind passes the limit 10 to the finder (spec §4.3 returns ten)',
+    (bool) preg_match('/findMilpacOwningUsers\(\s*\$userFinder\s*,\s*\$q\s*,\s*10\s*\)/', $controllerSrc),
+    'the dropdown returns ten milpac-owning actives, not the finder default (§4.3)'
 );
 check(
     'actionFind renders the find view with the q and users params (the {q, results} envelope)',
@@ -165,6 +178,33 @@ check(
     'the ad-hoc milpac relation is TO_ONE (one user = one milpac = one relation_id, §4.4)',
     (bool) preg_match("/'type'\s*=>\s*\\\\XF\\\\Mvc\\\\Entity\\\\Entity::TO_ONE/", $resolverSrc)
 );
+// The dropdown row needs the rank and roster titles; eager-loading them via
+// with('Milpac.Rank') / with('Milpac.Roster') keeps the render to zero per-row
+// queries. Deleting either is an N+1 per keystroke that the runtime never fails
+// on, so pin both here.
+check(
+    'the finder eager-loads Milpac.Rank (no N+1 for the rank title, §4.5)',
+    (bool) preg_match("/->with\(\s*'Milpac\.Rank'\s*\)/", $resolverSrc)
+);
+check(
+    'the finder eager-loads Milpac.Roster (no N+1 for the roster title, §4.5)',
+    (bool) preg_match("/->with\(\s*'Milpac\.Roster'\s*\)/", $resolverSrc)
+);
+// The ad-hoc relation's join key and the deliberate absence of 'primary'. Isolate
+// the registration array (code only, // comments stripped) so these target the
+// registered relation, not the prose that explains it.
+preg_match("/\\\$structure->relations\['Milpac'\]\s*=\s*\[(.*?)\];/s", $resolverSrc, $relMatch);
+$relBlock = preg_replace('~//[^\n]*~', '', $relMatch[1] ?? '');
+check(
+    "the registered milpac relation joins on 'conditions' => 'user_id' (the inverse join key)",
+    (bool) preg_match("/'conditions'\s*=>\s*'user_id'/", $relBlock)
+);
+check(
+    "the registered milpac relation does NOT set 'primary' => true (Finding 1)",
+    $relBlock !== '' && !preg_match("/'primary'\s*=>\s*true/", $relBlock),
+    "primary is only correct on RosterUser.User, where user_id IS the target's PK; on the inverse "
+        . "the target is RosterUser (PK relation_id), so primary would misresolve a lazy \$user->Milpac"
+);
 // The join must sit INSIDE the finder before fetch() applies the limit, so the
 // result is $limit milpac owners, not $limit actives then filtered. Structurally:
 // the with('Milpac', true) join is chained before the terminating ->fetch($limit).
@@ -185,9 +225,16 @@ check(
     'the view renders JSON (the autocomplete endpoint returns the {q, results} envelope)',
     (bool) preg_match('/function\s+renderJson\s*\(/', $viewSrc)
 );
+// The envelope must return both the results and q keys. Their order and the local
+// variable name backing results carry no behavioral meaning, so assert both keys
+// are present rather than pinning the exact order and local.
 check(
-    'the JSON envelope is {results, q}, mirroring XF:Member\Find / find-emoji',
-    (bool) preg_match("/return\s*\[\s*'results'\s*=>\s*\\\$results\s*,\s*'q'\s*=>\s*\\\$this->params\['q'\]\s*,?\s*\]\s*;/s", $viewSrc)
+    'the JSON envelope returns the results key, mirroring XF:Member\Find / find-emoji',
+    (bool) preg_match("/'results'\s*=>/", $viewSrc)
+);
+check(
+    'the JSON envelope returns the q key alongside results',
+    (bool) preg_match("/'q'\s*=>\s*\\\$this->params\['q'\]/", $viewSrc)
 );
 check(
     'each row carries the display fields rank, name and roster (acceptance criteria)',
@@ -195,6 +242,17 @@ check(
         && str_contains($viewSrc, "'name'")
         && str_contains($viewSrc, "'roster'"),
     'the dropdown shows rank+name primary, roster secondary (§4.5)'
+);
+// The completer renders from the find-emoji fields, not the convenience
+// decomposition: text is the primary "Rank Name" line, desc is the roster. Pin
+// both, mapped to the values the row is built from.
+check(
+    "each row populates 'text' with the shared display text (the dropdown's primary line, §4.5)",
+    (bool) preg_match("/'text'\s*=>\s*\\\$displayText/", $viewSrc)
+);
+check(
+    "each row populates 'desc' with the roster (the dropdown's secondary line, §4.5)",
+    (bool) preg_match("/'desc'\s*=>\s*\\\$roster/", $viewSrc)
 );
 check(
     'each row carries the value to insert as a named anchor via the shared builder',

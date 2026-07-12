@@ -17,6 +17,12 @@ use XF\Mvc\View;
  *   html   the value to insert: a NAMED anchor to /rosters/profile/<relation_id>/,
  *          which Froala serialises back to [URL='…']Rank Name[/URL] on save (§4.2)
  *
+ * text and html are the canonical fields: text is what the dropdown renders, html
+ * is what gets inserted, and both are built from the same display text so they
+ * cannot drift. rank/name/roster are a convenience decomposition for the client.
+ * The #89 completer must NOT rebuild the insert value from rank+name — it must
+ * insert html verbatim, or the artifact the phase-1 engine detects can diverge.
+ *
  * The users come pre-joined to their milpac (with Rank and Roster) by
  * MilpacResolver::findMilpacOwningUsers, so no per-row query runs here.
  */
@@ -26,15 +32,32 @@ class Find extends View
     {
         $router = \XF::app()->router('public');
         $results = [];
+        $seenUsernames = [];
 
         foreach ($this->params['users'] as $user) {
             /** @var \NF\Rosters\Entity\RosterUser|null $milpac */
             $milpac = $user->Milpac;
             if (!$milpac) {
-                // The inner join guarantees a row; this only guards a race where a
-                // milpac was deleted between the query and the render.
+                // Milpac is fetch-hydrated by findMilpacOwningUsers (with('Milpac',
+                // true)), so this reads already-materialized data — there is no
+                // render-time query for a delete to race. With the INNER join a null
+                // is effectively impossible; if one shows up the join has silently
+                // degraded (e.g. the relation registration failed), and then EVERY
+                // row hits this continue and the endpoint returns an empty result
+                // with no other signal — indistinguishable from "no matches". Log so
+                // the impossible is loud, then drop the row (matches the fail-loud
+                // pattern in MilpacResolver::extractRelationIds).
+                \XF::logError('[Cav7/MilpacMention] find: user ' . $user->user_id . ' returned without a joined milpac (INNER join expected a row)');
                 continue;
             }
+
+            // user_id is not DB-unique on xf_nf_rosters_user (only relation_id is),
+            // so the TO_ONE join can emit more than one row for a member with two
+            // RosterUser rows. Dedup by username so one member fills one slot, not two.
+            if (isset($seenUsernames[$user->username])) {
+                continue;
+            }
+            $seenUsernames[$user->username] = true;
 
             $rank = $milpac->Rank ? (string) $milpac->Rank->title : '';
             $roster = $milpac->Roster ? (string) $milpac->Roster->title : '';

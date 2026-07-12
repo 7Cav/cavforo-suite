@@ -209,7 +209,7 @@ class MilpacResolver
      */
     public static function isFindQueryLongEnough(string $q): bool
     {
-        return $q !== '' && mb_strlen($q) >= 2;
+        return $q !== '' && mb_strlen($q, 'UTF-8') >= 2;
     }
 
     /**
@@ -231,6 +231,10 @@ class MilpacResolver
      * artifact the phase-1 engine already detects (§2.2). Both the href and the
      * text are html-escaped so a quote or ampersand cannot break out of the
      * attribute or the tag. Pure so the shape is unit-tested without XenForo.
+     *
+     * Assumes the caller supplies a framework-built absolute URL — the view passes
+     * buildLink('canonical:rosters/profile', …). The htmlspecialchars() here escapes
+     * for attribute/text safety; it does NOT scheme-validate the href.
      */
     public static function milpacLinkHtml(string $displayText, string $profileUrl): string
     {
@@ -266,6 +270,21 @@ class MilpacResolver
      * the rest of the request exactly as a withEntity() registration would; the
      * if (!isset(...)) guard makes re-registration on a later finder a no-op.
      *
+     * Note there is no 'primary' => true here, unlike RosterUser's own 'User'
+     * relation this is the inverse of. 'primary' only rides along on RosterUser.User
+     * because there the join column (user_id) IS the target XF:User's primary key,
+     * so Manager::getRelation can resolve a lazy access by a whereId() PK lookup.
+     * The inverse points the other way: the target is RosterUser, whose PK is
+     * relation_id, not user_id. Setting 'primary' would make a lazy $user->Milpac
+     * access resolve as find('NF\Rosters:RosterUser', <user_id>) — a whereId lookup
+     * against relation_id — returning the wrong member's milpac or none. Because the
+     * mutation lands on the request-shared structure, that would be wrong for every
+     * lazy $user->Milpac in the request, not just this finder. Without 'primary', a
+     * lazy access falls through to getRelationFinder, which builds the correct
+     * WHERE user_id = <value> from 'conditions'. The INNER join below is unaffected
+     * either way: Finder::join ignores 'primary' and builds RosterUser.user_id =
+     * User.user_id straight from 'conditions'.
+     *
      * @param \XF\Finder\UserFinder $userFinder
      *
      * @return \XF\Mvc\Entity\AbstractCollection
@@ -278,7 +297,9 @@ class MilpacResolver
                 'entity' => 'NF\Rosters:RosterUser',
                 'type' => \XF\Mvc\Entity\Entity::TO_ONE,
                 'conditions' => 'user_id',
-                'primary' => true,
+                // deliberately no 'primary' => true: the inverse join key (user_id)
+                // is not RosterUser's PK (relation_id), so 'primary' would misresolve
+                // a lazy $user->Milpac to a PK lookup. See the method docblock.
             ];
         }
 

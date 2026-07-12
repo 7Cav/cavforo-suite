@@ -68,6 +68,12 @@ check(
     'a blank/whitespace rank collapses to the name alone',
     MilpacResolver::milpacDisplayText('   ', 'Recruit.J') === 'Recruit.J'
 );
+// Surrounding whitespace on the rank is fully trimmed (both ends), so a
+// left-only-trim regression would leave a double space before the name.
+check(
+    'a rank padded on both sides is trimmed on both sides',
+    MilpacResolver::milpacDisplayText('  Sergeant Major  ', 'Doe.J') === 'Sergeant Major Doe.J'
+);
 
 // =========================================================================
 // milpacLinkHtml — the value to insert (spec §4.2): a named anchor, NOT a bare
@@ -100,6 +106,25 @@ check(
 check(
     'ampersands in the href are escaped',
     str_contains($escaped, 'profile/9/?x=1&amp;y=2')
+);
+// The display text is a text node, so < is the character markup neutralization
+// exists to stop: a raw <b> would inject markup into the editor. Pin that angle
+// brackets are escaped and no literal tag survives.
+$markup = MilpacResolver::milpacLinkHtml('<b>x</b>', 'https://7cav.us/rosters/profile/9/');
+check(
+    'angle brackets in the text are escaped to entities',
+    str_contains($markup, '&lt;b&gt;x&lt;/b&gt;')
+);
+check(
+    'no literal <b> markup survives in the output',
+    !str_contains($markup, '<b>')
+);
+// The builder uses ENT_QUOTES, so a single quote (not just a double quote) is
+// escaped too — a name with an apostrophe cannot break a single-quoted context.
+$singleQuote = MilpacResolver::milpacLinkHtml("O'Brien", 'https://7cav.us/rosters/profile/9/');
+check(
+    'single quotes in the text are escaped (ENT_QUOTES)',
+    str_contains($singleQuote, 'O&#039;Brien') && !str_contains($singleQuote, "O'Brien")
 );
 
 if ($failures > 0) {
