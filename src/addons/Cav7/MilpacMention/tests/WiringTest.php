@@ -150,9 +150,9 @@ foreach ($expectedExtensions as $from => $to) {
     );
 }
 check(
-    'exactly the three engine extensions are registered (no stray surfaces yet)',
-    ($classExtXml !== false ? count($classExtXml->extension) : -1) === 3,
-    'the other four surfaces are later tickets; #84 wires post only'
+    'the six engine extensions are registered (post + profile-post + profile-post-comment surfaces)',
+    ($classExtXml !== false ? count($classExtXml->extension) : -1) === 6,
+    'shared PreparerService + Post/ProfilePost/ProfilePostComment notifiers + Post/ProfilePost opt-out handlers; report and ticket surfaces are later tickets. ProfilePostWiringTest pins the profile-post surfaces'
 );
 check(
     '_output has one class_extensions file per _data extension',

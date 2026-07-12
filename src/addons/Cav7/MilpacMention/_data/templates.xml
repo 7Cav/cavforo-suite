@@ -4,4 +4,12 @@
 'name': username_link($user, false, {'defaultname': $alert.username}),
 'title': '<a href="' . link('posts', $content) . '" class="fauxBlockLink-blockLink">' . prefix('thread', $content.Thread) . $content.Thread.title . '</a>'
 }) }}]]></template>
+  <template type="public" title="alert_profile_post_comment_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[{{ phrase('cav7_mm_alert_profile_post_comment_milpac_mention', {
+'name': username_link($user, false, {'defaultname': $alert.username}),
+'profile': '<a href="' . link('profile-posts/comments', $content) . '" class="fauxBlockLink-blockLink">' . $content.ProfilePost.ProfileUser.username . '</a>'
+}) }}]]></template>
+  <template type="public" title="alert_profile_post_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[{{ phrase('cav7_mm_alert_profile_post_milpac_mention', {
+'name': username_link($user, false, {'defaultname': $alert.username}),
+'profile': '<a href="' . link('profile-posts', $content) . '" class="fauxBlockLink-blockLink">' . $content.ProfileUser.username . '</a>'
+}) }}]]></template>
 </templates>

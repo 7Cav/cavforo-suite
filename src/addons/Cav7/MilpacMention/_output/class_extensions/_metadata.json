@@ -2,10 +2,19 @@
     "XF-Alert-PostHandler_Cav7-MilpacMention-XF-Alert-PostHandler.json": {
         "hash": "7eb6acb6e09fa9590a96b575ad16edc0"
     },
+    "XF-Alert-ProfilePostHandler_Cav7-MilpacMention-XF-Alert-ProfilePostHandler.json": {
+        "hash": "729859f8bbcb1b7898ae77e9d2c7161f"
+    },
     "XF-Service-Message-PreparerService_Cav7-MilpacMention-XF-Service-Message-PreparerService.json": {
         "hash": "37ad3ad1215484e77a929950b508e138"
     },
     "XF-Service-Post-NotifierService_Cav7-MilpacMention-XF-Service-Post-NotifierService.json": {
         "hash": "7b403553ef6ecc82d9c67bf07299ccb9"
+    },
+    "XF-Service-ProfilePost-NotifierService_Cav7-MilpacMention-XF-Service-ProfilePost-NotifierService.json": {
+        "hash": "4e61dc37a8be87ce2281db41717b76f1"
+    },
+    "XF-Service-ProfilePostComment-NotifierService_Cav7-MilpacMention-XF-Service-ProfilePostComment-NotifierService.json": {
+        "hash": "de1bafe292c2253460a345ead0daac64"
     }
 }

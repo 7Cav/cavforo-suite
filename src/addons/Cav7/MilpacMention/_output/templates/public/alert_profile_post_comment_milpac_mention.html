@@ -1,0 +1,4 @@
+{{ phrase('cav7_mm_alert_profile_post_comment_milpac_mention', {
+'name': username_link($user, false, {'defaultname': $alert.username}),
+'profile': '<a href="' . link('profile-posts/comments', $content) . '" class="fauxBlockLink-blockLink">' . $content.ProfilePost.ProfileUser.username . '</a>'
+}) }}

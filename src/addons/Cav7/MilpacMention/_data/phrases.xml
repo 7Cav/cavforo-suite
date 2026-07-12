@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <phrases>
   <phrase title="alert_opt_out.post_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[Links your milpac in a message]]></phrase>
+  <phrase title="alert_opt_out.profile_post_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[Links your milpac in a profile post or comment]]></phrase>
   <phrase title="cav7_mm_alert_post_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[{name} linked your milpac in a post in the thread {title}]]></phrase>
+  <phrase title="cav7_mm_alert_profile_post_comment_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[{name} linked your milpac in a comment on {profile}'s profile]]></phrase>
+  <phrase title="cav7_mm_alert_profile_post_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[{name} linked your milpac in a message on {profile}'s profile]]></phrase>
 </phrases>

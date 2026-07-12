@@ -1,0 +1,6 @@
+{
+    "from_class": "XF\\Service\\ProfilePostComment\\NotifierService",
+    "to_class": "Cav7\\MilpacMention\\XF\\Service\\ProfilePostComment\\NotifierService",
+    "execute_order": 10,
+    "active": true
+}
