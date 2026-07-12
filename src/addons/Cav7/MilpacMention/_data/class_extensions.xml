@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <class_extensions>
+  <extension from_class="NF\Tickets\Alert\Message" to_class="Cav7\MilpacMention\NF\Tickets\Alert\Message" execute_order="10" active="1"/>
+  <extension from_class="NF\Tickets\Service\Message\Notifier" to_class="Cav7\MilpacMention\NF\Tickets\Service\Message\Notifier" execute_order="10" active="1"/>
   <extension from_class="XF\Alert\PostHandler" to_class="Cav7\MilpacMention\XF\Alert\PostHandler" execute_order="10" active="1"/>
   <extension from_class="XF\Alert\ProfilePostHandler" to_class="Cav7\MilpacMention\XF\Alert\ProfilePostHandler" execute_order="10" active="1"/>
   <extension from_class="XF\Service\Message\PreparerService" to_class="Cav7\MilpacMention\XF\Service\Message\PreparerService" execute_order="10" active="1"/>

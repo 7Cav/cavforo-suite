@@ -4,13 +4,18 @@ XenForo add-on for the [7th Cavalry](https://7cav.us) that treats a linked milpa
 like an `@`-mention.
 
 A milpac is one member's roster profile, at `/rosters/profile/<relation_id>/`.
-When that link appears in a post, a profile post, a profile-post comment, or a
-report comment, the linked member gets a distinct `milpac_mention` alert that opens
-the content. The member can switch the post, profile-post, and
-profile-post-comment alerts off from their alert preferences; the report alert
-stays on, the same way XenForo won't let you mute being named in a report. Members
-already hand-build these roster links all the time, so the notification lands on
-the workflow that exists today with no editor change.
+When that link appears in a post, a profile post, a profile-post comment, a
+report comment, or a ticket message, the linked member gets a distinct
+`milpac_mention` alert that opens the content. The member can switch the post,
+profile-post, profile-post-comment, and ticket alerts off from their alert
+preferences; the report alert stays on, the same way XenForo won't let you mute
+being named in a report. Members already hand-build these roster links all the
+time, so the notification lands on the workflow that exists today with no editor
+change.
+
+The ticket-message surface only works when NF/Tickets is installed. It is a soft
+dependency: leave NF/Tickets out and the add-on still installs, the other four
+surfaces still fire, and the two ticket extensions stay dormant.
 
 The full design is in
 [`docs/specs/milpac-mention-implementation-spec.md`](../../../../docs/specs/milpac-mention-implementation-spec.md).
@@ -28,11 +33,12 @@ The full design is in
   PHP in `MilpacResolver`, so they are unit-tested without XenForo.
 - Firing is a thin extension on each surface's notifier:
   `XF\Service\Post\NotifierService`, `XF\Service\ProfilePost\NotifierService`,
-  `XF\Service\ProfilePostComment\NotifierService`, and
-  `XF\Service\Report\NotifierService`. After the stock notifier pass each one raises
-  `milpac_mention` on its own content type (`post`, `profile_post`,
-  `profile_post_comment`, `report`), reusing that surface's stock alert handler
-  rather than adding a new content type or handler.
+  `XF\Service\ProfilePostComment\NotifierService`,
+  `XF\Service\Report\NotifierService`, and, when NF/Tickets is installed,
+  `NF\Tickets\Service\Message\Notifier`. After the stock notifier pass each one
+  raises `milpac_mention` on its own content type (`post`, `profile_post`,
+  `profile_post_comment`, `report`, `nf_tickets_message`), reusing that surface's
+  stock alert handler rather than adding a new content type or handler.
 
 The firing rules match `@`-mention behaviour: a member linking their own milpac is
 not alerted, any number of links to one member is a single alert, a member both
@@ -44,6 +50,8 @@ link fires nothing, and milpac links count against the author's
 
 - XenForo 2.3.0+
 - NF/Rosters 2.1+ (the alert resolves the roster link to the linked member)
+- NF/Tickets is optional. With it installed, milpac links in ticket messages fire
+  the alert too; without it, the other four surfaces work as usual.
 
 ## Installation
 

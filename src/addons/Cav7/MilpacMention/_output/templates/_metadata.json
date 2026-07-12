@@ -1,4 +1,9 @@
 {
+    "public/alert_nf_tickets_message_milpac_mention.html": {
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "e6fdd55caee8c8baa86ca943457da6b7"
+    },
     "public/alert_post_milpac_mention.html": {
         "version_id": 1000070,
         "version_string": "1.0.0",

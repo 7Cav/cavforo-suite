@@ -1,4 +1,10 @@
 {
+    "NF-Tickets-Alert-Message_Cav7-MilpacMention-NF-Tickets-Alert-Message.json": {
+        "hash": "72a8ba41fff92d96b8e46fd1eab011e5"
+    },
+    "NF-Tickets-Service-Message-Notifier_Cav7-MilpacMention-NF-Tickets-Service-Message-Notifier.json": {
+        "hash": "b423087cbb51f1cd2f589fd2e3769c2d"
+    },
     "XF-Alert-PostHandler_Cav7-MilpacMention-XF-Alert-PostHandler.json": {
         "hash": "7eb6acb6e09fa9590a96b575ad16edc0"
     },

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <templates>
+  <template type="public" title="alert_nf_tickets_message_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[{{ phrase('cav7_mm_alert_nf_tickets_message_milpac_mention', {
+'name': username_link($user, false, {'defaultname': $alert.username}),
+'title': '<a href="' . link('tickets/messages', $content) . '" class="fauxBlockLink-blockLink">' . $content.Ticket.title . '</a>'
+}) }}]]></template>
   <template type="public" title="alert_post_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[{{ phrase('cav7_mm_alert_post_milpac_mention', {
 'name': username_link($user, false, {'defaultname': $alert.username}),
 'title': '<a href="' . link('posts', $content) . '" class="fauxBlockLink-blockLink">' . prefix('thread', $content.Thread) . $content.Thread.title . '</a>'

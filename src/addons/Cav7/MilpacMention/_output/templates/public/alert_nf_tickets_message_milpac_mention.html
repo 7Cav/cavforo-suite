@@ -1,0 +1,4 @@
+{{ phrase('cav7_mm_alert_nf_tickets_message_milpac_mention', {
+'name': username_link($user, false, {'defaultname': $alert.username}),
+'title': '<a href="' . link('tickets/messages', $content) . '" class="fauxBlockLink-blockLink">' . $content.Ticket.title . '</a>'
+}) }}

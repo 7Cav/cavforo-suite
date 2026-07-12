@@ -1,0 +1,6 @@
+{
+    "from_class": "NF\\Tickets\\Alert\\Message",
+    "to_class": "Cav7\\MilpacMention\\NF\\Tickets\\Alert\\Message",
+    "execute_order": 10,
+    "active": true
+}
