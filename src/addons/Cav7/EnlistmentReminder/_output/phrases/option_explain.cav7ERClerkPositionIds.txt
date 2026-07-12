@@ -1,0 +1,1 @@
+Roster position IDs whose seated members count as processing clerks. A reply from anyone holding one of these positions, as a primary or a secondary seat, counts as the application being picked up, so it is not reminded. Enter one ID per line or separate with commas. Default: 579, 580, 751, 960, 1012.
