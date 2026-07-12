@@ -3,22 +3,34 @@
 namespace Cav7\MilpacMention;
 
 /**
- * The shared reverse resolver for the milpac-mention engine: a milpac is one
- * NF\Rosters:RosterUser row whose profile URL is /rosters/profile/<relation_id>/,
- * and the row carries the member's user_id. This class turns a prepared message
- * into the set of members to alert, in three pure steps plus one database step:
+ * The shared resolver for the milpac-mention engine, serving both directions of the
+ * milpac/member relation. A milpac is one NF\Rosters:RosterUser row whose profile
+ * URL is /rosters/profile/<relation_id>/, and the row carries the member's user_id.
+ *
+ * The reverse-resolution path (phase 1) turns a prepared message into the set of
+ * members to alert, in three pure steps plus one database step:
  *
  *   extractRelationIds()  regex the relation_ids out of the message  (§2.2)
  *   resolveUserIds()      relation_id -> user_id via the roster finder (§2.3)
  *   userIdsFromMap()      shape the finder result into ordered user_ids (§2.3)
  *   milpacRecipients()    apply the firing rules to pick who is alerted (§2.5)
  *
- * The three pure methods carry no XenForo dependency, so the detection regex, the
- * mapping shape, and the cap/dedup rules are unit-tested in plain PHP. The only \XF
- * references are resolveUserIds() (the live roster finder) and the PCRE-failure
- * branch of extractRelationIds() — both unreached by the happy path, so requiring
- * this file and exercising detection/mapping/firing in a test is safe with no
- * XenForo, as long as resolveUserIds() is not called and no regex actually fails.
+ * The find-endpoint path (phase 2) drives the $name completer the other way, from a
+ * typed query to the milpac-owning members it may insert as named profile links:
+ *
+ *   isFindQueryLongEnough()  the two-character q guard before any query  (§4.3)
+ *   findMilpacOwningUsers()  join the milpac owners inside the query      (§4.3)
+ *   milpacDisplayText()      shape "Rank Name" for the dropdown/anchor    (§4.2/§4.5)
+ *   milpacLinkHtml()         wrap that text in an html-escaped anchor     (§4.2)
+ *
+ * The pure methods carry no XenForo dependency, so the detection regex, the mapping
+ * shape, the cap/dedup rules, and the completer's q-guard and row shaping are all
+ * unit-tested in plain PHP. The only \XF references are resolveUserIds() and
+ * findMilpacOwningUsers() (each runs a live finder) and the PCRE-failure branch of
+ * extractRelationIds() — none reached by the happy path, so requiring this file and
+ * exercising detection/mapping/firing and the pure find builders in a test is safe
+ * with no XenForo, as long as the two finder methods are not called and no regex
+ * actually fails.
  */
 class MilpacResolver
 {
@@ -245,9 +257,14 @@ class MilpacResolver
      *                                 TO_ONE here — the one-user-one-milpac invariant
      *                                 (§4.4) keeps the join to one row per member.
      *
-     * Rank and Roster are joined for the dropdown row (§4.5). The ad-hoc 'Milpac'
-     * relation is registered on the finder's structure (the sanctioned withEntity
-     * mechanism), guarded so re-registration on a later request is a no-op.
+     * Rank and Roster are joined for the dropdown row (§4.5). The 'Milpac' relation
+     * is hand-registered as a TO_ONE — the inverse of NF\Rosters:RosterUser's own
+     * 'User' relation — directly on the User entity structure, not through
+     * Finder::withEntity(): withEntity() would register a LEFT join, and this needs
+     * the INNER join that with('Milpac', true) issues. getStructure() hands back the
+     * request-shared, cached XF:User Structure object, so the mutation persists for
+     * the rest of the request exactly as a withEntity() registration would; the
+     * if (!isset(...)) guard makes re-registration on a later finder a no-op.
      *
      * @param \XF\Finder\UserFinder $userFinder
      *
