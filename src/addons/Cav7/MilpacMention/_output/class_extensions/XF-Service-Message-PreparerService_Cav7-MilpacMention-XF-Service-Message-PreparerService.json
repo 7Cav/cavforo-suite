@@ -1,0 +1,6 @@
+{
+    "from_class": "XF\\Service\\Message\\PreparerService",
+    "to_class": "Cav7\\MilpacMention\\XF\\Service\\Message\\PreparerService",
+    "execute_order": 10,
+    "active": true
+}

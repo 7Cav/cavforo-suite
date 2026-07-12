@@ -1,0 +1,6 @@
+{
+    "from_class": "XF\\Alert\\PostHandler",
+    "to_class": "Cav7\\MilpacMention\\XF\\Alert\\PostHandler",
+    "execute_order": 10,
+    "active": true
+}

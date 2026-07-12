@@ -1,0 +1,14 @@
+{
+    "alert_opt_out.post_milpac_mention.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "c334cc114a4d1ab7e3d0e9975b29b4f7"
+    },
+    "cav7_mm_alert_post_milpac_mention.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "762790da95c586e46931c7177e14e2a6"
+    }
+}
