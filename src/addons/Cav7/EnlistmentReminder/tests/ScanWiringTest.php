@@ -41,6 +41,24 @@ function outputItems(string $root, string $type): array
     ));
 }
 
+/**
+ * All _output template files across their style-type folders (public/admin/email),
+ * excluding the _metadata.json index. Templates nest one level deeper than the flat
+ * item types, so outputItems() (a flat glob) can't see the actual template files.
+ */
+function outputTemplateItems(string $root): array
+{
+    $items = [];
+    foreach (glob("$root/_output/templates/*", GLOB_ONLYDIR) ?: [] as $styleDir) {
+        foreach (glob("$styleDir/*") ?: [] as $f) {
+            if (basename($f) !== '_metadata.json') {
+                $items[] = $f;
+            }
+        }
+    }
+    return $items;
+}
+
 // --- the hourly cron entry is registered ----------------------------------
 $cronXml = @simplexml_load_file("$root/_data/cron.xml");
 check('_data/cron.xml could be read', $cronXml !== false);
@@ -328,9 +346,22 @@ check(
 // Best-effort send: the note has already posted by the time alertClerks runs, so
 // a repository blip must be logged, never thrown, or the marker is skipped and
 // the applicant-visible note re-posts next run.
+// Anchor the search to alertClerks's OWN body — from its declaration to the next
+// method decl, or end-of-file since it is the last method today. Without the
+// anchor the regex finds the FIRST catch at/after the declaration, so a method
+// with its own try/catch added below alertClerks could satisfy this even if
+// alertClerks's own catch were deleted.
+$alertClerksBody = '';
+$acStart = strpos($worker, 'function alertClerks');
+if ($acStart !== false) {
+    $alertClerksBody = substr($worker, $acStart);
+    if (preg_match('/\n    (?:private|protected|public)\s+function\s/', $alertClerksBody, $acm, PREG_OFFSET_CAPTURE)) {
+        $alertClerksBody = substr($alertClerksBody, 0, $acm[0][1]);
+    }
+}
 check(
-    'the clerk alert send is best-effort (catches and logs, never fatal after a posted note)',
-    (bool) preg_match('/function\s+alertClerks\b.*?catch\s*\(.*?logException\(/s', $worker),
+    'the clerk alert send is best-effort (alertClerks itself catches and logs, never fatal after a posted note)',
+    $alertClerksBody !== '' && (bool) preg_match('/catch\s*\(.*?logException\(/s', $alertClerksBody),
     'a throwing alert send after a posted note would block recordReminder and re-post the note'
 );
 // No clerk is @-mentioned in the post body — the split of audiences is the whole
@@ -383,6 +414,11 @@ check(
     is_file("$root/_output/templates/public/alert_thread_enlistment_reminder.html"),
     'the _output side must ship the template or check-data-consistency fails on the templates count'
 );
+check(
+    '_output has one template file per _data template',
+    count(outputTemplateItems($root)) === ($templatesXml !== false ? count($templatesXml->template) : -1),
+    'a _data/templates.xml entry with no _output counterpart (or vice versa) must fail here, mirroring the other item types'
+);
 
 // --- the opt-out entry lets members mute the alert type ---------------------
 // getOptOutsMap builds each toggle from the handler's getOptOutActions plus the
@@ -414,10 +450,12 @@ check(
 
 $handlerSrc = @file_get_contents("$root/XF/Alert/ThreadHandler.php") ?: '';
 check(
-    'the extended handler adds enlistment_reminder to getOptOutActions',
-    (bool) preg_match('/function\s+getOptOutActions\b/', $handlerSrc)
-        && str_contains($handlerSrc, "'enlistment_reminder'"),
-    'the action must be in the thread handler opt-out list to appear in member alert preferences'
+    'the extended handler MERGES enlistment_reminder into the parent getOptOutActions (never replaces it)',
+    (bool) preg_match(
+        '/function\s+getOptOutActions\b.*?return\s+array_merge\(\s*parent::getOptOutActions\(\)\s*,\s*\[[^\]]*\'enlistment_reminder\'/s',
+        $handlerSrc
+    ),
+    'returning [\'enlistment_reminder\'] alone would silently drop every OTHER core thread opt-out (watched-reply, quote, ...); the action must be array_merge-d onto the parent list'
 );
 check(
     'the opt-out label phrase alert_opt_out.thread_enlistment_reminder is declared',
