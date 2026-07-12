@@ -78,9 +78,16 @@ function methodBody(string $src, string $name): string
 // =========================================================================
 $addon = json_decode((string) @file_get_contents("$root/addon.json"), true);
 check('addon.json is valid JSON', is_array($addon));
+// Read the version_id once (issue #84 L). The phrase and template version_id
+// attributes are cross-checked against this single source below, so a release bump
+// touches only addon.json plus a re-export — never a hardcoded literal in this test.
+$versionId = is_array($addon) ? ($addon['version_id'] ?? null) : null;
 if (is_array($addon)) {
     check('title is "7Cav - Milpac Mention"', ($addon['title'] ?? '') === '7Cav - Milpac Mention');
-    check('version_id is 1000070', ($addon['version_id'] ?? null) === 1000070);
+    check(
+        'version_id is a positive integer (the single source the data items are pinned to)',
+        is_int($versionId) && $versionId > 0
+    );
     check('version_string is 1.0.0', ($addon['version_string'] ?? '') === '1.0.0');
     check(
         'requires XF 2.3.0+ (2030070)',
@@ -192,6 +199,32 @@ check(
     'the _output template ships under the public style folder',
     is_file("$root/_output/templates/public/alert_post_milpac_mention.html")
 );
+// Issue #84 H — the alert copy ships verbatim per spec §3.2, so pin the _output
+// body against the _data body byte-for-byte rather than merely checking the file
+// exists. check-data-consistency only count-checks templates, so an _output body
+// that drifts from _data would otherwise slip through CI.
+check(
+    'the _output template body matches the _data/templates.xml body byte-for-byte',
+    $alertTemplateBody !== ''
+        && @file_get_contents("$root/_output/templates/public/alert_post_milpac_mention.html") === $alertTemplateBody,
+    'the _output template must not drift from its _data source (§3.2 verbatim)'
+);
+// Issue #84 L — every template's version_id attribute tracks addon.json's, read
+// once above. A template pinned to a stale version_id would drift from the add-on
+// on a release bump.
+$templateVersionsMatch = $templatesXml !== false && $versionId !== null;
+if ($templatesXml !== false) {
+    foreach ($templatesXml->template as $tpl) {
+        if ((int) $tpl['version_id'] !== (int) $versionId) {
+            $templateVersionsMatch = false;
+        }
+    }
+}
+check(
+    'every _data template carries version_id === addon.json version_id',
+    $templateVersionsMatch,
+    'a template version_id that drifts from addon.json must fail CI, robustly across release bumps'
+);
 check(
     '_output has one template file per _data template',
     count(outputTemplateItems($root)) === ($templatesXml !== false ? count($templatesXml->template) : -1)
@@ -227,6 +260,30 @@ check(
 check(
     'the _output phrase file matches the opt-out label byte-for-byte',
     @file_get_contents("$root/_output/phrases/alert_opt_out.post_milpac_mention.txt") === 'Links your milpac in a message'
+);
+// Issue #84 H — the alert-line phrase also ships verbatim (§3.2), so pin its
+// _output file byte-for-byte too, not just the opt-out label.
+check(
+    'the _output alert-line phrase file matches the §3.2 copy byte-for-byte',
+    @file_get_contents("$root/_output/phrases/cav7_mm_alert_post_milpac_mention.txt")
+        === '{name} linked your milpac in a post in the thread {title}',
+    'the alert line ships verbatim; an _output drift from the §3.2 copy must fail CI'
+);
+// Issue #84 L — every phrase's version_id attribute tracks addon.json's version_id
+// (read once above), so a release bump needs no test edit and a stale version_id
+// fails CI.
+$phraseVersionsMatch = $phraseXml !== false && $versionId !== null;
+if ($phraseXml !== false) {
+    foreach ($phraseXml->phrase as $phrase) {
+        if ((int) $phrase['version_id'] !== (int) $versionId) {
+            $phraseVersionsMatch = false;
+        }
+    }
+}
+check(
+    'every _data phrase carries version_id === addon.json version_id',
+    $phraseVersionsMatch,
+    'a phrase version_id that drifts from addon.json must fail CI, robustly across release bumps'
 );
 
 // =========================================================================
@@ -275,6 +332,22 @@ check(
     str_contains($preparerSrc, 'MilpacStash::stash'),
     'detection and firing are different objects; the stash is the hand-off'
 );
+// Issue #84 — the resolving/stashing body runs a live NF\Rosters:RosterUser
+// finder, a permission read, and entity-relation access on the save path of every
+// mention surface. A vendor schema drift or a transient DB error must not abort the
+// member's post: the body is wrapped in a \Throwable catch that forwards $e to
+// logException($e, false, …) and lets the save proceed without a milpac alert,
+// mirroring RosterPatch / EnlistmentReminder. Anchored to stashMilpacMentions's own
+// body (see methodBody) so a catch elsewhere can't satisfy it.
+$stashBody = methodBody($preparerSrc, 'stashMilpacMentions');
+check(
+    'detection is contained: stashMilpacMentions catches and forwards $e to logException($e, false, …), never rethrowing',
+    $stashBody !== ''
+        && (bool) preg_match('/catch\s*\(.*?logException\(\s*\$e,\s*false/s', $stashBody)
+        && str_contains($stashBody, '[Cav7/MilpacMention] detection failed')
+        && !str_contains($stashBody, 'throw'),
+    'an uncontained finder/permission/relation failure on the shared save path would abort the member\'s whole post'
+);
 
 // =========================================================================
 // the Post firing extension (spec §2.4 / §2.5)
@@ -317,6 +390,22 @@ check(
     "every alert() call passes depends_on_addon_id => 'Cav7/MilpacMention'",
     $alertCalls > 0 && $alertCalls === $dependsTags,
     "alert() calls=$alertCalls tagged=$dependsTags — an untagged alert survives uninstall"
+);
+// Issue #84 — firing runs inline after the post has already saved+committed, so an
+// alert()/canView() failure must not surface on the member's reply action. The
+// firing loop is contained: a \Throwable is caught, forwarded to
+// logException($e, false, …), and the loop continues to the next recipient,
+// matching EnlistmentReminder\QueueReminder::alertClerks. Anchored to
+// fireMilpacMentions's own body (see methodBody) so a catch elsewhere can't
+// satisfy it.
+$fireBody = methodBody($notifierSrc, 'fireMilpacMentions');
+check(
+    'firing is contained: fireMilpacMentions catches and forwards $e to logException($e, false, …), never rethrowing',
+    $fireBody !== ''
+        && (bool) preg_match('/catch\s*\(.*?logException\(\s*\$e,\s*false/s', $fireBody)
+        && str_contains($fireBody, '[Cav7/MilpacMention] firing failed')
+        && !str_contains($fireBody, 'throw'),
+    'the post is already saved+committed; an uncontained alert()/canView() failure would surface on the reply action'
 );
 
 if ($failures > 0) {

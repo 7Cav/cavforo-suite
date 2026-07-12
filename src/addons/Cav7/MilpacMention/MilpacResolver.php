@@ -14,9 +14,11 @@ namespace Cav7\MilpacMention;
  *   milpacRecipients()    apply the firing rules to pick who is alerted (§2.5)
  *
  * The three pure methods carry no XenForo dependency, so the detection regex, the
- * mapping shape, and the cap/dedup rules are unit-tested in plain PHP. Only
- * resolveUserIds() touches \XF, so requiring this file in a test is safe as long
- * as that method is not called.
+ * mapping shape, and the cap/dedup rules are unit-tested in plain PHP. The only \XF
+ * references are resolveUserIds() (the live roster finder) and the PCRE-failure
+ * branch of extractRelationIds() — both unreached by the happy path, so requiring
+ * this file and exercising detection/mapping/firing in a test is safe with no
+ * XenForo, as long as resolveUserIds() is not called and no regex actually fails.
  */
 class MilpacResolver
 {
@@ -32,7 +34,20 @@ class MilpacResolver
      */
     public static function extractRelationIds(string $message): array
     {
-        if (!preg_match_all('#/rosters/profile/(\d+)#', $message, $matches)) {
+        $count = preg_match_all('#/rosters/profile/(\d+)#', $message, $matches);
+        if ($count === false) {
+            // A PCRE engine failure (backtrack/recursion limit, bad UTF-8) returns
+            // false, which is distinct from 0 "no matches". Left as `!preg_match_all`
+            // it would collapse into the same `return []` and silently drop
+            // detection for the whole message. Log it so the drop is observable,
+            // then fail closed. This \XF:: reference sits only on this error branch,
+            // which the pure unit tests never reach — the happy path still loads and
+            // runs under bare php with no XenForo (mirrors SteamChecker's fail-loud
+            // preg guards).
+            \XF::logError('[Cav7/MilpacMention] relation_id extraction failed (PCRE: ' . preg_last_error_msg() . ')');
+            return [];
+        }
+        if (!$count) {
             return [];
         }
 

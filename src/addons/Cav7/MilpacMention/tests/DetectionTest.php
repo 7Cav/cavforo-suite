@@ -85,6 +85,41 @@ check(
     MilpacResolver::extractRelationIds('/rosters/profile/0/') === []
 );
 
+// Near-miss: the profile segment with no trailing id at all matches nothing —
+// (\d+) needs at least one digit.
+check(
+    'a /rosters/profile/ with no id yields []',
+    MilpacResolver::extractRelationIds('see /rosters/profile/ here') === []
+);
+
+// Near-miss: the plural "profiles" segment is a different route and must not match;
+// the pattern requires the exact "/rosters/profile/" prefix before the digits.
+check(
+    'a /rosters/profiles/5/ (plural segment) yields []',
+    MilpacResolver::extractRelationIds('/rosters/profiles/5/') === []
+);
+
+// The pattern is intentionally host-agnostic (#/rosters/profile/(\d+)#), so an
+// off-host URL still matches. This documents the deliberate trade-off — matching
+// on the path keeps the canonical "-slug" and relative in-editor shapes working —
+// and guards against a "hardening" regression that anchored to the board host and
+// broke those. In practice the roster path only exists on the board, so a foreign
+// URL carrying it is not a real concern.
+check(
+    'an off-host https://evil.example/rosters/profile/42/ still matches (deliberate: path-only)',
+    MilpacResolver::extractRelationIds('https://evil.example/rosters/profile/42/') === [42]
+);
+
+// Interleaved distinct + duplicate links in one message: every distinct id in
+// first-seen order, the repeat collapsed. Tested here together (the earlier cases
+// cover distinct and duplicate only separately).
+check(
+    'interleaved distinct and duplicate links yield each id once, first-seen order',
+    MilpacResolver::extractRelationIds(
+        '/rosters/profile/42/ /rosters/profile/7/ /rosters/profile/42/ /rosters/profile/99/'
+    ) === [42, 7, 99]
+);
+
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
     exit(1);

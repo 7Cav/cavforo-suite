@@ -83,6 +83,15 @@ check(
     MilpacResolver::milpacRecipients([1], [8, 9], 0, -1) === [8, 9]
 );
 
+// unlimited cap still applies the self-link and @-dedup filters BEFORE returning:
+// author 5 and @-member 1 both drop, leaving just 9. A regression that returned the
+// raw milpac set on the cap < 0 branch before the filter loop would wrongly keep
+// 5 and 1 here.
+check(
+    'an unlimited cap still drops the author and the @-mention set',
+    MilpacResolver::milpacRecipients([1], [5, 1, 9], 5, -1) === [9]
+);
+
 // the rules compose: author 5 and @-member 1 both drop, then the cap of 4 leaves
 // three slots after the single @, so the first three of the remaining milpac fire
 // and 11 overflows.

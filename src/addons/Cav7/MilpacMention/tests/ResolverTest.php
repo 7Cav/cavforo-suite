@@ -40,6 +40,16 @@ check(
     MilpacResolver::userIdsFromMap([42, 7, 99], [42 => 100, 7 => 250, 99 => 300]) === [100, 250, 300]
 );
 
+// Output follows RELATION-ID (link) order, not the finder map's insertion order.
+// Here the input link order [99, 42, 7] differs from the map's insertion order
+// [42, 7, 99], so a stray reliance on map order would yield [100, 250, 300]; the
+// correct link-order result is [300, 100, 250]. This decides which milpac is kept
+// vs dropped when the shared author cap overflows, so it must track the links.
+check(
+    'user_ids follow the input relation-id (link) order, not the map insertion order',
+    MilpacResolver::userIdsFromMap([99, 42, 7], [42 => 100, 7 => 250, 99 => 300]) === [300, 100, 250]
+);
+
 // A relation_id the finder returned no row for (deleted roster row, bad link) is
 // dropped rather than resolving to a phantom member.
 check(
