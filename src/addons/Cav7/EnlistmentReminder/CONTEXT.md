@@ -60,3 +60,12 @@ in the post, so the applicant's thread is not cluttered and non-clerk activity
 cannot suppress the signal.
 _Avoid_: "tag" / "mention" — clerks are not `@`-mentioned in the post body; they
 are alerted directly through XenForo's alert system.
+
+**Reminder note**:
+The single brief, neutral post the S6 bot leaves in an application's thread as
+the visible half of a **Clerk reminder** — an audit trail and a recency bump,
+separate from the private clerk alert. Its wording is applicant-safe: it carries
+no "pick this up" language and `@`-mentions no one. One per thread.
+_Avoid_: "the bot's post" (ambiguous — the same S6 bot also posts SteamChecker's
+VAC reply in these threads, so "a bot post" and "the reminder note" are not
+interchangeable), reminder message.
