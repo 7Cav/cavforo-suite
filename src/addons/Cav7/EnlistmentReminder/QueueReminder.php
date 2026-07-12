@@ -90,6 +90,10 @@ class QueueReminder
             {
                 if ($this->postReminderNote($threadId, $botUserId))
                 {
+                    // Same success block as the note, before the marker: the note
+                    // and the clerk alerts go out together and, once recordReminder
+                    // lands, never again (issue #76, per ADR-0001).
+                    $this->alertClerks($threadId, $botUserId, $clerkUserIds);
                     $this->recordReminder($threadId);
                 }
             }
@@ -308,5 +312,65 @@ class QueueReminder
                 VALUES (?, ?)',
             [$threadId, \XF::$time]
         );
+    }
+
+    /**
+     * Alert every current processing clerk that this thread is past the deadline
+     * with no pickup, per ADR-0001. Each alert is a direct XenForo notification
+     * (content type thread, custom action enlistment_reminder) that lands in the
+     * clerk's bell and links straight to the application; the core thread alert
+     * handler covers viewability and the one-click through, and the wording is
+     * the public:alert_thread_enlistment_reminder template. The S6 bot is the
+     * sender, matching the visible note, and dependsOnAddOnId ties every alert to
+     * this add-on so uninstalling clears any that are still outstanding.
+     *
+     * The same $clerkUserIds the pickup check resolved is reused — primary and
+     * secondary seat holders alike — so the alert reaches exactly the members
+     * whose reply would have counted as a pickup. alert() (not insertAlert) is
+     * used so a clerk who muted the type in their alert preferences is skipped.
+     *
+     * Best-effort: this runs after the note has posted, so a repository blip must
+     * be logged, never thrown. If it threw, the caller's catch would skip
+     * recordReminder and the applicant-visible note would re-post next run. One
+     * bad clerk row must not cost the rest their alert either, but alert() already
+     * tolerates a missing Option, so a single wrapping guard is enough.
+     *
+     * @param int[] $clerkUserIds the resolved clerk seat holders from remind()
+     */
+    protected function alertClerks(int $threadId, int $botUserId, array $clerkUserIds): void
+    {
+        if (!$clerkUserIds)
+        {
+            return;
+        }
+
+        try
+        {
+            /** @var \XF\Repository\UserAlertRepository $alertRepo */
+            $alertRepo = \XF::app()->repository(\XF\Repository\UserAlertRepository::class);
+
+            /** @var \XF\Entity\User|null $botUser */
+            $botUser = \XF::em()->find('XF:User', $botUserId);
+            $botUsername = $botUser ? $botUser->username : '';
+
+            /** @var \XF\Entity\User $clerk */
+            foreach (\XF::em()->findByIds('XF:User', $clerkUserIds) as $clerk)
+            {
+                $alertRepo->alert(
+                    $clerk,
+                    $botUserId,
+                    $botUsername,
+                    'thread',
+                    $threadId,
+                    'enlistment_reminder',
+                    [],
+                    ['dependsOnAddOnId' => 'Cav7/EnlistmentReminder']
+                );
+            }
+        }
+        catch (\Throwable $e)
+        {
+            \XF::logException($e, false, '[Cav7/EnlistmentReminder] clerk alert send failed for thread ' . $threadId . '; note already posted: ');
+        }
     }
 }

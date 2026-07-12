@@ -41,6 +41,24 @@ function outputItems(string $root, string $type): array
     ));
 }
 
+/**
+ * All _output template files across their style-type folders (public/admin/email),
+ * excluding the _metadata.json index. Templates nest one level deeper than the flat
+ * item types, so outputItems() (a flat glob) can't see the actual template files.
+ */
+function outputTemplateItems(string $root): array
+{
+    $items = [];
+    foreach (glob("$root/_output/templates/*", GLOB_ONLYDIR) ?: [] as $styleDir) {
+        foreach (glob("$styleDir/*") ?: [] as $f) {
+            if (basename($f) !== '_metadata.json') {
+                $items[] = $f;
+            }
+        }
+    }
+    return $items;
+}
+
 // --- the hourly cron entry is registered ----------------------------------
 $cronXml = @simplexml_load_file("$root/_data/cron.xml");
 check('_data/cron.xml could be read', $cronXml !== false);
@@ -257,10 +275,14 @@ check(
     ),
     'a saved note followed by a throwing correction would never be recorded, and would re-post next run'
 );
+// Issue #76 slots the clerk alert into #75's once-guard: a saved note alerts the
+// clerks, then records the marker, all in the one success block. Record still
+// happens iff the post saved, so the remind-once guarantee holds and the alerts
+// go out in the same run as the note.
 check(
-    'a saved note is always followed by recording the marker (record iff the post saved)',
-    (bool) preg_match('/if\s*\(\s*\$this->postReminderNote\([^)]*\)\s*\)\s*\{\s*\$this->recordReminder\(/s', $worker),
-    'if the marker write is skipped after a successful post, the remind-once guarantee breaks'
+    'a saved note alerts the clerks then records the marker, all inside the once-guard',
+    (bool) preg_match('/if\s*\(\s*\$this->postReminderNote\([^)]*\)\s*\)\s*\{\s*(?:\/\/[^\n]*\n\s*)*\$this->alertClerks\([^)]*\);\s*\$this->recordReminder\(/s', $worker),
+    'the alert must fire in the same success block as the note and before the marker, so it fires once per thread'
 );
 check(
     'the visible note is the applicant-safe reminder phrase',
@@ -279,6 +301,171 @@ check(
     'a reminded thread is recorded in the marker table',
     (bool) preg_match('/INSERT( IGNORE)? INTO xf_cav7_enlistment_reminder/', $worker),
     'without the write, the same thread would be reminded every hour'
+);
+
+// =========================================================================
+// Issue #76 — direct clerk alerts. IN ADDITION to the applicant-safe note, a
+// reminded thread alerts every current processing clerk with a direct XenForo
+// alert (content type thread, custom action enlistment_reminder), inside #75's
+// marker once-guard so the note and the alerts fire together and only once. The
+// pointed "pick this up" wording lives in the alert, which only clerks see.
+// Mechanism and rationale: docs/adr/0001-alert-not-mention.md.
+// =========================================================================
+
+// The alert targets the SAME primary-or-secondary clerk set the pickup check
+// already resolved (#75's $clerkUserIds), not a fresh, differently-scoped query.
+check(
+    'the clerk alert reuses the resolved $clerkUserIds set',
+    (bool) preg_match('/alertClerks\(\s*\$threadId\s*,\s*\$botUserId\s*,\s*\$clerkUserIds\s*\)/', $worker),
+    'the alert must reach the same clerks whose reply would have counted as a pickup'
+);
+
+// The alert goes through UserAlertRepository::alert (not insertAlert), so a clerk
+// who muted the type via their alert preferences is skipped — alert() gates on
+// doesReceiveAlert, insertAlert does not.
+check(
+    'the alert is sent via the opt-out-respecting UserAlertRepository::alert path',
+    str_contains($worker, 'UserAlertRepository') && str_contains($worker, '->alert('),
+    'insertAlert bypasses the per-member opt-out; alert() honours doesReceiveAlert'
+);
+check(
+    "the alert uses content type 'thread' and custom action 'enlistment_reminder'",
+    str_contains($worker, "'thread'") && str_contains($worker, "'enlistment_reminder'"),
+    'the core thread handler then renders public:alert_thread_enlistment_reminder and handles viewability/click-through'
+);
+check(
+    'the S6 bot user id is the alert sender',
+    (bool) preg_match('/->alert\(\s*\$\w+\s*,\s*\$botUserId\s*,/s', $worker),
+    'the reminder is attributed to the configured bot, matching the visible note'
+);
+check(
+    'the alert is tied to the add-on via dependsOnAddOnId so uninstall clears outstanding ones',
+    (bool) preg_match("/'dependsOnAddOnId'\s*=>\s*'Cav7\/EnlistmentReminder'/", $worker),
+    'without dependsOnAddOnId an outstanding alert survives uninstall'
+);
+// Best-effort send: the note has already posted by the time alertClerks runs, so
+// a repository blip must be logged, never thrown, or the marker is skipped and
+// the applicant-visible note re-posts next run.
+// Anchor the search to alertClerks's OWN body — from its declaration to the next
+// method decl, or end-of-file since it is the last method today. Without the
+// anchor the regex finds the FIRST catch at/after the declaration, so a method
+// with its own try/catch added below alertClerks could satisfy this even if
+// alertClerks's own catch were deleted.
+$alertClerksBody = '';
+$acStart = strpos($worker, 'function alertClerks');
+if ($acStart !== false) {
+    $alertClerksBody = substr($worker, $acStart);
+    if (preg_match('/\n    (?:private|protected|public)\s+function\s/', $alertClerksBody, $acm, PREG_OFFSET_CAPTURE)) {
+        $alertClerksBody = substr($alertClerksBody, 0, $acm[0][1]);
+    }
+}
+check(
+    'the clerk alert send is best-effort (alertClerks itself catches and logs, never fatal after a posted note)',
+    $alertClerksBody !== '' && (bool) preg_match('/catch\s*\(.*?logException\(/s', $alertClerksBody),
+    'a throwing alert send after a posted note would block recordReminder and re-post the note'
+);
+// No clerk is @-mentioned in the post body — the split of audiences is the whole
+// point of ADR-0001. The neutral note phrase must carry no @mention markup.
+$reminderNoteText = '';
+if ($phraseXml !== false) {
+    foreach ($phraseXml->phrase as $phrase) {
+        if ((string) $phrase['title'] === 'cav7_er_reminder_note') {
+            $reminderNoteText = (string) $phrase;
+        }
+    }
+}
+check(
+    'the visible note @-mentions no one (clerks are alerted directly, not tagged)',
+    $reminderNoteText !== '' && !str_contains($reminderNoteText, '@') && !str_contains($worker, "'@'"),
+    'tagging clerks in the applicant thread is exactly what ADR-0001 rejects'
+);
+
+// --- the alert wording ships as the public template, per ADR-0001 -----------
+$templatesXml = @simplexml_load_file("$root/_data/templates.xml");
+check('_data/templates.xml could be read', $templatesXml !== false);
+
+$templateTitles = [];
+$templateTypeByTitle = [];
+$alertTemplateBody = '';
+if ($templatesXml !== false) {
+    foreach ($templatesXml->template as $tpl) {
+        $title = (string) $tpl['title'];
+        $templateTitles[] = $title;
+        $templateTypeByTitle[$title] = (string) $tpl['type'];
+        if ($title === 'alert_thread_enlistment_reminder') {
+            $alertTemplateBody = (string) $tpl;
+        }
+    }
+}
+check(
+    'the public template alert_thread_enlistment_reminder is declared',
+    in_array('alert_thread_enlistment_reminder', $templateTitles, true)
+        && ($templateTypeByTitle['alert_thread_enlistment_reminder'] ?? '') === 'public',
+    'getTemplateName renders public:alert_thread_enlistment_reminder for content type thread + action enlistment_reminder'
+);
+check(
+    'the alert template clicks through to the thread and renders the staff-facing phrase',
+    str_contains($alertTemplateBody, "link('threads'")
+        && str_contains($alertTemplateBody, 'cav7_er_alert_thread_awaiting_pickup'),
+    'a clerk must reach the application in one click; the pointed wording is a phrase, not inline text'
+);
+check(
+    'the _output template file ships under the public style folder',
+    is_file("$root/_output/templates/public/alert_thread_enlistment_reminder.html"),
+    'the _output side must ship the template or check-data-consistency fails on the templates count'
+);
+check(
+    '_output has one template file per _data template',
+    count(outputTemplateItems($root)) === ($templatesXml !== false ? count($templatesXml->template) : -1),
+    'a _data/templates.xml entry with no _output counterpart (or vice versa) must fail here, mirroring the other item types'
+);
+
+// --- the opt-out entry lets members mute the alert type ---------------------
+// getOptOutsMap builds each toggle from the handler's getOptOutActions plus the
+// alert_opt_out.{type}_{action} phrase, so registering the opt-out means both:
+// extend the core thread alert handler to list the action, and ship the label.
+$classExtXml = @simplexml_load_file("$root/_data/class_extensions.xml");
+check('_data/class_extensions.xml could be read', $classExtXml !== false);
+
+$extensionsByFrom = [];
+if ($classExtXml !== false) {
+    foreach ($classExtXml->extension as $ext) {
+        $extensionsByFrom[(string) $ext['from_class']] = [
+            'to'     => (string) $ext['to_class'],
+            'active' => (string) $ext['active'],
+        ];
+    }
+}
+check(
+    'the core thread alert handler XF\\Alert\\ThreadHandler is extended and active',
+    isset($extensionsByFrom['XF\Alert\ThreadHandler'])
+        && $extensionsByFrom['XF\Alert\ThreadHandler']['to'] === 'Cav7\EnlistmentReminder\XF\Alert\ThreadHandler'
+        && $extensionsByFrom['XF\Alert\ThreadHandler']['active'] === '1',
+    'the opt-out action is registered by extending the thread handler; without it the toggle never renders'
+);
+check(
+    '_output has one class_extensions file per _data extension',
+    count(outputItems($root, 'class_extensions')) === ($classExtXml !== false ? count($classExtXml->extension) : -1)
+);
+
+$handlerSrc = @file_get_contents("$root/XF/Alert/ThreadHandler.php") ?: '';
+check(
+    'the extended handler MERGES enlistment_reminder into the parent getOptOutActions (never replaces it)',
+    (bool) preg_match(
+        '/function\s+getOptOutActions\b.*?return\s+array_merge\(\s*parent::getOptOutActions\(\)\s*,\s*\[[^\]]*\'enlistment_reminder\'/s',
+        $handlerSrc
+    ),
+    'returning [\'enlistment_reminder\'] alone would silently drop every OTHER core thread opt-out (watched-reply, quote, ...); the action must be array_merge-d onto the parent list'
+);
+check(
+    'the opt-out label phrase alert_opt_out.thread_enlistment_reminder is declared',
+    in_array('alert_opt_out.thread_enlistment_reminder', $phraseTitles, true),
+    'getOptOutsMap labels the toggle with the alert_opt_out.{type}_{action} phrase'
+);
+check(
+    'the staff-facing alert body phrase cav7_er_alert_thread_awaiting_pickup is declared',
+    in_array('cav7_er_alert_thread_awaiting_pickup', $phraseTitles, true),
+    'the pointed wording only clerks see lives in this phrase'
 );
 
 if ($failures > 0) {
