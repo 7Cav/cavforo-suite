@@ -4,11 +4,13 @@ XenForo add-on for the [7th Cavalry](https://7cav.us) that treats a linked milpa
 like an `@`-mention.
 
 A milpac is one member's roster profile, at `/rosters/profile/<relation_id>/`.
-When that link appears in a post, a profile post, or a profile-post comment, the
-linked member gets a distinct `milpac_mention` alert that opens the content, and
-they can switch it off from their alert preferences. Members already hand-build
-these roster links all the time, so the notification lands on the workflow that
-exists today with no editor change.
+When that link appears in a post, a profile post, a profile-post comment, or a
+report comment, the linked member gets a distinct `milpac_mention` alert that opens
+the content. The member can switch the post, profile-post, and
+profile-post-comment alerts off from their alert preferences; the report alert
+stays on, the same way XenForo won't let you mute being named in a report. Members
+already hand-build these roster links all the time, so the notification lands on
+the workflow that exists today with no editor change.
 
 The full design is in
 [`docs/specs/milpac-mention-implementation-spec.md`](../../../../docs/specs/milpac-mention-implementation-spec.md).
@@ -25,11 +27,12 @@ The full design is in
 - The detection regex, the reverse-resolution shape, and the firing rules are pure
   PHP in `MilpacResolver`, so they are unit-tested without XenForo.
 - Firing is a thin extension on each surface's notifier:
-  `XF\Service\Post\NotifierService`, `XF\Service\ProfilePost\NotifierService`, and
-  `XF\Service\ProfilePostComment\NotifierService`. After the stock notifier pass
-  each one raises `milpac_mention` on its own content type (`post`,
-  `profile_post`, `profile_post_comment`), reusing that surface's stock alert
-  handler rather than adding a new content type or handler.
+  `XF\Service\Post\NotifierService`, `XF\Service\ProfilePost\NotifierService`,
+  `XF\Service\ProfilePostComment\NotifierService`, and
+  `XF\Service\Report\NotifierService`. After the stock notifier pass each one raises
+  `milpac_mention` on its own content type (`post`, `profile_post`,
+  `profile_post_comment`, `report`), reusing that surface's stock alert handler
+  rather than adding a new content type or handler.
 
 The firing rules match `@`-mention behaviour: a member linking their own milpac is
 not alerted, any number of links to one member is a single alert, a member both
