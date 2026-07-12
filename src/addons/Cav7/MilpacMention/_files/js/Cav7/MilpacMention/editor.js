@@ -14,10 +14,14 @@
  *   - Plain BBCode / mobile: the same named link written as the BBCode text
  *     [URL='.../rosters/profile/N/']Rank Name[/URL] — never a bare URL (§4.6).
  *
- * The '$' never fires mid-word: XF.AutoCompleter.getCurrentMatchInfo only opens
- * after a word boundary (start of text, or after whitespace / ] ( , / --), the
- * same guard '@' rides, so ordinary prose like "it cost $5" does not trigger it
- * (§4.8.4). This addon adds no boundary logic of its own — it inherits XF's.
+ * The '$' only opens a lookup at a word boundary: XF.AutoCompleter.getCurrentMatchInfo
+ * accepts the '$' only at the start of the text or right after whitespace / ] ( , / --,
+ * the same guard '@' rides, so a '$' embedded mid-word (e.g. "cost$5") never queries
+ * (§4.8.4). This addon adds no boundary logic of its own — it inherits XF's. That
+ * word-boundary start is the real guarantee; "$"+digits is NOT specially filtered — a
+ * boundary "$50" does reach the endpoint (XF's minLength is 2), it just returns no
+ * milpac so the dropdown stays hidden. "it cost $5" happens to stay quiet only because
+ * "$5" is one character under that minLength, not because digits after "$" are blocked.
  *
  * The row shape comes from the merged find endpoint (#88), which returns the
  * standard {q, results} envelope with each row carrying id, iconHtml, text
@@ -65,9 +69,24 @@
 	// a bare URL. Same artifact as the rich editor, serialised for a textarea.
 	const anchorToBbCode = html =>
 	{
-		const anchor = XF.createElementFromString(html)
-		const href = (anchor && anchor.getAttribute('href')) || ''
-		const text = (anchor && anchor.textContent) || ''
+		// createElementFromString returns the <a> directly for a single-node string,
+		// but wraps a multi-node string in a div.js-createdContainer — in which case
+		// the <a> is a descendant, not the element itself. Select the anchor
+		// explicitly so a wrapper (or a row that carries no <a> at all) can't slip
+		// through as getAttribute('href') === null and emit a URL-less [URL='']…[/URL].
+		const el = XF.createElementFromString(html)
+		const anchor = el && el.matches && el.matches('a')
+			? el
+			: (el && el.querySelector ? el.querySelector('a') : null)
+		if (!anchor)
+		{
+			// No anchor to name a link from — leave the row's html untouched rather
+			// than rewrite it into a broken, name-losing [URL=''] tag.
+			return html
+		}
+
+		const href = anchor.getAttribute('href') || ''
+		const text = anchor.textContent || ''
 		return "[URL='" + href + "']" + text + '[/URL]'
 	}
 
@@ -119,11 +138,42 @@
 	// named BBCode as any plain textarea (§4.6).
 	const attachToBbCodeSourceBox = ed =>
 	{
+		// When the editor initialises in source mode (!XF.isEditorEnabled()), the vendor
+		// builds the BBCode source <textarea> during setup — BEFORE editor:init fires —
+		// and caches it on ed.$oel.data('xfBbCodeBox') (editor.js getBbCodeBox). The
+		// observer below only sees FUTURE additions, so it never catches that already-
+		// present box, leaving the source view without $name completion. Attach to it
+		// directly if it exists, then observe only for the lazy "view BBCode source" case.
+		const existing = ed.$oel && typeof ed.$oel.data === 'function'
+			? ed.$oel.data('xfBbCodeBox')
+			: null
+		if (existing)
+		{
+			XF.Element.applyHandler(existing, 'milpac-mentioner')
+			return
+		}
+
 		const wrapper = ed.$wp && ed.$wp[0]
 		const parent = wrapper && wrapper.parentNode
 		if (!parent || typeof MutationObserver === 'undefined')
 		{
 			return
+		}
+
+		// Match the source box by its actual shape — the vendor's <textarea class="input">
+		// (getBbCodeBox) — not the first <textarea> to appear, so an unrelated textarea
+		// added beside the editor can't be mistaken for the BBCode source box.
+		const findSourceBox = node =>
+		{
+			if (node.nodeType !== Node.ELEMENT_NODE)
+			{
+				return null
+			}
+			if (node.matches && node.matches('textarea.input'))
+			{
+				return node
+			}
+			return node.querySelector ? node.querySelector('textarea.input') : null
 		}
 
 		const observer = new MutationObserver(records =>
@@ -132,9 +182,10 @@
 			{
 				for (const node of record.addedNodes)
 				{
-					if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'TEXTAREA')
+					const box = findSourceBox(node)
+					if (box)
 					{
-						XF.Element.applyHandler(node, 'milpac-mentioner')
+						XF.Element.applyHandler(box, 'milpac-mentioner')
 						observer.disconnect()
 						return
 					}

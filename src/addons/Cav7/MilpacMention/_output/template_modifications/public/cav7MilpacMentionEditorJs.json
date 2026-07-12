@@ -4,6 +4,6 @@
     "execution_order": 10,
     "enabled": true,
     "action": "str_replace",
-    "find": "<script class=\"js-editorLanguage\" type=\"application/json\">",
-    "replace": "<xf:js addon=\"Cav7/MilpacMention\" prod=\"Cav7/MilpacMention/editor.js\" dev=\"Cav7/MilpacMention/editor.js\" />\n\t$0"
+    "find": "<!--[XF:include_js]-->",
+    "replace": "$0\n\t<xf:js addon=\"Cav7/MilpacMention\" src=\"Cav7/MilpacMention/editor.js\" min=\"1\" />"
 }

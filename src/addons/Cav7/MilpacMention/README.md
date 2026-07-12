@@ -64,8 +64,8 @@ event next to the `@` and `:` completers, so it overrides no core method, and `$
 only opens after a word boundary, so ordinary text like "it cost $5" does not
 trigger it. The names come from the `milpac-mention/find` endpoint, which lists
 current milpac holders whose username matches what you have typed. The completer
-JS ships under `_assets/js/Cav7/MilpacMention/` and a template modification loads
-it on the editor.
+JS ships under `_files/js/Cav7/MilpacMention/`, where XenForo serves an add-on's
+editor script from, and an `<xf:js>` template modification loads it on the editor.
 
 ## Requirements
 

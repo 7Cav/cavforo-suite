@@ -67,10 +67,13 @@ function outputItems(string $root, string $type): array
 }
 
 // The JS src the <xf:js> tag references, and where that file must physically live
-// inside the addon. src is relative to the site js/ root, so the addon ships the
-// file under _assets/js/<src> for deployment into js/<src> (§4.1).
+// inside the addon. XF serves an addon's <xf:js src="X"> from _files/js/X — in dev
+// through DevJsResponse ($addOn->getFilesDirectory()."/js/".X), in prod from the
+// release build's web-root js/X — so the addon ships the file under _files/js/<src>,
+// and the src MUST match that path exactly, case-sensitive (§4.1). It is NOT
+// _assets/js/<src>: _assets/ is never web-served, so a file there 404s the completer.
 $jsSrc = 'Cav7/MilpacMention/editor.js';
-$jsAssetPath = "$root/_assets/js/$jsSrc";
+$jsAssetPath = "$root/_files/js/$jsSrc";
 
 // =========================================================================
 // the template_modifications — deliver the completer on the editor template (§4.1)
@@ -110,14 +113,27 @@ check(
     'the addon ships its editor JS through <xf:js>, mirroring SV/AdvancedBbCodesPack'
 );
 check(
-    'the JS-load modification references the completer script by src',
-    $jsMod !== null && str_contains((string) $jsMod->replace, $jsSrc),
-    "the <xf:js> src must resolve to js/$jsSrc"
+    'the JS-load modification references the completer by an <xf:js src> matching its _files/js path',
+    $jsMod !== null && str_contains((string) $jsMod->replace, 'src="' . $jsSrc . '"'),
+    "the <xf:js> src must be \"$jsSrc\", matching _files/js/$jsSrc exactly (case-sensitive)"
 );
 check(
-    'the JS-load modification keeps its editor-template anchor via $0 (prepends, not replaces)',
+    'the JS-load modification uses the idiomatic single-file src+min form, not a redundant prod=/dev= pair (Finding 2)',
+    $jsMod !== null
+        && str_contains((string) $jsMod->replace, 'min="1"')
+        && !str_contains((string) $jsMod->replace, 'prod=')
+        && !str_contains((string) $jsMod->replace, 'dev='),
+    'src="…editor.js" min="1" replaces the identical prod=/dev= values, mirroring SV/UserMentionsImprovements'
+);
+check(
+    'the JS-load modification anchors on the include_js injection marker (Finding 3)',
+    $jsMod !== null && str_contains((string) $jsMod->find, '<!--[XF:include_js]-->'),
+    "XF's purpose-built <!--[XF:include_js]--> is the stable anchor for adding editor JS"
+);
+check(
+    'the JS-load modification keeps its anchor via $0 (adds beside it, does not replace it)',
     $jsMod !== null && str_contains((string) $jsMod->replace, '$0'),
-    'a str_replace that drops $0 would delete the editor markup it anchors on'
+    'a str_replace that drops $0 would delete the include_js marker it anchors on'
 );
 
 $plainMod = $mods['cav7MilpacMentionPlainHandler'] ?? null;
@@ -178,9 +194,9 @@ foreach (['cav7MilpacMentionEditorJs', 'cav7MilpacMentionPlainHandler'] as $key)
 // =========================================================================
 $jsSrcText = (string) @file_get_contents($jsAssetPath);
 check(
-    "the completer JS exists at _assets/js/$jsSrc",
+    "the completer JS exists at _files/js/$jsSrc (where <xf:js src> resolves)",
     $jsSrcText !== '',
-    'the <xf:js> src points here; a missing file 404s the completer'
+    'XF serves an addon\'s JS from _files/js/<src>; _assets/ is never web-served, so a file there 404s'
 );
 
 // Strip comments so a token that only appears in a code comment can never satisfy
@@ -230,6 +246,21 @@ check(
 check(
     'the JS registers a milpac-mentioner element handler beside user-mentioner/emoji-completer (§4.6)',
     str_contains($js, "XF.Element.register('milpac-mentioner'")
+);
+// Finding 4: in source mode the vendor builds the BBCode source textarea BEFORE
+// editor:init fires, so a MutationObserver alone misses it. The completer must also
+// catch the already-present box via the vendor's cache accessor, and it must match
+// the box by its real shape (the vendor's <textarea class="input">), not the first
+// textarea to appear. Both tokens live in real code, so comment-stripping keeps them.
+check(
+    'the JS attaches to an already-present BBCode source box via the vendor accessor, not only future ones (Finding 4)',
+    str_contains($js, "data('xfBbCodeBox')"),
+    'source-mode init creates the source textarea before editor:init; reading ed.$oel.data(xfBbCodeBox) catches it'
+);
+check(
+    'the JS matches the source box by its vendor shape (textarea.input), not the first textarea (Finding 4)',
+    str_contains($js, 'textarea.input'),
+    'matching the box\'s actual class stops an unrelated textarea being mistaken for the BBCode source box'
 );
 
 // =========================================================================
