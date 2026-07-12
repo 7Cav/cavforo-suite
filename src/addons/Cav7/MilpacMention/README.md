@@ -9,10 +9,8 @@ When that link appears in a post, the linked member gets a distinct
 alert preferences. Members already hand-build these roster links all the time, so
 the notification lands on the workflow that exists today with no editor change.
 
-This is the engine ticket (#84): the shared detection and the post surface. The
-other four mention surfaces, the `$name` editor autocomplete, and the find
-endpoint layer on top in later work. The whole design is in
-[`docs/specs/milpac-mention-implementation-spec.md`](../../../docs/specs/milpac-mention-implementation-spec.md).
+The full design is in
+[`docs/specs/milpac-mention-implementation-spec.md`](../../../../docs/specs/milpac-mention-implementation-spec.md).
 
 ## How it works
 
