@@ -86,6 +86,10 @@ class QueueReminder
         {
             // Per-thread guard: one thread that fails to post must not abort the
             // rest of the batch. An un-reminded thread is simply retried next run.
+            // The two steps after the note are best-effort and swallow their own
+            // throws (alertClerks, recordReminder), so this catch fires only when
+            // the note itself fails to post — nothing has reached the applicant —
+            // which is why its message reads as an outright reminder failure.
             try
             {
                 if ($this->postReminderNote($threadId, $botUserId))
@@ -304,14 +308,30 @@ class QueueReminder
      * after the note posts, so a failed post is retried next run rather than
      * marked done. INSERT IGNORE tolerates a re-entrant run racing on the same
      * thread without erroring on the duplicate primary key.
+     *
+     * Best-effort, and last in the sequence: by the time this runs the note is
+     * already visible on the applicant's thread and the clerk-alert step has already
+     * run. A DB blip on the marker write is therefore a bookkeeping failure —
+     * the reminder itself succeeded — so it is caught and logged here with its own
+     * wording rather than thrown back to remind()'s catch, which logs a genuine
+     * note-post failure. Left unmarked, the thread self-heals: the next run posts
+     * again and, once the marker write lands, never again. The distinct message
+     * keeps a debugger from chasing a note that in fact posted.
      */
     protected function recordReminder(int $threadId): void
     {
-        \XF::db()->query(
-            'INSERT IGNORE INTO xf_cav7_enlistment_reminder (thread_id, reminded_date)
-                VALUES (?, ?)',
-            [$threadId, \XF::$time]
-        );
+        try
+        {
+            \XF::db()->query(
+                'INSERT IGNORE INTO xf_cav7_enlistment_reminder (thread_id, reminded_date)
+                    VALUES (?, ?)',
+                [$threadId, \XF::$time]
+            );
+        }
+        catch (\Throwable $e)
+        {
+            \XF::logException($e, false, '[Cav7/EnlistmentReminder] marker write failed for thread ' . $threadId . '; the note already posted, so this thread re-reminds next run: ');
+        }
     }
 
     /**
