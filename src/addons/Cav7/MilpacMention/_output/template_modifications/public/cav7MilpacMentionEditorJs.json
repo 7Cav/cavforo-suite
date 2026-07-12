@@ -1,0 +1,9 @@
+{
+    "template": "editor",
+    "description": "Load the $name milpac-mention completer script on editor pages",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "str_replace",
+    "find": "<script class=\"js-editorLanguage\" type=\"application/json\">",
+    "replace": "<xf:js addon=\"Cav7/MilpacMention\" prod=\"Cav7/MilpacMention/editor.js\" dev=\"Cav7/MilpacMention/editor.js\" />\n\t$0"
+}

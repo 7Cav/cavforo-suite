@@ -46,6 +46,27 @@ not alerted, any number of links to one member is a single alert, a member both
 link fires nothing, and milpac links count against the author's
 `maxMentionedUsers` budget with `@` kept first.
 
+## The `$name` completer
+
+Staff who link milpacs often do not have to hand-build the roster link. Type `$`
+and the start of a member's name in any editor and a dropdown of milpac holders
+opens, each row showing the rank and name with the roster below it so you can
+tell same-name members apart. Pick one and it inserts the named roster link,
+"Rank Name" pointing at `/rosters/profile/<relation_id>/`, the same link members
+already build by hand. The rich editor inserts it as a link; plain BBCode and
+mobile insert it as `[URL='…/rosters/profile/N/']Rank Name[/URL]` text rather than
+a bare URL.
+
+The completer is only an input shortcut. It inserts the same link the detection
+hook already reads, so a `$name` insert fires `milpac_mention` through the path
+above with no second notification code. It attaches on XenForo's `editor:init`
+event next to the `@` and `:` completers, so it overrides no core method, and `$`
+only opens after a word boundary, so ordinary text like "it cost $5" does not
+trigger it. The names come from the `milpac-mention/find` endpoint, which lists
+current milpac holders whose username matches what you have typed. The completer
+JS ships under `_assets/js/Cav7/MilpacMention/` and a template modification loads
+it on the editor.
+
 ## Requirements
 
 - XenForo 2.3.0+
