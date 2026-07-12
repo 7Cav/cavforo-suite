@@ -62,6 +62,25 @@ class QueueReminder
         }
         $replyAuthorIds = $this->fetchReplyAuthorIds($threadIds);
         $alreadyReminded = $this->fetchAlreadyReminded($threadIds);
+        // Issue #82: the note's presence is the fallback "already reminded" signal
+        // for when the marker WRITE fails persistently while its READ still works.
+        // The note lives in xf_post, a different table from the marker, so it
+        // survives the marker's own write failure. See fetchAlreadyNoted.
+        $alreadyNoted = $this->fetchAlreadyNoted($threadIds, $botUserId);
+
+        // Self-heal the marker (issue #82): a thread the bot has already noted but
+        // that is missing from the marker table is one whose marker write failed on
+        // an earlier run. Re-attempt the write so a recovered DB backfills it and
+        // the thread rejoins the marker fast-path. recordReminder is best-effort and
+        // swallows its own throw, so a still-broken write just re-logs the #81
+        // breadcrumb while the note keeps the reminder capped at one.
+        foreach ($threadIds as $threadId)
+        {
+            if (isset($alreadyNoted[$threadId]) && !isset($alreadyReminded[$threadId]))
+            {
+                $this->recordReminder($threadId);
+            }
+        }
 
         $facts = [];
         foreach ($threads as $thread)
@@ -71,7 +90,11 @@ class QueueReminder
                 'thread_id'        => $threadId,
                 'op_timestamp'     => (int) $thread['post_date'],
                 'reply_author_ids' => $replyAuthorIds[$threadId] ?? [],
-                'already_reminded' => isset($alreadyReminded[$threadId]),
+                // Reminded when the marker has it OR the bot has already left its
+                // note (issue #82). The note gates the whole reminder — note and
+                // clerk alert both — so a broken marker write cannot re-post to the
+                // applicant or re-ping the clerks.
+                'already_reminded' => isset($alreadyReminded[$threadId]) || isset($alreadyNoted[$threadId]),
             ];
         }
 
@@ -223,6 +246,57 @@ class QueueReminder
 
         $map = [];
         foreach ($reminded as $threadId)
+        {
+            $map[(int) $threadId] = true;
+        }
+
+        return $map;
+    }
+
+    /**
+     * The subset of the given thread ids that already carry the bot's reminder
+     * note, as a thread_id => true map. This is the durability backstop for issue
+     * #82. The marker table is both the "already reminded" source of truth AND the
+     * thing that can fail to be written, so on a persistent write failure whose
+     * read still works (INSERT revoked, a drifted or renamed column, a read-only
+     * table) fetchAlreadyReminded keeps returning nothing for a thread the bot has
+     * in fact already reminded, and the hourly scan re-posts the note and re-alerts
+     * the clerks without bound. Deriving "already reminded" from the note itself,
+     * which lives in xf_post — a different table, still writable in that failure
+     * mode — caps the whole reminder at one note and one alert per thread.
+     *
+     * The note is matched on BOTH the bot as author (user_id) AND the reminder
+     * phrase as the message. The author gate stops a member quoting or copy-pasting
+     * the note from faking the signal; the phrase gate stops the same S6 bot's
+     * SteamChecker VAC reply in the same thread from counting. Only visible posts
+     * count, mirroring fetchReplyAuthorIds, so a soft-deleted note does not suppress
+     * a fresh reminder. Do not "simplify" this away as a redundant re-read of the
+     * marker table: it is the marker table's own write failure that it exists to
+     * survive, and a ScanWiringTest assertion pins it for that reason.
+     *
+     * @param int[] $threadIds
+     * @return array<int,true>
+     */
+    protected function fetchAlreadyNoted(array $threadIds, int $botUserId): array
+    {
+        if (!$threadIds)
+        {
+            return [];
+        }
+
+        $db = \XF::db();
+        $noted = $db->fetchAllColumn(
+            'SELECT DISTINCT thread_id
+                FROM xf_post
+                WHERE thread_id IN (' . $db->quote($threadIds) . ')
+                    AND user_id = ?
+                    AND message_state = ?
+                    AND message = ?',
+            [$botUserId, 'visible', (string) \XF::phrase('cav7_er_reminder_note')]
+        );
+
+        $map = [];
+        foreach ($noted as $threadId)
         {
             $map[(int) $threadId] = true;
         }

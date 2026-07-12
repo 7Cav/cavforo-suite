@@ -354,6 +354,62 @@ check(
 );
 
 // =========================================================================
+// Issue #82 — a persistent marker-WRITE failure (while the READ still works)
+// must not re-post the note and re-alert the clerks every hour. The marker table
+// is both the "already reminded" source of truth AND the thing that can fail to
+// be written, so the fix derives "already reminded" from the bot's own note in
+// xf_post (a different table, still writable in that failure mode). The note
+// gates the WHOLE reminder, capping it at one note and one alert per thread, and
+// a noted-but-unmarked thread re-attempts the marker write to self-heal on
+// recovery. Rationale lives in fetchAlreadyNoted's docblock.
+// =========================================================================
+
+// The backstop reads the bot's OWN reminder note back out of xf_post, matched on
+// BOTH the bot as author (user_id) AND the reminder phrase as the message,
+// visible only. The author gate defeats a member quoting or copy-pasting the
+// note; the phrase gate defeats the same S6 bot's SteamChecker VAC reply in the
+// same thread. Anchor to fetchAlreadyNoted's own body so the multi-clause regex
+// can't be satisfied by fetchReplyAuthorIds's separate xf_post query.
+$fetchNotedBody = methodBody($worker, 'fetchAlreadyNoted');
+check(
+    'a note-presence backstop lives in its own helper (fetchAlreadyNoted)',
+    $fetchNotedBody !== '',
+    'the #82 fallback belongs in its own helper mirroring fetchAlreadyReminded'
+);
+check(
+    'the backstop matches the bot-authored, visible reminder note on user_id AND message',
+    (bool) preg_match(
+        '/FROM xf_post\b.*?user_id\s*=\s*\?.*?message_state\s*=\s*\?.*?message\s*=\s*\?/s',
+        $fetchNotedBody
+    )
+        && str_contains($fetchNotedBody, "phrase('cav7_er_reminder_note')"),
+    'without matching on both the bot as author and the reminder phrase, a quote/copy-paste or the bot VAC reply would fake the "already reminded" signal'
+);
+
+// The note feeds the SAME already_reminded fact the decision reads, so a present
+// note skips the whole reminder — note AND alert — not just the note.
+check(
+    'the already-reminded fact is the marker OR the note',
+    (bool) preg_match(
+        '/[\'"]already_reminded[\'"]\s*=>\s*isset\(\$alreadyReminded\[[^\]]+\]\)\s*\|\|\s*isset\(\$alreadyNoted\[[^\]]+\]\)/',
+        $worker
+    ),
+    'the note-presence signal must OR into the same fact ReminderDecision reads, or it would gate nothing'
+);
+
+// Self-heal: a thread the bot has already noted but that is missing from the
+// marker table had its marker write fail earlier; re-attempt the write so a
+// recovered DB backfills it and the thread rejoins the marker fast-path.
+check(
+    'a noted-but-unmarked thread re-attempts the marker write (self-heal)',
+    (bool) preg_match(
+        '/isset\(\$alreadyNoted\[[^\]]+\]\)\s*&&\s*!isset\(\$alreadyReminded\[[^\]]+\]\)[^}]*?\$this->recordReminder\(/s',
+        $worker
+    ),
+    'without the self-heal, a recovered DB never backfills the marker and the thread leans on the fuzzier note-match forever'
+);
+
+// =========================================================================
 // Issue #76 — direct clerk alerts. IN ADDITION to the applicant-safe note, a
 // reminded thread alerts every current processing clerk with a direct XenForo
 // alert (content type thread, custom action enlistment_reminder), inside #75's
