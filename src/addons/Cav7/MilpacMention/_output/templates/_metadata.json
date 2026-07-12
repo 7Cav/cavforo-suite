@@ -13,5 +13,10 @@
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "0f451823180c0c171747e6452eb912b1"
+    },
+    "public/alert_report_milpac_mention.html": {
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "6eda363adb30700705396d720d27586f"
     }
 }

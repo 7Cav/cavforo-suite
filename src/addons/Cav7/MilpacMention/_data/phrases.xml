@@ -5,4 +5,5 @@
   <phrase title="cav7_mm_alert_post_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[{name} linked your milpac in a post in the thread {title}]]></phrase>
   <phrase title="cav7_mm_alert_profile_post_comment_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[{name} linked your milpac in a comment on {profile}'s profile]]></phrase>
   <phrase title="cav7_mm_alert_profile_post_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[{name} linked your milpac in a message on {profile}'s profile]]></phrase>
+  <phrase title="cav7_mm_alert_report_milpac_mention" version_id="1000070" version_string="1.0.0"><![CDATA[{name} linked your milpac in a comment in the report {title}]]></phrase>
 </phrases>
