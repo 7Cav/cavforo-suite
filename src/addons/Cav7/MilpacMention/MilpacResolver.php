@@ -181,4 +181,96 @@ class MilpacResolver
 
         return array_slice($milpac, 0, $remaining);
     }
+
+    // =====================================================================
+    // The $name completer's find endpoint (phase 2, spec §4.3). The endpoint
+    // shares this resolver so the join lives in one place; the two pure builders
+    // below shape each result row and are unit-tested in plain PHP.
+    // =====================================================================
+
+    /**
+     * The q-length guard for the find endpoint, mirroring
+     * XF\Pub\Controller\MemberController::actionFind's
+     * `$q !== '' && Str::strlen($q) >= 2`: a query shorter than two characters
+     * returns an empty result set rather than a query. Multibyte-aware, so two
+     * accented characters count as two, not their byte length.
+     */
+    public static function isFindQueryLongEnough(string $q): bool
+    {
+        return $q !== '' && mb_strlen($q) >= 2;
+    }
+
+    /**
+     * The dropdown's primary line and the inserted anchor's text (§4.2/§4.5):
+     * "Rank Name" (e.g. "Corporal Banfield.H"), or the name alone for an unranked
+     * member. Pure so the shape is unit-tested without XenForo.
+     */
+    public static function milpacDisplayText(string $rankTitle, string $username): string
+    {
+        $rankTitle = trim($rankTitle);
+
+        return $rankTitle !== '' ? $rankTitle . ' ' . $username : $username;
+    }
+
+    /**
+     * The value the completer inserts (§4.2): a NAMED anchor, never a bare URL.
+     * The rich editor inserts this HTML and Froala serialises it back to
+     * [URL='…/rosters/profile/<relation_id>/']Rank Name[/URL] on save — the exact
+     * artifact the phase-1 engine already detects (§2.2). Both the href and the
+     * text are html-escaped so a quote or ampersand cannot break out of the
+     * attribute or the tag. Pure so the shape is unit-tested without XenForo.
+     */
+    public static function milpacLinkHtml(string $displayText, string $profileUrl): string
+    {
+        return '<a href="'
+            . htmlspecialchars($profileUrl, ENT_QUOTES, 'UTF-8')
+            . '">'
+            . htmlspecialchars($displayText, ENT_QUOTES, 'UTF-8')
+            . '</a>';
+    }
+
+    /**
+     * The milpac-owning members whose username matches $q, for the $name completer
+     * (§4.3). Models XF\Pub\Controller\MemberController::actionFind and adds the
+     * roster join INSIDE the query, before the fetch limit, so the result is
+     * $limit milpac-owning actives — not $limit actives then filtered:
+     *
+     *   - username LIKE "q%"          the completer's prefix match (escapeLike '?%')
+     *   - isValidUser(true)           unbanned, user_state=valid, active within 180
+     *                                 days — banned/dormant/memorial members fall out
+     *   - INNER JOIN NF\Rosters:RosterUser on user_id (with('Milpac', true), the
+     *                                 mustExist flag), so a member with no milpac is
+     *                                 dropped by the join the way a non-mentionable
+     *                                 user is absent from @ results. RosterUser is
+     *                                 TO_ONE here — the one-user-one-milpac invariant
+     *                                 (§4.4) keeps the join to one row per member.
+     *
+     * Rank and Roster are joined for the dropdown row (§4.5). The ad-hoc 'Milpac'
+     * relation is registered on the finder's structure (the sanctioned withEntity
+     * mechanism), guarded so re-registration on a later request is a no-op.
+     *
+     * @param \XF\Finder\UserFinder $userFinder
+     *
+     * @return \XF\Mvc\Entity\AbstractCollection
+     */
+    public static function findMilpacOwningUsers($userFinder, string $q, int $limit = 10)
+    {
+        $structure = $userFinder->getStructure();
+        if (!isset($structure->relations['Milpac'])) {
+            $structure->relations['Milpac'] = [
+                'entity' => 'NF\Rosters:RosterUser',
+                'type' => \XF\Mvc\Entity\Entity::TO_ONE,
+                'conditions' => 'user_id',
+                'primary' => true,
+            ];
+        }
+
+        return $userFinder
+            ->where('username', 'like', $userFinder->escapeLike($q, '?%'))
+            ->isValidUser(true)
+            ->with('Milpac', true)   // INNER JOIN: only milpac owners survive, before the limit
+            ->with('Milpac.Rank')    // rank title for the dropdown row (§4.5)
+            ->with('Milpac.Roster')  // roster title for the dropdown row (§4.5)
+            ->fetch($limit);
+    }
 }

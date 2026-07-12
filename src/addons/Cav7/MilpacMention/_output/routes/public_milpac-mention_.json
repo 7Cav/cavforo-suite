@@ -1,0 +1,11 @@
+{
+    "route_type": "public",
+    "route_prefix": "milpac-mention",
+    "sub_name": "",
+    "format": "",
+    "build_class": "",
+    "build_method": "",
+    "controller": "Cav7\\MilpacMention:MilpacMention",
+    "context": "",
+    "action_prefix": ""
+}
