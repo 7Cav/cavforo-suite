@@ -1,0 +1,1 @@
+The XenForo user ID the reminder note is posted as. Default: 598.

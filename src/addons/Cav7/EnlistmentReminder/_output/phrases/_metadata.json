@@ -1,0 +1,74 @@
+{
+    "cav7_er_reminder_note.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "c42483a4bac4c6263a9898d238f59575"
+    },
+    "cron_entry.cav7ERScanQueue.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "a3acc419e74526d8d347f11232880d0d"
+    },
+    "option.cav7ERBotUserId.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "f7f16f2772d95dce5427110b883d082b"
+    },
+    "option.cav7ERClerkPositionIds.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "46b519d570074ba22eb13c10f98a8758"
+    },
+    "option.cav7ERDeadlineHours.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "2e8696a60428ddb364adeee75549d310"
+    },
+    "option.cav7ERQueueNodeId.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "3d2acdeaa5113fa73ca70c94ec85bb3b"
+    },
+    "option_explain.cav7ERBotUserId.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "47210c011caf845e6ae2fa949f54cc9c"
+    },
+    "option_explain.cav7ERClerkPositionIds.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "e138f2dd60d341aa1c5b66e8ef317ece"
+    },
+    "option_explain.cav7ERDeadlineHours.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "a65140450a06b73dffa7ad24dedbd091"
+    },
+    "option_explain.cav7ERQueueNodeId.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "b2b88100dc3ffcba89fb8eeec6548651"
+    },
+    "option_group.cav7EnlistmentReminder.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "d9b7e1d611c7068912bc332bb953117d"
+    },
+    "option_group_description.cav7EnlistmentReminder.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "6b23201b3b8432dcb6cc258a85f533ca"
+    }
+}
