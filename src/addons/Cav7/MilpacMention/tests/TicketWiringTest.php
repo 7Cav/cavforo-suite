@@ -17,13 +17,15 @@
  *    require. The CI gate itself runs with NF/Tickets ABSENT, so php -l + validate +
  *    consistency + package + these tests all passing IS the without-NF/Tickets proof.
  *
- *  - CONTAINMENT MATCHES POST, not the inline surfaces. NF\Tickets\Service\Message\
- *    Notifier extends XF\Service\AbstractNotifier and is dispatched via
- *    notifyAndEnqueue() (Service\Ticket\Creator/Replier) exactly like
- *    XF\Service\Post\NotifierService, so it rides XF\Job\Notifier's deferred-job net.
- *    So the firing extension carries NO outer try/catch (matching Post), only the
- *    per-recipient inner guard — the opposite layout to the fully-inline
- *    ProfilePost/Report surfaces. This test pins that Post-style layout.
+ *  - CONTAINMENT IS INLINE-ONLY, like the Report/ProfilePost surfaces — NOT Post.
+ *    NF\Tickets\Service\Message\Notifier is dispatched via notifyAndEnqueue()
+ *    (Service\Ticket\Creator/Replier), whose FIRST notify() pass runs INLINE in the
+ *    member's request; milpac firing is stash-inline-only (a resumed XF\Job\Notifier
+ *    loads a fresh Message with an empty stash and fires nothing), so it NEVER runs
+ *    under the deferred-job net. So the firing extension carries an OUTER try/catch
+ *    around the pre-loop lookups plus the recipient loop (mirroring
+ *    XF\Service\Report\NotifierService), AND the per-recipient inner guard. This test
+ *    pins that report-style layout.
  *
  * The firing rules themselves (self-skip, @-dedup, shared cap) are pure and run for
  * real in FiringRulesTest against the shared MilpacResolver every surface feeds
@@ -297,7 +299,7 @@ $code = stripComments($src);
 // signature would fatal when XF calls notify().
 check(
     'notify() matches the parent notify($timeLimit) signature and fires after parent::notify($timeLimit)',
-    (bool) preg_match('/function\s+notify\b.*?parent::notify\(\s*\$timeLimit\s*\).*?fireMilpacMentions\(/s', $src),
+    (bool) preg_match('/function\s+notify\b.*?parent::notify\(\s*\$timeLimit\s*\).*?fireMilpacMentions\(/s', $code),
     'the ticket notifier fires through notify($timeLimit) (the AbstractNotifier shape, as Post), not a bespoke notify() (build-time check §8)'
 );
 // Same-instance invariant: the Message the Creator/Replier prepared (the preparer's
@@ -305,7 +307,7 @@ check(
 // take() finds the stash. The stash key is the ticket message, not the ticket.
 check(
     'firing reads the stashed recipients via the consuming MilpacStash::take($message)',
-    str_contains($src, 'MilpacStash::take($message)'),
+    str_contains($code, 'MilpacStash::take($message)'),
     'same-instance invariant: the notifier holds the very Message the detection hook prepared'
 );
 // The alert()'s arguments are the load-bearing wiring facts: sender attribution, the
@@ -346,67 +348,90 @@ check(
     'a non-anonymized sender read off $message->user_id would leak the author of an anonymized ticket'
 );
 check(
-    'self-links are suppressed at the firing edge ($user->user_id == $message->user_id)',
-    (bool) preg_match('/\$user->user_id\s*==\s*\$message->user_id/', $src),
-    'the stock NF\\Tickets Mention::canNotify self-check does not run for the distinct action (rule §2.5.1); it gates on $message->user_id (the real author, not the anonymized sender); whitespace-tolerant'
+    'self-links are suppressed at the firing edge ($user->user_id == $message->user_id) and the match continues',
+    (bool) preg_match('/\$user->user_id\s*==\s*\$message->user_id\s*\)\s*\{\s*continue\s*;/s', $code),
+    'the stock NF\\Tickets Mention::canNotify self-check does not run for the distinct action (rule §2.5.1); it gates on $message->user_id (the real author, not the anonymized sender) and skips via continue; anchored to $code, whitespace-tolerant'
 );
 // Dedup uses the AbstractNotifier shape ($this->alerted + setUserAsAlerted), as Post
 // does — NOT the bespoke $this->usersAlerted the ProfilePost/Report surfaces use.
+$dedupGuardPos = strpos($code, 'if (!empty($this->alerted[');
+$dedupAlertPos = strpos($code, '->alert(');
 check(
-    'firing dedups against anyone the stock pass already alerted — reads the guard AND records the send (one alert per member)',
-    str_contains($src, 'if (!empty($this->alerted[')
-        && str_contains($src, 'setUserAsAlerted('),
-    'the ticket notifier tracks alerted members in $this->alerted (the AbstractNotifier shape); pin both the read guard and the write-back via setUserAsAlerted so mere array presence cannot satisfy it (rules §2.5.2/5)'
+    'firing dedups against anyone the stock pass already alerted — the read guard precedes the alert() AND the write-back is conditioned on $sent (one alert per member)',
+    $dedupGuardPos !== false
+        && $dedupAlertPos !== false
+        && $dedupGuardPos < $dedupAlertPos
+        && (bool) preg_match('/if\s*\(\s*\$sent\s*\)\s*\{\s*\$this->setUserAsAlerted\(/s', $code),
+    'the ticket notifier tracks alerted members in $this->alerted (the AbstractNotifier shape); pin that the read guard precedes the alert() and that setUserAsAlerted only records a member when $sent, so mere token presence cannot satisfy it (rules §2.5.2/5)'
 );
 // Gating parity (§2.6): the stock ticket notifier's canUserViewContent gates on
 // \XF::asVisitor($user, fn() => $message->canView()); Message::canView() delegates to
-// the Ticket's canView(), so a member who cannot view the ticket is filtered out.
+// the Ticket's canView(), so a member who cannot view the ticket is filtered out. This
+// is the visibility/PRIVACY gate — a rot here could alert members who cannot view an
+// anonymized ticket — so pin it POSITIONALLY against the comment-stripped $code, NOT the
+// raw $src. Notifier.php's own comment (~line 130) spells out both `asVisitor` and
+// `$message->canView()` verbatim, so a bare str_contains($src, …) stays green even when
+// the real gating block is deleted (a reviewer proved this by mutation; issue #87
+// Finding 4). Anchor the RESOLVE — $canView = \XF::asVisitor($user, … $message->canView())
+// — AND the `if (!$canView) continue;` SKIP, so both "resolves canView" and "actually
+// gates on it" must be present.
 check(
-    'gating parity — the recipient must be able to view the ticket message (asVisitor $message->canView())',
-    str_contains($src, 'asVisitor') && str_contains($src, '$message->canView()'),
-    'a member who cannot see the ticket is filtered out, same as the stock notifier canUserViewContent (§2.6)'
+    'gating parity — the recipient must be able to view the ticket message: $canView = asVisitor($user, … $message->canView()), enforced by if (!$canView) continue',
+    (bool) preg_match('/\$canView\s*=\s*\\\\XF::asVisitor\(\s*\$user\s*,.*?\$message->canView\(\s*\)/s', $code)
+        && (bool) preg_match('/if\s*\(\s*!\s*\$canView\s*\)\s*\{\s*continue\s*;/s', $code),
+    'anchored to comment-stripped $code and positional: deleting the real asVisitor/$message->canView() resolve OR its !$canView skip FAILS here — a bare str_contains($src) passes on the gating comment alone (issue #87, Finding 4)'
 );
 
-// Every alert() call carries depends_on_addon_id so uninstall clears alerts.
-$alertCalls = preg_match_all('/->alert\(/', $src);
-$dependsTags = preg_match_all("/'depends_on_addon_id'\s*=>\s*'Cav7\/MilpacMention'/", $src);
+// Every alert() call carries depends_on_addon_id so uninstall clears alerts. Counted on
+// the comment-stripped $code so a commented-out ->alert( example cannot skew the tally.
+$alertCalls = preg_match_all('/->alert\(/', $code);
+$dependsTags = preg_match_all("/'depends_on_addon_id'\s*=>\s*'Cav7\/MilpacMention'/", $code);
 check(
     "every alert() call passes depends_on_addon_id => 'Cav7/MilpacMention'",
     $alertCalls > 0 && $alertCalls === $dependsTags,
     "alert() calls=$alertCalls tagged=$dependsTags — an untagged alert survives uninstall"
 );
 
-// Containment MATCHES POST (not the inline ProfilePost/Report layout). The ticket
-// notifier is dispatched via notifyAndEnqueue() (Service\Ticket\Creator/Replier)
-// exactly like XF\Service\Post\NotifierService, so it rides XF\Job\Notifier's net.
-// So fireMilpacMentions carries a per-recipient inner catch that forwards $e to
-// logException($e, false, …) and never rethrows — and NO outer guard.
-$fireBody = methodBody($src, 'fireMilpacMentions');
+// Containment IS INLINE-ONLY (the report-style layout, NOT Post). The ticket notifier
+// is dispatched via notifyAndEnqueue() (Service\Ticket\Creator/Replier), whose FIRST
+// notify() pass runs INLINE; milpac firing is stash-inline-only (a resumed job loads a
+// fresh Message with an empty stash and fires nothing), so it never rides
+// XF\Job\Notifier's net. So fireMilpacMentions carries an OUTER catch that forwards $e
+// to logException($e, false, …) around the pre-loop lookups AND the loop, plus the
+// per-recipient inner catch — and never rethrows. Anchored to the comment-stripped body
+// ($fireCode) so a prose "throw"/"try" in a comment cannot satisfy or defeat it.
+$fireCode = methodBody($code, 'fireMilpacMentions');
 check(
     'firing is contained — fireMilpacMentions catches and forwards $e to logException($e, false, …), never rethrowing',
-    $fireBody !== ''
-        && (bool) preg_match('/catch\s*\(.*?logException\(\s*\$e,\s*false/s', $fireBody)
-        && str_contains($fireBody, '[Cav7/MilpacMention] firing failed')
-        && !str_contains($fireBody, 'throw'),
+    $fireCode !== ''
+        && (bool) preg_match('/catch\s*\(.*?logException\(\s*\$e,\s*false/s', $fireCode)
+        && str_contains($fireCode, '[Cav7/MilpacMention] firing failed')
+        && !str_contains($fireCode, 'throw'),
     'the ticket message is already saved+committed; an uncontained alert()/canView() failure would surface on the reply action'
 );
-// Post-style layout, positively pinned: the findByIds/repository lookups sit OUTSIDE
-// any try (the only try is the per-recipient inner guard, inside the loop). This is
-// the OPPOSITE of the ProfilePost/Report inline surfaces, which wrap findByIds in an
-// outer guard. If a future edit adds an outer guard (or moves the lookup into the
-// loop), it fails here — keeping the ticket surface aligned with Post, whose net is
-// the deferred XF\Job\Notifier it shares. Anchored to the comment-stripped body so a
-// "no outer try/catch" note in the source cannot register as a real try (issue #86).
-$fireCode = methodBody($code, 'fireMilpacMentions');
-$firstTryPos = strpos($fireCode, 'try');
+// Report-style layout, positively pinned (couples with the outer guard added in issue
+// #87 Finding 1): the OUTER try opens BEFORE the findByIds/repository lookups,
+// findByIds precedes the recipient loop, and the outer catch (\Throwable) forwarding to
+// logException follows the loop — so a transient DB fault in the pre-loop lookup is
+// contained instead of 500-ing an already-committed ticket action. The per-recipient
+// inner catch is still present (pinned above). This mirrors ReportWiringTest's
+// containment pins and is the OPPOSITE of the old Post-style "no outer guard" layout.
+// If a future edit removes the outer guard (or moves the lookup outside it), the
+// ordering below FAILS. Anchored to the comment-stripped body so a prose "try" cannot
+// register as a real one (issue #86/#87).
+$outerTryPos = strpos($fireCode, 'try');
 $findByIdsPos = strpos($fireCode, 'findByIds');
 $foreachPos = strpos($fireCode, 'foreach');
+$outerCatchPattern = '/catch\s*\(\s*\\\\Throwable\b.*?logException\(\s*\$e,\s*false/s';
+$lastCatchPos = strrpos($fireCode, 'catch');
 check(
-    'containment matches Post: the findByIds/repository lookups sit OUTSIDE any try (the only try is the per-recipient inner guard inside the loop)',
-    $firstTryPos !== false && $findByIdsPos !== false && $foreachPos !== false
-        && $findByIdsPos < $firstTryPos     // findByIds precedes the first (and only) try
-        && $foreachPos < $firstTryPos,      // that try lives inside the foreach loop
-    'the ticket surface is dispatched via notifyAndEnqueue() like Post, so it must match Post\'s containment (no outer guard), not the fully-inline ProfilePost/Report layout'
+    'containment is report-style: the outer try opens BEFORE findByIds, findByIds precedes the loop, and the outer catch(\\Throwable)->logException follows the loop',
+    $outerTryPos !== false && $findByIdsPos !== false && $foreachPos !== false && $lastCatchPos !== false
+        && $outerTryPos < $findByIdsPos   // the outer guard opens before the pre-loop lookup
+        && $findByIdsPos < $foreachPos    // the lookup precedes the recipient loop
+        && $foreachPos < $lastCatchPos    // the outer catch closes after the loop
+        && (bool) preg_match($outerCatchPattern, $fireCode),
+    'the ticket surface fires inline-only (a resumed job\'s stash is empty), so it must contain the pre-loop findByIds/repository lookups in an outer guard like Report — not the old Post-style no-outer-guard layout; removing the outer guard FAILS this'
 );
 
 if ($failures > 0) {
