@@ -28,5 +28,11 @@
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "a925d3f1581be59c7ddffeb055cac382"
+    },
+    "cav7_mm_alert_report_milpac_mention.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "ac3aa2965ebe5292b3b3df6ea5b3a5f6"
     }
 }
