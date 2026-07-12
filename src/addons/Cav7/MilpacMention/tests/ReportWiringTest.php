@@ -68,6 +68,30 @@ function methodBody(string $src, string $name): string
     return $body;
 }
 
+/**
+ * The source with every PHP comment removed — line comments and block comments
+ * (including docblocks) — reconstructed through the PHP tokenizer, so a comment
+ * marker that lives inside a string literal is preserved. Anchoring an assertion
+ * here instead of to the raw source stops a token that appears only in a comment
+ * from satisfying it: the report NotifierService carries a deep-link comment that
+ * echoes both 'report' and $comment->report_id verbatim (issue #86, Finding 1).
+ */
+function stripComments(string $src): string
+{
+    $out = '';
+    foreach (token_get_all($src) as $token) {
+        if (is_array($token)) {
+            if ($token[0] === T_COMMENT || $token[0] === T_DOC_COMMENT) {
+                continue;
+            }
+            $out .= $token[1];
+        } else {
+            $out .= $token;
+        }
+    }
+    return $out;
+}
+
 $addon = json_decode((string) @file_get_contents("$root/addon.json"), true);
 $versionId = is_array($addon) ? ($addon['version_id'] ?? null) : null;
 check('addon.json is valid JSON with a positive version_id', is_int($versionId) && $versionId > 0);
@@ -225,6 +249,12 @@ check('every _data phrase carries version_id === addon.json version_id', $phrase
 $src = (string) @file_get_contents("$root/XF/Service/Report/NotifierService.php");
 check('Report NotifierService source exists', $src !== '');
 
+// Anchor the alert()-argument assertions below to the CODE, not the raw source: the
+// notifier's deep-link comment (~line 126) spells out `'report', content id
+// $comment->report_id`, so a bare str_contains($src, …) is satisfied by that comment
+// even when the real alert() args are wrong. Strip comments first (issue #86).
+$code = stripComments($src);
+
 // The stock mention pass on the report surface is the bespoke notifyMentioned()
 // (no args), NOT the Post loadNotifiers()/$timeLimit notify() — match it exactly,
 // then fire. A mismatched signature would fatal when XF calls notifyMentioned().
@@ -242,17 +272,32 @@ check(
     str_contains($src, 'MilpacStash::take($comment)'),
     'same-instance invariant: the notifier holds the very ReportComment the detection hook prepared'
 );
+// The alert()'s arguments are the load-bearing wiring facts on this surface: who it
+// attributes the alert to (sender), the content type/id it deep-links to, and the
+// action it raises. Pin them POSITIONALLY against the real ->alert(...) call in the
+// comment-stripped code, not with a bare str_contains over $src. A whole-source
+// contains() for 'report' / $comment->report_id is false-green — the deep-link comment
+// (~line 126) echoes both verbatim — and a positional match additionally catches a
+// content-type<->action transposition and a misattributed sender ($report->user_id),
+// neither of which any unordered token check could. Arg slots: (1) recipient,
+// (2) senderId $comment->user_id, (3) senderName $comment->username, (4) content type
+// 'report', (5) content id $comment->report_id, (6) action 'milpac_mention'. XF's own
+// report mention alert keys on $comment->report_id (the Report PK the comment carries),
+// so reusing the stock ReportHandler resolves the deep-link to the right report.
+$alertPattern = '~->alert\(\s*'
+    . '\$user\s*,\s*'               // arg 1: recipient
+    . '\$comment->user_id\s*,\s*'   // arg 2: senderId   (attribution — renders {name})
+    . '\$comment->username\s*,\s*'  // arg 3: senderName (attribution — renders {name})
+    . "'report'" . '\s*,\s*'        // arg 4: content type (reuses the stock ReportHandler)
+    . '\$comment->report_id\s*,\s*' // arg 5: content id   (the Report PK the comment carries)
+    . "'milpac_mention'" . '\s*,~s';// arg 6: action
 check(
-    "raises action 'milpac_mention' on content type 'report', reusing the stock ReportHandler",
-    str_contains($src, "'report'") && str_contains($src, "'milpac_mention'")
-);
-// The content-id argument decides which content the alert deep-links to. XF's own
-// report mention alert keys on $comment->report_id (the Report PK carried on the
-// comment), so the alert resolves against the Report handler — pin that exact field.
-check(
-    'the alert() content-id is the report id the stock report alert uses ($comment->report_id)',
-    str_contains($src, '$comment->report_id'),
-    'the wrong id would deep-link the alert to the wrong report (or a nonexistent one)'
+    "the alert() wires sender \$comment->user_id/\$comment->username, content type 'report', "
+        . "content id \$comment->report_id and action 'milpac_mention' in their real argument slots",
+    (bool) preg_match($alertPattern, $code),
+    'anchored to the real ->alert(...) call (comment-stripped): a wrong content type, a wrong '
+        . 'content id, a transposed content-type<->action, or a $report-based sender all FAIL here — '
+        . 'a bare str_contains would pass on the deep-link comment alone (issue #86)'
 );
 check(
     'self-links are suppressed at the firing edge ($user->user_id == $comment->user_id)',
