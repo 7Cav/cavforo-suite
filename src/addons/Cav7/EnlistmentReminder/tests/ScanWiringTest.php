@@ -59,6 +59,27 @@ function outputTemplateItems(string $root): array
     return $items;
 }
 
+/**
+ * The source of one method's body, from its `function <name>` declaration up to
+ * whichever comes first: the next method's docblock, the next method's
+ * declaration, or end-of-file for the last method. Anchoring a best-effort
+ * catch check to the owning method this way keeps a catch in a later method from
+ * satisfying it, and stops the following method's docblock prose (which may talk
+ * about the same failure) from bleeding into the search.
+ */
+function methodBody(string $src, string $name): string
+{
+    $start = strpos($src, 'function ' . $name);
+    if ($start === false) {
+        return '';
+    }
+    $body = substr($src, $start);
+    if (preg_match('~\n    (?:/\*\*|(?:private|protected|public)\s+function\s)~', $body, $m, PREG_OFFSET_CAPTURE)) {
+        $body = substr($body, 0, $m[0][1]);
+    }
+    return $body;
+}
+
 // --- the hourly cron entry is registered ----------------------------------
 $cronXml = @simplexml_load_file("$root/_data/cron.xml");
 check('_data/cron.xml could be read', $cronXml !== false);
@@ -303,6 +324,35 @@ check(
     'without the write, the same thread would be reminded every hour'
 );
 
+// Issue #77 — the marker write is the last step in the once-guard, so a DB blip
+// on it means the note already posted and the clerk-alert step already ran. It
+// must log as a bookkeeping failure that re-reminds next run, distinct from the
+// outer "reminder failed", so a debugger is not sent chasing a note that in fact
+// posted. The full rationale lives in recordReminder's docblock.
+$recordReminderBody = methodBody($worker, 'recordReminder');
+// "never fatal" has to pin two things a bare "has a catch" check misses: the
+// caught $e must be forwarded to logException (not a fresh exception that drops
+// the trace), and the catch must not rethrow — either would bubble to the outer
+// catch and be mis-logged as a reminder failure, reverting #77 while still
+// looking like a catch. The forwarding pattern matches the first_post_id check.
+check(
+    'the marker write is best-effort: recordReminder catches, forwards $e non-fatally, and never rethrows',
+    $recordReminderBody !== ''
+        && (bool) preg_match('/catch\s*\(.*?logException\(\s*\$e,\s*false/s', $recordReminderBody)
+        && !str_contains($recordReminderBody, 'throw'),
+    'a rethrow, or logging a fresh exception instead of $e, would bubble to the outer catch and be mis-logged as a reminder failure though the note already posted'
+);
+// Distinct message: the negative (not "reminder failed") is the load-bearing
+// #77 assertion; "posted" is a light positive so a present-but-empty message
+// can't pass vacuously. Both scope to recordReminder's own body via methodBody.
+check(
+    'the marker-write failure logs distinctly from a note-post failure (not "reminder failed")',
+    $recordReminderBody !== ''
+        && !str_contains($recordReminderBody, 'reminder failed')
+        && str_contains($recordReminderBody, 'posted'),
+    'the marker-write log line must not read "reminder failed"; it says the note posted and the thread re-reminds next run'
+);
+
 // =========================================================================
 // Issue #76 — direct clerk alerts. IN ADDITION to the applicant-safe note, a
 // reminded thread alerts every current processing clerk with a direct XenForo
@@ -345,24 +395,16 @@ check(
 );
 // Best-effort send: the note has already posted by the time alertClerks runs, so
 // a repository blip must be logged, never thrown, or the marker is skipped and
-// the applicant-visible note re-posts next run.
-// Anchor the search to alertClerks's OWN body — from its declaration to the next
-// method decl, or end-of-file since it is the last method today. Without the
-// anchor the regex finds the FIRST catch at/after the declaration, so a method
-// with its own try/catch added below alertClerks could satisfy this even if
-// alertClerks's own catch were deleted.
-$alertClerksBody = '';
-$acStart = strpos($worker, 'function alertClerks');
-if ($acStart !== false) {
-    $alertClerksBody = substr($worker, $acStart);
-    if (preg_match('/\n    (?:private|protected|public)\s+function\s/', $alertClerksBody, $acm, PREG_OFFSET_CAPTURE)) {
-        $alertClerksBody = substr($alertClerksBody, 0, $acm[0][1]);
-    }
-}
+// the applicant-visible note re-posts next run. Same forwarding-and-no-rethrow
+// shape the marker-write check pins below, for the same reason. Anchor to
+// alertClerks's own body (see methodBody) so a catch elsewhere can't satisfy it.
+$alertClerksBody = methodBody($worker, 'alertClerks');
 check(
-    'the clerk alert send is best-effort (alertClerks itself catches and logs, never fatal after a posted note)',
-    $alertClerksBody !== '' && (bool) preg_match('/catch\s*\(.*?logException\(/s', $alertClerksBody),
-    'a throwing alert send after a posted note would block recordReminder and re-post the note'
+    'the clerk alert send is best-effort: alertClerks catches, forwards $e non-fatally, and never rethrows',
+    $alertClerksBody !== ''
+        && (bool) preg_match('/catch\s*\(.*?logException\(\s*\$e,\s*false/s', $alertClerksBody)
+        && !str_contains($alertClerksBody, 'throw'),
+    'a throwing or rethrowing alert send after a posted note would block recordReminder and re-post the note'
 );
 // No clerk is @-mentioned in the post body — the split of audiences is the whole
 // point of ADR-0001. The neutral note phrase must carry no @mention markup.
