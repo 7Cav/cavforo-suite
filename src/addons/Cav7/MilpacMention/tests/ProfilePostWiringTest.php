@@ -154,6 +154,14 @@ check(
         && str_contains($templateBody['alert_profile_post_milpac_mention'] ?? '', 'username_link($user'),
     'the alert opens the profile post in one click; {name} names the linker, {profile} the profile owner'
 );
+// {profile} is the profile owner; on this surface the owner hangs off the profile
+// post directly. A wrong traversal renders an empty name, which the byte-for-byte
+// _data/_output compare below cannot catch (both would agree on the wrong value).
+check(
+    'the profile_post template traverses $content.ProfileUser.username for {profile}',
+    str_contains($templateBody['alert_profile_post_milpac_mention'] ?? '', '$content.ProfileUser.username'),
+    'the profile owner hangs off the profile post directly on this surface'
+);
 check(
     'the profile_post _output template body matches _data byte-for-byte (§3.2 verbatim)',
     ($templateBody['alert_profile_post_milpac_mention'] ?? '') !== ''
@@ -173,6 +181,14 @@ check(
         && str_contains($templateBody['alert_profile_post_comment_milpac_mention'] ?? '', 'cav7_mm_alert_profile_post_comment_milpac_mention')
         && str_contains($templateBody['alert_profile_post_comment_milpac_mention'] ?? '', 'username_link($user'),
     'the alert opens the comment in one click (spec §2.4)'
+);
+// On the comment surface the profile owner is one hop further out (via ProfilePost),
+// so the {profile} traversal differs from the profile-post template. Pin it so a
+// copy-paste of the shorter profile-post traversal renders an empty name here.
+check(
+    'the comment template traverses $content.ProfilePost.ProfileUser.username for {profile}',
+    str_contains($templateBody['alert_profile_post_comment_milpac_mention'] ?? '', '$content.ProfilePost.ProfileUser.username'),
+    'the comment reaches the profile owner one hop further, through ProfilePost'
 );
 check(
     'the comment _output template body matches _data byte-for-byte (§3.2 verbatim)',
@@ -279,15 +295,20 @@ $surfaces = [
         'src' => "$root/XF/Service/ProfilePost/NotifierService.php",
         'entity' => 'profilePost',
         'contentType' => 'profile_post',
+        // The content-id argument to alert() — this surface's own PK, the value the
+        // deep-link resolves against.
+        'contentId' => '$profilePost->profile_post_id',
         'canViewVar' => '$profilePost->canView()',
-        'selfSkip' => '$user->user_id == $profilePost->user_id',
     ],
     'ProfilePostComment' => [
         'src' => "$root/XF/Service/ProfilePostComment/NotifierService.php",
         'entity' => 'comment',
         'contentType' => 'profile_post_comment',
+        // The comment carries BOTH profile_post_comment_id (its PK, the correct value)
+        // and profile_post_id (a valid parent FK); pin the PK so a copy-paste to the
+        // parent id cannot pass while breaking the "opens the comment" deep-link.
+        'contentId' => '$comment->profile_post_comment_id',
         'canViewVar' => '$comment->canView()',
-        'selfSkip' => '$user->user_id == $comment->user_id',
     ],
 ];
 
@@ -311,15 +332,25 @@ foreach ($surfaces as $name => $s) {
         "$name: raises action 'milpac_mention' on content type '$s[contentType]', reusing the stock handler",
         str_contains($src, "'" . $s['contentType'] . "'") && str_contains($src, "'milpac_mention'")
     );
+    // The content-id argument decides which content the alert deep-links to. The
+    // comment surface carries both its PK and a valid parent FK, so a wrong-but-valid
+    // field would still pass every other assertion while breaking the deep-link — pin
+    // the exact per-surface PK the notifier must pass to alert().
     check(
-        "$name: self-links are suppressed at the firing edge ($s[selfSkip])",
-        str_contains($src, $s['selfSkip']),
-        'the core mention self-check does not run for the distinct action (rule §2.5.1)'
+        "$name: the alert() content-id is this surface's own PK ($s[contentId])",
+        str_contains($src, $s['contentId']),
+        'the wrong id would deep-link the alert to the wrong content (or a nonexistent one)'
     );
     check(
-        "$name: firing dedups against anyone already alerted (usersAlerted, one alert per member)",
-        str_contains($src, '$this->usersAlerted['),
-        'the bespoke notifier dedups via $this->usersAlerted, not the Post loadNotifiers $alerted (rules §2.5.2/5)'
+        "$name: self-links are suppressed at the firing edge (\$user->user_id == \$$s[entity]->user_id)",
+        (bool) preg_match('/\$user->user_id\s*==\s*\$' . $s['entity'] . '->user_id/', $src),
+        'the core mention self-check does not run for the distinct action (rule §2.5.1); whitespace-tolerant so a reformat cannot spuriously fail'
+    );
+    check(
+        "$name: firing dedups against anyone already alerted — reads the guard AND writes it back (usersAlerted, one alert per member)",
+        str_contains($src, 'if (!empty($this->usersAlerted[')
+            && (bool) preg_match('/\$this->usersAlerted\[[^\]]*\]\s*=\s*true/', $src),
+        'mere presence of the $this->usersAlerted token would pass even if it never guards the alert; pin both the read guard and the write-back (rules §2.5.2/5)'
     );
     check(
         "$name: gating parity — the recipient must be able to view the content (asVisitor canView)",
@@ -346,6 +377,25 @@ foreach ($surfaces as $name => $s) {
             && str_contains($fireBody, '[Cav7/MilpacMention] firing failed')
             && !str_contains($fireBody, 'throw'),
         'the content is already saved+committed; an uncontained alert()/canView() failure would surface on the member\'s action'
+    );
+    // The containment above only proves a catch→logException exists and the body
+    // never rethrows; it does NOT prove the pre-loop findByIds()/repository() lookups
+    // are inside the guard. This surface fires inline with no deferred-job net, so a
+    // DB error on findByIds would 500 the already-committed action unless it too is
+    // contained. Pin the layout: the outer try opens BEFORE findByIds, findByIds
+    // precedes the loop, and a catch follows the loop — so a future edit that moves
+    // the lookup back outside containment fails CI.
+    $outerTryPos = strpos($fireBody, 'try');
+    $findByIdsPos = strpos($fireBody, 'findByIds');
+    $foreachPos = strpos($fireBody, 'foreach');
+    $lastCatchPos = strrpos($fireBody, 'catch');
+    check(
+        "$name: the findByIds lookup sits inside the outer containment try/catch",
+        $outerTryPos !== false && $findByIdsPos !== false && $foreachPos !== false && $lastCatchPos !== false
+            && $outerTryPos < $findByIdsPos
+            && $findByIdsPos < $foreachPos
+            && $foreachPos < $lastCatchPos,
+        'the pre-loop lookup must be within the outer guard, or a DB error on findByIds/repository would 500 the already-committed action'
     );
 }
 

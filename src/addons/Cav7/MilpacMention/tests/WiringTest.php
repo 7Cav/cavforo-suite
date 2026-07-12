@@ -372,9 +372,10 @@ check(
     'the core Mention::canNotify self-check does not run for the distinct action (rule §2.5.1)'
 );
 check(
-    'firing dedups against anyone the stock pass already alerted (one alert per member)',
-    str_contains($notifierSrc, '$this->alerted['),
-    'XF alerts a member once across a post\'s notifiers; milpac must not double-ping (rules §2.5.2/5)'
+    'firing dedups against anyone the stock pass already alerted — reads the guard AND records the send (one alert per member)',
+    str_contains($notifierSrc, 'if (!empty($this->alerted[')
+        && str_contains($notifierSrc, 'setUserAsAlerted('),
+    'XF alerts a member once across a post\'s notifiers; pin both the read guard and the write-back (via setUserAsAlerted) so mere array presence cannot satisfy it (rules §2.5.2/5)'
 );
 check(
     'gating parity: the recipient must be able to view the post (asVisitor canView)',

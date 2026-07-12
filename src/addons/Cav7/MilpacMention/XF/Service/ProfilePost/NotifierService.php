@@ -51,74 +51,93 @@ class NotifierService extends XFCP_NotifierService
             return;
         }
 
-        $users = \XF::em()->findByIds(User::class, $milpacUserIds, ['Profile', 'Option']);
-
-        /** @var UserAlertRepository $alertRepo */
-        $alertRepo = $this->app->repository(UserAlertRepository::class);
-
-        foreach ($milpacUserIds as $userId)
+        // Outer containment: this surface runs notify() FULLY INLINE in the member's
+        // request, after the profile post is already saved+committed — unlike the Post
+        // surface, whose notify() is deferred into XF\Job\Notifier and wrapped in that
+        // job runner's own try/catch. With no deferred-job net here, the pre-loop
+        // findByIds()/repository() lookups need the same guard as the loop: an uncaught
+        // failure (DB deadlock, dropped connection, timeout) would otherwise become a
+        // 500 on an already-committed action and silently drop every milpac recipient.
+        try
         {
-            // Contain each recipient: firing runs after parent::notify() on a profile
-            // post that is already saved+committed, so an alert()/canView() failure
-            // must be logged and skipped, never surfaced on the member's post action.
-            // Per-recipient so one bad row cannot cost the rest their alert (matches
-            // EnlistmentReminder\QueueReminder::alertClerks's best-effort send).
-            try
+            $users = \XF::em()->findByIds(User::class, $milpacUserIds, ['Profile', 'Option']);
+
+            /** @var UserAlertRepository $alertRepo */
+            $alertRepo = $this->app->repository(UserAlertRepository::class);
+
+            foreach ($milpacUserIds as $userId)
             {
-                if (!isset($users[$userId]))
+                // Contain each recipient: firing runs after parent::notify() on a profile
+                // post that is already saved+committed, so an alert()/canView() failure
+                // must be logged and skipped, never surfaced on the member's post action.
+                // Per-recipient so one bad row cannot cost the rest their alert (matches
+                // EnlistmentReminder\QueueReminder::alertClerks's best-effort send).
+                try
                 {
-                    continue;
+                    if (!isset($users[$userId]))
+                    {
+                        continue;
+                    }
+
+                    /** @var User $user */
+                    $user = $users[$userId];
+
+                    // Rule 1 at the firing edge: the stock notifier's self-check does not
+                    // run for the distinct action, so repeat it here.
+                    if ($user->user_id == $profilePost->user_id)
+                    {
+                        continue;
+                    }
+
+                    // XF alerts a member once across a profile post's notifiers; honour
+                    // that so a milpac link never double-pings someone the stock pass
+                    // alerted (rules 2 and 5). The bespoke notifier tracks this in
+                    // $this->usersAlerted (not the Post loadNotifiers $alerted).
+                    if (!empty($this->usersAlerted[$user->user_id]))
+                    {
+                        continue;
+                    }
+
+                    // Gating parity (§2.6): a member who cannot view the profile post is
+                    // filtered out, exactly as the stock notifier's getUsersForNotification
+                    // does.
+                    $canView = \XF::asVisitor($user, function () use ($profilePost) {
+                        return $profilePost->canView();
+                    });
+                    if (!$canView)
+                    {
+                        continue;
+                    }
+
+                    $sent = $alertRepo->alert(
+                        $user,
+                        $profilePost->user_id,
+                        $profilePost->username,
+                        'profile_post',
+                        $profilePost->profile_post_id,
+                        'milpac_mention',
+                        ['depends_on_addon_id' => 'Cav7/MilpacMention']
+                    );
+
+                    if ($sent)
+                    {
+                        $this->usersAlerted[$user->user_id] = true;
+                    }
                 }
-
-                /** @var User $user */
-                $user = $users[$userId];
-
-                // Rule 1 at the firing edge: the stock notifier's self-check does not
-                // run for the distinct action, so repeat it here.
-                if ($user->user_id == $profilePost->user_id)
+                catch (\Throwable $e)
                 {
-                    continue;
-                }
-
-                // XF alerts a member once across a profile post's notifiers; honour
-                // that so a milpac link never double-pings someone the stock pass
-                // alerted (rules 2 and 5). The bespoke notifier tracks this in
-                // $this->usersAlerted (not the Post loadNotifiers $alerted).
-                if (!empty($this->usersAlerted[$user->user_id]))
-                {
-                    continue;
-                }
-
-                // Gating parity (§2.6): a member who cannot view the profile post is
-                // filtered out, exactly as the stock notifier's getUsersForNotification
-                // does.
-                $canView = \XF::asVisitor($user, function () use ($profilePost) {
-                    return $profilePost->canView();
-                });
-                if (!$canView)
-                {
-                    continue;
-                }
-
-                $sent = $alertRepo->alert(
-                    $user,
-                    $profilePost->user_id,
-                    $profilePost->username,
-                    'profile_post',
-                    $profilePost->profile_post_id,
-                    'milpac_mention',
-                    ['depends_on_addon_id' => 'Cav7/MilpacMention']
-                );
-
-                if ($sent)
-                {
-                    $this->usersAlerted[$user->user_id] = true;
+                    \XF::logException($e, false, "[Cav7/MilpacMention] firing failed for user $userId: ");
                 }
             }
-            catch (\Throwable $e)
-            {
-                \XF::logException($e, false, '[Cav7/MilpacMention] firing failed: ');
-            }
+        }
+        catch (\Throwable $e)
+        {
+            // The outer guard covers the pre-loop findByIds()/repository() lookups
+            // because this surface fires inline with no deferred-job net (unlike Post);
+            // keep the inner per-recipient catch too so one bad row still can't kill the
+            // rest once the loop is running.
+            \XF::logException($e, false, '[Cav7/MilpacMention] firing failed: ');
+            return;
         }
     }
 }
