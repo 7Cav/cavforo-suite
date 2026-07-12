@@ -33,6 +33,9 @@ class NotifierService extends XFCP_NotifierService
 
     protected function fireMilpacMentions()
     {
+        // Deliberately mirrors the shared per-surface firing pattern established in
+        // XF\Service\Post\NotifierService (XenForo's XFCP forces one class-split per
+        // surface), so a firing-rule change must land in every surface extension.
         $profilePost = $this->profilePost;
 
         // Same-instance invariant (load-bearing): MilpacStash keys on
