@@ -117,22 +117,24 @@ check(
 
 // --- the batch selector ----------------------------------------------------
 // One thread of each kind; only the two genuinely un-actioned, un-reminded ones
-// come back, in input order, as their thread ids.
+// come back, in INPUT order, as their thread ids. The higher remindable id (105)
+// is placed before the lower one (101) on purpose, so the expected [105, 101]
+// only holds if input order is preserved — a stray sort or reverse would fail.
 $threads = [
-    // reminded: old, applicant-only, not yet reminded
-    ['thread_id' => 101, 'op_timestamp' => $tenDaysOld, 'reply_author_ids' => [500], 'already_reminded' => false],
+    // reminded: old, no replies, not yet reminded — HIGHER id, placed first
+    ['thread_id' => 105, 'op_timestamp' => $now - $deadline - 1, 'reply_author_ids' => [], 'already_reminded' => false],
     // skipped: clerk pickup
     ['thread_id' => 102, 'op_timestamp' => $tenDaysOld, 'reply_author_ids' => [30],  'already_reminded' => false],
     // skipped: too young
     ['thread_id' => 103, 'op_timestamp' => $now - 3600, 'reply_author_ids' => [],    'already_reminded' => false],
     // skipped: already reminded
     ['thread_id' => 104, 'op_timestamp' => $tenDaysOld, 'reply_author_ids' => [],    'already_reminded' => true],
-    // reminded: old, no replies, not yet reminded
-    ['thread_id' => 105, 'op_timestamp' => $now - $deadline - 1, 'reply_author_ids' => [], 'already_reminded' => false],
+    // reminded: old, applicant-only, not yet reminded — LOWER id, placed after
+    ['thread_id' => 101, 'op_timestamp' => $tenDaysOld, 'reply_author_ids' => [500], 'already_reminded' => false],
 ];
 check(
-    'selectThreadsToRemind returns exactly the un-actioned, un-reminded thread ids in order',
-    ReminderDecision::selectThreadsToRemind($now, $deadline, $clerks, $threads) === [101, 105],
+    'selectThreadsToRemind returns exactly the un-actioned, un-reminded thread ids in input order',
+    ReminderDecision::selectThreadsToRemind($now, $deadline, $clerks, $threads) === [105, 101],
     'got: ' . implode(', ', ReminderDecision::selectThreadsToRemind($now, $deadline, $clerks, $threads))
 );
 check(

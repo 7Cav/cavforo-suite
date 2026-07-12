@@ -190,6 +190,17 @@ check(
     'dropping the secondary arm would miss every holder who carries the seat as a secondary duty'
 );
 
+// An empty resolved clerk set must abort the run with a logged signal, symmetric
+// with the node/bot guards — never silently mass-remind. If cav7ERClerkPositionIds
+// is blank/garbage or the roster drifts so nothing resolves, getClerkUserIds
+// returns [], and with no guard every past-deadline thread (clerk-handled or not)
+// gets a one-shot note.
+check(
+    'remind() aborts when no clerk resolves (logError + early return on the empty clerk set)',
+    (bool) preg_match('/if\s*\(\s*!\$clerkUserIds\s*\).*?logError\(.*?return;/s', $worker),
+    'without this guard a blank or drifted clerk-position option reminds the whole past-deadline queue'
+);
+
 // --- the scan is scoped to open, visible threads in the one node -----------
 check(
     'the queue scan filters on the configured node',
@@ -197,9 +208,24 @@ check(
     'scanning all nodes would touch the Completed/Denied siblings'
 );
 check(
-    'the queue scan takes only open, visible threads',
-    str_contains($worker, 'discussion_state') && str_contains($worker, 'discussion_open'),
-    'a resolved or hidden thread must not be reminded'
+    'the queue scan takes only open, visible threads (discussion_state = visible AND discussion_open = 1)',
+    (bool) preg_match(
+        '/FROM xf_thread.*?discussion_state\s*=\s*\?.*?discussion_open\s*=\s*1\b.*?\[\$nodeId,\s*\'visible\'\]/s',
+        $worker
+    ),
+    'flipping discussion_open to 0 or changing the bound visible literal must fail this, not merely renaming a column'
+);
+
+// The reply-author query counts only visible replies, so a soft-deleted clerk
+// reply is not mistaken for a live pickup. Bind the message_state = visible
+// filter on the xf_post reply query, not just the column name.
+check(
+    'the reply-author query drops soft-deleted replies (message_state filtered to visible)',
+    (bool) preg_match(
+        '/FROM xf_post\b.*?position\s*>\s*0.*?message_state\s*=\s*\?.*?\[\'visible\'\]/s',
+        $worker
+    ),
+    'without the message_state filter a deleted clerk reply would suppress a live reminder'
 );
 
 // --- the decision routes through the pure unit -----------------------------
@@ -219,6 +245,22 @@ check(
     'the freshly-created-OP first_post_id correction is carried over',
     (bool) preg_match('/UPDATE xf_thread SET first_post_id/', $worker),
     'without it the bot note can become first_post_id and break the hover card'
+);
+// FIX 2: the note is saved before the first_post_id correction runs, so that
+// correction must be best-effort — a DB blip on it must never throw back out and
+// stop recordReminder, or the same applicant-visible note re-posts every run.
+check(
+    'the first_post_id correction is best-effort so a saved post always returns true',
+    (bool) preg_match(
+        '/\$post->save\(\);.*?try\s*\{.*?UPDATE xf_thread SET first_post_id.*?catch\s*\(.*?\$e\s*\).*?logException\(\s*\$e,\s*false.*?return true;/s',
+        $worker
+    ),
+    'a saved note followed by a throwing correction would never be recorded, and would re-post next run'
+);
+check(
+    'a saved note is always followed by recording the marker (record iff the post saved)',
+    (bool) preg_match('/if\s*\(\s*\$this->postReminderNote\([^)]*\)\s*\)\s*\{\s*\$this->recordReminder\(/s', $worker),
+    'if the marker write is skipped after a successful post, the remind-once guarantee breaks'
 );
 check(
     'the visible note is the applicant-safe reminder phrase',

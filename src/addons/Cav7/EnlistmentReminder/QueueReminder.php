@@ -25,7 +25,8 @@ class QueueReminder
     {
         $nodeId = (int) \XF::options()->cav7ERQueueNodeId;
         $botUserId = (int) \XF::options()->cav7ERBotUserId;
-        $clerkPositionIds = $this->parseIdList((string) \XF::options()->cav7ERClerkPositionIds);
+        $rawClerkPositionIds = (string) \XF::options()->cav7ERClerkPositionIds;
+        $clerkPositionIds = PositionIdList::parse($rawClerkPositionIds);
 
         if (!$nodeId)
         {
@@ -46,6 +47,19 @@ class QueueReminder
 
         $threadIds = array_map('intval', array_column($threads, 'thread_id'));
         $clerkUserIds = $this->getClerkUserIds($clerkPositionIds);
+        if (!$clerkUserIds)
+        {
+            // Symmetric with the node/bot guards above: with no configured position
+            // resolving to a seated holder, no reply can count as a clerk pickup, so
+            // every past-deadline thread — including applications a clerk is actively
+            // processing — would be reminded. Abort with a signal rather than
+            // mass-remind on a blank or drifted clerk-position option.
+            \XF::logError(sprintf(
+                '[Cav7/EnlistmentReminder] No clerk resolved from cav7ERClerkPositionIds="%s"; skipping this run so live clerk-handled applications are not reminded.',
+                $rawClerkPositionIds
+            ));
+            return;
+        }
         $replyAuthorIds = $this->fetchReplyAuthorIds($threadIds);
         $alreadyReminded = $this->fetchAlreadyReminded($threadIds);
 
@@ -84,23 +98,6 @@ class QueueReminder
                 \XF::logException($e, false, '[Cav7/EnlistmentReminder] reminder failed for thread ' . $threadId . ': ');
             }
         }
-    }
-
-    /**
-     * Parse a comma/whitespace separated id option to a list of positive ints,
-     * the same normalisation SteamChecker uses for its allowed-group option.
-     *
-     * @return int[]
-     */
-    protected function parseIdList(string $raw): array
-    {
-        $raw = trim($raw);
-        if ($raw === '')
-        {
-            return [];
-        }
-
-        return array_values(array_filter(array_map('intval', preg_split('/[\s,]+/', $raw))));
     }
 
     /**
@@ -269,16 +266,30 @@ class QueueReminder
         // manager is holding a Thread whose first_post_id was captured as 0, its
         // post-save flush can leave the bot note as first_post_id and break the
         // thread-list hover card. Pin first_post_id back to the OP explicitly.
-        $opPostId = (int) \XF::db()->fetchOne(
-            'SELECT post_id FROM xf_post WHERE thread_id = ? AND position = 0 ORDER BY post_id ASC LIMIT 1',
-            [$thread->thread_id]
-        );
-        if ($opPostId)
+        //
+        // Best-effort only: the note has already been saved by this point, so this
+        // correction must never throw back out of the method. Here the thread was
+        // loaded fresh from the DB (at least deadlineHours after creation), so its
+        // first_post_id is already persisted and the correction is a no-op — but a
+        // DB blip on it must not stop the caller recording the marker, or the note
+        // would be re-posted every run. Log any failure non-fatally and return true.
+        try
         {
-            \XF::db()->query(
-                'UPDATE xf_thread SET first_post_id = ? WHERE thread_id = ?',
-                [$opPostId, $thread->thread_id]
+            $opPostId = (int) \XF::db()->fetchOne(
+                'SELECT post_id FROM xf_post WHERE thread_id = ? AND position = 0 ORDER BY post_id ASC LIMIT 1',
+                [$thread->thread_id]
             );
+            if ($opPostId)
+            {
+                \XF::db()->query(
+                    'UPDATE xf_thread SET first_post_id = ? WHERE thread_id = ?',
+                    [$opPostId, $thread->thread_id]
+                );
+            }
+        }
+        catch (\Throwable $e)
+        {
+            \XF::logException($e, false, '[Cav7/EnlistmentReminder] first_post_id correction failed for thread ' . $thread->thread_id . '; note already posted: ');
         }
 
         return true;
