@@ -1,0 +1,11 @@
+{
+    "XF-Alert-PostHandler_Cav7-MilpacMention-XF-Alert-PostHandler.json": {
+        "hash": "7eb6acb6e09fa9590a96b575ad16edc0"
+    },
+    "XF-Service-Message-PreparerService_Cav7-MilpacMention-XF-Service-Message-PreparerService.json": {
+        "hash": "37ad3ad1215484e77a929950b508e138"
+    },
+    "XF-Service-Post-NotifierService_Cav7-MilpacMention-XF-Service-Post-NotifierService.json": {
+        "hash": "7b403553ef6ecc82d9c67bf07299ccb9"
+    }
+}

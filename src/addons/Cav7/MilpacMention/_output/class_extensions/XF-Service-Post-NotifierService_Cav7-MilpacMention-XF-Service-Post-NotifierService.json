@@ -1,0 +1,6 @@
+{
+    "from_class": "XF\\Service\\Post\\NotifierService",
+    "to_class": "Cav7\\MilpacMention\\XF\\Service\\Post\\NotifierService",
+    "execute_order": 10,
+    "active": true
+}
