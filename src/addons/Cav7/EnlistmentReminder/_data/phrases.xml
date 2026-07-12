@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <phrases>
+  <phrase title="alert_opt_out.thread_enlistment_reminder" version_id="1000070" version_string="1.0.0"><![CDATA[Enlistment applications waiting for a clerk to pick up]]></phrase>
+  <phrase title="cav7_er_alert_thread_awaiting_pickup" version_id="1000070" version_string="1.0.0"><![CDATA[{title} has been sitting in the enlistment queue past the deadline with no clerk on it. Please pick it up.]]></phrase>
   <phrase title="cav7_er_reminder_note" version_id="1000070" version_string="1.0.0"><![CDATA[Thanks for enlisting with the 7th Cavalry. Your application is still in the queue, and a member of the processing team will review it soon. You don't need to do anything for now.]]></phrase>
   <phrase title="cron_entry.cav7ERScanQueue" version_id="1000070" version_string="1.0.0"><![CDATA[Scan the enlistment queue for un-actioned applications]]></phrase>
   <phrase title="option.cav7ERBotUserId" version_id="1000070" version_string="1.0.0"><![CDATA[Bot user ID]]></phrase>

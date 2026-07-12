@@ -1,4 +1,16 @@
 {
+    "alert_opt_out.thread_enlistment_reminder.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "093ff25db8f7690cc35e96d1e7f390a9"
+    },
+    "cav7_er_alert_thread_awaiting_pickup.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "5149f5aadfffbca5d445ba8880215085"
+    },
     "cav7_er_reminder_note.txt": {
         "global_cache": false,
         "version_id": 1000070,
