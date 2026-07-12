@@ -1,0 +1,9 @@
+{
+    "template": "editor",
+    "description": "Attach the milpac-mentioner handler beside user-mentioner on the plain BBCode textarea",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "str_replace",
+    "find": "data-xf-init=\"textarea-handler user-mentioner emoji-completer draft-trigger\"",
+    "replace": "data-xf-init=\"textarea-handler user-mentioner emoji-completer milpac-mentioner draft-trigger\""
+}
