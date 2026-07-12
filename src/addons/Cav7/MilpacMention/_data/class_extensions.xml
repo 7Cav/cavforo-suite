@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <class_extensions>
   <extension from_class="XF\Alert\PostHandler" to_class="Cav7\MilpacMention\XF\Alert\PostHandler" execute_order="10" active="1"/>
+  <extension from_class="XF\Alert\ProfilePostHandler" to_class="Cav7\MilpacMention\XF\Alert\ProfilePostHandler" execute_order="10" active="1"/>
   <extension from_class="XF\Service\Message\PreparerService" to_class="Cav7\MilpacMention\XF\Service\Message\PreparerService" execute_order="10" active="1"/>
   <extension from_class="XF\Service\Post\NotifierService" to_class="Cav7\MilpacMention\XF\Service\Post\NotifierService" execute_order="10" active="1"/>
+  <extension from_class="XF\Service\ProfilePost\NotifierService" to_class="Cav7\MilpacMention\XF\Service\ProfilePost\NotifierService" execute_order="10" active="1"/>
+  <extension from_class="XF\Service\ProfilePostComment\NotifierService" to_class="Cav7\MilpacMention\XF\Service\ProfilePostComment\NotifierService" execute_order="10" active="1"/>
 </class_extensions>

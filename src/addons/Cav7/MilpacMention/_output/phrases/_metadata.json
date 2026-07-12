@@ -5,10 +5,28 @@
         "version_string": "1.0.0",
         "hash": "c334cc114a4d1ab7e3d0e9975b29b4f7"
     },
+    "alert_opt_out.profile_post_milpac_mention.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "24d2df0847bdbb573238bc1b0fb01cd7"
+    },
     "cav7_mm_alert_post_milpac_mention.txt": {
         "global_cache": false,
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "762790da95c586e46931c7177e14e2a6"
+    },
+    "cav7_mm_alert_profile_post_comment_milpac_mention.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "e38393bc6e6f3d7aec82db6063877503"
+    },
+    "cav7_mm_alert_profile_post_milpac_mention.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "a925d3f1581be59c7ddffeb055cac382"
     }
 }

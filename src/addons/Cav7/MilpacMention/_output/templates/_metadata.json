@@ -3,5 +3,15 @@
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "ed7ec08cc2325c479723fd2a04968756"
+    },
+    "public/alert_profile_post_comment_milpac_mention.html": {
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "0e3aa173bfb9771751884169a0466deb"
+    },
+    "public/alert_profile_post_milpac_mention.html": {
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "0f451823180c0c171747e6452eb912b1"
     }
 }

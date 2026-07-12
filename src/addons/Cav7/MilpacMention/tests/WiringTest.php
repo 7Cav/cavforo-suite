@@ -150,9 +150,9 @@ foreach ($expectedExtensions as $from => $to) {
     );
 }
 check(
-    'exactly the three engine extensions are registered (no stray surfaces yet)',
-    ($classExtXml !== false ? count($classExtXml->extension) : -1) === 3,
-    'the other four surfaces are later tickets; #84 wires post only'
+    'the six engine extensions are registered (post + profile-post + profile-post-comment surfaces)',
+    ($classExtXml !== false ? count($classExtXml->extension) : -1) === 6,
+    'shared PreparerService + Post/ProfilePost/ProfilePostComment notifiers + Post/ProfilePost opt-out handlers; report and ticket surfaces are later tickets. ProfilePostWiringTest pins the profile-post surfaces'
 );
 check(
     '_output has one class_extensions file per _data extension',
@@ -372,9 +372,10 @@ check(
     'the core Mention::canNotify self-check does not run for the distinct action (rule §2.5.1)'
 );
 check(
-    'firing dedups against anyone the stock pass already alerted (one alert per member)',
-    str_contains($notifierSrc, '$this->alerted['),
-    'XF alerts a member once across a post\'s notifiers; milpac must not double-ping (rules §2.5.2/5)'
+    'firing dedups against anyone the stock pass already alerted — reads the guard AND records the send (one alert per member)',
+    str_contains($notifierSrc, 'if (!empty($this->alerted[')
+        && str_contains($notifierSrc, 'setUserAsAlerted('),
+    'XF alerts a member once across a post\'s notifiers; pin both the read guard and the write-back (via setUserAsAlerted) so mere array presence cannot satisfy it (rules §2.5.2/5)'
 );
 check(
     'gating parity: the recipient must be able to view the post (asVisitor canView)',
