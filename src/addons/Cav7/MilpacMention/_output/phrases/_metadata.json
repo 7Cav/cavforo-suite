@@ -1,4 +1,10 @@
 {
+    "alert_opt_out.nf_tickets_message_milpac_mention.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "1fb3d7678d69570d0ce8c43bac9b1c14"
+    },
     "alert_opt_out.post_milpac_mention.txt": {
         "global_cache": false,
         "version_id": 1000070,
@@ -10,6 +16,12 @@
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "24d2df0847bdbb573238bc1b0fb01cd7"
+    },
+    "cav7_mm_alert_nf_tickets_message_milpac_mention.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "92080b95d22979c2c21f2e4a9403d0b6"
     },
     "cav7_mm_alert_post_milpac_mention.txt": {
         "global_cache": false,
