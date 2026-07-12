@@ -6,7 +6,7 @@ Guidance for agents and contributors working in this repo. Start with [README.md
 
 ### Issue tracker
 
-Issues live in this repo's GitHub Issues. Use the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues live in this repo's GitHub Issues, and external PRs are a triage surface too. Use the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
