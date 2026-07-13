@@ -73,6 +73,30 @@ function methodBody(string $src, string $name): string
     return $body;
 }
 
+/**
+ * The source with every PHP comment removed — line comments and block comments
+ * (including docblocks) — reconstructed through the PHP tokenizer, so a comment
+ * marker that lives inside a string literal is preserved. Anchoring the #95
+ * positional pin here instead of to the raw source stops a token that appears
+ * only in a comment (e.g. a docblock quoting the literal argument sequence) from
+ * satisfying it.
+ */
+function stripComments(string $src): string
+{
+    $out = '';
+    foreach (token_get_all($src) as $token) {
+        if (is_array($token)) {
+            if ($token[0] === T_COMMENT || $token[0] === T_DOC_COMMENT) {
+                continue;
+            }
+            $out .= $token[1];
+        } else {
+            $out .= $token;
+        }
+    }
+    return $out;
+}
+
 // =========================================================================
 // addon.json — identity and dependencies (spec §1)
 // =========================================================================
@@ -353,6 +377,9 @@ check(
 // the Post firing extension (spec §2.4 / §2.5)
 // =========================================================================
 $notifierSrc = (string) @file_get_contents("$root/XF/Service/Post/NotifierService.php");
+// Comment-stripped copy for the #95 positional pin below, so a doc-comment quoting the
+// literal argument sequence cannot spuriously satisfy the raw-source match (issue #86).
+$notifierCode = stripComments($notifierSrc);
 check(
     'firing runs after the stock notifier pass (parent::notify then fire)',
     (bool) preg_match('/function\s+notify\b.*?parent::notify\(\s*\$timeLimit\s*\).*?fireMilpacMentions\(/s', $notifierSrc)
@@ -391,6 +418,25 @@ check(
     "every alert() call passes depends_on_addon_id => 'Cav7/MilpacMention'",
     $alertCalls > 0 && $alertCalls === $dependsTags,
     "alert() calls=$alertCalls tagged=$dependsTags — an untagged alert survives uninstall"
+);
+// Issue #95 — autoRead=false keeps the milpac alert unread when it is only surfaced in the
+// alerts dropdown/list; it clears when the recipient views the linked content or explicitly
+// reads the alert, exactly as XF writes its own mention alerts. insertAlert() reads autoRead
+// out of the $options array and defaults it to true when the array omits it, so a
+// milpac_mention row without the flag saves auto_read=1 and is auto-marked read the moment it
+// shows in the dropdown — a different schedule than the @-mention it mirrors.
+// depends_on_addon_id lives in the $extra array; the two are separate slots. Pin the tail
+// of the real ->alert(...) call POSITIONALLY on the comment-stripped $notifierCode: action,
+// then the extra array carrying depends_on_addon_id, then ['autoRead' => false] as the last
+// argument. Folding autoRead into the extra array, dropping it, or reordering the slots all
+// FAIL here.
+check(
+    "the alert() passes ['autoRead' => false] as its \$options array, separate from the \$extra array carrying depends_on_addon_id, so the milpac alert clears like the @-mention it mirrors",
+    (bool) preg_match(
+        "~'milpac_mention'\s*,\s*\['depends_on_addon_id'\s*=>\s*'Cav7/MilpacMention'\]\s*,\s*\['autoRead'\s*=>\s*false\]\s*\)~",
+        $notifierCode
+    ),
+    'a milpac_mention row written auto-read (auto_read=1) clears differently from the @-mention it tracks; XF passes autoRead=false, so mirror it'
 );
 // Issue #84 — firing runs inline after the post has already saved+committed, so an
 // alert()/canView() failure must not surface on the member's reply action. The

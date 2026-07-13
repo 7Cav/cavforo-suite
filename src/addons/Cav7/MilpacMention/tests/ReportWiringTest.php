@@ -328,6 +328,26 @@ check(
     "alert() calls=$alertCalls tagged=$dependsTags — an untagged alert survives uninstall"
 );
 
+// Issue #95 — autoRead=false keeps the milpac alert unread when it is only surfaced in the
+// alerts dropdown/list; it clears when the recipient views the linked content or explicitly
+// reads the alert, exactly as XF writes its own mention alerts (the stock Report notifier
+// passes ['autoRead' => false]). insertAlert() reads autoRead out of the $options array and
+// defaults it to true when the array omits it, so a milpac_mention row without the flag saves
+// auto_read=1 and is auto-marked read the moment it shows in the dropdown — a different
+// schedule than the @-mention it mirrors. depends_on_addon_id lives in the $extra array;
+// the two are separate slots. Pin the tail of the real ->alert(...) call POSITIONALLY on
+// the comment-stripped $code: action, then the extra array carrying depends_on_addon_id,
+// then ['autoRead' => false] as the last argument. Folding autoRead into the extra array,
+// dropping it, or reordering the slots all FAIL here.
+check(
+    "the alert() passes ['autoRead' => false] as its \$options array, separate from the \$extra array carrying depends_on_addon_id, so the milpac alert clears like the @-mention it mirrors",
+    (bool) preg_match(
+        "~'milpac_mention'\s*,\s*\['depends_on_addon_id'\s*=>\s*'Cav7/MilpacMention'\]\s*,\s*\['autoRead'\s*=>\s*false\]\s*\)~",
+        $code
+    ),
+    'a milpac_mention row written auto-read (auto_read=1) clears differently from the @-mention it tracks; XF passes autoRead=false, so mirror it'
+);
+
 // Report comment notifications run INLINE in the member's request (ReportController
 // -> CommenterService::sendNotifications), with no deferred-job net (unlike Post's
 // XF\Job\Notifier). So a failure must be contained, logged, and skipped

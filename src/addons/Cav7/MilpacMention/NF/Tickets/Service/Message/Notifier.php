@@ -174,6 +174,16 @@ class Notifier extends XFCP_Notifier
                     // handler: content type 'nf_tickets_message', content id
                     // $message->message_id (the Message PK — the exact value the stock
                     // ticket mention alert uses).
+                    //
+                    // autoRead=false in the $options array keeps the milpac alert unread when
+                    // it is only surfaced in the alerts dropdown/list; it clears when the
+                    // recipient views the linked content or explicitly reads the alert, exactly
+                    // as XF's own mention alerts do (the ticket surface inherits the same flag
+                    // from XF\Notifier\AbstractNotifier). Without it insertAlert() defaults
+                    // auto_read=1, which auto-marks the alert read the moment it shows in the
+                    // dropdown — a different schedule than the @-mention it mirrors.
+                    // depends_on_addon_id stays in the $extra array — insertAlert() reads the two
+                    // from separate slots.
                     $sent = $alertRepo->alert(
                         $user,
                         $fromUser->user_id,
@@ -181,7 +191,8 @@ class Notifier extends XFCP_Notifier
                         'nf_tickets_message',
                         $message->message_id,
                         'milpac_mention',
-                        ['depends_on_addon_id' => 'Cav7/MilpacMention']
+                        ['depends_on_addon_id' => 'Cav7/MilpacMention'],
+                        ['autoRead' => false]
                     );
 
                     if ($sent)
