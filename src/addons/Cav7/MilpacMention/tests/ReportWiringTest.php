@@ -366,21 +366,40 @@ check(
 );
 // The containment above only proves a catch→logException exists and the body never
 // rethrows; it does NOT prove the pre-loop findByIds()/repository() lookups are
-// inside the guard. This surface fires inline with no deferred-job net, so a DB
-// error on findByIds would 500 the already-committed action unless it too is
-// contained. Pin the layout: the outer try opens BEFORE findByIds, findByIds
-// precedes the loop, and a catch follows the loop.
-$outerTryPos = strpos($fireBody, 'try');
+// inside the guard, nor that the OUTER catch (not just the inner per-recipient one)
+// forwards to logException. This surface fires inline with no deferred-job net, so a
+// DB error on findByIds would 500 the already-committed action unless it too is
+// contained. Pin the layout: the outer try opens BEFORE findByIds, findByIds precedes
+// the loop, and the outer catch(\Throwable)->logException follows the loop.
+//
+// Two hardenings ported from WiringTest.php (issue #115, closing #100's gap for the
+// siblings):
+//  - Finding 4: match the try/catch keywords on token/word boundaries (\btry\s*\{,
+//    \bcatch\s*\() so an identifier like $retryCount or $catchAll can never
+//    false-match the structure. $lastCatchPos is the LAST \bcatch\s*\( — the outer
+//    catch, since the inner per-recipient catch precedes it.
+//  - Finding 3: require the outer catch(\Throwable)->logException in the region FROM
+//    the outer catch onward ($outerCatchRegion), not across the whole body. The inner
+//    per-recipient catch already forwards to logException, so a whole-body scan let a
+//    silent-swallow mutation of the OUTER catch (dropping its logException, or
+//    narrowing \Throwable to \Exception) pass while the inner catch satisfied the
+//    pattern. Anchored to the outer catch, that swallow goes red.
+$outerTryPos = preg_match('/\btry\s*\{/', $fireBody, $m, PREG_OFFSET_CAPTURE) ? $m[0][1] : false;
 $findByIdsPos = strpos($fireBody, 'findByIds');
 $foreachPos = strpos($fireBody, 'foreach');
-$lastCatchPos = strrpos($fireBody, 'catch');
+$lastCatchPos = preg_match_all('/\bcatch\s*\(/', $fireBody, $mAll, PREG_OFFSET_CAPTURE)
+    ? $mAll[0][count($mAll[0]) - 1][1]
+    : false;
+$outerCatchPattern = '/catch\s*\(\s*\\\\Throwable\b.*?logException\(\s*\$e,\s*false/s';
+$outerCatchRegion = $lastCatchPos !== false ? substr($fireBody, $lastCatchPos) : '';
 check(
-    'the findByIds lookup sits inside the outer containment try/catch',
+    'containment is report-style: the outer try opens BEFORE findByIds, findByIds precedes the loop, and the outer catch(\\Throwable)->logException follows the loop',
     $outerTryPos !== false && $findByIdsPos !== false && $foreachPos !== false && $lastCatchPos !== false
-        && $outerTryPos < $findByIdsPos
-        && $findByIdsPos < $foreachPos
-        && $foreachPos < $lastCatchPos,
-    'the pre-loop lookup must be within the outer guard, or a DB error on findByIds/repository would 500 the already-committed action'
+        && $outerTryPos < $findByIdsPos   // the outer guard opens before the pre-loop lookup
+        && $findByIdsPos < $foreachPos    // the lookup precedes the recipient loop
+        && $foreachPos < $lastCatchPos    // the outer catch closes after the loop
+        && (bool) preg_match($outerCatchPattern, $outerCatchRegion),
+    'the pre-loop lookup must be within the outer guard with the outer catch(\\Throwable) forwarding to logException, or a DB error on findByIds/repository would 500 the already-committed action; removing the outer guard, dropping its logException, or narrowing it to \\Exception FAILS this'
 );
 
 if ($failures > 0) {
