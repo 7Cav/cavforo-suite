@@ -80,6 +80,61 @@ check(
 );
 
 // =========================================================================
+// milpacDisplayText — BBCode metacharacters in the rank title are neutralized (#125)
+// The rank title is admin/NF-Rosters free text. It is interpolated straight into the
+// emitted [URL='…']Rank Name[/URL] link (and, via milpacLinkHtml, the completer's
+// inserted anchor), so a title carrying BBCode metacharacters could inject structure:
+// "SGT [b]" would open a bold tag inside the link, "SGT [color=red]" a colour span.
+// milpacDisplayText is the single shared home for both the typed-$name and dropdown
+// paths, so neutralizing there keeps the two byte-for-byte identical (#125). XF's BBCode
+// tokenizer only opens a tag where a "[" sits immediately before a word character
+// (#\[(\w+)( |=|\])|\[/(\w+)]#), so the guard wedges a zero-width space beside each
+// bracket: the "[" glyph survives (it is not an HTML special char, so htmlspecialchars
+// leaves it) and renders literally, but no tag can ever tokenize there.
+// =========================================================================
+$zwsp = "\u{200B}"; // U+200B, the zero-width guard the shaping wedges beside a bracket
+
+// A valid-tag-like title ("[b]") is the real mangler: raw, XF renders it as bold.
+$guardedB = MilpacResolver::milpacDisplayText('SGT [b]', 'Markel.Z');
+check(
+    'a bracketed rank title keeps its literal [ and ] glyphs and the name in the display text',
+    str_contains($guardedB, '[') && str_contains($guardedB, ']') && str_contains($guardedB, 'Markel.Z')
+);
+check(
+    'no "[" in the display text sits immediately before a word char, so XF can never tokenize a tag',
+    !preg_match('/\[[A-Za-z0-9_]/', $guardedB) && !preg_match('#\[/[A-Za-z0-9_]#', $guardedB),
+    $guardedB
+);
+check(
+    'the guard is zero-width: stripping it leaves the literal "SGT [b] Markel.Z" the admin wrote',
+    str_replace($zwsp, '', $guardedB) === 'SGT [b] Markel.Z'
+);
+
+// The issue's own example, and a colour tag, get the same treatment.
+check(
+    'the "SGT [Ret.]" example neutralizes to literal bracket text with no tag',
+    !preg_match('/\[[A-Za-z0-9_]/', MilpacResolver::milpacDisplayText('SGT [Ret.]', 'Treck.M'))
+        && str_replace($zwsp, '', MilpacResolver::milpacDisplayText('SGT [Ret.]', 'Treck.M')) === 'SGT [Ret.] Treck.M'
+);
+check(
+    'a "[color=red]" title cannot open a colour span (no "[" before a word char)',
+    !preg_match('/\[[A-Za-z0-9_]/', MilpacResolver::milpacDisplayText('[color=red]SGT', 'Doe.J'))
+);
+
+// A clean rank title is byte-for-byte unchanged — existing links stay identical to today,
+// and no zero-width guard is smuggled into content that carries no brackets.
+check(
+    'a clean rank title is byte-for-byte unchanged (no neutralization artifacts)',
+    MilpacResolver::milpacDisplayText('Corporal', 'Banfield.H') === 'Corporal Banfield.H'
+        && !str_contains(MilpacResolver::milpacDisplayText('Corporal', 'Banfield.H'), $zwsp)
+);
+check(
+    'an unranked member is still the name alone, unguarded',
+    MilpacResolver::milpacDisplayText('', 'Recruit.J') === 'Recruit.J'
+        && !str_contains(MilpacResolver::milpacDisplayText('', 'Recruit.J'), $zwsp)
+);
+
+// =========================================================================
 // milpacLinkHtml — the value to insert (spec §4.2): a named anchor, NOT a bare
 // URL. The rich editor inserts this HTML; Froala serialises it back to
 // [URL='…/rosters/profile/N/']Rank Name[/URL] on save, the exact artifact the

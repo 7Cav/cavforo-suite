@@ -33,8 +33,9 @@ class MentionFormatter extends XFCP_MentionFormatter
     /**
      * @var array<string, array{url: string, text: string}|null> lower-cased username =>
      *      the shaped roster link, or null for a non-holder. One instance per message
-     *      (getMentionFormatter builds a fresh formatter each call), so a $name repeated
-     *      in one message costs a single lookup and never leaks across messages.
+     *      (getMentionFormatter builds a fresh formatter each call), so the batched $ pass
+     *      queries only cores it has not already resolved and a $name repeated across
+     *      messages never leaks — the cache dies with the per-message formatter.
      */
     protected $milpacLinkCache = [];
 
@@ -88,8 +89,8 @@ class MentionFormatter extends XFCP_MentionFormatter
             try {
                 $message = MilpacResolver::resolveTypedMilpacs(
                     $message,
-                    function (string $username): ?array {
-                        return $this->lookupMilpacLink($username);
+                    function (array $cores): array {
+                        return $this->lookupMilpacLinks($cores);
                     }
                 );
             } finally {
@@ -105,40 +106,65 @@ class MentionFormatter extends XFCP_MentionFormatter
     }
 
     /**
-     * Resolve one exact username to the shaped named-roster-link the pure pass inserts,
-     * or null if the username is not a current milpac holder (a non-member, a
-     * banned/dormant member, or a member with no milpac — the INNER join drops them, so
-     * their typed $username stays literal). Memoised per message so a repeated $name is
-     * one query.
+     * Resolve a batch of distinct typed-$name token cores to their shaped named-roster
+     * links in ONE username query (#125), the $-sigil analogue of stock @'s single
+     * `WHERE username IN (…)`. Given the distinct cores the pure pass collected, return a
+     * map keyed by the exact core string => the ['url', 'text'] it inserts, for each core
+     * that is a current milpac holder; a core that is not (a non-member, a banned/dormant
+     * member, or a member who owns no milpac — the INNER join drops them) is absent from
+     * the map, so its typed $username stays literal.
      *
-     * @return array{url: string, text: string}|null
+     * Memoised per message: only cores not already resolved are queried, and hits AND
+     * misses are cached, so a $name repeated in a message never re-queries and a second
+     * getMentionsBbCode call on this formatter adds no query. The cache dies with the
+     * per-message formatter, so nothing leaks across messages.
+     *
+     * @param list<string> $cores
+     *
+     * @return array<string, array{url: string, text: string}>
      */
-    protected function lookupMilpacLink(string $username): ?array
+    protected function lookupMilpacLinks(array $cores): array
     {
         // Usernames match case-insensitively at the DB collation (as @'s lookup does), so
-        // key the cache on the lower-cased form: "$Markel.Z" and "$markel.z" are one hit.
-        $key = Str::strtolower($username);
-        if (array_key_exists($key, $this->milpacLinkCache)) {
-            return $this->milpacLinkCache[$key];
+        // key the cache on the lower-cased core: "$Markel.Z" and "$markel.z" share one
+        // cache slot and one IN(…) entry. Collect the cores not yet resolved.
+        $uncached = []; // lower-cased key => the core to query (first-seen casing)
+        foreach ($cores as $core) {
+            $core = (string) $core; // a purely-numeric core (e.g. "$5") arrives as an int key
+            $key = Str::strtolower($core);
+            if (!array_key_exists($key, $this->milpacLinkCache)) {
+                $uncached[$key] = $core;
+            }
         }
 
-        $result = null;
+        if ($uncached) {
+            /** @var \XF\Finder\UserFinder $userFinder */
+            $userFinder = \XF::finder('XF:User');
+            $found = MilpacResolver::findMilpacOwnersByUsernames($userFinder, array_values($uncached));
 
-        /** @var \XF\Finder\UserFinder $userFinder */
-        $userFinder = \XF::finder('XF:User');
-        $user = MilpacResolver::findMilpacOwnerByUsername($userFinder, $username);
+            // The finder keys its map by the stored username casing; re-key to lower-case
+            // so a typed core matches its holder regardless of case.
+            $foundByKey = [];
+            foreach ($found as $username => $shaped) {
+                $foundByKey[Str::strtolower((string) $username)] = $shaped;
+            }
 
-        $milpac = $user ? $user->Milpac : null;
-        if ($user && $milpac) {
-            $rank = $milpac->Rank ? (string) $milpac->Rank->title : '';
-            $displayText = MilpacResolver::milpacDisplayText($rank, (string) $user->username);
-            $profileUrl = \XF::app()->router('public')->buildLink('canonical:rosters/profile', $milpac);
-
-            $result = ['url' => $profileUrl, 'text' => $displayText];
+            // Cache every queried core — hit or miss (null) — so a repeat never re-queries.
+            foreach ($uncached as $key => $core) {
+                $this->milpacLinkCache[$key] = $foundByKey[$key] ?? null;
+            }
         }
 
-        $this->milpacLinkCache[$key] = $result;
+        // Build the core => link map the pure pass consumes: only cores that resolved.
+        $links = [];
+        foreach ($cores as $core) {
+            $core = (string) $core;
+            $shaped = $this->milpacLinkCache[Str::strtolower($core)] ?? null;
+            if ($shaped !== null) {
+                $links[$core] = $shaped;
+            }
+        }
 
-        return $result;
+        return $links;
     }
 }

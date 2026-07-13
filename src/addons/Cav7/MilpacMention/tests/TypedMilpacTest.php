@@ -44,12 +44,21 @@ function check(string $label, bool $ok, string $detail = ''): void
 }
 
 /**
- * A stand-in for the extension's live milpac lookup: maps a handful of exact
- * usernames (case-insensitively, as the DB collation does) to the already-shaped
- * ['url' => …, 'text' => "Rank Name"] a milpac holder resolves to. Anything else —
- * a non-member token, a member who owns no milpac — returns null and stays literal.
+ * A stand-in for the extension's live BATCHED milpac lookup (#125). The reshaped
+ * resolveTypedMilpacs collects the distinct token cores up front and calls its injected
+ * lookup ONCE for the whole message — the $-sigil analogue of stock @'s single
+ * `WHERE username IN (…)` — so N distinct tokens cost one query, not N. The lookup takes
+ * that set of cores and returns a map keyed by the exact core => the already-shaped
+ * ['url' => …, 'text' => "Rank Name"] a holder resolves to (case-insensitively, as the
+ * DB collation matches). A non-holder core — a non-member token, or a member who owns no
+ * milpac — is absent from the map, so its token stays literal.
+ *
+ * Each call appends the cores it received to $calls, so a test can assert the whole
+ * message costs a single lookup and that the batch carried the right distinct set.
+ *
+ * @param list<list<string>> $calls records the cores handed to each lookup call
  */
-function milpacLookup(): callable
+function batchedMilpacLookup(array &$calls): callable
 {
     $holders = [
         'markel.z'   => ['url' => 'https://board.example/rosters/profile/42/', 'text' => 'Corporal Markel.Z'],
@@ -57,12 +66,25 @@ function milpacLookup(): callable
         'banfield.h' => ['url' => 'https://board.example/rosters/profile/13/', 'text' => 'Private Banfield.H'],
     ];
 
-    return static function (string $username) use ($holders): ?array {
-        return $holders[strtolower($username)] ?? null;
+    return static function (array $cores) use ($holders, &$calls): array {
+        $calls[] = $cores;
+
+        $map = [];
+        foreach ($cores as $core) {
+            $shaped = $holders[strtolower($core)] ?? null;
+            if ($shaped !== null) {
+                $map[$core] = $shaped; // keyed by the exact core; case preserved
+            }
+        }
+
+        return $map;
     };
 }
 
-$lookup = milpacLookup();
+// The parity table below only asserts the rewrite, not the call count, so it shares one
+// lookup over a throwaway $calls sink.
+$sink = [];
+$lookup = batchedMilpacLookup($sink);
 
 $markelLink = "[URL='https://board.example/rosters/profile/42/']Corporal Markel.Z[/URL]";
 $treckLink = "[URL='https://board.example/rosters/profile/7/']Sergeant Treck.M[/URL]";
@@ -251,6 +273,96 @@ check(
 check(
     'a "$$"-prefixed token stays fully literal (neither $ sits at a boundary)',
     MilpacResolver::resolveTypedMilpacs('$$markel.z', $lookup) === '$$markel.z'
+);
+
+// ---------------------------------------------------------------------------
+// Issue #125 — the batched lookup contract. resolveTypedMilpacs collects the distinct
+// token cores first and calls the injected lookup ONCE for the whole message, so a
+// message with N distinct $tokens costs one username query, not N — the $-sigil analogue
+// of stock @'s single `WHERE username IN (…)`. The token-for-token behaviour above is
+// unchanged; these pins hold the query count and the batched core set.
+// ---------------------------------------------------------------------------
+
+// typedMilpacCores is the pure first half: the distinct trimmed cores the batch resolves,
+// in first-seen order. Case is preserved and deduped case-sensitively (the DB collation,
+// not this pure pass, folds case); trailing punctuation is trimmed to the core.
+check(
+    'typedMilpacCores extracts the distinct trimmed cores in first-seen order',
+    MilpacResolver::typedMilpacCores('$Markel.Z, $treck.m. and $markel.z again $notaholder')
+        === ['Markel.Z', 'treck.m', 'markel.z', 'notaholder']
+);
+check(
+    'typedMilpacCores drops an all-punctuation ($!) token and returns nothing for bracket-free prose',
+    MilpacResolver::typedMilpacCores('hey $! there') === []
+        && MilpacResolver::typedMilpacCores('nothing here') === []
+);
+
+// N distinct holder tokens -> exactly ONE lookup call, carrying all N distinct cores.
+$calls = [];
+$batched = batchedMilpacLookup($calls);
+$out = MilpacResolver::resolveTypedMilpacs('$markel.z and $treck.m and $banfield.h', $batched);
+$banfieldLink = "[URL='https://board.example/rosters/profile/13/']Private Banfield.H[/URL]";
+check(
+    'a message with 3 distinct $tokens calls the lookup exactly once (one query, not three)',
+    count($calls) === 1,
+    count($calls) . ' lookup call(s)'
+);
+check(
+    'the single lookup receives all three distinct cores, first-seen order',
+    ($calls[0] ?? null) === ['markel.z', 'treck.m', 'banfield.h'],
+    isset($calls[0]) ? implode(',', $calls[0]) : '(no call)'
+);
+check(
+    'every batched token still resolves to its identical named roster link',
+    $out === "$markelLink and $treckLink and $banfieldLink"
+);
+
+// A repeated holder dedups to one distinct core (one lookup entry) but still renders each
+// occurrence; downstream extractRelationIds collapses those to one alert, unchanged.
+$calls = [];
+$batched = batchedMilpacLookup($calls);
+$out = MilpacResolver::resolveTypedMilpacs('$markel.z again $markel.z and $markel.z', $batched);
+check(
+    'a repeated holder is looked up once (deduped to a single distinct core)',
+    count($calls) === 1 && ($calls[0] ?? null) === ['markel.z'],
+    isset($calls[0]) ? implode(',', $calls[0]) : '(no call)'
+);
+check(
+    'a repeated holder still renders every occurrence',
+    $out === "$markelLink again $markelLink and $markelLink"
+);
+check(
+    'the repeated renders still collapse to one relation_id downstream (one member = one alert)',
+    MilpacResolver::extractRelationIds($out) === [42]
+);
+
+// A mixed message — case variance, trailing punctuation, a non-holder — is still ONE call,
+// and the token-for-token result matches the per-token behaviour above.
+$calls = [];
+$batched = batchedMilpacLookup($calls);
+$out = MilpacResolver::resolveTypedMilpacs('$Markel.Z, $treck.m. and $notaholder', $batched);
+check(
+    'a mixed holder/non-holder message with punctuation and case is a single lookup',
+    count($calls) === 1,
+    count($calls) . ' lookup call(s)'
+);
+check(
+    'the batched cores are the trimmed cores in first-seen order, non-holder included',
+    ($calls[0] ?? null) === ['Markel.Z', 'treck.m', 'notaholder'],
+    isset($calls[0]) ? implode(',', $calls[0]) : '(no call)'
+);
+check(
+    'holders resolve (case-insensitively, trailing punctuation preserved), the non-holder stays literal',
+    $out === "$markelLink, $treckLink. and \$notaholder"
+);
+
+// A message with NO $tokens never calls the lookup at all — no query, matching @.
+$calls = [];
+$batched = batchedMilpacLookup($calls);
+$out = MilpacResolver::resolveTypedMilpacs('nothing to resolve here', $batched);
+check(
+    'a message with no $tokens never calls the lookup (zero queries)',
+    count($calls) === 0 && $out === 'nothing to resolve here'
 );
 
 // ---------------------------------------------------------------------------

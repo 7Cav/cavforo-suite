@@ -197,6 +197,52 @@ check(
 );
 
 // =========================================================================
+// Issue #125 — the typed-$name lookup is BATCHED. The pure batch rewrite (one lookup
+// per message, the same tokens resolving) is exercised for real in TypedMilpacTest; this
+// holds the vendor-coupled wiring that needs a live XenForo + NF/Rosters to run: the
+// set-returning IN(…) finder and the MentionFormatter closure that calls it once. A
+// regression to the old one-query-per-token shape fails CI here rather than shipping as
+// a silent per-token query storm on every save and preview.
+// =========================================================================
+$resolverSrc = (string) @file_get_contents("$root/MilpacResolver.php");
+$mentionFormatterSrc = (string) @file_get_contents("$root/XF/Str/MentionFormatter.php");
+
+check(
+    'MilpacResolver exposes the set-returning findMilpacOwnersByUsernames (the batched sibling)',
+    (bool) preg_match('/function\s+findMilpacOwnersByUsernames\s*\(\s*\$userFinder\s*,\s*array\s+\$usernames\s*\)/', $resolverSrc)
+);
+check(
+    'the old one-member-per-token findMilpacOwnerByUsername is gone (no per-token single-row query)',
+    !str_contains($resolverSrc, 'findMilpacOwnerByUsername('),
+    'a lingering single-row finder would let a caller regress to one query per distinct token (#125)'
+);
+check(
+    "the batched finder resolves the whole set with WHERE username IN (…) via ->where('username', \$usernames)",
+    (bool) preg_match("/->where\(\s*'username'\s*,\s*\\\$usernames\s*\)/", $resolverSrc),
+    'an array value to where() is the IN(…) that makes N distinct tokens one query, not N (#125)'
+);
+check(
+    'the batched finder keeps the exact-username join: isValidUser(true) + with(Milpac, true) INNER join',
+    (bool) preg_match('/function\s+findMilpacOwnersByUsernames.*?->isValidUser\(\s*true\s*\).*?->with\(\s*\'Milpac\'\s*,\s*true\s*\)/s', $resolverSrc),
+    'same filter and INNER join as the single lookup it replaces, so a banned/dormant/non-owner core stays literal (#125)'
+);
+check(
+    'the batched finder eager-loads Milpac.Rank and Milpac.Roster and keeps the lowest-relation_id tiebreak',
+    (bool) preg_match('/function\s+findMilpacOwnersByUsernames.*?->with\(\s*\'Milpac\.Rank\'\s*\).*?->with\(\s*\'Milpac\.Roster\'\s*\).*?->order\(\s*\'Milpac\.relation_id\'\s*\)/s', $resolverSrc),
+    'a member with two roster rows keeps the LOWEST milpac, matching the dropdown finder (#96, §4.4)'
+);
+check(
+    'the MentionFormatter calls the batched resolveTypedMilpacs with an array-cores closure (not a per-token string)',
+    (bool) preg_match('/resolveTypedMilpacs\(\s*\$message\s*,\s*function\s*\(\s*array\s+\$cores\s*\)/s', $mentionFormatterSrc),
+    'the injected lookup takes the distinct cores up front, so it runs once per message (#125)'
+);
+check(
+    'the MentionFormatter lookup delegates to the batched finder (one query per message)',
+    str_contains($mentionFormatterSrc, 'MilpacResolver::findMilpacOwnersByUsernames'),
+    'the per-message cache narrows the batch to uncached cores; the finder runs the single IN(…) query (#125)'
+);
+
+// =========================================================================
 // the alert template — reuses the stock post handler, deep-links, renders phrase
 // =========================================================================
 $templatesXml = @simplexml_load_file("$root/_data/templates.xml");
