@@ -17,7 +17,7 @@
  *    require. The CI gate itself runs with NF/Tickets ABSENT, so php -l + validate +
  *    consistency + package + these tests all passing IS the without-NF/Tickets proof.
  *
- *  - CONTAINMENT IS INLINE-ONLY, like the Report/ProfilePost surfaces — NOT Post.
+ *  - CONTAINMENT IS INLINE-ONLY, like every milpac surface (Post included).
  *    NF\Tickets\Service\Message\Notifier is dispatched via notifyAndEnqueue()
  *    (Service\Ticket\Creator/Replier), whose FIRST notify() pass runs INLINE in the
  *    member's request; milpac firing is stash-inline-only (a resumed XF\Job\Notifier
@@ -413,7 +413,7 @@ check(
     'a milpac_mention row written auto-read (auto_read=1) clears differently from the @-mention it tracks; XF passes autoRead=false, so mirror it'
 );
 
-// Containment IS INLINE-ONLY (the report-style layout, NOT Post). The ticket notifier
+// Containment IS INLINE-ONLY (the report-style layout, Post included). The ticket notifier
 // is dispatched via notifyAndEnqueue() (Service\Ticket\Creator/Replier), whose FIRST
 // notify() pass runs INLINE; milpac firing is stash-inline-only (a resumed job loads a
 // fresh Message with an empty stash and fires nothing), so it never rides
