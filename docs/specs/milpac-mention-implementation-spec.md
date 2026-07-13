@@ -183,9 +183,13 @@ $rows = \XF::finder('NF\Rosters:RosterUser')
 $userIds = $rows->pluckNamed('user_id', 'relation_id'); // [relation_id => user_id]
 ```
 
-One user = one milpac = one `relation_id` is an **invariant** (the roster stores
-one lifecycle row per member; positions and billets are columns, not extra rows).
-So resolution is a straight lookup with no tiebreak.
+One milpac per user is the intended rule, not something the roster schema enforces.
+`xf_nf_rosters_user` indexes `user_id` non-uniquely, and live data already has a
+member (user 7385) carrying two rows, so resolution cannot assume a single
+`relation_id` per member. It stays a straight `relation_id` to `user_id` lookup. Where
+two roster rows point at one member, the resolver collapses them to a single
+recipient, keeps the lowest `relation_id` (matching #96's lazy `$user->Milpac`), and
+logs the conflict as a data error so the bad data is visible.
 
 Factor this into a small shared resolver class (e.g.
 `Cav7\MilpacMention\MilpacResolver`) so the detection hook and the phase-2
@@ -469,8 +473,19 @@ Reuse the shared `MilpacResolver` (§2.3) for the join.
 
 ### 4.4 Disambiguation: none
 
-One user = one milpac = one `relation_id` (invariant, §2.3). No picker, no
-tiebreak — a second row would be a data bug, not a state to design for.
+One milpac per user is the intended rule, but the roster schema does not enforce it
+(§2.3), so the completer cannot assume it. There is no picker: a member with two
+roster rows is a data error, not a state to build a chooser for.
+
+A member with two roster rows already shows once. The find query INNER-joins the
+roster and orders by `relation_id`, and XF's identity map keys the fetched collection
+by `user_id`, so the two join rows collapse to one hydrated `User` carrying the lowest
+`relation_id` (matching the lazy `$user->Milpac`, #96) before the view renders. The
+dropdown is correct without an extra collapse step, but that same collapse hides the
+second row from the view, so the duplicate cannot be logged from the shown collection.
+The endpoint detects it from the raw roster rows instead: after building the results,
+it re-reads the roster rows for the shown members and logs any member owning more than
+one, naming every `relation_id` and keeping the lowest.
 
 ### 4.5 Dropdown rows
 

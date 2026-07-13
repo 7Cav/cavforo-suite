@@ -24,16 +24,27 @@ use XF\Mvc\View;
  * insert html verbatim, or the artifact the phase-1 engine detects can diverge.
  *
  * The users come pre-joined to their milpac (with Rank and Roster) by
- * MilpacResolver::findMilpacOwningUsers, so no per-row query runs here.
+ * MilpacResolver::findMilpacOwningUsers, so no per-row query runs here. A member with
+ * two roster rows (one milpac per user is the intended rule but not schema-enforced)
+ * is already one entry here: XF's identity map keys the fetched collection by user_id
+ * and the join is ordered by relation_id, so the collection carries a single hydrated
+ * User per member with the lowest milpac. That collapse hides the second roster row,
+ * so the duplicate is logged from the raw roster rows instead, after the loop — see
+ * MilpacResolver::logMilpacOwnerDuplicates (§4.4, #112).
  */
 class Find extends View
 {
     public function renderJson()
     {
         $router = \XF::app()->router('public');
-        $results = [];
-        $seenUsernames = [];
 
+        // The joined collection is already one entity per member: findMilpacOwningUsers
+        // orders the INNER join by relation_id and XF's identity map keys the fetched
+        // collection by user_id, so two roster rows for one member collapse to a single
+        // hydrated User carrying the lowest milpac. The dropdown therefore builds
+        // straight from this collection — one row per member, lowest relation_id (§4.4).
+        $results = [];
+        $shownUserIds = [];
         foreach ($this->params['users'] as $user) {
             /** @var \NF\Rosters\Entity\RosterUser|null $milpac */
             $milpac = $user->Milpac;
@@ -51,13 +62,7 @@ class Find extends View
                 continue;
             }
 
-            // user_id is not DB-unique on xf_nf_rosters_user (only relation_id is),
-            // so the TO_ONE join can emit more than one row for a member with two
-            // RosterUser rows. Dedup by username so one member fills one slot, not two.
-            if (isset($seenUsernames[$user->username])) {
-                continue;
-            }
-            $seenUsernames[$user->username] = true;
+            $shownUserIds[] = (int) $user->user_id;
 
             $rank = $milpac->Rank ? (string) $milpac->Rank->title : '';
             $roster = $milpac->Roster ? (string) $milpac->Roster->title : '';
@@ -78,6 +83,13 @@ class Find extends View
                 'q' => $this->params['q'],
             ];
         }
+
+        // The collapse above hid any second roster row a shown member owns (the identity
+        // map kept one entity per user_id), so the data error is invisible to $results.
+        // Re-read the raw roster rows for the shown members and log a member owning more
+        // than one milpac, keeping the bad data visible even though the dropdown is
+        // already correct — see MilpacResolver::logMilpacOwnerDuplicates (§4.4, #112).
+        MilpacResolver::logMilpacOwnerDuplicates($shownUserIds);
 
         return [
             'results' => $results,
