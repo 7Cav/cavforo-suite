@@ -282,6 +282,34 @@ member who can't see a report or a hidden ticket is filtered out and never
 alerted to a milpac link inside it. No extra code — verify parity holds in tests
 (§7) rather than re-implementing it.
 
+### 2.7 Moderation-approval behaviour — free, verified
+
+When moderated content is approved later, a milpac link fires (or stays silent) in
+step with the surface's own re-notification. This falls out of the same-instance
+stash design and was verified against the dev install:
+
+- **Post** and **ticket message** re-run the message preparer on approval
+  (`XF\Service\Post\ApproverService`, `NF\Tickets\Service\Message\Approver` both call
+  `setMessage()`, which runs `prepare()`). The shared detection hook re-runs with it
+  and re-stashes on the same entity the approver's notifier reads, so milpac fires on
+  approval on both surfaces.
+- **Profile post** and **profile-post comment** approvers call `notify()` only, with
+  no preparer re-run, so nothing re-stashes and milpac stays silent. XF's own
+  `mention` is also silent here (the approver sets no mentioned users), so parity
+  holds by both staying quiet.
+- **Report** has no approval queue, so the case does not arise.
+
+One deliberate deviation, on the **Post** surface: XF core does not re-fire its own
+`@`-mention on approval — `Post\ApproverService` carries a standing
+`// TODO: this doesn't solve mentioned user IDs` and sets only quoted users — while
+milpac *does* fire, because detection rides the preparer the approver re-runs for
+those quotes. Milpac is therefore marginally ahead of `@` on this one path. This is
+accepted, not fixed: the alert goes to a member genuinely linked in now-visible
+content, and the inconsistency is XF's `@` under-firing rather than milpac
+over-firing. No code withholds the milpac alert to mirror the XF limitation. (Filed
+and closed as [#101](https://github.com/7Cav/cavforo-suite/issues/101), whose
+original premise — that milpac *fails* to fire on approval — the code does not match.)
+
 ---
 
 ## 3. Notification preferences and copy (from [#69](https://github.com/7Cav/cavforo-suite/issues/69))
@@ -296,19 +324,30 @@ XF registers `mention` as opt-out-able, and omit it exactly where XF omits it.**
 
 - **Three opt-out rows**, via `getOptOutActions()` overrides:
   - `XF\Alert\PostHandler` → add `milpac_mention`
-  - `XF\Alert\ProfilePostHandler` → add `milpac_mention` (this row governs both
-    profile posts and their comments, mirroring XF's own `mention` family — do
-    **not** add a fourth row on the comment handler)
+  - `XF\Alert\ProfilePostHandler` → add `milpac_mention`. This is the only
+    profile-surface opt-out, and it mirrors XF exactly: XF registers the `mention`
+    opt-out on `ProfilePostHandler` (content type `profile_post`) and **not** on
+    `ProfilePostCommentHandler`. Comment mentions fire under their own content type
+    `profile_post_comment`, and XF's opt-out check keys on `"{contentType}_{action}"`,
+    so the `profile_post` row never governs a comment alert — it does not "cover
+    both surfaces". Stock XF gives no way to mute a mention made in a profile-post
+    comment, and `milpac_mention` inherits that: comment milpac alerts are always
+    on. Do **not** add a comment-handler override.
   - `NF\Tickets\Alert\Message` handler → add `milpac_mention`
 - **No opt-out on Report.** Being named in a report can't be muted in XF; match
   that — `milpac_mention` stays non-toggleable there.
 - **Default: on**, like every other XF alert. Members who don't want it use the
   toggle above.
 
-> The one-row-covers-comment behaviour must be verified against how XF wires its
-> own `profile_post` / `profile_post_comment` mention opt-out (§8). The
-> instruction "mirror XF's `mention` family 1:1" is the spec; the exact handler
-> registration is whatever reproduces XF's own layout.
+> **Comment mentions are unmutable, by XF parity (verified §8.5).** XF's own
+> `profile_post` opt-out is *labelled* "Mentions you in a profile post or comment",
+> but the toggle does not actually mute comment mentions — they fire under
+> `profile_post_comment`, which registers no opt-out at all. The milpac copy
+> mirrors that label verbatim ("Links your milpac in a profile post or comment",
+> §3.2), inheriting XF's slightly-misleading wording on purpose so a member who
+> knows XF's toggle sees identical behaviour. If the wording ever draws a real
+> complaint, the fix is to raise it upstream with XF and correct both toggles
+> together; to date it has not.
 
 ### 3.2 Copy
 
@@ -615,9 +654,13 @@ question.
 4. **NF/Tickets content-type token.** Confirm the exact registered alert content
    type (`nf_tickets_message` is the spike's reading) and use it consistently in
    the template and opt-out phrase keys.
-5. **Profile-post-comment opt-out coverage.** Confirm that a single `profile_post`
-   opt-out row governs comment alerts the way XF's own `mention` family does, so
-   the "three rows" layout (§3.1) reproduces XF's behaviour exactly.
+5. **Profile-post-comment opt-out coverage — confirmed.** XF fires comment
+   mentions under content type `profile_post_comment` and registers no opt-out for
+   them (`ProfilePostCommentHandler::getOptOutActions()` omits `mention`), so no
+   toggle mutes a comment mention. The `profile_post` row governs `profile_post`
+   alerts only — it does not cover comments. `milpac_mention` reproduces this: three
+   opt-out rows, none on the comment handler, and comment milpac alerts stay on.
+   (Verified against the dev install; see §3.1.)
 6. **The four `$name` spike risks** (§4.8), especially the anchor HTML→BBCode
    round-trip.
 
