@@ -46,20 +46,20 @@ use XF\Repository\UserAlertRepository;
  * loads a fresh Message with a new object id and an empty stash, so it fires nothing
  * (spec §2.5 rules 2 and 4).
  *
- * CONTAINMENT IS INLINE-ONLY, like the Report/ProfilePost surfaces — this does NOT
- * ride the job net (an earlier note claiming a Post-style deferred net was wrong).
- * Service\Ticket\Creator/Replier::sendNotifications() dispatch through
+ * CONTAINMENT IS INLINE-ONLY, like every milpac surface (Post included) — this does
+ * NOT ride the job net (an earlier note framing this inline pass as job-protected was
+ * wrong). Service\Ticket\Creator/Replier::sendNotifications() dispatch through
  * notifyAndEnqueue($timeLimit), which runs the FIRST notify() pass INLINE in the
  * member's request and only defers the overflow into XF\Job\Notifier. Milpac firing is
  * stash-inline-only: a resumed job rebuilds the service on a freshly loaded Message
  * with a new object id and an empty MilpacStash (see SAME-INSTANCE STASH above), so
  * take() returns nothing and fireMilpacMentions() fires on the inline first pass ONLY —
  * never under the job net. This surface therefore ALWAYS runs inline, after the ticket
- * action is committed, with no deferred-job protection — exactly the Report/ProfilePost
- * posture, NOT Post's. So it carries an OUTER try/catch around the pre-loop
- * findByIds()/repository() lookups and the recipient loop (a transient DB fault there
- * would otherwise 500 an already-committed ticket action and silently drop every
- * recipient), mirroring XF\Service\Report\NotifierService — plus the per-recipient
+ * action is committed, with no deferred-job protection — the same inline-only posture
+ * every milpac surface shares, Post included. So it carries an OUTER try/catch around
+ * the pre-loop findByIds()/repository() lookups and the recipient loop (a transient DB
+ * fault there would otherwise 500 an already-committed ticket action and silently drop
+ * every recipient), mirroring XF\Service\Report\NotifierService — plus the per-recipient
  * inner guard so one bad recipient cannot cost the rest their alert (matches
  * EnlistmentReminder\QueueReminder::alertClerks's best-effort send).
  */
@@ -98,11 +98,12 @@ class Notifier extends XFCP_Notifier
         // Creator/Replier::sendNotifications), after the ticket action is already
         // saved+committed. Milpac firing is stash-inline-only — a resumed XF\Job\Notifier
         // loads a fresh Message with an empty stash and fires nothing — so this body
-        // NEVER runs under the deferred-job net (unlike Post, which this surface does not
-        // match). With no job net, the pre-loop findByIds()/repository() lookups need the
-        // same guard as the loop: an uncaught failure (DB deadlock, dropped connection,
-        // timeout) would otherwise become a 500 on an already-committed ticket action and
-        // silently drop every milpac recipient. Mirrors XF\Service\Report\NotifierService.
+        // NEVER runs under the deferred-job net, the same inline-only posture every milpac
+        // surface shares (Post included). With no job net, the pre-loop
+        // findByIds()/repository() lookups need the same guard as the loop: an uncaught
+        // failure (DB deadlock, dropped connection, timeout) would otherwise become a 500
+        // on an already-committed ticket action and silently drop every milpac recipient.
+        // Mirrors XF\Service\Report\NotifierService.
         try
         {
             $users = \XF::em()->findByIds(User::class, $milpacUserIds, ['Profile', 'Option']);
@@ -209,9 +210,9 @@ class Notifier extends XFCP_Notifier
         catch (\Throwable $e)
         {
             // The outer guard covers the pre-loop findByIds()/repository() lookups
-            // because this surface fires inline with no deferred-job net (unlike Post);
-            // keep the inner per-recipient catch too so one bad row still can't kill the
-            // rest once the loop is running.
+            // because this surface fires inline with no deferred-job net (as every milpac
+            // surface does, Post included); keep the inner per-recipient catch too so one
+            // bad row still can't kill the rest once the loop is running.
             \XF::logException($e, false, '[Cav7/MilpacMention] firing failed: ');
             return;
         }

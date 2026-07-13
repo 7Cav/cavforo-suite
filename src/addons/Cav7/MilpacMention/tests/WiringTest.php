@@ -466,20 +466,35 @@ check(
 // findByIds precedes the loop, and the outer catch(\Throwable)->logException follows the
 // loop. Removing the outer guard (or moving the lookup outside it) FAILS this. Mirrors
 // the containment pins in ReportWiringTest / ProfilePostWiringTest / TicketWiringTest.
+//
+// Two hardenings (issue #100 review):
+//  - Finding 4: match the try/catch keywords on token/word boundaries (\btry\s*\{,
+//    \bcatch\s*\() so an identifier like $retryCount or $catchAll can never
+//    false-match the structure. $lastCatchPos is the LAST \bcatch\s*\( — the outer
+//    catch, since the inner per-recipient catch precedes it.
+//  - Finding 3: require the outer catch(\Throwable)->logException in the region FROM
+//    the outer catch onward ($outerCatchRegion), not across the whole body. The inner
+//    per-recipient catch already forwards to logException, so a whole-body scan let a
+//    silent-swallow mutation of the OUTER catch (dropping its logException, or
+//    narrowing \Throwable to \Exception) pass while the inner catch satisfied the
+//    pattern. Anchored to the outer catch, that swallow goes red.
 $fireCode = methodBody($notifierCode, 'fireMilpacMentions');
-$outerTryPos = strpos($fireCode, 'try');
+$outerTryPos = preg_match('/\btry\s*\{/', $fireCode, $m, PREG_OFFSET_CAPTURE) ? $m[0][1] : false;
 $findByIdsPos = strpos($fireCode, 'findByIds');
 $foreachPos = strpos($fireCode, 'foreach');
+$lastCatchPos = preg_match_all('/\bcatch\s*\(/', $fireCode, $mAll, PREG_OFFSET_CAPTURE)
+    ? $mAll[0][count($mAll[0]) - 1][1]
+    : false;
 $outerCatchPattern = '/catch\s*\(\s*\\\\Throwable\b.*?logException\(\s*\$e,\s*false/s';
-$lastCatchPos = strrpos($fireCode, 'catch');
+$outerCatchRegion = $lastCatchPos !== false ? substr($fireCode, $lastCatchPos) : '';
 check(
     'containment is report-style: the outer try opens BEFORE findByIds, findByIds precedes the loop, and the outer catch(\\Throwable)->logException follows the loop',
     $outerTryPos !== false && $findByIdsPos !== false && $foreachPos !== false && $lastCatchPos !== false
         && $outerTryPos < $findByIdsPos   // the outer guard opens before the pre-loop lookup
         && $findByIdsPos < $foreachPos    // the lookup precedes the recipient loop
         && $foreachPos < $lastCatchPos    // the outer catch closes after the loop
-        && (bool) preg_match($outerCatchPattern, $fireCode),
-    'Post fires inline-only (a resumed job\'s stash is empty), so it must contain the pre-loop findByIds/repository lookups in an outer guard like Report — a transient DB fault there would otherwise 500 the already-committed post action and drop every milpac recipient (issue #100); removing the outer guard FAILS this'
+        && (bool) preg_match($outerCatchPattern, $outerCatchRegion),
+    'Post fires inline-only (a resumed job\'s stash is empty), so it must contain the pre-loop findByIds/repository lookups in an outer guard like Report, with the outer catch(\\Throwable) forwarding to logException — a transient DB fault there would otherwise 500 the already-committed post action and drop every milpac recipient (issue #100); removing the outer guard, dropping its logException, or narrowing it to \\Exception FAILS this'
 );
 
 if ($failures > 0) {

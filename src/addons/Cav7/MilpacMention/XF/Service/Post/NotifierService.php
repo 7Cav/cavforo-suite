@@ -147,7 +147,7 @@ class NotifierService extends XFCP_NotifierService
                 }
                 catch (\Throwable $e)
                 {
-                    \XF::logException($e, false, '[Cav7/MilpacMention] firing failed: ');
+                    \XF::logException($e, false, "[Cav7/MilpacMention] firing failed for user $userId: ");
                 }
             }
         }
