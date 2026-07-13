@@ -1,0 +1,4 @@
+{
+    "additional_files": ["js/Cav7/MilpacMention"],
+    "minify": "*"
+}
