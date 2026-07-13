@@ -54,9 +54,9 @@ class NotifierService extends XFCP_NotifierService
         }
 
         // Outer containment: this surface runs notify() FULLY INLINE in the member's
-        // request, after the comment is already saved+committed — unlike the Post
-        // surface, whose notify() is deferred into XF\Job\Notifier and wrapped in that
-        // job runner's own try/catch. With no deferred-job net here, the pre-loop
+        // request, after the comment is already saved+committed. Every milpac surface
+        // fires inline with no deferred-job net — Post included, whose inline notify()
+        // pass carries this same outer guard — so the pre-loop
         // findByIds()/repository() lookups need the same guard as the loop: an uncaught
         // failure (DB deadlock, dropped connection, timeout) would otherwise become a
         // 500 on an already-committed action and silently drop every milpac recipient.
@@ -140,9 +140,9 @@ class NotifierService extends XFCP_NotifierService
         catch (\Throwable $e)
         {
             // The outer guard covers the pre-loop findByIds()/repository() lookups
-            // because this surface fires inline with no deferred-job net (unlike Post);
-            // keep the inner per-recipient catch too so one bad row still can't kill the
-            // rest once the loop is running.
+            // because this surface fires inline with no deferred-job net (as every milpac
+            // surface does, Post included); keep the inner per-recipient catch too so one
+            // bad row still can't kill the rest once the loop is running.
             \XF::logException($e, false, '[Cav7/MilpacMention] firing failed: ');
             return;
         }

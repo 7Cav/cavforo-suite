@@ -416,7 +416,10 @@ foreach ($surfaces as $name => $s) {
 
     // Firing runs inline after the content saved+committed, so a failure must be
     // contained, logged, and skipped per-recipient (never surfaced on the action).
-    $fireBody = methodBody($src, 'fireMilpacMentions');
+    // Anchor to the comment-stripped body ($code) so a prose "try"/"catch" in a comment
+    // cannot register as a real keyword in the positional pin below (mirrors
+    // TicketWiringTest).
+    $fireBody = methodBody($code, 'fireMilpacMentions');
     check(
         "$name: firing is contained — fireMilpacMentions catches and forwards \$e to logException(\$e, false, …), never rethrowing",
         $fireBody !== ''
