@@ -77,9 +77,10 @@ class MilpacResolver
     /**
      * relation_id -> user_id for a set of relation_ids, via the NF\Rosters
      * RosterUser finder run in reverse (the forward direction is what
-     * Cav7\MilpacTooltip uses). relation_id is the primary key and user_id is a
-     * column, so this is a straight lookup with no tiebreak: one user = one
-     * milpac = one relation_id is a roster invariant (§2.3).
+     * Cav7\MilpacTooltip uses). relation_id is the primary key, so each
+     * relation_id maps to exactly one user_id — a straight PK lookup with no
+     * tiebreak. (A user may own more than one relation_id; the de-dup below
+     * collapses them.)
      *
      * @param list<int> $relationIds
      *

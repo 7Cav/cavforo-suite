@@ -310,7 +310,7 @@ check(
     (bool) preg_match("/'entity'\s*=>\s*'NF\\\\Rosters:RosterUser'/", $relBlock)
 );
 check(
-    'the declared milpac relation is TO_ONE (one user = one milpac = one relation_id, §4.4)',
+    'the declared milpac relation is TO_ONE (models the expected one-milpac-per-user shape; not schema-enforced — see the \'order\' check below)',
     (bool) preg_match("/'type'\s*=>\s*Entity::TO_ONE/", $relBlock)
 );
 check(
