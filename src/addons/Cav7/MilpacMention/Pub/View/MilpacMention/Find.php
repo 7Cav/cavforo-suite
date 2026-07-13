@@ -24,16 +24,27 @@ use XF\Mvc\View;
  * insert html verbatim, or the artifact the phase-1 engine detects can diverge.
  *
  * The users come pre-joined to their milpac (with Rank and Roster) by
- * MilpacResolver::findMilpacOwningUsers, so no per-row query runs here.
+ * MilpacResolver::findMilpacOwningUsers, so no per-row query runs here. A member with
+ * two roster rows (one milpac per user is the intended rule but not schema-enforced)
+ * is collapsed to a single dropdown entry keeping the lowest relation_id, with the
+ * duplicate logged as a data error — see MilpacResolver::dedupeMilpacOwners (#112).
  */
 class Find extends View
 {
     public function renderJson()
     {
         $router = \XF::app()->router('public');
-        $results = [];
-        $seenUsernames = [];
 
+        // Build the (user_id, relation_id) rows from the joined owners, then collapse
+        // to one per member. One milpac per user is the intended rule but
+        // xf_nf_rosters_user does not enforce it, so dedupeMilpacOwners keeps the
+        // lowest relation_id and logs a duplicate as a data error (§4.4, #112). The
+        // finder orders the join by relation_id and XF's identity map keys the fetched
+        // collection by user_id, so $user->Milpac is already the lowest and this view
+        // normally sees one row per member; the collapse is the fail-safe that also
+        // makes a raw duplicate visible instead of surfacing the member twice.
+        $rows = [];
+        $userById = [];
         foreach ($this->params['users'] as $user) {
             /** @var \NF\Rosters\Entity\RosterUser|null $milpac */
             $milpac = $user->Milpac;
@@ -51,13 +62,18 @@ class Find extends View
                 continue;
             }
 
-            // user_id is not DB-unique on xf_nf_rosters_user (only relation_id is),
-            // so the TO_ONE join can emit more than one row for a member with two
-            // RosterUser rows. Dedup by username so one member fills one slot, not two.
-            if (isset($seenUsernames[$user->username])) {
-                continue;
+            $userId = (int) $user->user_id;
+            $rows[] = ['user_id' => $userId, 'relation_id' => (int) $milpac->relation_id];
+            if (!isset($userById[$userId])) {
+                $userById[$userId] = $user; // first-seen entity carries the lowest milpac
             }
-            $seenUsernames[$user->username] = true;
+        }
+
+        $results = [];
+        foreach (MilpacResolver::dedupeMilpacOwners($rows) as $userId) {
+            $user = $userById[$userId];
+            /** @var \NF\Rosters\Entity\RosterUser $milpac */
+            $milpac = $user->Milpac;
 
             $rank = $milpac->Rank ? (string) $milpac->Rank->title : '';
             $roster = $milpac->Roster ? (string) $milpac->Roster->title : '';

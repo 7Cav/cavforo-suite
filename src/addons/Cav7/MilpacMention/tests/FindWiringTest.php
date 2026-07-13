@@ -185,6 +185,23 @@ check(
     'the finder eager-loads Milpac.Roster (no N+1 for the roster title, §4.5)',
     (bool) preg_match("/->with\(\s*'Milpac\.Roster'\s*\)/", $resolverSrc)
 );
+// #112 — one milpac per user is expected but NOT schema-enforced, so a member with
+// two roster rows can match the join twice. XF's identity map keeps the first fetched
+// row per user_id, so ordering the join by relation_id makes the surviving milpac the
+// LOWEST (deterministic, matching #96's lazy $user->Milpac) rather than arbitrary. The
+// relation's own 'order' does not reach this eager with('Milpac', true) join, so the
+// finder must set it here.
+check(
+    "the finder orders the join by Milpac.relation_id (a duplicate member keeps its lowest milpac, §4.4 #112)",
+    (bool) preg_match("/->order\(\s*'Milpac\.relation_id'\s*\)/", $resolverSrc),
+    'without it the surviving milpac for a member with two roster rows is nondeterministic'
+);
+$orderPos = strpos($resolverSrc, "->order('Milpac.relation_id')");
+$fetchLimitPos = strpos($resolverSrc, '->fetch($limit)');
+check(
+    'the deterministic order is applied before the fetch limit',
+    $orderPos !== false && $fetchLimitPos !== false && $orderPos < $fetchLimitPos
+);
 // #96 — the relation is declared centrally now (the entity_structure listener
 // above), so findMilpacOwningUsers must no longer poke it into the request-shared
 // XF:User structure at query time. The ad-hoc registration and the getStructure()
@@ -389,6 +406,15 @@ check(
     'the insert value links the canonical rosters/profile route for the joined milpac row',
     (bool) preg_match("/buildLink\(\s*'canonical:rosters\/profile'\s*,\s*\\\$milpac\s*\)/", $viewSrc),
     'the href must contain /rosters/profile/<relation_id>/ so the engine detects it (§2.2)'
+);
+// #112 — a member with two roster rows must render once, not twice. The view collapses
+// through the shared MilpacResolver::dedupeMilpacOwners, which keeps the lowest
+// relation_id and logs the duplicate as a data error, rather than an ad-hoc silent
+// dedup — so the drop is deterministic and visible (§4.4).
+check(
+    'the view collapses duplicate milpac owners through the shared resolver (one entry per member, logged)',
+    str_contains($viewSrc, 'MilpacResolver::dedupeMilpacOwners'),
+    'a member with two roster rows yields one dropdown entry, and the duplicate is logged (#112)'
 );
 
 if ($failures > 0) {
