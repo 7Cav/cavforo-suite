@@ -184,6 +184,76 @@ check(
 );
 
 // ---------------------------------------------------------------------------
+// Boundary/branch pins (issue #123 review): the $-matcher edges the parity table
+// above does not already exercise — the empty-core guard, the [ ] token-stop, the
+// remaining lookbehind alternatives (] , / " --), and adjacent-$ handling. These
+// behaviours already match stock @; the pins fail CI if a future edit drops a
+// boundary alternative or the empty-core guard.
+// ---------------------------------------------------------------------------
+
+// An all-punctuation token rtrims to '' (the empty-core guard) and is returned
+// literal — the token matched, but its core is empty so there is nothing to look up.
+check(
+    'an all-punctuation token "$!" trims to empty core and stays literal',
+    MilpacResolver::resolveTypedMilpacs('hey $! there', $lookup) === 'hey $! there'
+);
+check(
+    'a "$..." token trims to empty core and stays literal',
+    MilpacResolver::resolveTypedMilpacs('$...', $lookup) === '$...'
+);
+
+// A lone "$" before whitespace never even matches: the token class ([^\s$\[\]]+)
+// requires at least one non-space character right after the "$".
+check(
+    'a lone "$" before whitespace never matches (token class needs a non-space char)',
+    MilpacResolver::resolveTypedMilpacs('pay $ 5', $lookup) === 'pay $ 5'
+);
+
+// The "]" lookbehind alternative in isolation: a $name immediately after a closing
+// BBCode tag sits at a boundary and resolves.
+check(
+    'a $username right after a "]" resolves (the "]" lookbehind alternative)',
+    MilpacResolver::resolveTypedMilpacs('[b]hi[/b]$markel.z', $lookup) === "[b]hi[/b]$markelLink"
+);
+
+// The token class excludes "[" and "]", so a $name glued to an opening tag resolves
+// and the following BBCode is left intact (the token stops at the "[").
+check(
+    'a $username glued to "[b]…[/b]" resolves and leaves the tag intact',
+    MilpacResolver::resolveTypedMilpacs('$markel.z[b]bold[/b]', $lookup) === $markelLink . '[b]bold[/b]'
+);
+
+// The remaining lookbehind alternatives ( , / " -- ) each open a boundary, exactly
+// as @ rides them; one loop over the isolating inputs.
+$boundaryPrefixes = [
+    'note--$markel.z' => 'note--',
+    'a/$markel.z'     => 'a/',
+    'say "$markel.z'  => 'say "',
+    'x,$markel.z'     => 'x,',
+];
+foreach ($boundaryPrefixes as $input => $prefix) {
+    $out = MilpacResolver::resolveTypedMilpacs($input, $lookup);
+    check(
+        "a \$username after the boundary in \"$input\" resolves to its roster link",
+        $out === $prefix . $markelLink,
+        $out
+    );
+}
+
+// Adjacent-$: the second "$" in "$markel.z$treck.m" is preceded by "z", not a
+// boundary, so only the first resolves and "$treck.m" stays literal.
+check(
+    'only the first of two glued $usernames resolves (the second $ has no boundary)',
+    MilpacResolver::resolveTypedMilpacs('$markel.z$treck.m', $lookup) === $markelLink . '$treck.m'
+);
+// "$$markel.z": the first "$" is followed by "$" (token class excludes it) and the
+// second "$" is preceded by "$" (not a boundary), so the whole token stays literal.
+check(
+    'a "$$"-prefixed token stays fully literal (neither $ sits at a boundary)',
+    MilpacResolver::resolveTypedMilpacs('$$markel.z', $lookup) === '$$markel.z'
+);
+
+// ---------------------------------------------------------------------------
 // The shaping helper in isolation: the exact BBCode artifact, mirroring the JS
 // completer's anchorToBbCode so a typed link and a picked link are identical.
 // ---------------------------------------------------------------------------

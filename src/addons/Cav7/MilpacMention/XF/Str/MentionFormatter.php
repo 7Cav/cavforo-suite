@@ -64,6 +64,17 @@ class MentionFormatter extends XFCP_MentionFormatter
      */
     protected function applyMilpacMentions($message)
     {
+        // Capture the good, @-resolved input BEFORE any masking, so every throw path
+        // returns the member's post untouched. setupPlaceholders/restorePlaceholders are
+        // preg_replace_callback under the hood and return null (not throw) on a PCRE
+        // backtrack/recursion limit; a null then flows into resolveTypedMilpacs' typed
+        // string param as a TypeError, or leaves $message null after the finally. Without
+        // this the catch would `return $message` — now null/half-masked — blanking the
+        // post, contradicting the "message left unchanged" log. Returning $original in the
+        // catch makes that guarantee total: it also covers a restorePlaceholders throw
+        // inside the finally, whose exception propagates out to this same catch.
+        $original = $message;
+
         try {
             $disabledTags = array_map(
                 function ($v) { return preg_quote($v, '#'); },
@@ -86,6 +97,8 @@ class MentionFormatter extends XFCP_MentionFormatter
             }
         } catch (\Throwable $e) {
             \XF::logException($e, false, '[Cav7/MilpacMention] typed-$name resolution failed; message left unchanged: ');
+
+            return $original;
         }
 
         return $message;

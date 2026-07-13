@@ -601,6 +601,9 @@ class MilpacResolver
      *                             to point at (the direct analogue of @ only resolving
      *                             real, mentionable users)
      *   - with('Milpac.Rank')     the rank title for the "Rank Name" link text (§4.5)
+     *   - with('Milpac.Roster')   the roster the profile buildLink reads for its slug, so
+     *                             the link is shaped without a lazy per-holder fetch —
+     *                             matching the sibling findMilpacOwningUsers' eager-load
      *
      * Ordered by Milpac.relation_id and fetched with fetchOne, so a member who owns more
      * than one roster row (one milpac per user is the intended rule but xf_nf_rosters_user
@@ -622,6 +625,7 @@ class MilpacResolver
             ->isValidUser(true)
             ->with('Milpac', true)           // INNER JOIN: a non-owner stays literal
             ->with('Milpac.Rank')            // rank title for the "Rank Name" link text (§4.5)
+            ->with('Milpac.Roster')          // roster slug for the profile buildLink (matches the sibling; avoids a lazy fetch)
             ->order('Milpac.relation_id')    // a duplicate member keeps its LOWEST milpac (§4.4, #96)
             ->fetchOne();
     }
