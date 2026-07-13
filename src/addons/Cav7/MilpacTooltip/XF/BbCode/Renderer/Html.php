@@ -19,11 +19,12 @@ use Cav7\MilpacTooltip\RosterLink;
 class Html extends XFCP_Html
 {
     /**
-     * Render the stock anchor, then — for a roster-profile link that resolves to a
-     * member — stamp it with data-xf-init="member-tooltip" and the resolved data-user-id.
-     * A non-roster link, or a milpac that does not resolve to a member (deleted roster
-     * row, relation_id 0), is returned exactly as the parent rendered it, so it stays a
-     * plain link with no hovercard (spec user stories 17 and 18).
+     * Render the stock anchor, then — for a roster-profile link that points at this
+     * board and resolves to a member — stamp it with data-xf-init="member-tooltip" and
+     * the resolved data-user-id. A non-roster link, a cross-board roster link (its host
+     * is not this board's, issue #126), or a milpac that does not resolve to a member
+     * (deleted roster row, relation_id 0), is returned exactly as the parent rendered
+     * it, so it stays a plain link with no hovercard (spec user stories 17 and 18).
      *
      * Contained: getRenderedLink runs on every link of every render, so a finder or DB
      * fault while resolving must not break the whole post render. A \Throwable is logged
@@ -43,7 +44,13 @@ class Html extends XFCP_Html
         try
         {
             $relationId = RosterLink::relationIdFromUrl((string) $url);
-            if ($relationId > 0)
+            // Recognise the roster path, but stamp only when the link points at THIS
+            // board: a relative link, or an absolute one whose host matches the board's
+            // canonical URL. A cross-board /rosters/profile/<n>/ link is left as the
+            // parent rendered it — otherwise its local relation_id would be resolved to
+            // a local member and XF.MemberTooltip would show the wrong card on hover,
+            // even though the foreign href still clicks through correctly (issue #126).
+            if ($relationId > 0 && RosterLink::isSameOriginLink((string) $url, (string) \XF::options()->boardUrl))
             {
                 $userId = RosterLink::resolveUserId($relationId);
                 if ($userId > 0)
