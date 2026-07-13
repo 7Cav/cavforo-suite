@@ -77,3 +77,18 @@ jobs:
           coverage: none
       - name: Run tests
         run: tools/run-tests.sh "$ADDON"
+
+  # Repo-level tool tests (tools/tests/*.php). These pin the tools/ scripts
+  # against failure modes the live build's happy-path run does not exercise.
+  # Runs once (not per addon) and discovers every tools/tests/*.php, so new
+  # tools tests are picked up with no change here. No XenForo.
+  tools-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Run tools tests
+        run: tools/run-tools-tests.sh
