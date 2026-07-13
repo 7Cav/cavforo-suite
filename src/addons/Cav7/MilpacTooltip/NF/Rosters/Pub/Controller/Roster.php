@@ -29,32 +29,32 @@ use XF\Pub\Controller\MemberController;
  */
 class Roster extends XFCP_Roster
 {
-	public function actionProfile(ParameterBag $params): View
-	{
-		if ($this->filter('tooltip', 'bool'))
-		{
-			return $this->getMilpacMemberTooltip($params->relation_id);
-		}
+    public function actionProfile(ParameterBag $params): View
+    {
+        if ($this->filter('tooltip', 'bool'))
+        {
+            return $this->getMilpacMemberTooltip($params->relation_id);
+        }
 
-		return parent::actionProfile($params);
-	}
+        return parent::actionProfile($params);
+    }
 
-	/**
-	 * Resolve the roster link's relation_id to its member and return that member's stock
-	 * member_tooltip, by handing off to XenForo's own MemberController::actionTooltip. The
-	 * resolved user_id is the tooltip's identity and cache key, shared with the member's
-	 * username hovercard, so the card is identical however it is reached (spec user story
-	 * 3). An unresolved relation_id resolves to user_id 0, which actionTooltip rejects as
-	 * not-found — surfaced to the client as no card (spec user story 17).
-	 */
-	protected function getMilpacMemberTooltip($relationId): View
-	{
-		$userId = RosterLink::resolveUserId((int) $relationId);
+    /**
+     * Resolve the roster link's relation_id to its member and return that member's stock
+     * member_tooltip, by handing off to XenForo's own MemberController::actionTooltip. The
+     * resolved user_id is the tooltip's identity and cache key, shared with the member's
+     * username hovercard, so the card is identical however it is reached (spec user story
+     * 3). An unresolved relation_id resolves to user_id 0, which actionTooltip rejects as
+     * not-found — surfaced to the client as no card (spec user story 17).
+     */
+    protected function getMilpacMemberTooltip(int $relationId): View
+    {
+        $userId = RosterLink::resolveUserId($relationId);
 
-		/** @var MemberController $memberController */
-		$memberController = $this->app->controller(MemberController::class, $this->request);
-		$memberController->setResponseType($this->responseType);
+        /** @var MemberController $memberController */
+        $memberController = $this->app->controller(MemberController::class, $this->request);
+        $memberController->setResponseType($this->responseType);
 
-		return $memberController->actionTooltip(new ParameterBag(['user_id' => $userId]));
-	}
+        return $memberController->actionTooltip(new ParameterBag(['user_id' => $userId]));
+    }
 }
