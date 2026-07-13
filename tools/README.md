@@ -43,9 +43,11 @@ reproduces the `upload/src/addons/Cav7/<Id>/` layout that
 `tests/`, `docs/`, `CONTEXT.md`, ...) are left out, and so are `_files/` and
 `build.json`, which XenForo also keeps out of `upload/src/addons/...`.
 
-If the addon has a `build.json`, the script hands off to `package-web-assets.php`
-(below) to place its web assets at the upload web root, the same as
-`xf-addon:build-release`. This needs `php` on the PATH.
+`package-addon.sh` always runs `package-web-assets.php` (below): it copies web
+assets when a `build.json` declares them, and verifies every `<xf:js>` the addon
+owns resolves at the web root regardless of whether a `build.json` is present.
+This is the same web-asset placement `xf-addon:build-release` does, and it needs
+`php` on the PATH.
 
 The one thing it does not reproduce is XenForo's `hashes.json` file-health
 manifest, which the real build generates. The zip installs fine without it.
@@ -66,10 +68,13 @@ becomes `upload/js/Cav7/MilpacMention`), and writes the `<name>.min.js` that a
 `.min.js` a `min="1"` include requests. An addon with no `build.json` and no
 owned `<xf:js>` is a no-op.
 
-Real minification needs XenForo's Closure Compiler, which the CI and release
-runners do not have, so the `.min.js` is a copy of the source. It is valid,
-working JS at the path a `min="1"` include requests, so the asset serves; it is
-just not size-optimised.
+The main thing it does not reproduce is real minification: XenForo's Closure
+Compiler is not on the CI and release runners, so the `.min.js` is a copy of the
+source. It is valid, working JS at the path a `min="1"` include requests, so the
+asset serves; it is just not size-optimised. It also diverges from XenForo on
+`additional_files`: there is no install-root fallback for a declared path, and a
+path with no (or an empty) `_files` backing is an error here rather than silently
+skipped.
 
 ```
 php tools/package-web-assets.php src/addons/Cav7/MilpacMention build/upload Cav7/MilpacMention

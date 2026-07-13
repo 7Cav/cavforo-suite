@@ -60,10 +60,12 @@ prefix="upload/$sub/"
 git -C "$repo_root" archive --format=tar --prefix="$prefix" "$ref:$sub" | tar -x -C "$tmp"
 
 # Reproduce XenForo's build.json web-asset handling: copy the addon's declared
-# _files/ web assets to the upload/ web root and write the .min.js the templates
-# ask for, then check every <xf:js src> the addon owns resolves there. Reads
+# _files/ web assets to the upload/ web root and write the .min.js the minify key
+# names, then check every <xf:js src> the addon owns resolves there. Reads
 # _files/ and build.json from the extracted tree, so it must run before the
-# excludes below strip them. A no-op for addons with no build.json/_files.
+# excludes below strip them. Copies nothing for an addon with no build.json, but
+# the <xf:js> resolution check still runs and can fail the build for an addon
+# that owns an <xf:js> even without one.
 php "$script_dir/package-web-assets.php" "$tmp/$prefix" "$tmp/upload" "Cav7/$addon_id"
 
 for e in "${excludes[@]}"; do

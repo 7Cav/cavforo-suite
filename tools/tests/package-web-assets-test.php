@@ -88,6 +88,24 @@ function rmrf(string $path): void
     }
 }
 
+/** Every file (not dirs) under $dir, at any depth, as absolute pathnames. */
+function allFilesUnder(string $dir): array
+{
+    $out = [];
+    foreach (scandir($dir) as $entry) {
+        if ($entry === '.' || $entry === '..') {
+            continue;
+        }
+        $path = "$dir/$entry";
+        if (is_dir($path)) {
+            $out = array_merge($out, allFilesUnder($path));
+        } else {
+            $out[] = $path;
+        }
+    }
+    return $out;
+}
+
 /**
  * Build a throwaway fixture: an addon source dir plus its own upload/ root.
  * Returns [srcDir, uploadDir].
@@ -160,10 +178,18 @@ try {
             && !is_file("$up/js/Vendor/AddonA/editor.min.min.js"),
         $out
     );
+    // Enumerate every file the tool actually landed and assert each is under the
+    // js/ web root — catches a stray copy anywhere (e.g. leaking _files/ or src/),
+    // unlike a hand-picked !is_dir() list that can only catch paths named ahead of
+    // time.
+    $strayA = array_filter(
+        allFilesUnder($up),
+        fn(string $f): bool => strpos($f, "$up/js/") !== 0
+    );
     check(
-        'A: nothing copied to upload outside the js/ web root',
-        !is_dir("$up/_files") && !is_dir("$up/src"),
-        $out
+        'A: every file under upload/ lives under the js/ web root',
+        $strayA === [],
+        'stray: ' . implode(', ', $strayA) . "\n$out"
     );
 
     // --- B. no build.json: clean no-op, no upload/js created -------------------
@@ -217,6 +243,96 @@ try {
     [$code, $out] = runTool($tool, $src, $up, 'Vendor/AddonF');
     check('F: additional_files with no _files backing fails', $code !== 0, "exit=$code\n$out");
     check('F: failure names the missing additional_files path', str_contains($out, 'js/Vendor/AddonF'), $out);
+
+    // --- G. a failed copy is loud: non-zero exit, names the copy, no silent OK --
+    // The silent-missing-asset bug this guard exists to prevent: a discarded
+    // copy() return prints "OK ... (N copied)" and exits 0 with the asset absent
+    // from the zip → a 404 behind a green build. Force copy() to fail
+    // deterministically (works even as root, so no chmod-vs-root flakiness): make
+    // the destination file *path* an existing directory, which copy() cannot
+    // overwrite.
+    [$src, $up] = makeFixture($base, 'G', [
+        'build.json' => "{\n    \"additional_files\": [\"js/Vendor/AddonG\"]\n}\n",
+        '_files/js/Vendor/AddonG/editor.js' => $jsBody,
+    ]);
+    mkdir("$up/js/Vendor/AddonG/editor.js", 0777, true); // block the copy target
+    [$code, $out] = runTool($tool, $src, $up, 'Vendor/AddonG');
+    check('G: a failed copy exits non-zero', $code !== 0, "exit=$code\n$out");
+    check(
+        'G: failure names the copy that failed',
+        stripos($out, 'copy') !== false && str_contains($out, 'editor.js'),
+        $out
+    );
+    check(
+        'G: a failed copy never prints the OK line',
+        !str_contains($out, 'OK web assets'),
+        $out
+    );
+
+    // --- I. additional_files dir that EXISTS but is EMPTY: error, not a no-op ---
+    // Same silent-skip class as G: the dir backs the declaration but contributes
+    // nothing, so without a guard it copies zero files and exits 0 — the asset is
+    // silently absent. The backing dir is created empty (makeFixture only writes
+    // files, so mkdir it directly).
+    [$src, $up] = makeFixture($base, 'I', [
+        'build.json' => "{\n    \"additional_files\": [\"js/Vendor/AddonI\"]\n}\n",
+    ]);
+    mkdir("$src/_files/js/Vendor/AddonI", 0777, true); // exists, but holds no files
+    [$code, $out] = runTool($tool, $src, $up, 'Vendor/AddonI');
+    check('I: empty additional_files dir fails (exit non-zero)', $code !== 0, "exit=$code\n$out");
+    check(
+        'I: failure names the empty additional_files entry',
+        str_contains($out, 'js/Vendor/AddonI'),
+        $out
+    );
+
+    // --- J. a minify array entry not ending in .js: error, not silent drop ------
+    // The .css is copied to the web root by additional_files, then named in
+    // minify where it does not belong; dropping it silently hides a build.json
+    // mistake. (A .min.js entry is a legitimate no-op and must still be skipped
+    // quietly — covered by E's widget.js flow.)
+    [$src, $up] = makeFixture($base, 'J', [
+        'build.json' => "{\n    \"additional_files\": [\"js/Vendor/AddonJ\"],\n"
+            . "    \"minify\": [\"js/Vendor/AddonJ/style.css\"]\n}\n",
+        '_files/js/Vendor/AddonJ/style.css' => "body{color:red}\n",
+    ]);
+    [$code, $out] = runTool($tool, $src, $up, 'Vendor/AddonJ');
+    check('J: non-.js minify entry fails (exit non-zero)', $code !== 0, "exit=$code\n$out");
+    check('J: failure names the non-.js minify entry', str_contains($out, 'style.css'), $out);
+
+    // --- H. owned min="1" xf:js whose BASE resolves but has NO .min.js ----------
+    // The exact #103 404: additional_files copies editor.js so the base resolves,
+    // but with no minify key nothing writes editor.min.js, and a non-dev install
+    // requests the .min.js a min="1" include names. The build must fail and point
+    // at the missing .min.js specifically (base resolves, so it must NOT be the
+    // "does not resolve" message).
+    [$src, $up] = makeFixture($base, 'H', [
+        'build.json' => "{\n    \"additional_files\": [\"js/Vendor/AddonH\"]\n}\n",
+        '_files/js/Vendor/AddonH/editor.js' => $jsBody,
+        '_data/template_modifications.xml' => tmodWithJs('Vendor/AddonH', 'Vendor/AddonH/editor.js', '1'),
+    ]);
+    [$code, $out] = runTool($tool, $src, $up, 'Vendor/AddonH');
+    check('H: base editor.js is present (copied)', is_file("$up/js/Vendor/AddonH/editor.js"), $out);
+    check('H: min="1" with no .min.js companion fails (exit non-zero)', $code !== 0, "exit=$code\n$out");
+    check(
+        'H: failure names the missing .min.js specifically',
+        str_contains($out, 'js/Vendor/AddonH/editor.min.js'),
+        $out
+    );
+
+    // --- K. minify array names a .js that is not at the web root: error ---------
+    // Nothing in additional_files backs it, so there is no source to minify; the
+    // build must fail and name the path rather than skip it.
+    [$src, $up] = makeFixture($base, 'K', [
+        'build.json' => "{\n    \"minify\": [\"js/Vendor/AddonK/missing.js\"]\n}\n",
+    ]);
+    [$code, $out] = runTool($tool, $src, $up, 'Vendor/AddonK');
+    check('K: minify path not at web root fails (exit non-zero)', $code !== 0, "exit=$code\n$out");
+    check(
+        'K: failure names the missing minify path',
+        str_contains($out, 'js/Vendor/AddonK/missing.js'),
+        $out
+    );
 } finally {
     rmrf($base);
 }

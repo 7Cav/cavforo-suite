@@ -4,8 +4,9 @@
  * package-web-assets.php — reproduce XenForo's build.json web-asset handling for
  * the no-XenForo packaging path (issue #103). Given an addon's source dir and
  * the upload/ root of a release build, it copies the addon's declared web assets
- * out of _files/ into the web root and writes the minified companions the
- * templates ask for, then checks that every <xf:js> the addon owns resolves.
+ * out of _files/ into the web root and writes the .min.js companions that
+ * build.json's minify names, then checks every <xf:js> the addon owns resolves
+ * (including any min="1" file).
  *
  *   php tools/package-web-assets.php <addon-src-dir> <upload-root> <addon-id>
  *
@@ -26,11 +27,14 @@
  *     not already a .min.js; a minify array names specific paths (minifyJs). The
  *     min filename is the source name with .js replaced by .min.js.
  *
- * The one thing it does not reproduce is real minification: XF shells out to the
- * Closure Compiler, which the CI/release runners do not have, so the .min.js is
- * a byte-for-byte copy of the source. It is valid, working JS at the exact path
- * a min="1" include requests, so the asset serves (no 404); it is just not
+ * The main thing it does not reproduce is real minification: XF shells out to
+ * the Closure Compiler, which the CI/release runners do not have, so the .min.js
+ * is a byte-for-byte copy of the source. It is valid, working JS at the exact
+ * path a min="1" include requests, so the asset serves (no 404); it is just not
  * size-optimised. (Same spirit as package-addon.sh not reproducing hashes.json.)
+ * It also diverges from XF on additional_files: there is no install-root fallback
+ * for a declared path, and a path with no (or an empty) _files backing is an
+ * error here rather than silently skipped.
  *
  * An addon with no build.json and no owned <xf:js> is a clean no-op. Exits
  * non-zero, naming the offending item, when a declared additional_files path has
@@ -69,14 +73,22 @@ if (is_file($buildJsonPath)) {
     $buildJson = array_replace($buildJson, $decoded);
 }
 
-/** Copy $from to $to, creating parent directories as needed. */
-function copyInto(string $from, string $to): void
+/**
+ * Copy $from to $to, creating parent directories as needed. Returns null on
+ * success, or an error string when the directory could not be made or the copy
+ * failed — a discarded failure here means the asset silently never reaches the
+ * zip (a 404 behind a green build), so the caller must surface it.
+ */
+function copyInto(string $from, string $to): ?string
 {
     $dir = dirname($to);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0777, true);
+    if (!is_dir($dir) && !@mkdir($dir, 0777, true) && !is_dir($dir)) {
+        return "failed to create directory: $dir";
     }
-    copy($from, $to);
+    if (!@copy($from, $to)) {
+        return "failed to copy $from -> $to";
+    }
+    return null;
 }
 
 /** Every file (not dirs) under $root, at any depth, as absolute pathnames. */
@@ -105,15 +117,28 @@ foreach ((array) ($buildJson['additional_files'] ?? []) as $rel) {
     $rel = trim($rel, '/');
     $source = "$filesRoot/$rel";
     if (is_dir($source)) {
-        foreach (filesUnder($source) as $file) {
+        $filesInEntry = filesUnder($source);
+        if (!$filesInEntry) {
+            // The dir backs the declaration but holds no files, so it would copy
+            // nothing and pass silently — the same missing-asset trap as a path
+            // with no backing at all.
+            $errors[] = "additional_files entry contributes no files: _files/$rel";
+        }
+        foreach ($filesInEntry as $file) {
             // Path of this file relative to _files/, preserved under upload/.
             $stdPath = ltrim(substr($file, strlen($filesRoot)), '/');
-            copyInto($file, "$uploadRoot/$stdPath");
+            if (($err = copyInto($file, "$uploadRoot/$stdPath")) !== null) {
+                $errors[] = $err;
+                continue;
+            }
             $copied++;
         }
     } elseif (is_file($source)) {
-        copyInto($source, "$uploadRoot/$rel");
-        $copied++;
+        if (($err = copyInto($source, "$uploadRoot/$rel")) !== null) {
+            $errors[] = $err;
+        } else {
+            $copied++;
+        }
     } else {
         $errors[] = "additional_files path has no _files backing: _files/$rel";
     }
@@ -138,7 +163,10 @@ if ($minify === '*') {
             if (!str_ends_with($name, '.js') || str_ends_with($name, '.min.js')) {
                 continue;
             }
-            copyInto($file, minName($file));
+            if (($err = copyInto($file, minName($file))) !== null) {
+                $errors[] = $err;
+                continue;
+            }
             $minified++;
         }
     }
@@ -149,7 +177,14 @@ if ($minify === '*') {
             continue;
         }
         $rel = ltrim($rel, '/');
-        if (!str_ends_with($rel, '.js') || str_ends_with($rel, '.min.js')) {
+        if (!str_ends_with($rel, '.js')) {
+            // XF's minifyJs only handles .js paths; a non-.js entry is a
+            // build.json mistake, not something to drop on the floor.
+            $errors[] = "minify entry is not a .js file: $rel";
+            continue;
+        }
+        if (str_ends_with($rel, '.min.js')) {
+            // Already minified — nothing to write, a legitimate no-op.
             continue;
         }
         $source = "$uploadRoot/$rel";
@@ -157,7 +192,10 @@ if ($minify === '*') {
             $errors[] = "minify path is not at the web root: $rel";
             continue;
         }
-        copyInto($source, minName($source));
+        if (($err = copyInto($source, minName($source))) !== null) {
+            $errors[] = $err;
+            continue;
+        }
         $minified++;
     }
 }
