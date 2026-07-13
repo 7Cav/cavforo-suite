@@ -77,9 +77,10 @@ class MilpacResolver
     /**
      * relation_id -> user_id for a set of relation_ids, via the NF\Rosters
      * RosterUser finder run in reverse (the forward direction is what
-     * Cav7\MilpacTooltip uses). relation_id is the primary key and user_id is a
-     * column, so this is a straight lookup with no tiebreak: one user = one
-     * milpac = one relation_id is a roster invariant (§2.3).
+     * Cav7\MilpacTooltip uses). relation_id is the primary key, so each
+     * relation_id maps to exactly one user_id — a straight PK lookup with no
+     * tiebreak. (A user may own more than one relation_id; the de-dup below
+     * collapses them.)
      *
      * @param list<int> $relationIds
      *
@@ -258,32 +259,24 @@ class MilpacResolver
      *                                 mustExist flag), so a member with no milpac is
      *                                 dropped by the join the way a non-mentionable
      *                                 user is absent from @ results. RosterUser is
-     *                                 TO_ONE here — the one-user-one-milpac invariant
-     *                                 (§4.4) keeps the join to one row per member.
+     *                                 TO_ONE to model the EXPECTED one-milpac-per-user
+     *                                 shape — a convention the schema does NOT enforce
+     *                                 (non-unique user_id index; live data has a user
+     *                                 with two rows), so the join is not guaranteed to
+     *                                 be one row per member: a member with multiple
+     *                                 roster rows can match more than once. Listener.php
+     *                                 orders the relation by relation_id for a
+     *                                 deterministic lazy $user->Milpac pick.
      *
      * Rank and Roster are joined for the dropdown row (§4.5). The 'Milpac' relation
-     * is hand-registered as a TO_ONE — the inverse of NF\Rosters:RosterUser's own
-     * 'User' relation — directly on the User entity structure, not through
-     * Finder::withEntity(): withEntity() would register a LEFT join, and this needs
-     * the INNER join that with('Milpac', true) issues. getStructure() hands back the
-     * request-shared, cached XF:User Structure object, so the mutation persists for
-     * the rest of the request exactly as a withEntity() registration would; the
-     * if (!isset(...)) guard makes re-registration on a later finder a no-op.
-     *
-     * Note there is no 'primary' => true here, unlike RosterUser's own 'User'
-     * relation this is the inverse of. 'primary' only rides along on RosterUser.User
-     * because there the join column (user_id) IS the target XF:User's primary key,
-     * so Manager::getRelation can resolve a lazy access by a whereId() PK lookup.
-     * The inverse points the other way: the target is RosterUser, whose PK is
-     * relation_id, not user_id. Setting 'primary' would make a lazy $user->Milpac
-     * access resolve as find('NF\Rosters:RosterUser', <user_id>) — a whereId lookup
-     * against relation_id — returning the wrong member's milpac or none. Because the
-     * mutation lands on the request-shared structure, that would be wrong for every
-     * lazy $user->Milpac in the request, not just this finder. Without 'primary', a
-     * lazy access falls through to getRelationFinder, which builds the correct
-     * WHERE user_id = <value> from 'conditions'. The INNER join below is unaffected
-     * either way: Finder::join ignores 'primary' and builds RosterUser.user_id =
-     * User.user_id straight from 'conditions'.
+     * this leans on is the inverse of NF\Rosters:RosterUser's own 'User' relation,
+     * declared once on XF:User by Cav7\MilpacMention\Listener::userEntityStructure
+     * (an entity_structure listener) — a first-class, greppable relation, not a
+     * query-time mutation of the request-shared structure. with('Milpac', true)
+     * issues the INNER join this needs, where Finder::withEntity() would only LEFT
+     * join. See that listener's docblock for why the relation deliberately omits
+     * 'primary' (its join key user_id is not RosterUser's PK relation_id, so
+     * 'primary' would misresolve a lazy $user->Milpac to a PK lookup).
      *
      * @param \XF\Finder\UserFinder $userFinder
      *
@@ -291,18 +284,6 @@ class MilpacResolver
      */
     public static function findMilpacOwningUsers($userFinder, string $q, int $limit = 10)
     {
-        $structure = $userFinder->getStructure();
-        if (!isset($structure->relations['Milpac'])) {
-            $structure->relations['Milpac'] = [
-                'entity' => 'NF\Rosters:RosterUser',
-                'type' => \XF\Mvc\Entity\Entity::TO_ONE,
-                'conditions' => 'user_id',
-                // deliberately no 'primary' => true: the inverse join key (user_id)
-                // is not RosterUser's PK (relation_id), so 'primary' would misresolve
-                // a lazy $user->Milpac to a PK lookup. See the method docblock.
-            ];
-        }
-
         return $userFinder
             ->where('username', 'like', $userFinder->escapeLike($q, '?%'))
             ->isValidUser(true)

@@ -169,14 +169,9 @@ check(
     'banned, dormant and memorial members fall out (§4.3)'
 );
 check(
-    'the roster join is an INNER join to NF\Rosters:RosterUser (with the mustExist flag)',
-    (bool) preg_match("/->with\(\s*'Milpac'\s*,\s*true\s*\)/", $resolverSrc)
-        && (bool) preg_match("/'entity'\s*=>\s*'NF\\\\Rosters:RosterUser'/", $resolverSrc),
-    "members with no milpac are dropped by the join (with('Milpac', true) forces INNER, §4.3)"
-);
-check(
-    'the ad-hoc milpac relation is TO_ONE (one user = one milpac = one relation_id, §4.4)',
-    (bool) preg_match("/'type'\s*=>\s*\\\\XF\\\\Mvc\\\\Entity\\\\Entity::TO_ONE/", $resolverSrc)
+    "the roster join is an INNER join via with('Milpac', true) (the mustExist flag)",
+    (bool) preg_match("/->with\(\s*'Milpac'\s*,\s*true\s*\)/", $resolverSrc),
+    "members with no milpac are dropped by the join; 'Milpac' is the declared relation now (#96, §4.3)"
 );
 // The dropdown row needs the rank and roster titles; eager-loading them via
 // with('Milpac.Rank') / with('Milpac.Roster') keeps the render to zero per-row
@@ -190,20 +185,16 @@ check(
     'the finder eager-loads Milpac.Roster (no N+1 for the roster title, §4.5)',
     (bool) preg_match("/->with\(\s*'Milpac\.Roster'\s*\)/", $resolverSrc)
 );
-// The ad-hoc relation's join key and the deliberate absence of 'primary'. Isolate
-// the registration array (code only, // comments stripped) so these target the
-// registered relation, not the prose that explains it.
-preg_match("/\\\$structure->relations\['Milpac'\]\s*=\s*\[(.*?)\];/s", $resolverSrc, $relMatch);
-$relBlock = preg_replace('~//[^\n]*~', '', $relMatch[1] ?? '');
+// #96 — the relation is declared centrally now (the entity_structure listener
+// above), so findMilpacOwningUsers must no longer poke it into the request-shared
+// XF:User structure at query time. The ad-hoc registration and the getStructure()
+// handle it mutated are both gone; the relation-shape pins moved to the listener
+// section, and this pins that the query-time side effect is really removed.
 check(
-    "the registered milpac relation joins on 'conditions' => 'user_id' (the inverse join key)",
-    (bool) preg_match("/'conditions'\s*=>\s*'user_id'/", $relBlock)
-);
-check(
-    "the registered milpac relation does NOT set 'primary' => true (Finding 1)",
-    $relBlock !== '' && !preg_match("/'primary'\s*=>\s*true/", $relBlock),
-    "primary is only correct on RosterUser.User, where user_id IS the target's PK; on the inverse "
-        . "the target is RosterUser (PK relation_id), so primary would misresolve a lazy \$user->Milpac"
+    'findMilpacOwningUsers no longer mutates the User structure (the ad-hoc block is gone)',
+    !preg_match("/\\\$structure->relations\['Milpac'\]\s*=/", $resolverSrc)
+        && !str_contains($resolverSrc, '->getStructure()'),
+    'the Milpac relation is a first-class entity_structure listener, not a query-time side effect (#96)'
 );
 // The join must sit INSIDE the finder before fetch() applies the limit, so the
 // result is $limit milpac owners, not $limit actives then filtered. Structurally:
@@ -214,6 +205,135 @@ check(
     'the inner join is applied before the fetch limit (join inside the query, not post-filtering)',
     $withPos !== false && $fetchPos !== false && $withPos < $fetchPos,
     'ten milpac-owning actives, not ten actives then filtered down (§4.3)'
+);
+
+// =========================================================================
+// the relation — 'Milpac' is declared centrally on XF:User via an entity_structure
+// code-event listener, not poked into the request-shared structure at query time
+// (#96). The relation-shape pins (target, TO_ONE, conditions => user_id, no
+// primary) live here now, on the callback that owns the declaration.
+// =========================================================================
+$listenersXml = @simplexml_load_file("$root/_data/code_event_listeners.xml");
+check('_data/code_event_listeners.xml could be read', $listenersXml !== false);
+
+$structureListener = null;
+if ($listenersXml !== false) {
+    foreach ($listenersXml->listener as $l) {
+        if ((string) $l['event_id'] === 'entity_structure'
+            && (string) $l['hint'] === 'XF\Entity\User') {
+            $structureListener = $l;
+            break;
+        }
+    }
+}
+check(
+    'an entity_structure listener hinted to XF\Entity\User is declared',
+    $structureListener !== null,
+    'the User->Milpac relation is registered once for the whole request, the idiomatic XF route (#96)'
+);
+check(
+    'the listener is active and points at Cav7\MilpacMention\Listener::userEntityStructure',
+    $structureListener !== null
+        && (string) $structureListener['active'] === '1'
+        && (string) $structureListener['callback_class'] === 'Cav7\MilpacMention\Listener'
+        && (string) $structureListener['callback_method'] === 'userEntityStructure',
+    'the callback that declares $structure->relations[Milpac]'
+);
+
+// check-data-consistency count-checks code_event_listeners: one <listener> in
+// _data must have one item file in _output/code_event_listeners/. Pin the same
+// invariant here, and that the export describes our listener, so a hand-edit of
+// one side fails (mirrors the routes pins above).
+$listenerItems = outputItems($root, 'code_event_listeners');
+check(
+    '_output/code_event_listeners has exactly one item file per _data listener',
+    count($listenerItems) === ($listenersXml !== false ? count($listenersXml->listener) : -1)
+);
+$listenerExport = null;
+foreach ($listenerItems as $f) {
+    $decoded = json_decode((string) @file_get_contents($f), true);
+    if (is_array($decoded)
+        && ($decoded['event_id'] ?? '') === 'entity_structure'
+        && ($decoded['hint'] ?? '') === 'XF\Entity\User') {
+        $listenerExport = $decoded;
+    }
+}
+check(
+    'the _output listener export describes the entity_structure User listener to our callback',
+    is_array($listenerExport)
+        && ($listenerExport['active'] ?? null) === true
+        && ($listenerExport['callback_class'] ?? '') === 'Cav7\MilpacMention\Listener'
+        && ($listenerExport['callback_method'] ?? '') === 'userEntityStructure',
+    '_data and _output must agree on the listener (check-data-consistency count-checks; this checks content)'
+);
+// The _metadata.json index must list the exported listener file (the export always
+// writes it; a missing entry means the export was hand-faked). The filename suffix
+// is md5("callback_class-callback_method-hint"), the same key XF's dev-output uses.
+$listenerMeta = json_decode((string) @file_get_contents("$root/_output/code_event_listeners/_metadata.json"), true);
+check(
+    'the _output/code_event_listeners/_metadata.json indexes the exported listener file',
+    is_array($listenerMeta)
+        && isset($listenerMeta['entity_structure_400ad1257769a7d5559a4bc621a20eec.json'])
+);
+
+// the callback — Listener::userEntityStructure(Manager, Structure) declares the
+// Milpac relation with the exact shape the resolver used to poke in by hand.
+$listenerSrc = (string) @file_get_contents("$root/Listener.php");
+check('Listener.php exists', $listenerSrc !== '');
+check(
+    'Listener lives in the addon-root Cav7\MilpacMention namespace',
+    (bool) preg_match('/namespace\s+Cav7\\\\MilpacMention\s*;/', $listenerSrc)
+);
+check(
+    'Listener imports Manager, Structure and Entity (the TO_ONE constant) from XF\Mvc\Entity',
+    (bool) preg_match('/use\s+XF\\\\Mvc\\\\Entity\\\\Manager\s*;/', $listenerSrc)
+        && (bool) preg_match('/use\s+XF\\\\Mvc\\\\Entity\\\\Structure\s*;/', $listenerSrc)
+        && (bool) preg_match('/use\s+XF\\\\Mvc\\\\Entity\\\\Entity\s*;/', $listenerSrc)
+);
+check(
+    'userEntityStructure is a static entity_structure callback (Manager $em, Structure &$structure)',
+    (bool) preg_match('/static\s+function\s+userEntityStructure\s*\(\s*Manager\s+\$em\s*,\s*Structure\s+&\$structure\s*\)/', $listenerSrc),
+    'the (Manager $em, Structure &$structure) signature XF hands an entity_structure listener'
+);
+check(
+    'the callback declares the Milpac relation on the structure it is handed',
+    str_contains($listenerSrc, "\$structure->relations['Milpac']"),
+    'first-class, greppable relation on XF:User, not a query-time side effect (#96)'
+);
+
+// Isolate the declared relation array from the callback (code only, // comments
+// stripped) so these target the registered relation, not the prose that explains it.
+preg_match("/\\\$structure->relations\['Milpac'\]\s*=\s*\[(.*?)\];/s", $listenerSrc, $relMatch);
+$relBlock = preg_replace('~//[^\n]*~', '', $relMatch[1] ?? '');
+check(
+    'the declared milpac relation targets NF\Rosters:RosterUser (the milpac row, §4.4)',
+    (bool) preg_match("/'entity'\s*=>\s*'NF\\\\Rosters:RosterUser'/", $relBlock)
+);
+check(
+    'the declared milpac relation is TO_ONE (models the expected one-milpac-per-user shape; not schema-enforced — see the \'order\' check below)',
+    (bool) preg_match("/'type'\s*=>\s*Entity::TO_ONE/", $relBlock)
+);
+check(
+    "the declared milpac relation joins on 'conditions' => 'user_id' (the inverse join key)",
+    (bool) preg_match("/'conditions'\s*=>\s*'user_id'/", $relBlock)
+);
+// #96 — one milpac per user is expected but NOT schema-enforced: xf_nf_rosters_user
+// has a non-unique user_id index and live data already carries a user with two rows.
+// So a lazy $user->Milpac (no 'primary' → getRelationFinder->fetchOne → WHERE user_id
+// = ? LIMIT 1) would return an arbitrary row. 'order' => 'relation_id' makes it
+// deterministic (lowest relation_id). The INNER-join query in findMilpacOwningUsers
+// is unaffected: with('Milpac', true) builds its join from 'conditions' and the
+// finder sets its own ORDER BY — 'order' rides only the lazy fetchOne path.
+check(
+    "the declared milpac relation sets 'order' => 'relation_id' (deterministic lazy \$user->Milpac, #96)",
+    (bool) preg_match("/'order'\s*=>\s*'relation_id'/", $relBlock),
+    "without it the no-primary lazy TO_ONE returns a nondeterministic row when a user has duplicate roster rows (non-unique user_id index)"
+);
+check(
+    "the declared milpac relation does NOT set 'primary' => true (Finding 1)",
+    $relBlock !== '' && !preg_match("/'primary'\s*=>\s*true/", $relBlock),
+    "primary is only correct on RosterUser.User, where user_id IS the target's PK; on the inverse "
+        . "the target is RosterUser (PK relation_id), so primary would misresolve a lazy \$user->Milpac"
 );
 
 // =========================================================================
