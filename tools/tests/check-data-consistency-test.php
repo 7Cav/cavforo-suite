@@ -18,9 +18,8 @@
  * Run:
  *   php tools/tests/check-data-consistency-test.php
  *
- * Note: nothing in CI runs tools/ tests yet (run-tests.sh only runs addon
- * tests/*.php). This is the local completion proof for #57; wiring a tools-test
- * lane into CI is a separate follow-up.
+ * Note: CI runs the tools/ tests via the tools-test job, which invokes
+ * tools/run-tools-tests.sh.
  */
 
 namespace Cav7\Tools\Tests;
