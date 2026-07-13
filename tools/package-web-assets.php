@@ -36,9 +36,12 @@
  * for a declared path, and a path with no (or an empty) _files backing is an
  * error here rather than silently skipped.
  *
- * An addon with no build.json and no owned <xf:js> is a clean no-op. Exits
- * non-zero, naming the offending item, when a declared additional_files path has
- * no _files backing or an owned <xf:js> does not resolve at the web root.
+ * An addon with no build.json and no owned <xf:js> is a clean no-op. Otherwise it
+ * exits non-zero, naming the offending item, whenever a declared asset cannot be
+ * placed or a check fails: an additional_files path with no _files backing or an
+ * empty backing dir, an mkdir/copy that fails, a minify entry that is not a .js
+ * file, or an owned <xf:js> (or the min="1" companion it requests) that does not
+ * resolve at the web root.
  */
 
 $srcDir = rtrim($argv[1] ?? '', '/');
@@ -83,10 +86,10 @@ function copyInto(string $from, string $to): ?string
 {
     $dir = dirname($to);
     if (!is_dir($dir) && !@mkdir($dir, 0777, true) && !is_dir($dir)) {
-        return "failed to create directory: $dir";
+        return "failed to create directory: $dir: " . (error_get_last()['message'] ?? 'unknown');
     }
     if (!@copy($from, $to)) {
-        return "failed to copy $from -> $to";
+        return "failed to copy $from -> $to: " . (error_get_last()['message'] ?? 'unknown');
     }
     return null;
 }

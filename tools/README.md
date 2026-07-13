@@ -46,8 +46,9 @@ reproduces the `upload/src/addons/Cav7/<Id>/` layout that
 `package-addon.sh` always runs `package-web-assets.php` (below): it copies web
 assets when a `build.json` declares them, and verifies every `<xf:js>` the addon
 owns resolves at the web root regardless of whether a `build.json` is present.
-This is the same web-asset placement `xf-addon:build-release` does, and it needs
-`php` on the PATH.
+The copy and placement match what `xf-addon:build-release` does. The `<xf:js>`
+resolution check is an extra guard this path adds, not something XenForo runs at
+build time. It needs `php` on the PATH.
 
 The one thing it does not reproduce is XenForo's `hashes.json` file-health
 manifest, which the real build generates. The zip installs fine without it.

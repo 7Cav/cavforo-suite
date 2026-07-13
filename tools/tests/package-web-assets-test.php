@@ -291,6 +291,11 @@ try {
     // minify where it does not belong; dropping it silently hides a build.json
     // mistake. (A .min.js entry is a legitimate no-op and must still be skipped
     // quietly — covered by E's widget.js flow.)
+    // Assert on the guard's distinctive wording, not just "style.css": if the
+    // non-.js guard were deleted, the .css falls through to copyInto and fails
+    // copying the file onto itself — an error that *also* names style.css, so a
+    // "style.css" assertion would stay green with the guard gone. "not a .js
+    // file" only appears when the guard itself fires.
     [$src, $up] = makeFixture($base, 'J', [
         'build.json' => "{\n    \"additional_files\": [\"js/Vendor/AddonJ\"],\n"
             . "    \"minify\": [\"js/Vendor/AddonJ/style.css\"]\n}\n",
@@ -298,7 +303,7 @@ try {
     ]);
     [$code, $out] = runTool($tool, $src, $up, 'Vendor/AddonJ');
     check('J: non-.js minify entry fails (exit non-zero)', $code !== 0, "exit=$code\n$out");
-    check('J: failure names the non-.js minify entry', str_contains($out, 'style.css'), $out);
+    check('J: failure cites the non-.js guard', str_contains($out, 'not a .js file'), $out);
 
     // --- H. owned min="1" xf:js whose BASE resolves but has NO .min.js ----------
     // The exact #103 404: additional_files copies editor.js so the base resolves,
@@ -323,14 +328,25 @@ try {
     // --- K. minify array names a .js that is not at the web root: error ---------
     // Nothing in additional_files backs it, so there is no source to minify; the
     // build must fail and name the path rather than skip it.
+    // Assert on the guard's distinctive wording, not just the path: if the
+    // at-web-root guard were deleted, the missing source flows into copyInto,
+    // which mkdir's the parent before the copy fails — so the copy error still
+    // names the path *and* a spurious empty js/Vendor/AddonK is left behind.
+    // "not at the web root" fires only from the guard, and the no-dir check pins
+    // that the guard bails before creating anything.
     [$src, $up] = makeFixture($base, 'K', [
         'build.json' => "{\n    \"minify\": [\"js/Vendor/AddonK/missing.js\"]\n}\n",
     ]);
     [$code, $out] = runTool($tool, $src, $up, 'Vendor/AddonK');
     check('K: minify path not at web root fails (exit non-zero)', $code !== 0, "exit=$code\n$out");
     check(
-        'K: failure names the missing minify path',
-        str_contains($out, 'js/Vendor/AddonK/missing.js'),
+        'K: failure cites the at-web-root guard',
+        str_contains($out, 'not at the web root'),
+        $out
+    );
+    check(
+        'K: guard bails before creating a spurious empty dir',
+        !is_dir("$up/js/Vendor/AddonK"),
         $out
     );
 } finally {
