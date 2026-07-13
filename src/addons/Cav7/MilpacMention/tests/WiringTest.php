@@ -454,6 +454,33 @@ check(
         && !str_contains($fireBody, 'throw'),
     'the post is already saved+committed; an uncontained alert()/canView() failure would surface on the reply action'
 );
+// Issue #100 — the containment check above only proves a catch→logException exists and
+// the body never rethrows; it does NOT prove the pre-loop findByIds()/repository()
+// lookups sit inside the guard. Post fires inline-only: notifyAndEnqueue() runs the
+// FIRST notify() pass inline, and milpac firing is stash-inline-only (a resumed
+// XF\Job\Notifier loads a fresh Post with an empty stash and fires nothing), so this
+// body never rides the deferred-job net. A DB error on findByIds/repository would 500
+// the already-committed post action unless it too is contained. Pin the report-style
+// layout POSITIONALLY on the comment-stripped body ($fireCode) so a prose "try" in a
+// comment cannot register as a real one: the outer try opens BEFORE findByIds,
+// findByIds precedes the loop, and the outer catch(\Throwable)->logException follows the
+// loop. Removing the outer guard (or moving the lookup outside it) FAILS this. Mirrors
+// the containment pins in ReportWiringTest / ProfilePostWiringTest / TicketWiringTest.
+$fireCode = methodBody($notifierCode, 'fireMilpacMentions');
+$outerTryPos = strpos($fireCode, 'try');
+$findByIdsPos = strpos($fireCode, 'findByIds');
+$foreachPos = strpos($fireCode, 'foreach');
+$outerCatchPattern = '/catch\s*\(\s*\\\\Throwable\b.*?logException\(\s*\$e,\s*false/s';
+$lastCatchPos = strrpos($fireCode, 'catch');
+check(
+    'containment is report-style: the outer try opens BEFORE findByIds, findByIds precedes the loop, and the outer catch(\\Throwable)->logException follows the loop',
+    $outerTryPos !== false && $findByIdsPos !== false && $foreachPos !== false && $lastCatchPos !== false
+        && $outerTryPos < $findByIdsPos   // the outer guard opens before the pre-loop lookup
+        && $findByIdsPos < $foreachPos    // the lookup precedes the recipient loop
+        && $foreachPos < $lastCatchPos    // the outer catch closes after the loop
+        && (bool) preg_match($outerCatchPattern, $fireCode),
+    'Post fires inline-only (a resumed job\'s stash is empty), so it must contain the pre-loop findByIds/repository lookups in an outer guard like Report — a transient DB fault there would otherwise 500 the already-committed post action and drop every milpac recipient (issue #100); removing the outer guard FAILS this'
+);
 
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
