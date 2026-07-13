@@ -331,6 +331,118 @@ class MilpacResolver
     }
 
     /**
+     * The BBCode form of the named roster link: [URL='<url>']Rank Name[/URL]. This is
+     * the artifact the phase-1 engine detects (§2.2) and the exact string the #89
+     * completer's plain-BBCode path emits (editor.js anchorToBbCode), so a typed
+     * $name (server-side, §Solution) and a dropdown-picked $name serialise to the
+     * IDENTICAL link. Deliberately unescaped, byte-for-byte matching the completer:
+     * the URL is a framework-built canonical roster link (no raw quote) and the
+     * display text is "Rank Name" from milpacDisplayText. Pure so the shape is
+     * unit-tested without XenForo, and shared by the server-side $ pass below.
+     */
+    public static function milpacLinkBbCode(string $displayText, string $profileUrl): string
+    {
+        return "[URL='" . $profileUrl . "']" . $displayText . '[/URL]';
+    }
+
+    // =====================================================================
+    // The typed-$name server-side resolver (phase 3, issue #123). The $ completer
+    // only resolved a $name a member PICKED from the dropdown; a $username typed and
+    // posted stayed literal, unlike the @username stock XenForo resolves on the
+    // server. This closes that parity gap. The MentionFormatter class-extension wires
+    // this pure pass into XenForo's placeholder/boundary machinery (masking [CODE],
+    // [PLAIN], [URL=…] and quote), so the exclusion rules are XenForo's, not ours; the
+    // $-boundary decision and the owner-shaping below are the pure, injected-lookup
+    // half tested in plain PHP.
+    // =====================================================================
+
+    /**
+     * The word-boundary $-token pattern, the $-sigil twin of XF\Str\MentionFormatter's
+     * @ lookbehind (getPossibleMentionMatches): a $ opens a milpac lookup only at the
+     * start of the message or right after whitespace or one of ] ( , / ' " or a "--"
+     * dash — the SAME lookbehind @ rides, sigil swapped — so a mid-word "cost$5" never
+     * triggers. The captured token is the run of characters after the $ up to the next
+     * whitespace, with a second $ and the [ ] BBCode delimiters excluded so a token can
+     * never eat into an adjacent tag; trailing sentence punctuation is trimmed in
+     * resolveTypedMilpacs before the exact-username lookup.
+     */
+    private const TYPED_MILPAC_REGEX = '#(?<=^|\s|[\](,/\'"]|--)\$([^\s$\[\]]+)#u';
+
+    /**
+     * Trailing characters trimmed off a captured token before the exact-username
+     * lookup, so "$Treck.M." resolves via "Treck.M" and the "." stays outside the link,
+     * and "($user)" resolves with the ")" preserved. The full token is looked up as-is
+     * first would over-query; instead the token is trimmed to its core in one rtrim and
+     * looked up ONCE. A username never ends in one of these, so trimming is safe; a
+     * genuine internal "." or "-" ("Treck.M") is untouched because rtrim only strips the
+     * tail. Exact-username only — no prefix match — so "Treck.Moderator" stays literal.
+     */
+    private const TYPED_MILPAC_TRAILING_PUNCT = '.,:;!?)(\'"*/@-';
+
+    /**
+     * Rewrite every bare typed $username sitting at a word boundary into the member's
+     * named roster link, leaving everything else literal — the $-sigil analogue of the
+     * @username resolution XF\Str\MentionFormatter::getMentionsBbCode does on the server
+     * (issue #123). Pure: the milpac lookup is injected.
+     *
+     * $lookup is the owner resolver: fn(string $username): ?array. It returns null for a
+     * token that is not an exact, current milpac holder (a non-member, or a member who
+     * owns no milpac — nothing to link), or the already-shaped
+     * ['url' => <profile url>, 'text' => "Rank Name"] to insert. On a hit the $ is
+     * consumed and the token becomes milpacLinkBbCode(text, url); on a miss the token,
+     * $ and all, is left exactly as typed. Rendering is uncapped — every holder's token
+     * renders — because the shared maxMentionedUsers cap slices only the ALERT set, and
+     * that already happens downstream in the detection hook (milpacRecipients); a
+     * repeated member renders twice here and collapses to one alert through the existing
+     * extractRelationIds/userIdsFromMap dedup.
+     *
+     * The caller (the MentionFormatter extension) masks the parse-disabled BBCode
+     * regions ([CODE], [PLAIN], [URL=…], quote) with XenForo's own placeholder machinery
+     * BEFORE calling this, so those exclusions are inherited from @ by construction and
+     * are not this regex's concern.
+     */
+    public static function resolveTypedMilpacs(string $message, callable $lookup): string
+    {
+        $result = preg_replace_callback(
+            self::TYPED_MILPAC_REGEX,
+            static function (array $match) use ($lookup): string {
+                $rawToken = $match[1];
+
+                // Trim trailing sentence/wrapping punctuation to the username core, then
+                // resolve that core exactly. "$Treck.M." -> core "Treck.M"; "($user)" ->
+                // core "user" (the ")" was captured, now trimmed and re-appended below).
+                $core = rtrim($rawToken, self::TYPED_MILPAC_TRAILING_PUNCT);
+                if ($core === '') {
+                    return $match[0]; // an all-punctuation token ($..., $!) — leave literal
+                }
+
+                $shaped = $lookup($core);
+                if (!is_array($shaped) || !isset($shaped['url'], $shaped['text'])) {
+                    return $match[0]; // not a current milpac holder — leave literal, $ and all
+                }
+
+                // Re-attach whatever trailing punctuation was trimmed, outside the link.
+                $trailing = substr($rawToken, strlen($core));
+
+                return self::milpacLinkBbCode((string) $shaped['text'], (string) $shaped['url']) . $trailing;
+            },
+            $message
+        );
+
+        if ($result === null) {
+            // A PCRE engine failure (backtrack/recursion limit, bad UTF-8) returns null.
+            // Fail closed: log it so the drop is observable and return the message
+            // untouched, so a member's typed $name simply stays literal rather than the
+            // save breaking — the same fail-loud guard extractRelationIds uses, reached
+            // only on this error branch, never by the pure unit tests.
+            \XF::logError('[Cav7/MilpacMention] typed-$name resolution failed (PCRE: ' . preg_last_error_msg() . ')');
+            return $message;
+        }
+
+        return $result;
+    }
+
+    /**
      * The $name completer's shared reducer over (user_id, relation_id) roster rows
      * (spec §4.4). One milpac per user is the intended rule, but xf_nf_rosters_user
      * does not enforce it (non-unique user_id index; live data has a member with two
@@ -469,5 +581,48 @@ class MilpacResolver
             ->order('username')            // stable, human dropdown order
             ->order('Milpac.relation_id')  // tiebreak: a duplicate member keeps its LOWEST milpac (§4.4, #96)
             ->fetch($limit);
+    }
+
+    /**
+     * The single milpac-owning member whose username EXACTLY matches $username, for the
+     * typed-$name server-side resolver (issue #123), or null if there is none. The
+     * server-side pass resolves a complete typed username only — the dropdown handles
+     * partial typing — the same exact-username expectation @ sets; usernames are unique,
+     * so there is no disambiguation. Matches findMilpacOwningUsers' join the same way
+     * (§4.3), swapping the completer's prefix LIKE for an exact where():
+     *
+     *   - username = $username    exact, not a prefix (case-insensitive via the DB
+     *                             collation, exactly as @'s own lookup is)
+     *   - isValidUser(true)       unbanned, valid, active — same filter as @ and the
+     *                             dropdown, so a banned/dormant member stays literal
+     *   - INNER JOIN NF\Rosters:RosterUser via with('Milpac', true), so a member who
+     *                             owns no milpac is dropped by the join and their typed
+     *                             $username stays literal — there is no roster profile
+     *                             to point at (the direct analogue of @ only resolving
+     *                             real, mentionable users)
+     *   - with('Milpac.Rank')     the rank title for the "Rank Name" link text (§4.5)
+     *
+     * Ordered by Milpac.relation_id and fetched with fetchOne, so a member who owns more
+     * than one roster row (one milpac per user is the intended rule but xf_nf_rosters_user
+     * does not enforce it) deterministically keeps the LOWEST relation_id — the same pick
+     * #96 gave the lazy $user->Milpac and findMilpacOwningUsers gives the dropdown.
+     *
+     * XenForo-coupled (a live finder), like resolveUserIds / findMilpacOwningUsers, so it
+     * is pinned by the wiring tests rather than the pure unit tests; the file still loads
+     * under bare php as long as this method is not called.
+     *
+     * @param \XF\Finder\UserFinder $userFinder
+     *
+     * @return \XF\Entity\User|null
+     */
+    public static function findMilpacOwnerByUsername($userFinder, string $username)
+    {
+        return $userFinder
+            ->where('username', $username)   // exact, not a prefix (§Solution: exact-username only)
+            ->isValidUser(true)
+            ->with('Milpac', true)           // INNER JOIN: a non-owner stays literal
+            ->with('Milpac.Rank')            // rank title for the "Rank Name" link text (§4.5)
+            ->order('Milpac.relation_id')    // a duplicate member keeps its LOWEST milpac (§4.4, #96)
+            ->fetchOne();
     }
 }

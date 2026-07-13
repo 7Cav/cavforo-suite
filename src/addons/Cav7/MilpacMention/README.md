@@ -67,6 +67,25 @@ current milpac holders whose username matches what you have typed. The completer
 JS ships under `_files/js/Cav7/MilpacMention/`, where XenForo serves an add-on's
 editor script from, and an `<xf:js>` template modification loads it on the editor.
 
+## Typed `$name`
+
+A `$username` also resolves when you just type it and post, without opening the
+dropdown. On save or preview, a bare `$username` at a word boundary that matches a
+current milpac holder becomes that member's named roster link, the same "Rank Name"
+pointing at `/rosters/profile/<relation_id>/` the dropdown inserts, and fires
+`milpac_mention` through the path above. A typed `$name` and a picked `$name` save
+as the same link.
+
+This matches how XenForo resolves a typed `@username`. The `$` pass extends
+XenForo's own mention resolver, `XF\Str\MentionFormatter`, and reuses its
+word-boundary matching and its parse-context masking, so the rules follow `@`
+rather than a separate regex: `me$user` in the middle of a word stays literal, a
+`$name` inside `[CODE]`, `[PLAIN]`, or `[URL=…]` stays literal, and a `$token` that
+is nobody's username stays literal. Because it runs on the server, it also works on
+mobile and in the plain BBCode editor, where the dropdown is awkward. The one
+difference from `@` is the target: `$name` links a milpac, it does not `@`-mention a
+user.
+
 ## Requirements
 
 - XenForo 2.3.0+

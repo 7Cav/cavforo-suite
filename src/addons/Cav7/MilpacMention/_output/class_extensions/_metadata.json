@@ -25,5 +25,8 @@
     },
     "XF-Service-Report-NotifierService_Cav7-MilpacMention-XF-Service-Report-NotifierService.json": {
         "hash": "85324d471241d09a00ec8b196b22e9e6"
+    },
+    "XF-Str-MentionFormatter_Cav7-MilpacMention-XF-Str-MentionFormatter.json": {
+        "hash": "ac3854a594c1ecf55259400a4150a5bd"
     }
 }
