@@ -20,10 +20,23 @@ class Listener
      *
      * 'Milpac' is the inverse of NF\Rosters:RosterUser's own 'User' relation: one
      * RosterUser row (the member's milpac, /rosters/profile/<relation_id>/) whose
-     * user_id column points back at this User. It is TO_ONE by the
-     * one-user-one-milpac roster invariant (§4.4) and joins on
-     * 'conditions' => 'user_id'. NF/Rosters is a hard require, so
-     * NF\Rosters:RosterUser always exists — no dependency guard is needed.
+     * user_id column points back at this User, joined on 'conditions' => 'user_id'.
+     * NF/Rosters is a hard require, so NF\Rosters:RosterUser always exists — no
+     * dependency guard is needed.
+     *
+     * It is modelled TO_ONE because one milpac per user is the EXPECTED shape — but
+     * that is a convention, NOT something the schema enforces. xf_nf_rosters_user
+     * carries a NON-unique index on user_id (not a unique key), and live data already
+     * has at least one user with two rows, so "one user = one milpac" can be violated.
+     * RosterUser declares no defaultOrder, so a lazy scalar $user->Milpac — which,
+     * with no 'primary' (see below), resolves via getRelationFinder->fetchOne() as
+     * WHERE user_id = ? LIMIT 1 — would otherwise return an arbitrary row. Hence
+     * 'order' => 'relation_id': the lowest relation_id wins, making a lazy $user->Milpac
+     * deterministic rather than nondeterministic. XF applies a relation's 'order' only
+     * on that lazy path (Manager::getRelationFinder -> Finder::setDefaultOrder); the
+     * INNER-join query in MilpacResolver::findMilpacOwningUsers is unaffected, because
+     * with('Milpac', true) builds its join purely from 'conditions' and the finder
+     * controls its own ORDER BY.
      *
      * There is deliberately NO 'primary' => true here. 'primary' only rides along on
      * RosterUser.User because there the join column (user_id) IS the target XF:User's
@@ -48,6 +61,11 @@ class Listener
             'entity' => 'NF\Rosters:RosterUser',
             'type' => Entity::TO_ONE,
             'conditions' => 'user_id',
+            // one milpac per user is expected but NOT schema-enforced (non-unique
+            // user_id index; live data has a user with two rows), so order the lazy
+            // TO_ONE by relation_id — the lowest wins — to make $user->Milpac
+            // deterministic. Ignored by the with('Milpac', true) INNER join.
+            'order' => 'relation_id',
             // deliberately no 'primary' => true — see the method docblock: the inverse
             // join key (user_id) is not RosterUser's PK (relation_id), so 'primary'
             // would misresolve a lazy $user->Milpac to a PK lookup.

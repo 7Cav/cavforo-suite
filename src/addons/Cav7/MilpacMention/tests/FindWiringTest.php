@@ -317,6 +317,18 @@ check(
     "the declared milpac relation joins on 'conditions' => 'user_id' (the inverse join key)",
     (bool) preg_match("/'conditions'\s*=>\s*'user_id'/", $relBlock)
 );
+// #96 — one milpac per user is expected but NOT schema-enforced: xf_nf_rosters_user
+// has a non-unique user_id index and live data already carries a user with two rows.
+// So a lazy $user->Milpac (no 'primary' → getRelationFinder->fetchOne → WHERE user_id
+// = ? LIMIT 1) would return an arbitrary row. 'order' => 'relation_id' makes it
+// deterministic (lowest relation_id). The INNER-join query in findMilpacOwningUsers
+// is unaffected: with('Milpac', true) builds its join from 'conditions' and the
+// finder sets its own ORDER BY — 'order' rides only the lazy fetchOne path.
+check(
+    "the declared milpac relation sets 'order' => 'relation_id' (deterministic lazy \$user->Milpac, #96)",
+    (bool) preg_match("/'order'\s*=>\s*'relation_id'/", $relBlock),
+    "without it the no-primary lazy TO_ONE returns a nondeterministic row when a user has duplicate roster rows (non-unique user_id index)"
+);
 check(
     "the declared milpac relation does NOT set 'primary' => true (Finding 1)",
     $relBlock !== '' && !preg_match("/'primary'\s*=>\s*true/", $relBlock),
