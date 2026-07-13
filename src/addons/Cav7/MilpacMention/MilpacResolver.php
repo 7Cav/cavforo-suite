@@ -258,8 +258,14 @@ class MilpacResolver
      *                                 mustExist flag), so a member with no milpac is
      *                                 dropped by the join the way a non-mentionable
      *                                 user is absent from @ results. RosterUser is
-     *                                 TO_ONE here — the one-user-one-milpac invariant
-     *                                 (§4.4) keeps the join to one row per member.
+     *                                 TO_ONE to model the EXPECTED one-milpac-per-user
+     *                                 shape — a convention the schema does NOT enforce
+     *                                 (non-unique user_id index; live data has a user
+     *                                 with two rows), so the join is not guaranteed to
+     *                                 be one row per member: a member with multiple
+     *                                 roster rows can match more than once. Listener.php
+     *                                 orders the relation by relation_id for a
+     *                                 deterministic lazy $user->Milpac pick.
      *
      * Rank and Roster are joined for the dropdown row (§4.5). The 'Milpac' relation
      * this leans on is the inverse of NF\Rosters:RosterUser's own 'User' relation,
