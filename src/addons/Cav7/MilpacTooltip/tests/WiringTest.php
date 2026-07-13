@@ -158,7 +158,7 @@ check(
 );
 check(
     'it gates stamping on the same-origin decision, reading the boardUrl option (issue #126)',
-    str_contains($htmlSrc, 'RosterLink::isSameOriginLink')
+    str_contains($htmlSrc, 'RosterLink::isSameBoardLink')
         && (bool) preg_match('/options\(\)\s*->\s*boardUrl/', $htmlSrc),
     'a cross-board /rosters/profile/<n>/ link must be recognised but left unstamped, not stamped with the local member'
 );

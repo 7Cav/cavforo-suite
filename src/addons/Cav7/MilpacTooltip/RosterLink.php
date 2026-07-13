@@ -9,7 +9,7 @@ namespace Cav7\MilpacTooltip;
  * XF\BbCode\Renderer\Html::getRenderedLink extension needs at render:
  *
  *   relationIdFromUrl()   recognise a roster-profile link, capture its relation_id
- *   isSameOriginLink()    gate: does that link point at THIS board (issue #126)?
+ *   isSameBoardLink()     gate: does that link point at THIS board (issue #126)?
  *   resolveUserId()       relation_id -> user_id via the roster finder
  *   stampAnchor()         mark the anchor so XF.MemberTooltip drives its hovercard
  *
@@ -25,7 +25,7 @@ namespace Cav7\MilpacTooltip;
  * MilpacTooltip and MilpacMention as independent bounded contexts, and the Cav7/Core stub is
  * not introduced as a home for one line of regex.
  *
- * relationIdFromUrl(), isSameOriginLink() and stampAnchor() are pure (no XenForo), so the
+ * relationIdFromUrl(), isSameBoardLink() and stampAnchor() are pure (no XenForo), so the
  * recognition, the same-origin gate and the stamping are unit-tested in plain PHP
  * (tests/LinkStampTest.php). The board's canonical URL that the gate needs is read on the
  * render path (Html::getRenderedLink, the standard `boardUrl` option) and passed in, so
@@ -79,8 +79,9 @@ class RosterLink
      *   - it is relative (carries no host) — it can only resolve against this board; or
      *   - its host matches the host of the board's canonical URL ($boardUrl, the
      *     standard XenForo `boardUrl` option), compared case-insensitively (hostnames
-     *     are). Scheme and port are not part of the decision — a canonical link and a
-     *     hand-typed http/https variant on the same host are both local.
+     *     are). For a URL that parses, scheme and port are not part of the decision —
+     *     a canonical link and a hand-typed http/https variant on the same host are
+     *     both local.
      *
      * An absolute link whose host cannot be confirmed against the board host — a
      * foreign host, a malformed URL parse_url() cannot parse at all, or a
@@ -89,14 +90,15 @@ class RosterLink
      * not be mistaken for a relative link: a foreign absolute link that parse_url()
      * chokes on (e.g. an out-of-range or non-numeric port, an empty authority) still
      * clicks through off-board, so stamping the local relation_id on it would show the
-     * WRONG (local) member's card (issue #126). Only a genuinely relative link (parses
-     * fine, carries no host) is treated as local.
+     * WRONG (local) member's card (issue #126). A URL that parses and carries no host
+     * is treated as local — the genuinely relative link, and also a scheme-only/opaque
+     * URI (e.g. foo:/rosters/...): with no host, neither can name a foreign board.
      *
      * Pure and total: it reads no \XF state and never throws (the render path passes
      * the board URL in), so it is unit-tested next to relationIdFromUrl and stampAnchor
      * with no XenForo loaded, and a malformed href cannot break a post render.
      */
-    public static function isSameOriginLink(string $url, string $boardUrl): bool
+    public static function isSameBoardLink(string $url, string $boardUrl): bool
     {
         $linkParts = parse_url($url);
 
@@ -124,7 +126,12 @@ class RosterLink
     /**
      * The host of a URL, or '' when it carries none (a relative link) or cannot be
      * parsed. parse_url() returns null for a missing host and false on a malformed
-     * URL, and never throws, so this stays total for isSameOriginLink.
+     * URL, and never throws, so this stays total for isSameBoardLink.
+     *
+     * CAUTION — board URL only. Do NOT use this to derive the LINK url's host: it
+     * collapses a malformed URL (parse_url false) and a genuinely relative one (no
+     * host) both to '', so the link side inspects parse_url($url) === false itself to
+     * fail CLOSED. Routing the link through here would reintroduce the fail-open bug.
      */
     private static function hostOf(string $url): string
     {

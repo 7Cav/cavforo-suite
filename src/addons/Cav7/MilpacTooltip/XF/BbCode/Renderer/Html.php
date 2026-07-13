@@ -56,7 +56,7 @@ class Html extends XFCP_Html
             // parent rendered it — otherwise its local relation_id would be resolved to
             // a local member and XF.MemberTooltip would show the wrong card on hover,
             // even though the foreign href still clicks through correctly (issue #126).
-            if ($relationId > 0 && RosterLink::isSameOriginLink($urlString, (string) \XF::options()->boardUrl))
+            if ($relationId > 0 && RosterLink::isSameBoardLink($urlString, (string) \XF::options()->boardUrl))
             {
                 $userId = RosterLink::resolveUserId($relationId);
                 if ($userId > 0)
