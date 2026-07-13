@@ -1,10 +1,13 @@
 # 7Cav - Milpac Tooltip
 
-A XenForo 2.2+ add-on that surfaces a member's milpac in two places: their
-hovercard tooltip and their profile page. Both show a compact "mini-milpac" —
+A XenForo 2.2+ add-on that surfaces a member's milpac in three places: their
+hovercard tooltip, their profile page, and in-post links to their roster
+profile. On the tooltip and the profile it shows a compact "mini-milpac" —
 rank insignia and title, roster status, billet, MOS, and enlist date — linking
 straight to that member's [NF Rosters](https://xenforo.com/community/resources/nf-rosters.7490/)
-profile. Members without a milpac get nothing extra; the tooltip and profile
+profile. An in-post roster-profile link gets the member's hovercard on hover,
+the same card their username shows, which already carries the mini-milpac.
+Members without a milpac get nothing extra; the tooltip, profile, and links
 render exactly as before.
 
 ## How it works
@@ -35,6 +38,24 @@ with a blank `mos` omits that line too.
 When a member holds more than one roster row — a returning member can — the
 callback prefers one on an active roster so the block reflects their current
 standing.
+
+An in-post link to a roster profile gets its hovercard through two class
+extensions rather than a template modification, because the hover is the
+member's whole forum card, not just the mini-milpac.
+`XF\BbCode\Renderer\Html::getRenderedLink` is the choke point every rendered
+`[URL]` anchor passes through, so an extension there recognises a
+`/rosters/profile/<relation_id>/` link, resolves its `relation_id` to the
+member's `user_id`, and stamps the anchor with `data-xf-init="member-tooltip"`
+so XenForo's own tooltip handler drives the hover. The stamped anchor points
+XenForo at the roster URL with `tooltip=1`; an extension of
+`NF\Rosters\Pub\Controller\Roster::actionProfile` answers that request by
+resolving to the member and handing off to `MemberController::actionTooltip`,
+so the hover shows the stock `member_tooltip`, the same card the username
+shows, milpac chip included. The href is left alone, so a click still opens the
+roster profile. Recognising the link and stamping the anchor are pure PHP in
+`RosterLink`, unit-tested without XenForo; a link that does not resolve to a
+member stays a plain link with no card. The design is recorded in
+[ADR 0001](docs/adr/0001-in-post-milpac-hovercard-reuses-member-tooltip.md).
 
 ## Requirements
 
