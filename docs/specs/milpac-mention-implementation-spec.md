@@ -207,8 +207,8 @@ $alertRepo->alert(
     '<contentType>',       // post | profile_post | profile_post_comment | report | nf_tickets_message
     $contentId,
     'milpac_mention',      // the action — this is the only new action string
-    $extraData,
-    ['depends_on_addon_id' => 'Cav7/MilpacMention']
+    ['depends_on_addon_id' => 'Cav7/MilpacMention'],
+    ['autoRead' => false]
 );
 ```
 
@@ -220,6 +220,10 @@ $alertRepo->alert(
 - **The alert deep-links to the content** — the post, comment, report, or ticket
   where the link appears — the same as an `@`-mention. This falls out of the
   reused content handler for free.
+- **Read state matches the `@`-mention.** With `['autoRead' => false]`, the milpac
+  alert stays unread until the recipient views the linked content or opens the
+  alert, the same as an `@`-mention. Without it, `insertAlert()` defaults to
+  `auto_read=1` and marks the alert read as soon as it surfaces in the dropdown.
 - **Prior art in this repo:** `Cav7/EnlistmentReminder` already registers a custom
   `enlistment_reminder` action on the core `thread` content type via
   `XF\Alert\ThreadHandler::getOptOutActions()`, with an
