@@ -106,6 +106,40 @@ check(
     RosterLink::relationIdFromUrl('https://board.example/threads/123/') === 0
 );
 
+// The pattern is intentionally host-agnostic (#/rosters/profile/(\d+)#), so an
+// off-host URL still matches. This mirrors the sibling MilpacMention detection pin
+// (tests/DetectionTest.php) and documents the deliberate trade-off — matching on the
+// path keeps the canonical "-slug" and relative in-editor shapes working — guarding
+// against a "hardening" regression that anchors to the board host and silently breaks
+// relative/-slug recognition. (Recognition only; a foreign-host stamp guard is a
+// separate followup, not added here.)
+check(
+    'an off-host https://evil.example/rosters/profile/42/ still yields 42 (deliberate: path-only)',
+    RosterLink::relationIdFromUrl('https://evil.example/rosters/profile/42/') === 42
+);
+
+// A trailing-slash-less link still recognises the id — the (\d+) captures on the
+// digits directly, not on a following "/".
+check(
+    'a /rosters/profile/42 with no trailing slash yields 42',
+    RosterLink::relationIdFromUrl('/rosters/profile/42') === 42
+);
+
+// A query string or a fragment after the id does not interfere — the match ends at
+// the captured digits, so anything trailing is ignored.
+check(
+    'a /rosters/profile/42/ with a ?query or #fragment suffix still yields 42',
+    RosterLink::relationIdFromUrl('/rosters/profile/42/?tab=activity') === 42
+        && RosterLink::relationIdFromUrl('/rosters/profile/42/#bio') === 42
+);
+
+// Characterization: the pattern is case-sensitive (no i flag), so an upper-cased path
+// does NOT match. Locked so a stray i flag can't silently widen matching.
+check(
+    'an upper-cased /Rosters/Profile/42/ path is not recognised (regex is case-sensitive)',
+    RosterLink::relationIdFromUrl('/Rosters/Profile/42/') === 0
+);
+
 // =========================================================================
 // stamping — stampAnchor injects the member-tooltip init + resolved user_id
 // =========================================================================
@@ -161,6 +195,43 @@ check(
 check(
     'a string with no anchor is returned unchanged',
     RosterLink::stampAnchor('no anchor here', 100) === 'no anchor here'
+);
+
+// A rendered roster link whose label is itself a rendered link produces nested
+// anchors; stampAnchor stamps only the FIRST opening tag (the , 1 replacement
+// limit), so the outer anchor gets the member-tooltip init and the inner anchor is
+// left untouched. This pins the single-replacement limit: dropping it would stamp
+// every nested <a and double up the data attributes.
+check(
+    'stamping a nested-anchor string marks the outer anchor only, leaving the inner untouched',
+    (static function (): bool {
+        $in  = '<a href="/rosters/profile/42/">see <a href="/rosters/profile/9/">x</a></a>';
+        $out = RosterLink::stampAnchor($in, 100);
+        return $out === '<a data-xf-init="member-tooltip" data-user-id="100" href="/rosters/profile/42/">see <a href="/rosters/profile/9/">x</a></a>'
+            && substr_count($out, 'data-xf-init="member-tooltip"') === 1;
+    })()
+);
+
+// Fail-open (issue #83 review): preg_replace returns null on a PCRE-level failure
+// (backtrack/recursion limit) instead of throwing, so the \Throwable guard in
+// Html::getRenderedLink cannot catch it. stampAnchor must coalesce that null back to
+// the unstamped input, failing open to the stock anchor, rather than returning null
+// (which would make getRenderedLink return null for a @return string method and
+// silently drop the whole link). We force a real PCRE failure by starving the
+// backtrack limit for the one call, then restore it so no other case is affected.
+check(
+    'a PCRE engine failure during stamping fails open to the unstamped anchor (never null)',
+    (static function (): bool {
+        $anchor = '<a href="/rosters/profile/42/">First Lieutenant Grayson.J</a>';
+        $saved  = ini_get('pcre.backtrack_limit');
+        ini_set('pcre.backtrack_limit', '0'); // force preg_replace() to return null
+        try {
+            $out = RosterLink::stampAnchor($anchor, 100);
+        } finally {
+            ini_set('pcre.backtrack_limit', $saved);
+        }
+        return $out === $anchor;
+    })()
 );
 
 if ($failures > 0) {

@@ -89,7 +89,14 @@ class RosterLink
 
         // Inject the attributes into the first opening <a> tag only; getRenderedLink
         // emits exactly one anchor, so the single replacement is precise.
-        return preg_replace('/<a\s+/', '<a ' . $stamped, $anchorHtml, 1);
+        //
+        // preg_replace returns null on a PCRE-level failure (backtrack/recursion limit)
+        // instead of throwing, so coalesce back to the input: a stamping hiccup fails
+        // open to the unstamped stock anchor rather than dropping the link by returning
+        // null. The \Throwable guard in the Html renderer does not see a preg failure.
+        $out = preg_replace('/<a\s+/', '<a ' . $stamped, $anchorHtml, 1);
+
+        return $out ?? $anchorHtml;
     }
 
     /**
