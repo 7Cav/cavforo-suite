@@ -83,8 +83,14 @@ class RosterLink
      *     hand-typed http/https variant on the same host are both local.
      *
      * An absolute link whose host cannot be confirmed against the board host — a
-     * foreign host, or a missing/misconfigured (hostless) $boardUrl — is NOT same
-     * origin, so it is left unstamped rather than stamped on a guess.
+     * foreign host, a malformed URL parse_url() cannot parse at all, or a
+     * missing/misconfigured (hostless) $boardUrl — is NOT same origin, so it is left
+     * unstamped rather than stamped on a guess. A malformed URL fails CLOSED and must
+     * not be mistaken for a relative link: a foreign absolute link that parse_url()
+     * chokes on (e.g. an out-of-range or non-numeric port, an empty authority) still
+     * clicks through off-board, so stamping the local relation_id on it would show the
+     * WRONG (local) member's card (issue #126). Only a genuinely relative link (parses
+     * fine, carries no host) is treated as local.
      *
      * Pure and total: it reads no \XF state and never throws (the render path passes
      * the board URL in), so it is unit-tested next to relationIdFromUrl and stampAnchor
@@ -92,9 +98,18 @@ class RosterLink
      */
     public static function isSameOriginLink(string $url, string $boardUrl): bool
     {
-        $linkHost = self::hostOf($url);
+        $linkParts = parse_url($url);
+
+        // A malformed URL cannot be parsed at all (parse_url returns false). We cannot
+        // confirm it points at this board, so fail CLOSED — leave it unstamped rather
+        // than treat it as relative and stamp the local relation_id on a guess. A
+        // genuinely relative link parses fine (with no host) and is handled below.
+        if ($linkParts === false) {
+            return false;
+        }
 
         // A relative link carries no host, so it can only point at this board.
+        $linkHost = $linkParts['host'] ?? '';
         if ($linkHost === '') {
             return true;
         }

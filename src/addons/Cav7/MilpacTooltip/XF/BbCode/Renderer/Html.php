@@ -11,10 +11,13 @@ use Cav7\MilpacTooltip\RosterLink;
  * getRenderedLink is the single choke point every [URL] anchor passes through, so
  * stamping here covers named links, bare auto-linked URLs, $name-inserted links, and
  * hand-typed links uniformly, wherever BBCode renders (including quotes and live
- * preview). The parent produces the stock anchor; this only recognises a roster-profile
- * URL, resolves its relation_id to the member's user_id, and stamps the anchor so
- * XenForo's own XF.MemberTooltip drives the card. The href is untouched, so a click still
- * opens the roster profile, and the link looks the same at rest (ADR 0001).
+ * preview). The parent produces the stock anchor; this recognises a roster-profile URL
+ * and, only when that link points at THIS board (the same-origin gate, issue #126),
+ * resolves its relation_id to the member's user_id and stamps the anchor so XenForo's
+ * own XF.MemberTooltip drives the card. A cross-board /rosters/profile/<n>/ link is
+ * recognised but left unstamped, so its local relation_id is never resolved to a local
+ * member and the hover cannot show the wrong card. The href is untouched, so a click
+ * still opens the roster profile, and the link looks the same at rest (ADR 0001).
  */
 class Html extends XFCP_Html
 {
@@ -43,14 +46,17 @@ class Html extends XFCP_Html
 
         try
         {
-            $relationId = RosterLink::relationIdFromUrl((string) $url);
+            // Cast once (defensive: $url may be untyped or a nullable option) and reuse.
+            $urlString = (string) $url;
+
+            $relationId = RosterLink::relationIdFromUrl($urlString);
             // Recognise the roster path, but stamp only when the link points at THIS
             // board: a relative link, or an absolute one whose host matches the board's
             // canonical URL. A cross-board /rosters/profile/<n>/ link is left as the
             // parent rendered it — otherwise its local relation_id would be resolved to
             // a local member and XF.MemberTooltip would show the wrong card on hover,
             // even though the foreign href still clicks through correctly (issue #126).
-            if ($relationId > 0 && RosterLink::isSameOriginLink((string) $url, (string) \XF::options()->boardUrl))
+            if ($relationId > 0 && RosterLink::isSameOriginLink($urlString, (string) \XF::options()->boardUrl))
             {
                 $userId = RosterLink::resolveUserId($relationId);
                 if ($userId > 0)

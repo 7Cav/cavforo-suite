@@ -224,6 +224,28 @@ check(
     RosterLink::isSameOriginLink('https://other-board/rosters/profile/42/', 'http://localhost:8081') === false
 );
 
+// Asymmetric port on the SAME host: the port rides along on only one side. The
+// decision is on the host alone, so a legitimately-local link is still same-origin
+// whether the link carries the port and the board does not, or vice-versa. Pins that
+// a future "tighten to host:port" change cannot silently drop a ported local link.
+check(
+    'a link carrying a port on the board host is same-origin even when boardUrl has none',
+    RosterLink::isSameOriginLink('http://board.example:8081/rosters/profile/42/', 'https://board.example') === true
+);
+check(
+    'a portless link on the board host is same-origin even when boardUrl carries a port',
+    RosterLink::isSameOriginLink('https://board.example/rosters/profile/42/', 'http://board.example:8081') === true
+);
+
+// Userinfo-spoof negative pin: a "user@host" authority resolves to the REAL host
+// after the @ (evil.example here), not the board host before it, so the link is
+// foreign and left unstamped. parse_url already does this correctly; this pins it so
+// a future hand-rolled host parser cannot silently re-introduce the spoof (issue #126).
+check(
+    'a userinfo-spoofed https://board.example@evil.example/... link is NOT same-origin',
+    RosterLink::isSameOriginLink('https://board.example@evil.example/rosters/profile/42/', 'https://board.example/') === false
+);
+
 // Defensive: an empty/misconfigured boardUrl has no host, so an ABSOLUTE link cannot
 // be confirmed local and is left unstamped (safe: never stamp what we cannot verify).
 check(
@@ -237,9 +259,30 @@ check(
     RosterLink::isSameOriginLink('/rosters/profile/42/', '') === true
 );
 
-// Total / fail-open: the gate returns a bool and never throws, even on a malformed
-// href — a post render must not break on a garbage URL (mirrors the \Throwable
-// containment the renderer keeps around resolution and stamping).
+// Fail CLOSED on a MALFORMED absolute link (issue #126). A foreign absolute URL
+// that parse_url() cannot parse at all (whole-URL parse_url === false) must NOT be
+// judged same-origin: doing so would resolve the local relation_id and stamp the
+// WRONG (local) member's card on a link that clicks through off-board. This is
+// distinct from a genuinely relative link (parses fine, no host) which stays local.
+// These are user-triggerable via post content, so each garbage shape is pinned by
+// VALUE, not merely asserted to be a bool.
+check(
+    'a malformed foreign link with an out-of-range port is NOT same-origin (fail closed)',
+    RosterLink::isSameOriginLink('https://evil.example:99999/rosters/profile/42/', $board) === false
+);
+check(
+    'a malformed foreign link with a non-numeric port is NOT same-origin (fail closed)',
+    RosterLink::isSameOriginLink('https://evil.example:notaport/rosters/profile/42/', $board) === false
+);
+check(
+    'a malformed http:///... link (empty authority) is NOT same-origin (fail closed)',
+    RosterLink::isSameOriginLink('http:///rosters/profile/42/', $board) === false
+);
+
+// Total / fail-open: the gate still returns a bool and never throws on any garbage
+// href — a post render must not break on a malformed URL (mirrors the \Throwable
+// containment the renderer keeps around resolution and stamping). This stays a guard
+// alongside the value pins above; it is no longer the ONLY assertion for malformed input.
 check(
     'the gate returns a bool and never throws on a malformed url',
     (static function (): bool {
