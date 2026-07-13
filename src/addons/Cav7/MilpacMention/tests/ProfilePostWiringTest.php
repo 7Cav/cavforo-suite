@@ -64,6 +64,30 @@ function methodBody(string $src, string $name): string
     return $body;
 }
 
+/**
+ * The source with every PHP comment removed — line comments and block comments
+ * (including docblocks) — reconstructed through the PHP tokenizer, so a comment
+ * marker that lives inside a string literal is preserved. Anchoring the #95
+ * positional pin here instead of to the raw source stops a token that appears
+ * only in a comment (e.g. a docblock quoting the literal argument sequence) from
+ * satisfying it.
+ */
+function stripComments(string $src): string
+{
+    $out = '';
+    foreach (token_get_all($src) as $token) {
+        if (is_array($token)) {
+            if ($token[0] === T_COMMENT || $token[0] === T_DOC_COMMENT) {
+                continue;
+            }
+            $out .= $token[1];
+        } else {
+            $out .= $token;
+        }
+    }
+    return $out;
+}
+
 $addon = json_decode((string) @file_get_contents("$root/addon.json"), true);
 $versionId = is_array($addon) ? ($addon['version_id'] ?? null) : null;
 check('addon.json is valid JSON with a positive version_id', is_int($versionId) && $versionId > 0);
@@ -315,6 +339,9 @@ $surfaces = [
 foreach ($surfaces as $name => $s) {
     $src = (string) @file_get_contents($s['src']);
     check("$name: NotifierService source exists", $src !== '');
+    // Comment-stripped copy for the #95 positional pin below, so a doc-comment quoting the
+    // literal argument sequence cannot spuriously satisfy the raw-source match (issue #86).
+    $code = stripComments($src);
 
     // The parent notify() takes NO args (bespoke notify(), not the Post
     // loadNotifiers/$timeLimit shape) — match it exactly, then fire.
@@ -367,22 +394,23 @@ foreach ($surfaces as $name => $s) {
         "alert() calls=$alertCalls tagged=$dependsTags — an untagged alert survives uninstall"
     );
 
-    // Issue #95 — the milpac alert must stay unread until the recipient views it, exactly
-    // as XF writes its own mention alerts. insertAlert() reads autoRead out of the OPTIONS
-    // array (arg 8) and defaults it to true when the array omits it, so a milpac_mention row
-    // without the flag saves auto_read=1 and clears on a different schedule than the
-    // @-mention it mirrors (spec §2.5). depends_on_addon_id lives in the EXTRA array (arg 7);
-    // the two are separate slots. Pin the tail of the real ->alert(...) call POSITIONALLY:
-    // action, then the extra array carrying depends_on_addon_id, then ['autoRead' => false]
-    // as the last argument. Folding autoRead into the extra array, dropping it, or reordering
-    // the slots all FAIL here.
+    // Issue #95 — the milpac alert stays unread even after the recipient reads the linked
+    // content; it clears only when they view the alert itself, exactly as XF writes its own
+    // mention alerts. insertAlert() reads autoRead out of the $options array and defaults it
+    // to true when the array omits it, so a milpac_mention row without the flag saves
+    // auto_read=1 and clears on a different schedule than the @-mention it mirrors.
+    // depends_on_addon_id lives in the $extra array; the two are separate slots. Pin the tail
+    // of the real ->alert(...) call POSITIONALLY on the comment-stripped $code: action, then
+    // the extra array carrying depends_on_addon_id, then ['autoRead' => false] as the last
+    // argument. Folding autoRead into the extra array, dropping it, or reordering the slots
+    // all FAIL here.
     check(
-        "$name: the alert() passes ['autoRead' => false] as its options arg (arg 8), separate from the extra array (arg 7), so the milpac alert clears like the @-mention it mirrors",
+        "$name: the alert() passes ['autoRead' => false] as its \$options array, separate from the \$extra array carrying depends_on_addon_id, so the milpac alert clears like the @-mention it mirrors",
         (bool) preg_match(
             "~'milpac_mention'\s*,\s*\['depends_on_addon_id'\s*=>\s*'Cav7/MilpacMention'\]\s*,\s*\['autoRead'\s*=>\s*false\]\s*\)~",
-            $src
+            $code
         ),
-        'a milpac_mention row written auto-read (auto_read=1) clears differently from the @-mention it tracks; XF passes autoRead=false, so mirror it (§2.5)'
+        'a milpac_mention row written auto-read (auto_read=1) clears differently from the @-mention it tracks; XF passes autoRead=false, so mirror it'
     );
 
     // Firing runs inline after the content saved+committed, so a failure must be

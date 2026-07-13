@@ -126,12 +126,13 @@ class NotifierService extends XFCP_NotifierService
                     // 'report', content id $comment->report_id (the Report PK the comment
                     // carries — the exact value XF's own report mention alert uses).
                     //
-                    // autoRead=false in the options arg (arg 8) keeps the milpac alert unread
-                    // until the recipient views it, exactly as XF's own report mention alert does
+                    // autoRead=false in the $options array makes the milpac alert stay unread
+                    // even after the recipient reads the linked content — it clears only when
+                    // they view the alert itself, exactly as XF's own report mention alert does
                     // (it passes the same flag); without it insertAlert() defaults auto_read=1 and
-                    // the alert clears on a different schedule than the @-mention it mirrors (spec
-                    // §2.5). depends_on_addon_id stays in the extra arg (arg 7) — insertAlert()
-                    // reads the two from separate slots.
+                    // the alert clears on a different schedule than the @-mention it mirrors.
+                    // depends_on_addon_id stays in the $extra array — insertAlert() reads the two
+                    // from separate slots.
                     $sent = $alertRepo->alert(
                         $user,
                         $comment->user_id,
