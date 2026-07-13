@@ -475,9 +475,17 @@ Reuse the shared `MilpacResolver` (§2.3) for the join.
 
 One milpac per user is the intended rule, but the roster schema does not enforce it
 (§2.3), so the completer cannot assume it. There is no picker: a member with two
-roster rows is a data error, not a state to build a chooser for. The completer
-collapses that member to a single dropdown entry, keeps the lowest `relation_id`
-(matching the lazy `$user->Milpac`, #96), and logs the duplicate as a data error.
+roster rows is a data error, not a state to build a chooser for.
+
+A member with two roster rows already shows once. The find query INNER-joins the
+roster and orders by `relation_id`, and XF's identity map keys the fetched collection
+by `user_id`, so the two join rows collapse to one hydrated `User` carrying the lowest
+`relation_id` (matching the lazy `$user->Milpac`, #96) before the view renders. The
+dropdown is correct without an extra collapse step, but that same collapse hides the
+second row from the view, so the duplicate cannot be logged from the shown collection.
+The endpoint detects it from the raw roster rows instead: after building the results,
+it re-reads the roster rows for the shown members and logs any member owning more than
+one, naming every `relation_id` and keeping the lowest.
 
 ### 4.5 Dropdown rows
 

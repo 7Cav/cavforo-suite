@@ -202,6 +202,43 @@ check(
     'the deterministic order is applied before the fetch limit',
     $orderPos !== false && $fetchLimitPos !== false && $orderPos < $fetchLimitPos
 );
+
+// =========================================================================
+// the raw duplicate detection — logMilpacOwnerDuplicates re-reads the RAW roster
+// rows for the shown members and routes them through the shared reducer/logger (§4.4,
+// #112). XF's identity map collapses the completer join to one entity per user_id
+// (keeping the lowest relation_id), so a member's second roster row is invisible to
+// the hydrated collection Find.php iterates — the duplicate can only be detected from
+// the raw pre-hydration rows. This is the ONE production site that logs the completer
+// duplicate; the query is a single indexed lookup scoped to the shown user_ids.
+// =========================================================================
+check(
+    'MilpacResolver defines logMilpacOwnerDuplicates (the raw duplicate-detection seam)',
+    (bool) preg_match('/function\s+logMilpacOwnerDuplicates\s*\(/', $resolverSrc)
+);
+check(
+    'logMilpacOwnerDuplicates reads the raw roster rows from NF\Rosters:RosterUser',
+    (bool) preg_match("/\\\\XF::finder\(\s*'NF\\\\Rosters:RosterUser'\s*\)/", $resolverSrc),
+    'the raw pre-hydration rows are where a member with two roster rows is still visible (§4.4, #112)'
+);
+check(
+    'the raw-detection query is scoped to the shown user_ids (one indexed lookup, not per row)',
+    (bool) preg_match("/->where\(\s*'user_id'\s*,\s*\\\$userIds\s*\)/", $resolverSrc)
+);
+check(
+    'the raw-detection query fetches (user_id, relation_id) via fetchColumns (raw columns, not hydrated entities)',
+    (bool) preg_match("/->fetchColumns\(\s*'user_id'\s*,\s*'relation_id'\s*\)/", $resolverSrc),
+    'hydrated entities would be collapsed by the identity map before a duplicate could be seen'
+);
+check(
+    'the raw-detection query orders by user_id then relation_id (deterministic grouping, lowest first)',
+    (bool) preg_match("/->order\(\s*'user_id'\s*\)\s*->order\(\s*'relation_id'\s*\)/", $resolverSrc)
+);
+check(
+    'the raw rows are routed through the shared reducer/logger (no duplicated logging logic)',
+    (bool) preg_match('/self::dedupeMilpacOwners\(\s*\$rows\s*,/', $resolverSrc),
+    'logMilpacOwnerDuplicates reuses the collapseMilpacsByUser/logMilpacDataError seam the reverse path uses (#112)'
+);
 // #96 — the relation is declared centrally now (the entity_structure listener
 // above), so findMilpacOwningUsers must no longer poke it into the request-shared
 // XF:User structure at query time. The ad-hoc registration and the getStructure()
@@ -407,14 +444,16 @@ check(
     (bool) preg_match("/buildLink\(\s*'canonical:rosters\/profile'\s*,\s*\\\$milpac\s*\)/", $viewSrc),
     'the href must contain /rosters/profile/<relation_id>/ so the engine detects it (§2.2)'
 );
-// #112 — a member with two roster rows must render once, not twice. The view collapses
-// through the shared MilpacResolver::dedupeMilpacOwners, which keeps the lowest
-// relation_id and logs the duplicate as a data error, rather than an ad-hoc silent
-// dedup — so the drop is deterministic and visible (§4.4).
+// #112 — a member with two roster rows already renders once: XF's identity map keys
+// the completer collection by user_id and the finder orders the join by relation_id,
+// so the hydrated collection hands Find.php one entity per member carrying the lowest
+// milpac. That collapse hides the second roster row, so the view detects the data
+// error from the RAW rows instead — MilpacResolver::logMilpacOwnerDuplicates re-reads
+// the roster rows for the shown members and logs a member owning more than one (§4.4).
 check(
-    'the view collapses duplicate milpac owners through the shared resolver (one entry per member, logged)',
-    str_contains($viewSrc, 'MilpacResolver::dedupeMilpacOwners'),
-    'a member with two roster rows yields one dropdown entry, and the duplicate is logged (#112)'
+    'the view detects and logs raw duplicate milpac owners through the shared resolver',
+    str_contains($viewSrc, 'MilpacResolver::logMilpacOwnerDuplicates'),
+    'the hydrated collection hides a second roster row; the raw-detection query surfaces and logs it (#112)'
 );
 
 if ($failures > 0) {

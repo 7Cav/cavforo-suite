@@ -26,8 +26,11 @@ use XF\Mvc\View;
  * The users come pre-joined to their milpac (with Rank and Roster) by
  * MilpacResolver::findMilpacOwningUsers, so no per-row query runs here. A member with
  * two roster rows (one milpac per user is the intended rule but not schema-enforced)
- * is collapsed to a single dropdown entry keeping the lowest relation_id, with the
- * duplicate logged as a data error — see MilpacResolver::dedupeMilpacOwners (#112).
+ * is already one entry here: XF's identity map keys the fetched collection by user_id
+ * and the join is ordered by relation_id, so the collection carries a single hydrated
+ * User per member with the lowest milpac. That collapse hides the second roster row,
+ * so the duplicate is logged from the raw roster rows instead, after the loop — see
+ * MilpacResolver::logMilpacOwnerDuplicates (§4.4, #112).
  */
 class Find extends View
 {
@@ -35,16 +38,13 @@ class Find extends View
     {
         $router = \XF::app()->router('public');
 
-        // Build the (user_id, relation_id) rows from the joined owners, then collapse
-        // to one per member. One milpac per user is the intended rule but
-        // xf_nf_rosters_user does not enforce it, so dedupeMilpacOwners keeps the
-        // lowest relation_id and logs a duplicate as a data error (§4.4, #112). The
-        // finder orders the join by relation_id and XF's identity map keys the fetched
-        // collection by user_id, so $user->Milpac is already the lowest and this view
-        // normally sees one row per member; the collapse is the fail-safe that also
-        // makes a raw duplicate visible instead of surfacing the member twice.
-        $rows = [];
-        $userById = [];
+        // The joined collection is already one entity per member: findMilpacOwningUsers
+        // orders the INNER join by relation_id and XF's identity map keys the fetched
+        // collection by user_id, so two roster rows for one member collapse to a single
+        // hydrated User carrying the lowest milpac. The dropdown therefore builds
+        // straight from this collection — one row per member, lowest relation_id (§4.4).
+        $results = [];
+        $shownUserIds = [];
         foreach ($this->params['users'] as $user) {
             /** @var \NF\Rosters\Entity\RosterUser|null $milpac */
             $milpac = $user->Milpac;
@@ -62,18 +62,7 @@ class Find extends View
                 continue;
             }
 
-            $userId = (int) $user->user_id;
-            $rows[] = ['user_id' => $userId, 'relation_id' => (int) $milpac->relation_id];
-            if (!isset($userById[$userId])) {
-                $userById[$userId] = $user; // first-seen entity carries the lowest milpac
-            }
-        }
-
-        $results = [];
-        foreach (MilpacResolver::dedupeMilpacOwners($rows) as $userId) {
-            $user = $userById[$userId];
-            /** @var \NF\Rosters\Entity\RosterUser $milpac */
-            $milpac = $user->Milpac;
+            $shownUserIds[] = (int) $user->user_id;
 
             $rank = $milpac->Rank ? (string) $milpac->Rank->title : '';
             $roster = $milpac->Roster ? (string) $milpac->Roster->title : '';
@@ -94,6 +83,13 @@ class Find extends View
                 'q' => $this->params['q'],
             ];
         }
+
+        // The collapse above hid any second roster row a shown member owns (the identity
+        // map kept one entity per user_id), so the data error is invisible to $results.
+        // Re-read the raw roster rows for the shown members and log a member owning more
+        // than one milpac, keeping the bad data visible even though the dropdown is
+        // already correct — see MilpacResolver::logMilpacOwnerDuplicates (§4.4, #112).
+        MilpacResolver::logMilpacOwnerDuplicates($shownUserIds);
 
         return [
             'results' => $results,

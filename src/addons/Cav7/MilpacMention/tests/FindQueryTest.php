@@ -13,9 +13,10 @@
  *                            dropdown's primary line and the anchor's text (§4.2/§4.5)
  *   milpacLinkHtml()         the value to insert: a NAMED anchor, never a bare URL,
  *                            which Froala serialises to [URL='…']Rank Name[/URL] (§4.2)
- *   dedupeMilpacOwners()     collapse the joined milpac-owner rows to one per member,
- *                            keeping the lowest relation_id and logging a duplicate as
- *                            a data error (#112, §4.4)
+ *   dedupeMilpacOwners()     the shared reducer the completer's raw duplicate detection
+ *                            routes RAW roster rows through: collapse to one per member,
+ *                            keep the lowest relation_id, and log a member owning more
+ *                            than one as a data error (#112, §4.4)
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -131,14 +132,19 @@ check(
 );
 
 // =========================================================================
-// dedupeMilpacOwners — the completer's collapse to one row per member (§4.4, #112)
+// dedupeMilpacOwners — the completer's RAW duplicate detection (§4.4, #112)
 // One milpac per user is the intended rule, but xf_nf_rosters_user does NOT enforce
-// it (non-unique user_id index; live data has user 7385 with two rows). The
-// milpac-owner join can therefore hand back two rows for one member; this collapses
-// them to one, keeps the lowest relation_id (matching #96's lazy $user->Milpac), and
-// logs the duplicate as a data error so the same member never appears twice in the
-// dropdown and the bad data stays visible. The logger is injected so the standalone
-// test observes the data-error message; production passes \XF::logError.
+// it (non-unique user_id index; live data has user 7385 with two rows). The completer
+// cannot see this in its own result set: findMilpacOwningUsers INNER-joins the roster
+// and XF's identity map keys the fetched collection by user_id, so the two rows
+// collapse to one hydrated User (lowest milpac) BEFORE the view iterates — the dropdown
+// is already correct, but the duplicate is invisible to it. logMilpacOwnerDuplicates
+// therefore re-reads the RAW roster rows for the shown members
+// (fetchColumns('user_id','relation_id'), ordered) and routes them through this reducer,
+// which is where the data error is finally logged. That live query needs XenForo, so it
+// is pinned structurally in FindWiringTest; here the reducer is exercised for real with
+// the raw rows the query returns. The logger is injected so the data-error message is
+// observable without a XenForo runtime; production passes \XF::logError.
 // =========================================================================
 
 /** A capturing logger, so the data-error log is observable without a XenForo runtime. */
@@ -149,11 +155,14 @@ function makeLog(array &$sink): callable
     };
 }
 
-// The live duplicate (#112): user 7385 owns relation_ids 3603 and 4771. The join can
-// surface both rows; the completer must render the member once, not twice.
+// The live duplicate (#112): user 7385 owns relation_ids 3603 and 4771. The raw roster
+// query returns both rows for the shown member; feeding them through the reducer is what
+// logs the data error the hydrated collection could not surface. (Row order here is the
+// higher relation_id first, to prove the "lowest kept" pick does not depend on it; the
+// production query orders ascending.)
 $dupLog = [];
 check(
-    'a member with two roster rows yields exactly ONE completer owner',
+    'raw rows for a member owning two roster rows collapse to ONE user_id',
     MilpacResolver::dedupeMilpacOwners(
         [
             ['user_id' => 7385, 'relation_id' => 4771],
@@ -161,10 +170,10 @@ check(
         ],
         makeLog($dupLog)
     ) === [7385],
-    'the dropdown shows one entry per member, never two rows presented as separate milpacs'
+    'the reducer names one member, not two rows presented as separate milpacs'
 );
 check(
-    'meeting the duplicate logs once, naming the member and BOTH relation_ids',
+    'the raw duplicate logs exactly once, naming the member and BOTH relation_ids',
     count($dupLog) === 1
         && str_contains($dupLog[0], '7385')
         && str_contains($dupLog[0], '3603')
@@ -172,18 +181,18 @@ check(
     ($dupLog[0] ?? '(nothing logged)') . ' [count ' . count($dupLog) . ']'
 );
 // Selection is deterministic even though the higher relation_id (4771) came first in
-// the join: the LOWEST (3603) is the milpac the completer keeps, matching #96.
+// the raw rows: the LOWEST (3603) is the milpac the completer keeps, matching #96.
 check(
-    'the kept milpac is the lowest relation_id, regardless of join row order',
+    'the kept milpac is the lowest relation_id, regardless of raw row order',
     isset($dupLog[0]) && str_contains($dupLog[0], 'lowest (relation_id 3603)'),
     $dupLog[0] ?? '(nothing logged)'
 );
 
-// The normal case: distinct members each keep their own milpac, in first-seen order,
-// and a single-milpac member is not a data error, so nothing is logged.
+// The normal case: the shown members each own exactly one roster row, so the raw rows
+// carry one per member — not a data error, and nothing is logged.
 $quietLog = [];
 check(
-    'distinct single-milpac members each keep their milpac, first-seen order',
+    'raw rows of distinct single-milpac members each keep their milpac, first-seen order',
     MilpacResolver::dedupeMilpacOwners(
         [
             ['user_id' => 100, 'relation_id' => 5],
@@ -196,6 +205,33 @@ check(
     'the normal single-milpac path logs nothing',
     $quietLog === [],
     count($quietLog) . ' unexpected log(s)'
+);
+
+// The production shape: a dropdown showing several single-milpac members alongside the
+// one duplicate (user 7385, with both rows returned by the scoped raw query). Only the
+// duplicate is a data error, so exactly one log fires among the shown members, and every
+// member still resolves to one user_id in first-seen order.
+$mixedLog = [];
+check(
+    'a duplicate among single-milpac members still collapses everyone to one user_id each',
+    MilpacResolver::dedupeMilpacOwners(
+        [
+            ['user_id' => 100, 'relation_id' => 5],
+            ['user_id' => 7385, 'relation_id' => 3603],
+            ['user_id' => 7385, 'relation_id' => 4771],
+            ['user_id' => 250, 'relation_id' => 9],
+        ],
+        makeLog($mixedLog)
+    ) === [100, 7385, 250]
+);
+check(
+    'only the duplicate member logs, exactly once, among the shown members',
+    count($mixedLog) === 1
+        && str_contains($mixedLog[0], '7385')
+        && str_contains($mixedLog[0], 'lowest (relation_id 3603)')
+        && !str_contains($mixedLog[0], 'user_id 100')
+        && !str_contains($mixedLog[0], 'user_id 250'),
+    ($mixedLog[0] ?? '(nothing logged)') . ' [count ' . count($mixedLog) . ']'
 );
 
 if ($failures > 0) {

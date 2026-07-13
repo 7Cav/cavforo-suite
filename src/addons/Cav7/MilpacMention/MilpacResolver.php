@@ -18,19 +18,20 @@ namespace Cav7\MilpacMention;
  * The find-endpoint path (phase 2) drives the $name completer the other way, from a
  * typed query to the milpac-owning members it may insert as named profile links:
  *
- *   isFindQueryLongEnough()  the two-character q guard before any query  (§4.3)
- *   findMilpacOwningUsers()  join the milpac owners inside the query      (§4.3)
- *   milpacDisplayText()      shape "Rank Name" for the dropdown/anchor    (§4.2/§4.5)
- *   milpacLinkHtml()         wrap that text in an html-escaped anchor     (§4.2)
+ *   isFindQueryLongEnough()     the two-character q guard before any query  (§4.3)
+ *   findMilpacOwningUsers()     join the milpac owners inside the query      (§4.3)
+ *   milpacDisplayText()         shape "Rank Name" for the dropdown/anchor    (§4.2/§4.5)
+ *   milpacLinkHtml()            wrap that text in an html-escaped anchor     (§4.2)
+ *   logMilpacOwnerDuplicates()  log a shown member owning >1 roster row      (§4.4)
  *
  * The pure methods carry no XenForo dependency, so the detection regex, the mapping
  * shape, the cap/dedup rules, and the completer's q-guard and row shaping are all
- * unit-tested in plain PHP. The only \XF references are resolveUserIds() and
- * findMilpacOwningUsers() (each runs a live finder) and the PCRE-failure branch of
- * extractRelationIds() — none reached by the happy path, so requiring this file and
- * exercising detection/mapping/firing and the pure find builders in a test is safe
- * with no XenForo, as long as the two finder methods are not called and no regex
- * actually fails.
+ * unit-tested in plain PHP. The only \XF references are resolveUserIds(),
+ * findMilpacOwningUsers() and logMilpacOwnerDuplicates() (each runs a live finder) and
+ * the PCRE-failure branch of extractRelationIds() — none reached by the happy path, so
+ * requiring this file and exercising detection/mapping/firing, the pure find builders
+ * and the dedupeMilpacOwners reducer in a test is safe with no XenForo, as long as the
+ * three finder methods are not called and no regex actually fails.
  */
 class MilpacResolver
 {
@@ -330,26 +331,28 @@ class MilpacResolver
     }
 
     /**
-     * Collapse the $name completer's joined milpac-owner rows to one per member
+     * The $name completer's shared reducer over (user_id, relation_id) roster rows
      * (spec §4.4). One milpac per user is the intended rule, but xf_nf_rosters_user
      * does not enforce it (non-unique user_id index; live data has a member with two
-     * rows), so the owner join can hand back two rows for one member. Keep the
-     * member's LOWEST relation_id — the same deterministic pick #96 gave the lazy
-     * $user->Milpac — and log the extras as a data error, so the dropdown shows the
-     * member once instead of twice and the bad data is visible.
+     * rows), so a member can own more than one row. Collapse to one user_id per member,
+     * keep the LOWEST relation_id — the same deterministic pick #96 gave the lazy
+     * $user->Milpac — and log any member owning more than one as a data error so the
+     * bad data is visible.
      *
-     * Pure and logger-injected so the collapse + duplicate logging is unit-tested
-     * without XenForo: the view passes no logger (production falls back to
-     * \XF::logError via collapseMilpacsByUser), a standalone test passes a capturing
-     * callable. Note the view usually receives one row per member already: XF's
-     * identity map keys the fetched collection by user_id and the finder orders the
-     * join by relation_id, so this is the fail-safe collapse for the raw-duplicate
-     * case, sharing the reducer (and its data-error log) with the reverse path.
+     * logMilpacOwnerDuplicates feeds this the RAW roster rows read straight from the
+     * table, where a member's duplicate rows are still both present — the completer's
+     * own hydrated collection cannot be used, because XF's identity map has already
+     * collapsed the join to one entity per user_id before the view sees it, hiding the
+     * duplicate. Pure and logger-injected so the collapse + duplicate logging is
+     * unit-tested without XenForo: production passes no logger (the duplicate branch
+     * falls back to \XF::logError via collapseMilpacsByUser), a standalone test passes
+     * a capturing callable. Shares the reducer (and its data-error log) with the reverse
+     * alerting path.
      *
-     * @param list<array{user_id:int, relation_id:int}> $rows joined rows, in query order
+     * @param list<array{user_id:int, relation_id:int}> $rows raw roster rows, in query order
      * @param callable|null $logger fn(string): void; null => \XF::logError
      *
-     * @return list<int> the user_ids to render, one per member, first-seen order
+     * @return list<int> the user_ids, one per member, first-seen order
      */
     public static function dedupeMilpacOwners(array $rows, ?callable $logger = null): array
     {
@@ -359,6 +362,54 @@ class MilpacResolver
         }
 
         return self::collapseMilpacsByUser($pairs, $logger);
+    }
+
+    /**
+     * Log the completer's "member owns more than one milpac" data error, detected from
+     * the RAW roster rows of the members the dropdown is about to show (§4.4, #112).
+     *
+     * The completer view cannot see the duplicate on its own: findMilpacOwningUsers
+     * INNER-joins the roster and orders by relation_id, and XF's identity map keys the
+     * fetched collection by user_id, so two roster rows for one member collapse to a
+     * single hydrated User entity (carrying the lowest relation_id) BEFORE the view
+     * iterates. The functional output is already correct — one dropdown entry, lowest
+     * milpac kept — but the extra row is invisible to that collection, so a plain
+     * collapse of the hydrated rows can never log a real duplicate. To keep this
+     * persistent data error visible, re-read the roster rows themselves: one indexed
+     * query over the shown user_ids returns every (user_id, relation_id) pair, including
+     * the second row the identity map hid, and the shared reducer logs any member with
+     * more than one (naming the user and every relation_id, keeping the lowest).
+     *
+     * The reducer's collapsed return is discarded — this method exists only for the
+     * data-error log. The dropdown's shown set, order, and kept milpac are already
+     * decided upstream. Scoped to the matched user_ids and skipped when nothing is
+     * shown, so it is one cheap query, not per row. It logs each time the completer
+     * surfaces the member, which is intended: the error is persistent and the visibility
+     * mirrors the alerting path. The only \XF reference is the finder here.
+     *
+     * @param list<int>     $userIds the user_ids the dropdown is showing
+     * @param callable|null $logger  fn(string): void; null => \XF::logError (via the reducer)
+     */
+    public static function logMilpacOwnerDuplicates(array $userIds, ?callable $logger = null): void
+    {
+        $userIds = array_values(array_unique(array_filter(
+            array_map('intval', $userIds),
+            static fn (int $id): bool => $id > 0
+        )));
+        if (!$userIds) {
+            return; // nothing shown, so no query and nothing to check
+        }
+
+        $rows = \XF::finder('NF\Rosters:RosterUser')
+            ->where('user_id', $userIds)
+            ->order('user_id')
+            ->order('relation_id')
+            ->fetchColumns('user_id', 'relation_id'); // raw [user_id, relation_id] rows, pre-hydration
+
+        // Route the raw rows through the shared reducer purely for its data-error log;
+        // a member with two roster rows appears twice here (unlike the hydrated
+        // collection), so collapseMilpacsByUser/logMilpacDataError finally fire (#112).
+        self::dedupeMilpacOwners($rows, $logger);
     }
 
     /**
@@ -386,11 +437,12 @@ class MilpacResolver
      * Ordered by username, then Milpac.relation_id: the relation's 'order' rides only
      * the lazy $user->Milpac fetch, not this with('Milpac', true) INNER join, so the
      * finder sets its own ORDER BY. username gives the dropdown a stable, human order;
-     * the relation_id tiebreak makes a member with two roster rows deterministic — XF's
+     * the relation_id tiebreak makes a member with two roster rows deterministic: XF's
      * identity map keys the fetched collection by user_id and keeps the first row, so
      * relation_id ASC hands this the LOWEST milpac, the same pick #96 gave the lazy
-     * relation (§4.4). The completer view still collapses via dedupeMilpacOwners, but
-     * this keeps the surviving row's milpac canonical rather than arbitrary.
+     * relation (§4.4). That makes the surviving row's milpac canonical rather than
+     * arbitrary; the completer view renders that collapsed entity directly, and the raw
+     * duplicate is detected and logged separately by logMilpacOwnerDuplicates (§4.4, #112).
      *
      * Rank and Roster are joined for the dropdown row (§4.5). The 'Milpac' relation
      * this leans on is the inverse of NF\Rosters:RosterUser's own 'User' relation,
