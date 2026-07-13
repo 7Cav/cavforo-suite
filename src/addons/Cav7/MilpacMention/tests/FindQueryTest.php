@@ -110,6 +110,33 @@ check(
     str_replace($zwsp, '', $guardedB) === 'SGT [b] Markel.Z'
 );
 
+// A CLOSING tag ("[/b]") is the other arm of XF's tokenizer (the \[/(\w+)] half of
+// #\[(\w+)( |=|\])|\[/(\w+)]#): raw, it closes a bold span. The fixture carries both an
+// opening and a closing tag, so the closing-tag guard is exercised against real "[/…]"
+// input rather than vacuously — raw "SGT [b]x[/b]" DOES tokenize a closing tag, and the
+// neutralized text must not. The guard wedges its zero-width space right after the "[",
+// so no "[/" adjacency survives for the tokenizer to open on.
+$rawClose = 'SGT [b]x[/b]';
+check(
+    'the raw closing-tag title really does form a parseable closing tag (so the guard has work to do)',
+    (bool) preg_match('#\[/[A-Za-z0-9_]#', $rawClose) && (bool) preg_match('#\[/\w+]#', $rawClose)
+);
+$guardedClose = MilpacResolver::milpacDisplayText($rawClose, 'Markel.Z');
+check(
+    'a closing-tag rank title keeps its literal [ ] / glyphs and the name in the display text',
+    str_contains($guardedClose, '[') && str_contains($guardedClose, ']')
+        && str_contains($guardedClose, '/') && str_contains($guardedClose, 'Markel.Z')
+);
+check(
+    'no "[/" in the display text sits immediately before a word char, so XF can never tokenize a closing tag',
+    !preg_match('#\[/[A-Za-z0-9_]#', $guardedClose) && !preg_match('#\[/\w+]#', $guardedClose),
+    $guardedClose
+);
+check(
+    'the guard is zero-width: stripping it leaves the literal "SGT [b]x[/b] Markel.Z" the admin wrote',
+    str_replace($zwsp, '', $guardedClose) === 'SGT [b]x[/b] Markel.Z'
+);
+
 // The issue's own example, and a colour tag, get the same treatment.
 check(
     'the "SGT [Ret.]" example neutralizes to literal bracket text with no tag',

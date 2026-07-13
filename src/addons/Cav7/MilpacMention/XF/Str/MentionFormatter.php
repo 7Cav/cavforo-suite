@@ -66,14 +66,15 @@ class MentionFormatter extends XFCP_MentionFormatter
     protected function applyMilpacMentions($message)
     {
         // Capture the good, @-resolved input BEFORE any masking, so every throw path
-        // returns the member's post untouched. setupPlaceholders/restorePlaceholders are
-        // preg_replace_callback under the hood and return null (not throw) on a PCRE
-        // backtrack/recursion limit; a null then flows into resolveTypedMilpacs' typed
-        // string param as a TypeError, or leaves $message null after the finally. Without
-        // this the catch would `return $message` — now null/half-masked — blanking the
-        // post, contradicting the "message left unchanged" log. Returning $original in the
-        // catch makes that guarantee total: it also covers a restorePlaceholders throw
-        // inside the finally, whose exception propagates out to this same catch.
+        // returns the member's post untouched. setupPlaceholders is preg_replace_callback
+        // under the hood and returns null (not throws) on a PCRE backtrack/recursion limit;
+        // that null then flows into resolveTypedMilpacs' typed string param as a TypeError.
+        // restorePlaceholders, by contrast, is strtr-based in the parent and never returns
+        // null — but it runs in the finally, so any throw from it still propagates out to
+        // this same catch. Without this capture the catch would `return $message` — now null
+        // or half-masked — blanking the post, contradicting the "message left unchanged"
+        // log. Returning $original makes that guarantee total: it covers the setupPlaceholders
+        // null path and any \Throwable raised anywhere in the try/finally.
         $original = $message;
 
         try {

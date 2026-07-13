@@ -437,7 +437,9 @@ class MilpacResolver
      * A PCRE engine failure returns [] (no cores); the rewrite in resolveTypedMilpacs runs
      * the same pattern and logs/fails-closed on that branch, so the failure is not swallowed.
      *
-     * @return list<string>
+     * @return list<array-key> the distinct cores in first-seen order. A purely-numeric core
+     *      (e.g. the "5" of "$5") comes back as an int, not a string — it is collected as an
+     *      array key and PHP coerces numeric string keys to ints — so callers cast to string.
      */
     public static function typedMilpacCores(string $message): array
     {
