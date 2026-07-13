@@ -95,6 +95,11 @@ class NotifierService extends XFCP_NotifierService
                     continue;
                 }
 
+                // autoRead=false in the options arg (arg 8) keeps the milpac alert unread
+                // until the recipient views it, exactly as XF's own mention alerts do; without
+                // it insertAlert() defaults auto_read=1 and the alert clears on a different
+                // schedule than the @-mention it mirrors (spec §2.5). depends_on_addon_id stays
+                // in the extra arg (arg 7) — insertAlert() reads the two from separate slots.
                 $sent = $alertRepo->alert(
                     $user,
                     $post->user_id,
@@ -102,7 +107,8 @@ class NotifierService extends XFCP_NotifierService
                     'post',
                     $post->post_id,
                     'milpac_mention',
-                    ['depends_on_addon_id' => 'Cav7/MilpacMention']
+                    ['depends_on_addon_id' => 'Cav7/MilpacMention'],
+                    ['autoRead' => false]
                 );
 
                 if ($sent)

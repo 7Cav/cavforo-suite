@@ -125,6 +125,13 @@ class NotifierService extends XFCP_NotifierService
                     // Deep-link to the report via the stock ReportHandler: content type
                     // 'report', content id $comment->report_id (the Report PK the comment
                     // carries — the exact value XF's own report mention alert uses).
+                    //
+                    // autoRead=false in the options arg (arg 8) keeps the milpac alert unread
+                    // until the recipient views it, exactly as XF's own report mention alert does
+                    // (it passes the same flag); without it insertAlert() defaults auto_read=1 and
+                    // the alert clears on a different schedule than the @-mention it mirrors (spec
+                    // §2.5). depends_on_addon_id stays in the extra arg (arg 7) — insertAlert()
+                    // reads the two from separate slots.
                     $sent = $alertRepo->alert(
                         $user,
                         $comment->user_id,
@@ -132,7 +139,8 @@ class NotifierService extends XFCP_NotifierService
                         'report',
                         $comment->report_id,
                         'milpac_mention',
-                        ['depends_on_addon_id' => 'Cav7/MilpacMention']
+                        ['depends_on_addon_id' => 'Cav7/MilpacMention'],
+                        ['autoRead' => false]
                     );
 
                     if ($sent)
