@@ -12,6 +12,7 @@ row. The 7Cav name for a member's military personnel record. A milpac is
 _created_ when that row is first inserted on the current roster system. Because
 the org predates this site and has run earlier roster systems, a returning
 member can have a new milpac created here without it being their first time in
-the org.
+the org. Within this system a member has at most one milpac; two
+`RosterUser` rows for the same member is a data error, not a supported state.
 _Avoid_: profile (the XenForo user profile is a separate thing), personnel
 jacket, record (ambiguous with service record)
