@@ -164,6 +164,11 @@ $expectedExtensions = [
     'XF\Service\Post\NotifierService' => 'Cav7\MilpacMention\XF\Service\Post\NotifierService',
     // The opt-out registration on the post alert handler.
     'XF\Alert\PostHandler' => 'Cav7\MilpacMention\XF\Alert\PostHandler',
+    // Issue #123 — the typed-$name server-side seam: extending getMentionsBbCode puts
+    // $ resolution in the same prepare-time pipeline stage as @, so a typed $username
+    // becomes a roster link the existing engine already detects and fires, with no new
+    // alert path. This is the single new seam #123 adds.
+    'XF\Str\MentionFormatter' => 'Cav7\MilpacMention\XF\Str\MentionFormatter',
 ];
 foreach ($expectedExtensions as $from => $to) {
     check(
@@ -174,13 +179,21 @@ foreach ($expectedExtensions as $from => $to) {
     );
 }
 check(
-    'the nine engine extensions are registered (post + profile-post + profile-post-comment + report + ticket surfaces)',
-    ($classExtXml !== false ? count($classExtXml->extension) : -1) === 9,
-    'shared PreparerService + Post/ProfilePost/ProfilePostComment/Report/NF-Tickets notifiers + Post/ProfilePost/NF-Tickets opt-out handlers. ProfilePostWiringTest pins the profile-post surfaces, ReportWiringTest the report surface, and TicketWiringTest the ticket surface'
+    'the ten engine extensions are registered (shared detection + typed-$name seam + post/profile-post/profile-post-comment/report/ticket surfaces)',
+    ($classExtXml !== false ? count($classExtXml->extension) : -1) === 10,
+    'shared PreparerService + the #123 MentionFormatter typed-$name seam + Post/ProfilePost/ProfilePostComment/Report/NF-Tickets notifiers + Post/ProfilePost/NF-Tickets opt-out handlers. ProfilePostWiringTest pins the profile-post surfaces, ReportWiringTest the report surface, and TicketWiringTest the ticket surface'
 );
 check(
     '_output has one class_extensions file per _data extension',
     count(outputItems($root, 'class_extensions')) === ($classExtXml !== false ? count($classExtXml->extension) : -1)
+);
+// Issue #123 — pin the typed-$name seam's _output export by name, so a registered
+// extension without its matching export (which check-data-consistency would then
+// count-mismatch) fails here with a clear message rather than as a bare count-off.
+check(
+    'the #123 XF\\Str\\MentionFormatter extension has its _output export',
+    is_file("$root/_output/class_extensions/XF-Str-MentionFormatter_Cav7-MilpacMention-XF-Str-MentionFormatter.json"),
+    'the class-extension export must ship beside its _data registration or check-data-consistency count-mismatches'
 );
 
 // =========================================================================
