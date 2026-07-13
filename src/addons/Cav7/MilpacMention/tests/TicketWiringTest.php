@@ -392,12 +392,13 @@ check(
     "alert() calls=$alertCalls tagged=$dependsTags — an untagged alert survives uninstall"
 );
 
-// Issue #95 — the milpac alert stays unread even after the recipient reads the linked
-// content; it clears only when they view the alert itself, exactly as XF writes its own
-// mention alerts (the ticket surface inherits ['autoRead' => false] from
-// XF\Notifier\AbstractNotifier). insertAlert() reads autoRead out of the $options array
-// and defaults it to true when the array omits it, so a milpac_mention row without the
-// flag saves auto_read=1 and clears on a different schedule than the @-mention it mirrors.
+// Issue #95 — autoRead=false keeps the milpac alert unread when it is only surfaced in the
+// alerts dropdown/list; it clears when the recipient views the linked content or explicitly
+// reads the alert, exactly as XF writes its own mention alerts (the ticket surface inherits
+// ['autoRead' => false] from XF\Notifier\AbstractNotifier). insertAlert() reads autoRead out
+// of the $options array and defaults it to true when the array omits it, so a milpac_mention
+// row without the flag saves auto_read=1 and is auto-marked read the moment it shows in the
+// dropdown — a different schedule than the @-mention it mirrors.
 // depends_on_addon_id lives in the $extra array; the two are separate slots. Pin the tail
 // of the real ->alert(...) call POSITIONALLY on the comment-stripped $code: action, then
 // the extra array carrying depends_on_addon_id, then ['autoRead' => false] as the last
