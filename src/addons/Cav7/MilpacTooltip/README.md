@@ -52,9 +52,14 @@ XenForo at the roster URL with `tooltip=1`; an extension of
 resolving to the member and handing off to `MemberController::actionTooltip`,
 so the hover shows the stock `member_tooltip`, the same card the username
 shows, milpac chip included. The href is left alone, so a click still opens the
-roster profile. Recognising the link and stamping the anchor are pure PHP in
-`RosterLink`, unit-tested without XenForo; a link that does not resolve to a
-member stays a plain link with no card. The design is recorded in
+roster profile. Only a link that points at this board is stamped — a relative
+link, or an absolute one whose host matches the board's `boardUrl`. A
+`/rosters/profile/<n>/` link to a different board is recognised but left as a
+plain link, so its local relation_id is never resolved to a local member and
+the hover cannot show the wrong card. Recognising the link, the same-origin
+gate, and stamping the anchor are pure PHP in `RosterLink`, unit-tested without
+XenForo; a link that does not resolve to a member stays a plain link with no
+card. The design is recorded in
 [ADR 0001](docs/adr/0001-in-post-milpac-hovercard-reuses-member-tooltip.md).
 
 ## Requirements

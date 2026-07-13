@@ -111,8 +111,9 @@ check(
 // (tests/DetectionTest.php) and documents the deliberate trade-off — matching on the
 // path keeps the canonical "-slug" and relative in-editor shapes working — guarding
 // against a "hardening" regression that anchors to the board host and silently breaks
-// relative/-slug recognition. (Recognition only; a foreign-host stamp guard is a
-// separate followup, not added here.)
+// relative/-slug recognition. Recognition stays host-agnostic on purpose; the
+// foreign-host decision is a SEPARATE gate (isSameBoardLink, issue #126), exercised
+// in its own section below, so both stay independently testable.
 check(
     'an off-host https://evil.example/rosters/profile/42/ still yields 42 (deliberate: path-only)',
     RosterLink::relationIdFromUrl('https://evil.example/rosters/profile/42/') === 42
@@ -138,6 +139,156 @@ check(
 check(
     'an upper-cased /Rosters/Profile/42/ path is not recognised (regex is case-sensitive)',
     RosterLink::relationIdFromUrl('/Rosters/Profile/42/') === 0
+);
+
+// =========================================================================
+// origin gate — isSameBoardLink (issue #126): stamp only links at THIS board
+// =========================================================================
+// relationIdFromUrl (above) stays host-agnostic; it recognises the roster path
+// wherever it renders. The same-origin decision lives in this separate, pure gate,
+// so a cross-board /rosters/profile/<n>/ link is still recognised as a roster path
+// but left unstamped — no local data-user-id, so no wrong (local) hovercard on hover.
+// getRenderedLink hands the same href string to the gate for every link shape —
+// relative, canonical absolute, -slug, named [URL=...], bare auto-linked — so
+// exercising the url string here covers all of those forms uniformly.
+
+$board = 'https://board.example';
+
+// A relative link carries no host and always points at this board — stampable.
+check(
+    'a relative /rosters/profile/42/ is same-origin (no host = always local)',
+    RosterLink::isSameBoardLink('/rosters/profile/42/', $board) === true
+);
+
+// The -slug relative variant is likewise local.
+check(
+    'a relative -slug /rosters/profile/42-grayson-j/ is same-origin',
+    RosterLink::isSameBoardLink('/rosters/profile/42-grayson-j/', $board) === true
+);
+
+// A canonical absolute link to this board (host matches boardUrl) — stampable.
+check(
+    'a canonical https://board.example/rosters/profile/42/ matches the board host',
+    RosterLink::isSameBoardLink('https://board.example/rosters/profile/42/', $board) === true
+);
+
+// The canonical -slug absolute variant on this board is also same-origin.
+check(
+    'a canonical -slug absolute link on the board host is same-origin',
+    RosterLink::isSameBoardLink('https://board.example/rosters/profile/42-grayson-j/', $board) === true
+);
+
+// THE BUG (issue #126): a cross-board absolute link whose relation_id happens to
+// match a local milpac must NOT be treated as local — different host, no stamp.
+check(
+    'a foreign https://other-board/rosters/profile/42/ is NOT same-origin',
+    RosterLink::isSameBoardLink('https://other-board/rosters/profile/42/', $board) === false
+);
+
+// A protocol-relative //host/ link carries a host, so a foreign one is off-board.
+check(
+    'a protocol-relative //other-board/rosters/profile/42/ is NOT same-origin',
+    RosterLink::isSameBoardLink('//other-board/rosters/profile/42/', $board) === false
+);
+
+// ...and a protocol-relative link to the board host is same-origin.
+check(
+    'a protocol-relative //board.example/rosters/profile/42/ is same-origin',
+    RosterLink::isSameBoardLink('//board.example/rosters/profile/42/', $board) === true
+);
+
+// Host comparison is case-insensitive (hostnames are), so a differently-cased host
+// still matches — a link is not left unstamped over letter case alone.
+check(
+    'host match is case-insensitive (Board.Example matches board.example)',
+    RosterLink::isSameBoardLink('https://Board.Example/rosters/profile/42/', $board) === true
+);
+
+// The decision is on the host, not the scheme: http vs https on the same host is
+// still this board, so a mixed-scheme canonical link is not left unstamped.
+check(
+    'a same-host link on a different scheme (http vs https) is same-origin',
+    RosterLink::isSameBoardLink('http://board.example/rosters/profile/42/', $board) === true
+);
+
+// The dev-stack shape: a board URL carrying a port, and a canonical link on it. The
+// host ("localhost") is what matches; the port rides along in both and is ignored.
+check(
+    'a link on a board URL with a port (http://localhost:8081) is same-origin',
+    RosterLink::isSameBoardLink('http://localhost:8081/rosters/profile/42/', 'http://localhost:8081') === true
+);
+
+// A different host is off-board even when the board URL carries a port.
+check(
+    'a foreign host is off-board even when the board URL has a port',
+    RosterLink::isSameBoardLink('https://other-board/rosters/profile/42/', 'http://localhost:8081') === false
+);
+
+// Asymmetric port on the SAME host: the port rides along on only one side. The
+// decision is on the host alone, so a legitimately-local link is still same-origin
+// whether the link carries the port and the board does not, or vice-versa. Pins that
+// a future "tighten to host:port" change cannot silently drop a ported local link.
+check(
+    'a link carrying a port on the board host is same-origin even when boardUrl has none',
+    RosterLink::isSameBoardLink('http://board.example:8081/rosters/profile/42/', 'https://board.example') === true
+);
+check(
+    'a portless link on the board host is same-origin even when boardUrl carries a port',
+    RosterLink::isSameBoardLink('https://board.example/rosters/profile/42/', 'http://board.example:8081') === true
+);
+
+// Userinfo-spoof negative pin: a "user@host" authority resolves to the REAL host
+// after the @ (evil.example here), not the board host before it, so the link is
+// foreign and left unstamped. parse_url already does this correctly; this pins it so
+// a future hand-rolled host parser cannot silently re-introduce the spoof (issue #126).
+check(
+    'a userinfo-spoofed https://board.example@evil.example/... link is NOT same-origin',
+    RosterLink::isSameBoardLink('https://board.example@evil.example/rosters/profile/42/', 'https://board.example/') === false
+);
+
+// Defensive: an empty/misconfigured boardUrl has no host, so an ABSOLUTE link cannot
+// be confirmed local and is left unstamped (safe: never stamp what we cannot verify).
+check(
+    'an absolute link with an empty boardUrl is not same-origin (cannot confirm)',
+    RosterLink::isSameBoardLink('https://board.example/rosters/profile/42/', '') === false
+);
+
+// ...but a RELATIVE link is local regardless of the boardUrl, since it has no host.
+check(
+    'a relative link with an empty boardUrl is still same-origin',
+    RosterLink::isSameBoardLink('/rosters/profile/42/', '') === true
+);
+
+// Fail CLOSED on a MALFORMED absolute link (issue #126). A foreign absolute URL
+// that parse_url() cannot parse at all (whole-URL parse_url === false) must NOT be
+// judged same-origin: doing so would resolve the local relation_id and stamp the
+// WRONG (local) member's card on a link that clicks through off-board. This is
+// distinct from a genuinely relative link (parses fine, no host) which stays local.
+// These are user-triggerable via post content, so each garbage shape is pinned by
+// VALUE, not merely asserted to be a bool.
+check(
+    'a malformed foreign link with an out-of-range port is NOT same-origin (fail closed)',
+    RosterLink::isSameBoardLink('https://evil.example:99999/rosters/profile/42/', $board) === false
+);
+check(
+    'a malformed foreign link with a non-numeric port is NOT same-origin (fail closed)',
+    RosterLink::isSameBoardLink('https://evil.example:notaport/rosters/profile/42/', $board) === false
+);
+check(
+    'a malformed http:///... link (empty authority) is NOT same-origin (fail closed)',
+    RosterLink::isSameBoardLink('http:///rosters/profile/42/', $board) === false
+);
+
+// Total / fail-open: the gate still returns a bool and never throws on any garbage
+// href — a post render must not break on a malformed URL (mirrors the \Throwable
+// containment the renderer keeps around resolution and stamping). This stays a guard
+// alongside the value pins above; it is no longer the ONLY assertion for malformed input.
+check(
+    'the gate returns a bool and never throws on a malformed url',
+    (static function (): bool {
+        return is_bool(RosterLink::isSameBoardLink('http://', 'https://board.example'))
+            && is_bool(RosterLink::isSameBoardLink('ht!tp://%%%', ''));
+    })()
 );
 
 // =========================================================================

@@ -157,6 +157,12 @@ check(
     'recognition + resolution + stamping run through the shared, unit-tested helper'
 );
 check(
+    'it gates stamping on the same-origin decision, reading the boardUrl option (issue #126)',
+    str_contains($htmlSrc, 'RosterLink::isSameBoardLink')
+        && (bool) preg_match('/options\(\)\s*->\s*boardUrl/', $htmlSrc),
+    'a cross-board /rosters/profile/<n>/ link must be recognised but left unstamped, not stamped with the local member'
+);
+check(
     'stamping is contained: a \Throwable is caught and forwarded to logException, never rethrown',
     (bool) preg_match('/catch\s*\(\s*\\\\Throwable\b.*?logException\(/s', $htmlSrc)
         && !preg_match('/\bthrow\b/', preg_replace('~/\*.*?\*/|//[^\n]*~s', '', $htmlSrc)),
