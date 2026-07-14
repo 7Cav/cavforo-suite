@@ -1,0 +1,1 @@
+The thread prefix IDs that mark a re-enlistment. A queue thread carrying one of these as its primary prefix is routed to the re-enlistment clerks. Enter one ID per line or separate with commas. Default: 58.

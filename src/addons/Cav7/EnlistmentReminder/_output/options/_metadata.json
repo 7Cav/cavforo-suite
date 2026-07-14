@@ -2,13 +2,22 @@
     "cav7ERBotUserId.json": {
         "hash": "e63f24a8f4d80acc4c0ae5a9491db9bd"
     },
-    "cav7ERClerkPositionIds.json": {
-        "hash": "5c7be84a9907a6f23cb4362b275cb8e3"
-    },
     "cav7ERDeadlineHours.json": {
-        "hash": "cffd3ce3ef2f8d315b3229e13bfc2fc9"
+        "hash": "af8ce2de7b8ba3cee269c5adeae29598"
     },
     "cav7ERQueueNodeId.json": {
         "hash": "d8b70dc4ca50f257336f03d1d962b802"
+    },
+    "cav7ERReenlistClerkPositionIds.json": {
+        "hash": "da127a5ef1ca60edc34ea9b57a01e97f"
+    },
+    "cav7ERReenlistPrefixIds.json": {
+        "hash": "3240b91d81a1798d4a9abdf47809dc7d"
+    },
+    "cav7ERStandardClerkPositionIds.json": {
+        "hash": "388c6381b2b3ce1ddcda75b96d69ea17"
+    },
+    "cav7ERStandardPrefixIds.json": {
+        "hash": "753b0b39da89837bcc2191b10f17267c"
     }
 }

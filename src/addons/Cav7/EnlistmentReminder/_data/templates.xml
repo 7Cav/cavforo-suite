@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <templates>
-  <template type="public" title="alert_thread_enlistment_reminder" version_id="1000070" version_string="1.0.0"><![CDATA[{{ phrase('cav7_er_alert_thread_awaiting_pickup', {
-'title': '<a href="' . link('threads', $content) . '" class="fauxBlockLink-blockLink">' . $content.title . '</a>'
+  <template type="public" title="alert_thread_enlistment_reminder" version_id="1010070" version_string="1.1.0"><![CDATA[{{ phrase('cav7_er_alert_thread_awaiting_pickup', {
+'title': '<a href="' . link('threads', $content) . '" class="fauxBlockLink-blockLink">' . prefix('thread', $content) . $content.title . '</a>'
 }) }}]]></template>
 </templates>

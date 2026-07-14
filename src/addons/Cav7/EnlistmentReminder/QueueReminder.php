@@ -13,9 +13,25 @@ namespace Cav7\EnlistmentReminder;
  * only; sticky status is ignored. A clerk reply is the only "handled" signal, so
  * a recruiter reply, an applicant reply, or the bot's own note never suppress a
  * reminder (none of them is a seated clerk).
+ *
+ * The private alert is routed by enlistment type (issue #144): a thread's primary
+ * prefix says whether it is a Standard or a Re-Enlistment, and the pure
+ * EnlistmentRouting seam maps that to the clerk positions that own the type. Only
+ * the alert audience narrows — pickup still resolves the union of both sets, so a
+ * reply from any of the five seats clears the reminder as before. A thread whose
+ * prefix marks no known type is not a valid enlistment: it is skipped, with one
+ * log breadcrumb if it would otherwise have been reminded.
  */
 class QueueReminder
 {
+    /**
+     * Memo backing resolveClerkUserIds(); keyed on the position-id list. See that
+     * method for why the run resolves at most three distinct lists.
+     *
+     * @var array<string,int[]>
+     */
+    private array $clerkUserIdCache = [];
+
     /**
      * Scan the queue and remind every un-actioned, not-yet-reminded thread once.
      *
@@ -25,8 +41,15 @@ class QueueReminder
     {
         $nodeId = (int) \XF::options()->cav7ERQueueNodeId;
         $botUserId = (int) \XF::options()->cav7ERBotUserId;
-        $rawClerkPositionIds = (string) \XF::options()->cav7ERClerkPositionIds;
-        $clerkPositionIds = PositionIdList::parse($rawClerkPositionIds);
+
+        $rawStandardPositionIds = (string) \XF::options()->cav7ERStandardClerkPositionIds;
+        $rawReenlistPositionIds = (string) \XF::options()->cav7ERReenlistClerkPositionIds;
+        $routing = new EnlistmentRouting(
+            PositionIdList::parse((string) \XF::options()->cav7ERStandardPrefixIds),
+            PositionIdList::parse($rawStandardPositionIds),
+            PositionIdList::parse((string) \XF::options()->cav7ERReenlistPrefixIds),
+            PositionIdList::parse($rawReenlistPositionIds)
+        );
 
         if (!$nodeId)
         {
@@ -39,6 +62,20 @@ class QueueReminder
             return;
         }
 
+        // A prefix listed under BOTH type sets is a config error (story 21): a
+        // thread of that prefix fail-safes to the union of both clerk sets so no
+        // responsible clerk is silently dropped, but the misconfig is surfaced
+        // once here rather than at every routing. route() handles the fail-safe;
+        // this only logs it.
+        $overlapPrefixIds = $routing->overlappingPrefixIds();
+        if ($overlapPrefixIds)
+        {
+            \XF::logError(sprintf(
+                '[Cav7/EnlistmentReminder] Prefix id(s) %s are listed under both cav7ERStandardPrefixIds and cav7ERReenlistPrefixIds; threads of that prefix alert the union of both clerk sets. Fix the overlap so routing is unambiguous.',
+                implode(', ', $overlapPrefixIds)
+            ));
+        }
+
         $threads = $this->fetchQueueThreads($nodeId);
         if (!$threads)
         {
@@ -46,7 +83,17 @@ class QueueReminder
         }
 
         $threadIds = array_map('intval', array_column($threads, 'thread_id'));
-        $clerkUserIds = $this->getClerkUserIds($clerkPositionIds);
+        $prefixByThread = [];
+        foreach ($threads as $thread)
+        {
+            $prefixByThread[(int) $thread['thread_id']] = (int) $thread['prefix_id'];
+        }
+
+        // Pickup and the mass-remind guard resolve the UNION of both clerk sets —
+        // the same coverage the single clerk-position option gave before the split,
+        // so any of the five seats replying still clears the reminder (issue #144:
+        // only the alert audience narrows, never the pickup).
+        $clerkUserIds = $this->resolveClerkUserIds($routing->pickupPositionIds());
         if (!$clerkUserIds)
         {
             // Symmetric with the node/bot guards above: with no configured position
@@ -55,8 +102,8 @@ class QueueReminder
             // processing — would be reminded. Abort with a signal rather than
             // mass-remind on a blank or drifted clerk-position option.
             \XF::logError(sprintf(
-                '[Cav7/EnlistmentReminder] No clerk resolved from cav7ERClerkPositionIds="%s"; skipping this run so live clerk-handled applications are not reminded.',
-                $rawClerkPositionIds
+                '[Cav7/EnlistmentReminder] No clerk resolved from the configured positions (cav7ERStandardClerkPositionIds="%s", cav7ERReenlistClerkPositionIds="%s"); skipping this run so live clerk-handled applications are not reminded.',
+                $rawStandardPositionIds, $rawReenlistPositionIds
             ));
             return;
         }
@@ -107,6 +154,29 @@ class QueueReminder
 
         foreach ($toRemind as $threadId)
         {
+            $route = $routing->route($prefixByThread[$threadId] ?? 0);
+
+            if ($route['type'] === EnlistmentRouting::TYPE_UNRECOGNIZED)
+            {
+                // Past the deadline, un-picked-up and un-reminded (it passed the
+                // decision), but its primary prefix marks no known enlistment type,
+                // so it was not made by an intake form and is not a valid enlistment
+                // (stories 13-14). Skip the reminder rather than alert everyone, but
+                // leave one breadcrumb in case it is a genuinely mis-prefixed real
+                // enlistment. No marker is written — a persistent unroutable thread
+                // may re-log hourly, like the add-on's other breadcrumbs.
+                \XF::logError(sprintf(
+                    '[Cav7/EnlistmentReminder] Thread %d is past the deadline with no pickup, but its primary prefix (%d) matches neither enlistment type; skipping the reminder. If this is a real enlistment, check its prefix.',
+                    $threadId, $prefixByThread[$threadId] ?? 0
+                ));
+                continue;
+            }
+
+            // The alert narrows to the clerks who own this thread's type; a BOTH
+            // (misconfig) thread fell back to the union in route(), already logged
+            // above. The note and the marker stay type-agnostic.
+            $alertUserIds = $this->resolveClerkUserIds($route['position_ids']);
+
             // Per-thread guard: one thread that fails to post must not abort the
             // rest of the batch. An un-reminded thread is simply retried next run.
             // The two steps after the note are best-effort and swallow their own
@@ -120,7 +190,7 @@ class QueueReminder
                     // Same success block as the note, before the marker: the note
                     // and the clerk alerts go out together and, once recordReminder
                     // lands, never again (issue #76, per ADR-0001).
-                    $this->alertClerks($threadId, $botUserId, $clerkUserIds);
+                    $this->alertClerks($threadId, $botUserId, $alertUserIds);
                     $this->recordReminder($threadId);
                 }
             }
@@ -129,6 +199,25 @@ class QueueReminder
                 \XF::logException($e, false, '[Cav7/EnlistmentReminder] reminder failed for thread ' . $threadId . ': ');
             }
         }
+    }
+
+    /**
+     * getClerkUserIds() memoized on the position-id list. The pickup union and the
+     * per-type alert sets are the only distinct lists a run resolves (at most
+     * three: standard, re-enlistment, and their union for a misconfigured prefix),
+     * so a queue of any size costs at most three seat queries.
+     *
+     * @param int[] $positionIds
+     * @return int[]
+     */
+    protected function resolveClerkUserIds(array $positionIds): array
+    {
+        $key = implode(',', $positionIds);
+        if (!array_key_exists($key, $this->clerkUserIdCache))
+        {
+            $this->clerkUserIdCache[$key] = $this->getClerkUserIds($positionIds);
+        }
+        return $this->clerkUserIdCache[$key];
     }
 
     /**
@@ -170,9 +259,10 @@ class QueueReminder
     }
 
     /**
-     * Open, visible threads in the queue node, with the OP's post_date. Scoping
-     * to the one node keeps the Completed/Denied siblings out; discussion_open
-     * and discussion_state keep resolved and hidden threads out. Sticky status is
+     * Open, visible threads in the queue node, with the OP's post_date and the
+     * primary prefix_id that decides enlistment type (issue #144). Scoping to the
+     * one node keeps the Completed/Denied siblings out; discussion_open and
+     * discussion_state keep resolved and hidden threads out. Sticky status is
      * deliberately not filtered.
      *
      * @return array<int,array<string,mixed>>
@@ -180,7 +270,7 @@ class QueueReminder
     protected function fetchQueueThreads(int $nodeId): array
     {
         return \XF::db()->fetchAll(
-            'SELECT thread_id, post_date
+            'SELECT thread_id, post_date, prefix_id
                 FROM xf_thread
                 WHERE node_id = ?
                     AND discussion_state = ?
@@ -409,19 +499,21 @@ class QueueReminder
     }
 
     /**
-     * Alert every current processing clerk that this thread is past the deadline
-     * with no pickup, per ADR-0001. Each alert is a direct XenForo notification
-     * (content type thread, custom action enlistment_reminder) that lands in the
-     * clerk's bell and links straight to the application; the core thread alert
-     * handler covers viewability and the one-click through, and the wording is
-     * the public:alert_thread_enlistment_reminder template. The S6 bot is the
-     * sender, matching the visible note, and dependsOnAddOnId ties every alert to
-     * this add-on so uninstalling clears any that are still outstanding.
+     * Alert the processing clerks who own this thread's enlistment type that it is
+     * past the deadline with no pickup, per ADR-0001. Each alert is a direct
+     * XenForo notification (content type thread, custom action enlistment_reminder)
+     * that lands in the clerk's bell and links straight to the application; the
+     * core thread alert handler covers viewability and the one-click through, and
+     * the wording is the public:alert_thread_enlistment_reminder template, which
+     * now also renders the thread's prefix badge so Senior and Lead can tell a
+     * re-enlistment from a standard enlistment straight from the bell. The S6 bot
+     * is the sender, matching the visible note, and dependsOnAddOnId ties every
+     * alert to this add-on so uninstalling clears any that are still outstanding.
      *
-     * The same $clerkUserIds the pickup check resolved is reused — primary and
-     * secondary seat holders alike — so the alert reaches exactly the members
-     * whose reply would have counted as a pickup. alert() (not insertAlert) is
-     * used so a clerk who muted the type in their alert preferences is skipped.
+     * The audience is the per-type set EnlistmentRouting resolved for the thread's
+     * prefix (issue #144), a subset of the pickup union — primary and secondary
+     * seat holders alike. alert() (not insertAlert) is used so a clerk who muted
+     * the type in their alert preferences is skipped.
      *
      * Best-effort: this runs after the note has posted, so a repository blip must
      * be logged, never thrown. If it threw, the caller's catch would skip
@@ -429,7 +521,7 @@ class QueueReminder
      * bad clerk row must not cost the rest their alert either, but alert() already
      * tolerates a missing Option, so a single wrapping guard is enough.
      *
-     * @param int[] $clerkUserIds the resolved clerk seat holders from remind()
+     * @param int[] $clerkUserIds the seat holders to alert for this thread's type
      */
     protected function alertClerks(int $threadId, int $botUserId, array $clerkUserIds): void
     {

@@ -29,12 +29,6 @@
         "version_string": "1.0.0",
         "hash": "f7f16f2772d95dce5427110b883d082b"
     },
-    "option.cav7ERClerkPositionIds.txt": {
-        "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "46b519d570074ba22eb13c10f98a8758"
-    },
     "option.cav7ERDeadlineHours.txt": {
         "global_cache": false,
         "version_id": 1000070,
@@ -47,17 +41,35 @@
         "version_string": "1.0.0",
         "hash": "3d2acdeaa5113fa73ca70c94ec85bb3b"
     },
+    "option.cav7ERReenlistClerkPositionIds.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "c461d9d04ee2c32318bdccf8903eef0c"
+    },
+    "option.cav7ERReenlistPrefixIds.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "947c63f40480eb9cb2139c93c61f7192"
+    },
+    "option.cav7ERStandardClerkPositionIds.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "39ce0bcbf4470d20261edf0c48c54817"
+    },
+    "option.cav7ERStandardPrefixIds.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "c52e11b9a1d68eee978c6610f1a94207"
+    },
     "option_explain.cav7ERBotUserId.txt": {
         "global_cache": false,
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "47210c011caf845e6ae2fa949f54cc9c"
-    },
-    "option_explain.cav7ERClerkPositionIds.txt": {
-        "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "e138f2dd60d341aa1c5b66e8ef317ece"
     },
     "option_explain.cav7ERDeadlineHours.txt": {
         "global_cache": false,
@@ -70,6 +82,30 @@
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "b2b88100dc3ffcba89fb8eeec6548651"
+    },
+    "option_explain.cav7ERReenlistClerkPositionIds.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "900467cf5d4fcf537b57aa08f9922e44"
+    },
+    "option_explain.cav7ERReenlistPrefixIds.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "a4128530fc0f20dee1cf88a9d971d964"
+    },
+    "option_explain.cav7ERStandardClerkPositionIds.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "9f05fb7c59bae6b7514e5ef1fc520b69"
+    },
+    "option_explain.cav7ERStandardPrefixIds.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "efc6620f7fde4701a090719700e15891"
     },
     "option_group.cav7EnlistmentReminder.txt": {
         "global_cache": false,

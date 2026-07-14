@@ -4,18 +4,30 @@
     <default_value>598</default_value>
     <relation group_id="cav7EnlistmentReminder" display_order="20"/>
   </option>
-  <option option_id="cav7ERClerkPositionIds" edit_format="textbox" data_type="string" advanced="0">
-    <default_value>579,580,751,960,1012</default_value>
-    <relation group_id="cav7EnlistmentReminder" display_order="30"/>
-  </option>
   <option option_id="cav7ERDeadlineHours" edit_format="spinbox" data_type="unsigned_integer" advanced="0">
     <default_value>24</default_value>
     <edit_format_params>min=1
 step=1</edit_format_params>
-    <relation group_id="cav7EnlistmentReminder" display_order="40"/>
+    <relation group_id="cav7EnlistmentReminder" display_order="70"/>
   </option>
   <option option_id="cav7ERQueueNodeId" edit_format="textbox" data_type="integer" advanced="0">
     <default_value>325</default_value>
     <relation group_id="cav7EnlistmentReminder" display_order="10"/>
+  </option>
+  <option option_id="cav7ERReenlistClerkPositionIds" edit_format="textbox" data_type="string" advanced="0">
+    <default_value>579,960,1012</default_value>
+    <relation group_id="cav7EnlistmentReminder" display_order="60"/>
+  </option>
+  <option option_id="cav7ERReenlistPrefixIds" edit_format="textbox" data_type="string" advanced="0">
+    <default_value>58</default_value>
+    <relation group_id="cav7EnlistmentReminder" display_order="50"/>
+  </option>
+  <option option_id="cav7ERStandardClerkPositionIds" edit_format="textbox" data_type="string" advanced="0">
+    <default_value>579,580,751,1012</default_value>
+    <relation group_id="cav7EnlistmentReminder" display_order="40"/>
+  </option>
+  <option option_id="cav7ERStandardPrefixIds" edit_format="textbox" data_type="string" advanced="0">
+    <default_value>57</default_value>
+    <relation group_id="cav7EnlistmentReminder" display_order="30"/>
   </option>
 </options>
