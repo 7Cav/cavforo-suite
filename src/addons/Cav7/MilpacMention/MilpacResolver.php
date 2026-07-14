@@ -800,7 +800,7 @@ class MilpacResolver
     public static function buildTypedMilpacLinks(array $cores, callable $ownerLookup, array &$cache): array
     {
         // Collect the cores not yet resolved, keyed lower-case so a repeat shares one slot.
-        $uncached = []; // lower-cased key => the core to query (first-seen casing)
+        $uncached = []; // lower-cased key => the core to query (last-seen casing wins on overwrite; the DB lookup folds case, so which casing is queried is immaterial)
         foreach ($cores as $core) {
             $core = (string) $core; // a purely-numeric core (e.g. "5") arrives as an int key
             $key = self::foldUsernameKey($core);

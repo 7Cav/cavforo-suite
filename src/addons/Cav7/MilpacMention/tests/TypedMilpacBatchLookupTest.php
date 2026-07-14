@@ -63,12 +63,12 @@ function stubOwnerLookup(array $holders, array &$queries): callable
 
         $byLower = [];
         foreach ($holders as $stored => $shaped) {
-            $byLower[strtolower((string) $stored)] = [(string) $stored, $shaped];
+            $byLower[mb_strtolower((string) $stored, 'UTF-8')] = [(string) $stored, $shaped];
         }
 
         $map = [];
         foreach ($usernames as $username) {
-            $hit = $byLower[strtolower((string) $username)] ?? null;
+            $hit = $byLower[mb_strtolower((string) $username, 'UTF-8')] ?? null;
             if ($hit !== null) {
                 [$stored, $shaped] = $hit;
                 $map[$stored] = $shaped; // keyed by the STORED casing, exactly like the finder
@@ -221,6 +221,55 @@ $none = MilpacResolver::buildTypedMilpacLinks([], stubOwnerLookup($holders, $que
 check(
     'an empty core set never queries the lookup and returns an empty map',
     count($queries) === 0 && $none === []
+);
+
+// ---------------------------------------------------------------------------
+// (e) Multibyte case-fold pin (#132). foldUsernameKey lower-cases with mb_strtolower(…,
+// 'UTF-8'), not plain strtolower, so a non-ASCII username folds correctly across case. A
+// holder stored lower-case as the accented "café.z" is typed in the OPPOSITE case
+// "CAFÉ.Z": mb_strtolower folds the "É" to "é", so the typed core re-keys onto the stored
+// holder and resolves. Plain ASCII strtolower only lowercases the A–Z bytes and leaves the
+// "É" untouched, so the fold would miss and the link would stay literal — this accented
+// case distinguishes the two, so a strtolower regression fails here while the current
+// mb_strtolower code passes.
+// ---------------------------------------------------------------------------
+$cafe = ['url' => 'https://board.example/rosters/profile/11/', 'text' => 'Specialist café.z'];
+$queries = [];
+$cache = [];
+$accentLinks = MilpacResolver::buildTypedMilpacLinks(
+    ['CAFÉ.Z'],                                     // typed with an uppercase, accented É
+    stubOwnerLookup(['café.z' => $cafe], $queries), // holder stored lower-case, with é
+    $cache
+);
+check(
+    'a multibyte core typed in the opposite case ("CAFÉ.Z") folds via mb_strtolower and resolves to the stored "café.z" holder',
+    $accentLinks === ['CAFÉ.Z' => $cafe],
+    var_export($accentLinks, true)
+);
+
+// ---------------------------------------------------------------------------
+// (f) Two DIFFERENT casings of the SAME holder in one batch (#132). "Markel.Z" and
+// "markel.z" fold to one key, so they share one cache slot and one IN(…) entry — a single
+// query carrying a single deduped core — yet the returned map is keyed by the EXACT typed
+// core, so BOTH casings resolve. The one-query test above only ever repeats a core in the
+// SAME casing, so this pins the mixed-casing dedup it never exercised.
+// ---------------------------------------------------------------------------
+$queries = [];
+$cache = [];
+$mixed = MilpacResolver::buildTypedMilpacLinks(
+    ['Markel.Z', 'markel.z'],
+    stubOwnerLookup($holders, $queries),
+    $cache
+);
+check(
+    'two casings of one holder issue exactly one query carrying exactly one deduped core',
+    count($queries) === 1 && ($queries[0] ?? null) === ['markel.z'],
+    count($queries) . ' quer(y/ies); first = ' . (isset($queries[0]) ? var_export($queries[0], true) : '(none)')
+);
+check(
+    'both exact-core keys "Markel.Z" and "markel.z" resolve to the same holder link',
+    $mixed === ['Markel.Z' => $markel, 'markel.z' => $markel],
+    var_export($mixed, true)
 );
 
 if ($failures > 0) {
