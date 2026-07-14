@@ -83,6 +83,29 @@ function methodBody(string $src, string $name): string
     return $body;
 }
 
+/**
+ * A skip branch's source, from a start marker up to its first `continue;`. Both
+ * #144 skip branches (unrecognized prefix, empty per-type audience) are a single
+ * `if (...) { ...logError(...); continue; }` with no nested braces, so slicing to
+ * the first `continue;` after the marker captures exactly that branch body. Used
+ * to assert the branch writes nothing: a regression that slipped a
+ * postReminderNote/recordReminder in before the `continue` would mark a real
+ * enlistment done with no clerk alerted — dropping its alert for good — yet still
+ * satisfy a looser "a continue exists somewhere after the branch" pin.
+ */
+function branchToContinue(string $src, string $startMarker): string
+{
+    $start = strpos($src, $startMarker);
+    if ($start === false) {
+        return '';
+    }
+    $end = strpos($src, 'continue;', $start);
+    if ($end === false) {
+        return '';
+    }
+    return substr($src, $start, $end - $start);
+}
+
 // --- the hourly cron entry is registered ----------------------------------
 $cronXml = @simplexml_load_file("$root/_data/cron.xml");
 check('_data/cron.xml could be read', $cronXml !== false);
@@ -677,6 +700,21 @@ check(
     ),
     'a junk or mis-prefixed thread must be logged and skipped only if it would otherwise have been reminded'
 );
+// The pin above matches even if a note-post or marker-write were slipped into the
+// branch before its `continue` (the `.*?` swallows it). Slice the branch body and
+// assert it writes nothing: noting or marking an unrecognized thread would mark a
+// mis-prefixed real enlistment done and drop its alert for good (stories 13-14),
+// the exact failure the skip exists to prevent.
+$unrecognizedSkip = branchToContinue($worker, 'EnlistmentRouting::TYPE_UNRECOGNIZED');
+check(
+    'the unrecognized-prefix skip branch logs but never notes, alerts, or marks before it continues',
+    $unrecognizedSkip !== ''
+        && str_contains($unrecognizedSkip, 'logError')
+        && !str_contains($unrecognizedSkip, 'postReminderNote')
+        && !str_contains($unrecognizedSkip, 'recordReminder')
+        && !str_contains($unrecognizedSkip, 'alertClerks'),
+    'a postReminderNote/recordReminder/alertClerks inside this branch would mark a mis-prefixed enlistment done and never alert a clerk, yet still pass the looser ordering pin above'
+);
 
 // A RECOGNIZED thread whose per-type clerk positions resolve to no seated holder
 // (a blank per-type option, or an all-vacant seat set, while the OTHER type still
@@ -692,6 +730,21 @@ check(
         $worker
     ),
     'an empty per-type audience must not post a note or write a marker; it must log and retry'
+);
+// As with the unrecognized branch, the pin above tolerates a write slipped in
+// before the `continue`. Slice the branch body and assert it neither notes nor
+// marks: doing either with no clerk resolved would post the applicant note and
+// record the marker with nobody alerted — silently dropping a real enlistment's
+// alert, the very failure this skip guards against.
+$emptyAudienceSkip = branchToContinue($worker, 'if (!$alertUserIds)');
+check(
+    'the empty-audience skip branch logs but never notes, alerts, or marks before it continues',
+    $emptyAudienceSkip !== ''
+        && str_contains($emptyAudienceSkip, 'logError')
+        && !str_contains($emptyAudienceSkip, 'postReminderNote')
+        && !str_contains($emptyAudienceSkip, 'recordReminder')
+        && !str_contains($emptyAudienceSkip, 'alertClerks'),
+    'a postReminderNote/recordReminder/alertClerks inside this branch would silently mark the thread done with no clerk alerted, yet still pass the looser structural pin above'
 );
 
 // A prefix listed under BOTH type sets is a config error: it fail-safes to the
