@@ -759,4 +759,94 @@ class MilpacResolver
 
         return $map;
     }
+
+    /**
+     * Build the typed-$name links map for one message's distinct token cores, querying the
+     * injected owner lookup ONCE for only the cores not already resolved and caching every
+     * queried core — hit or miss — so the whole message costs one query and a second pass on
+     * the same $cache costs none (issue #132). This is the pure half of the MentionFormatter
+     * adapter: the XenForo-coupled extension supplies $ownerLookup as a closure over the live
+     * finder (findMilpacOwnersByUsernames) and its own per-message $cache, so the re-keying,
+     * the hit-and-miss caching, the numeric-core handling and the link-building are all
+     * unit-testable in plain PHP with a stub lookup and no live XenForo. The MentionFormatter
+     * method it replaced ran this exact logic against \XF::finder directly, so production
+     * output and the one-query-per-message guarantee are unchanged.
+     *
+     * Four load-bearing behaviours (each pinned by TypedMilpacBatchLookupTest):
+     *
+     *   1. Re-keying — usernames match case-insensitively at the DB collation (as @'s lookup
+     *      does), so the cache and the $ownerLookup result are keyed on the lower-cased core.
+     *      "$Markel.Z" and "$markel.z" share one cache slot and one IN(…) entry, and a holder
+     *      the finder returns in its stored casing lines up with the typed core regardless of
+     *      case.
+     *   2. Hit-and-miss caching — every queried core is cached, holder (the shaped link) or
+     *      not (null), so a $name repeated in a message never re-queries and a second
+     *      getMentionsBbCode call on the per-message formatter adds no query. The cache dies
+     *      with the per-message formatter, so nothing leaks across messages.
+     *   3. Numeric-core handling — a purely-numeric core (e.g. the "5" of "$5") arrives from
+     *      typedMilpacCores as an INT array key; it is cast to string before the lookup and in
+     *      the links map, so a member literally named "5" still resolves.
+     *   4. Link-building — the returned map is keyed by the EXACT core string the pure rewrite
+     *      (resolveTypedMilpacs) looks up, holders only; a non-holder core is absent, so its
+     *      typed $username stays literal.
+     *
+     * @param list<array-key> $cores       the distinct token cores typedMilpacCores collected
+     * @param callable        $ownerLookup fn(list<string> $usernames): array<string, array{url:string, text:string}>
+     *                                     — the batched finder call, keyed by the STORED username casing
+     * @param array<string, array{url:string, text:string}|null> $cache per-message cache, lower-cased core => shaped link or null (by ref)
+     *
+     * @return array<string, array{url:string, text:string}> exact-core => shaped link, holders only
+     */
+    public static function buildTypedMilpacLinks(array $cores, callable $ownerLookup, array &$cache): array
+    {
+        // Collect the cores not yet resolved, keyed lower-case so a repeat shares one slot.
+        $uncached = []; // lower-cased key => the core to query (last-seen casing wins on overwrite; the DB lookup folds case, so which casing is queried is immaterial)
+        foreach ($cores as $core) {
+            $core = (string) $core; // a purely-numeric core (e.g. "5") arrives as an int key
+            $key = self::foldUsernameKey($core);
+            if (!array_key_exists($key, $cache)) {
+                $uncached[$key] = $core;
+            }
+        }
+
+        if ($uncached) {
+            $found = $ownerLookup(array_values($uncached));
+
+            // The lookup keys its map by the stored username casing; re-key to lower-case so a
+            // typed core matches its holder regardless of case.
+            $foundByKey = [];
+            foreach ($found as $username => $shaped) {
+                $foundByKey[self::foldUsernameKey((string) $username)] = $shaped;
+            }
+
+            // Cache every queried core — hit or miss (null) — so a repeat never re-queries.
+            foreach ($uncached as $key => $core) {
+                $cache[$key] = $foundByKey[$key] ?? null;
+            }
+        }
+
+        // Build the exact-core => link map the pure pass consumes: only cores that resolved.
+        $links = [];
+        foreach ($cores as $core) {
+            $core = (string) $core;
+            $shaped = $cache[self::foldUsernameKey($core)] ?? null;
+            if ($shaped !== null) {
+                $links[$core] = $shaped;
+            }
+        }
+
+        return $links;
+    }
+
+    /**
+     * Lower-case a username to its case-insensitive cache/lookup key (issue #132). Pure
+     * mb_strtolower(…, 'UTF-8') — byte-for-byte what XF\Util\Str::strtolower does (it IS
+     * mb_strtolower with the UTF-8 charset) — so the fold stays out of XF\Util\Str, keeping
+     * this resolver loadable and unit-testable under bare php, and multibyte-consistent with
+     * isFindQueryLongEnough's mb_strlen(…, 'UTF-8').
+     */
+    private static function foldUsernameKey(string $username): string
+    {
+        return mb_strtolower($username, 'UTF-8');
+    }
 }
