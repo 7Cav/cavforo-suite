@@ -139,6 +139,30 @@ check(
     $stringIdRouting->pickupPositionIds() === [579, 580, 960]
 );
 
+// --- a recognized type whose clerk set is empty ----------------------------
+// A per-type clerk list left blank (or drifted to all-vacant seats) must still
+// report its TYPE with an empty audience — NOT fall through to unrecognized. The
+// caller leans on that distinction: unrecognized means "not an enlistment, skip
+// quietly", whereas a recognized type with no one to alert is a misconfig the
+// caller logs and retries. route() surfaces the emptiness; handling it is the
+// caller's job (QueueReminder's recognized-but-empty guard).
+$emptyStandardClerks = new EnlistmentRouting([57], [], [58], [579, 960, 1012]);
+check(
+    'a recognized prefix whose type has no clerk positions still reports the type, with an empty audience',
+    $emptyStandardClerks->route(57) === ['type' => EnlistmentRouting::TYPE_STANDARD, 'position_ids' => []]
+);
+check(
+    'the other type still routes normally when only one type has no clerks',
+    $emptyStandardClerks->route(58) === ['type' => EnlistmentRouting::TYPE_REENLIST, 'position_ids' => [579, 960, 1012]]
+);
+// Symmetric case: a blank re-enlistment clerk set reports TYPE_REENLIST with an
+// empty audience just the same, so the caller's guard covers both types alike.
+$emptyReenlistClerks = new EnlistmentRouting([57], [579, 580, 751, 1012], [58], []);
+check(
+    'a recognized Re-Enlist prefix whose type has no clerk positions still reports the type, with an empty audience',
+    $emptyReenlistClerks->route(58) === ['type' => EnlistmentRouting::TYPE_REENLIST, 'position_ids' => []]
+);
+
 // A blank/junk config resolves nothing and routes everything to unrecognized,
 // which the caller reads as "skip" — mirroring PositionIdList dropping junk.
 $emptyRouting = new EnlistmentRouting([], [], [], []);

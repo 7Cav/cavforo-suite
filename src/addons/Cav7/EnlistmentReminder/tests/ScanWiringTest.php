@@ -666,14 +666,32 @@ check(
 // An unrecognized thread (prefix in neither type set) is skipped: it is NOT noted,
 // NOT alerted and NOT marked, but a breadcrumb is logged because it reached the
 // remind list, i.e. it would otherwise have been reminded (stories 13-14). The
-// TYPE_UNRECOGNIZED branch must `continue` before postReminderNote.
+// TYPE_UNRECOGNIZED branch must `continue` before postReminderNote — and it must
+// sit AFTER selectThreadsToRemind, so a within-deadline unroutable thread stays
+// silent (story 15) rather than log-spamming the whole queue every hour.
 check(
-    'an unrecognized-prefix thread is skipped with a breadcrumb, before any note',
+    'an unrecognized-prefix thread is skipped with a breadcrumb, after the remind decision and before any note',
     (bool) preg_match(
-        '/TYPE_UNRECOGNIZED\s*\)\s*\{.*?logError\(.*?\bcontinue;/s',
+        '/selectThreadsToRemind\(.*?TYPE_UNRECOGNIZED\s*\)\s*\{.*?logError\(.*?\bcontinue;/s',
         $worker
     ),
-    'a junk or mis-prefixed thread must be logged and skipped, never mass-alerted or noted'
+    'a junk or mis-prefixed thread must be logged and skipped only if it would otherwise have been reminded'
+);
+
+// A RECOGNIZED thread whose per-type clerk positions resolve to no seated holder
+// (a blank per-type option, or an all-vacant seat set, while the OTHER type still
+// has holders so the union guard above passed) must be skipped like an
+// unrecognized one — logged and left UNMARKED so it retries once the config is
+// fixed or a seat is filled. Silently posting the note and recording the marker
+// with no clerk alerted would drop a real enlistment's alert for good. Pin: right
+// after resolving $alertUserIds, an empty set logs and `continue`s before the note.
+check(
+    'a recognized thread that resolves no clerk to alert is logged and skipped, not silently noted+marked',
+    (bool) preg_match(
+        '/\$alertUserIds\s*=\s*\$this->resolveClerkUserIds\([^;]*;\s*if\s*\(\s*!\$alertUserIds\s*\)\s*\{.*?logError\(.*?\bcontinue;/s',
+        $worker
+    ),
+    'an empty per-type audience must not post a note or write a marker; it must log and retry'
 );
 
 // A prefix listed under BOTH type sets is a config error: it fail-safes to the
@@ -681,7 +699,7 @@ check(
 check(
     'an overlapping-prefix config is surfaced with a warning',
     str_contains($worker, 'overlappingPrefixIds()')
-        && (bool) preg_match('/overlapPrefixIds\b.*?logError\(/s', $worker),
+        && (bool) preg_match('/if\s*\(\s*\$overlapPrefixIds\s*\)\s*\{\s*[^}]*?logError\(/s', $worker),
     'an ambiguous prefix must never silently drop a responsible clerk'
 );
 

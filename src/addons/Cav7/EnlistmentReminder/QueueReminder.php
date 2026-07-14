@@ -20,7 +20,10 @@ namespace Cav7\EnlistmentReminder;
  * the alert audience narrows — pickup still resolves the union of both sets, so a
  * reply from any of the five seats clears the reminder as before. A thread whose
  * prefix marks no known type is not a valid enlistment: it is skipped, with one
- * log breadcrumb if it would otherwise have been reminded.
+ * log breadcrumb if it would otherwise have been reminded. A recognized thread
+ * whose type resolves to no seated clerk (a blank or drifted per-type option) is
+ * skipped the same way — logged and left unmarked so it retries — rather than
+ * noted-and-marked with no one alerted.
  */
 class QueueReminder
 {
@@ -176,6 +179,30 @@ class QueueReminder
             // (misconfig) thread fell back to the union in route(), already logged
             // above. The note and the marker stay type-agnostic.
             $alertUserIds = $this->resolveClerkUserIds($route['position_ids']);
+
+            if (!$alertUserIds)
+            {
+                // Recognized type, but its clerk positions resolve to no seated
+                // holder — a blank per-type option, or an all-vacant seat set,
+                // while the OTHER type still has holders so the union guard above
+                // passed. Skip like an unrecognized thread: log and DON'T write the
+                // marker, so it re-reminds once the option is fixed or a seat is
+                // filled. Posting the note and marking here would silently drop a
+                // real enlistment's alert for good — the very failure the type
+                // split exists to prevent. A BOTH thread cannot reach this: its
+                // audience is the pickup union, which the guard above already
+                // proved non-empty. No note posts, matching the unrecognized skip.
+                \XF::logError(sprintf(
+                    '[Cav7/EnlistmentReminder] Thread %d (prefix %d) is a recognized %s enlistment past the deadline with no pickup, but its clerk positions resolve to no seated holder; skipping without marking so it retries. Check %s.',
+                    $threadId,
+                    $prefixByThread[$threadId] ?? 0,
+                    $route['type'],
+                    $route['type'] === EnlistmentRouting::TYPE_REENLIST
+                        ? 'cav7ERReenlistClerkPositionIds'
+                        : 'cav7ERStandardClerkPositionIds'
+                ));
+                continue;
+            }
 
             // Per-thread guard: one thread that fails to post must not abort the
             // rest of the batch. An un-reminded thread is simply retried next run.

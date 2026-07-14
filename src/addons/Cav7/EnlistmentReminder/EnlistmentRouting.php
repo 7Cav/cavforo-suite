@@ -4,7 +4,7 @@ namespace Cav7\EnlistmentReminder;
 
 /**
  * Routes an un-actioned queue thread to the Processing Clerks who own its
- * enlistment type (issue #144). It is the second pure seam of the add-on — plain
+ * enlistment type (issue #144). It is another pure seam of the add-on — plain
  * PHP with no XenForo dependency, a twin of PositionIdList and ReminderDecision —
  * so the split of the alert audience can be exercised for real in plain PHP
  * rather than pinned by shape.
@@ -107,10 +107,10 @@ final class EnlistmentRouting
     /**
      * Given a thread's primary prefix id, the clerk positions to alert.
      *
-     * @return array{type: string, position_ids: int[]} type is one of the TYPE_*
-     *   constants; position_ids is the set to alert — the standard set, the
-     *   re-enlistment set, the union of both for a prefix in both sets, or [] when
-     *   the prefix is unrecognized.
+     * @return array{type: 'standard'|'reenlist'|'both'|'unrecognized', position_ids: int[]}
+     *   type is one of the TYPE_* constants; position_ids is the set to alert —
+     *   the standard set, the re-enlistment set, the union of both for a prefix in
+     *   both sets, or [] when the prefix is unrecognized.
      */
     public function route(int $prefixId): array
     {
