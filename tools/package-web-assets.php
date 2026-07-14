@@ -271,6 +271,10 @@ if ($errors) {
     exit(1);
 }
 
-echo "OK web assets: $addonId "
-    . "($copied file(s) copied, $minified minified, $checked xf:js reference(s) checked)\n";
+// Success diagnostic goes to STDERR, matching the FAIL path above. package-addon.sh
+// runs this tool mid-pipeline and reserves its own stdout for the zip path, which
+// the release workflow captures with zip=$(...); a line on stdout here corrupts
+// that capture and breaks the build.
+fwrite(STDERR, "OK web assets: $addonId "
+    . "($copied file(s) copied, $minified minified, $checked xf:js reference(s) checked)\n");
 exit(0);
