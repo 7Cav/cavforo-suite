@@ -98,7 +98,7 @@ card. The design is recorded in
 |---|---|
 | Addon ID | `Cav7/MilpacTooltip` |
 | Namespace | `Cav7\MilpacTooltip` |
-| Version | 1.0.0 (`1000070`) |
+| Version | 1.1.0 (`1010070`) |
 | Developer | Cav7 |
 
 ## License
