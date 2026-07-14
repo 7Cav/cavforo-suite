@@ -169,6 +169,59 @@ check(
     'getRenderedLink runs on every link of every render; a finder/DB fault must not break the post render'
 );
 
+// The batched pre-scan (issue #129): a message's roster-profile relation_ids are
+// collected and resolved in ONE query at the message-level render boundary
+// (setupRender, called once per renderAst before any per-link getRenderedLink),
+// not one finder per link. This is the vendor-coupled half — the seam and the
+// parent hand-off need a live XenForo to run — so it is pinned here; the pure
+// collection/priming is exercised for real in LinkStampTest.
+check(
+    'it overrides setupRender with the installed protected (array $ast, array $options) signature',
+    (bool) preg_match('/protected\s+function\s+setupRender\s*\(\s*array\s+\$ast\s*,\s*array\s+\$options\s*\)/', $htmlSrc),
+    'setupRender is the once-per-message boundary; a mismatched signature would fatal on every render'
+);
+check(
+    'setupRender hands off to the parent first, preserving the vendor per-message reset',
+    (bool) preg_match('/parent::setupRender\(\s*\$ast\s*,\s*\$options\s*\)/', $htmlSrc),
+    'the vendor setupRender resets trimAfter/anchorOccurrences; dropping the parent call breaks anchor handling'
+);
+check(
+    'setupRender pre-scans the message and batch-resolves the relation_ids in one query',
+    str_contains($htmlSrc, 'RosterLink::relationIdsFromText')
+        && str_contains($htmlSrc, 'RosterLink::resolveUserIds')
+        && str_contains($htmlSrc, 'RosterLink::primeUserIdMap'),
+    'a post with N distinct roster links must resolve in one batched WHERE relation_id IN (...), not N per-link finders'
+);
+check(
+    'setupRender stores the primed map on the instance memo the reader keys on',
+    (bool) preg_match('/\$this->milpacUserIds\s*=\s*RosterLink::primeUserIdMap\(/', $htmlSrc),
+    'the batch pays off only if its result is assigned to $this->milpacUserIds; computing it into a local (or a renamed property) leaves the memo empty and every link falls back per-link — N+1 queries, worse than pre-#129'
+);
+check(
+    'the batch build is contained: a \Throwable during pre-scan/resolve is caught and logged, never rethrown',
+    (bool) preg_match('/catch\s*\(\s*\\\\Throwable\b[^)]*\)\s*\{[^}]*logException\(/s', $htmlSrc),
+    'setupRender runs on every message render; a finder/DB fault while batching must fall back to per-link, not break the render'
+);
+
+// The CONSUMING half of the same seam (issue #129): setupRender only pays off if
+// getRenderedLink READS the batched memo instead of querying per link. Pin the reader,
+// not just the producer — the recognition/resolution/stamping check above still passes
+// if getRenderedLink calls RosterLink::resolveUserId($relationId) directly (the finder is
+// the memo's own fallback), which would defeat the batch AND cost one finder per link ON
+// TOP of setupRender's query (worse than pre-#129). These two fail if the reader is removed.
+check(
+    'getRenderedLink resolves each link through the batched-memo reader, not a direct per-link finder',
+    str_contains($htmlSrc, '$this->resolveMilpacUserId('),
+    'a getRenderedLink that calls RosterLink::resolveUserId($relationId) itself defeats the #129 batch — one finder per link plus the setupRender query'
+);
+check(
+    'resolveMilpacUserId reads the instance memo and falls back to the per-link finder on a miss',
+    (bool) preg_match('/function\s+resolveMilpacUserId\s*\(/', $htmlSrc)
+        && (bool) preg_match('/array_key_exists\(\s*\$\w+\s*,\s*\$this->milpacUserIds\b/', $htmlSrc)
+        && str_contains($htmlSrc, 'RosterLink::resolveUserId('),
+    'the reader must key on $this->milpacUserIds (a hit, even user_id 0, returns with no query) and fall back to the un-primed finder only when a link was never primed'
+);
+
 // =========================================================================
 // the controller extension — answers tooltip=1 with the member_tooltip (§ ADR 0001)
 // =========================================================================

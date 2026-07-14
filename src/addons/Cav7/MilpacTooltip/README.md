@@ -46,7 +46,12 @@ member's whole forum card, not just the mini-milpac.
 `[URL]` anchor passes through, so an extension there recognises a
 `/rosters/profile/<relation_id>/` link, resolves its `relation_id` to the
 member's `user_id`, and stamps the anchor with `data-xf-init="member-tooltip"`
-so XenForo's own tooltip handler drives the hover. The stamped anchor points
+so XenForo's own tooltip handler drives the hover. Those lookups are batched per
+post: the extension collects a message's roster-profile relation_ids once, at
+the message-level render boundary (`setupRender`) before any anchor is stamped,
+and resolves them in a single query, so a post with many roster links, or the
+same milpac linked repeatedly, costs one lookup rather than one per link. The
+stamped anchor points
 XenForo at the roster URL with `tooltip=1`; an extension of
 `NF\Rosters\Pub\Controller\Roster::actionProfile` answers that request by
 resolving to the member and handing off to `MemberController::actionTooltip`,

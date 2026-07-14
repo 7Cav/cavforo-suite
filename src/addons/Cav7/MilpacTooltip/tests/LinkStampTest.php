@@ -385,6 +385,145 @@ check(
     })()
 );
 
+// =========================================================================
+// batch pre-scan — relationIdsFromText collects a message's relation_ids once
+// =========================================================================
+// The render-time roster lookup is batched (issue #129): before per-link
+// stamping, the renderer collects every roster-profile relation_id in the whole
+// message and resolves them in ONE query, instead of one finder per link.
+// relationIdsFromText is the pure collector — the same #/rosters/profile/(\d+)#
+// recognition as relationIdFromUrl, applied to the reconstructed message text,
+// de-duplicated and in first-seen order. It mirrors the SHAPE of the sibling
+// Cav7\MilpacMention\MilpacResolver::extractRelationIds (ADR 0002: shape copied,
+// not shared). resolveUserIds (the live batched finder) is NOT pinned here — it
+// runs a finder and is integration-verified against the dev stack, exactly as
+// resolveUserId is.
+
+// A single relative link in prose is collected.
+check(
+    'a message with one relative /rosters/profile/42/ yields [42]',
+    RosterLink::relationIdsFromText('check /rosters/profile/42/ out') === [42]
+);
+
+// A named [URL=...] href is collected (the 86%-of-links shape).
+check(
+    "a named [URL='.../rosters/profile/7/'] link yields [7]",
+    RosterLink::relationIdsFromText("[URL='https://board.example/rosters/profile/7/']Cpl Doe[/URL]") === [7]
+);
+
+// A canonical -slug absolute link: the int is captured, the slug ignored.
+check(
+    'a canonical -slug https://board/rosters/profile/42-grayson-j/ yields [42]',
+    RosterLink::relationIdsFromText('https://board.example/rosters/profile/42-grayson-j/') === [42]
+);
+
+// Several distinct links in one message, mixed shapes, are collected in
+// first-seen order — the set the one batched query resolves.
+check(
+    'a message with distinct links yields them in first-seen order',
+    RosterLink::relationIdsFromText(
+        "see [URL='/rosters/profile/42/']A[/URL] and /rosters/profile/7/ and "
+        . 'https://board.example/rosters/profile/13-doe/'
+    ) === [42, 7, 13]
+);
+
+// THE key #129 acceptance: repeated links to the SAME milpac collapse to one
+// relation_id, so a post that links one member five times still costs one row
+// in the batch (no per-link, no per-repeat query).
+check(
+    'repeated links to the same milpac collapse to a single relation_id',
+    RosterLink::relationIdsFromText(
+        '/rosters/profile/42/ then again /rosters/profile/42-slug/ '
+        . "and once more [URL='https://board.example/rosters/profile/42/']x[/URL]"
+    ) === [42]
+);
+
+// De-dup keeps FIRST-seen order across a repeat: 42 seen first stays first even
+// though it recurs after 7.
+check(
+    'de-dup preserves first-seen order across a later repeat',
+    RosterLink::relationIdsFromText(
+        '/rosters/profile/42/ /rosters/profile/7/ /rosters/profile/42/'
+    ) === [42, 7]
+);
+
+// relation_id 0 does not exist, so /rosters/profile/0/ contributes nothing.
+check(
+    'a /rosters/profile/0/ link contributes no relation_id',
+    RosterLink::relationIdsFromText('/rosters/profile/0/ and /rosters/profile/9/') === [9]
+);
+
+// Non-profile roster routes and unrelated links are not collected.
+check(
+    'non-profile roster routes and unrelated links yield nothing',
+    RosterLink::relationIdsFromText(
+        'a /rosters/positions/5/ listing, a /rosters/profiles/5/ plural, and /threads/123/'
+    ) === []
+);
+
+// A message with no roster links at all yields the empty set (no batch query).
+check(
+    'a message with no roster links yields the empty set',
+    RosterLink::relationIdsFromText('just some prose with no links') === []
+);
+
+// The collector is host-agnostic like the per-link recogniser (the same regex):
+// an off-host link is still collected. The same-origin decision is the SEPARATE
+// isSameBoardLink gate applied per link at stamp time (issue #126), not here — a
+// foreign link resolved into the batch is simply never stamped downstream.
+check(
+    'an off-host roster link is still collected (recognition stays host-agnostic)',
+    RosterLink::relationIdsFromText('https://evil.example/rosters/profile/42/') === [42]
+);
+
+// =========================================================================
+// batch priming — primeUserIdMap fills the request-scoped memo, 0 for no-row
+// =========================================================================
+// The batched finder (resolveUserIds) returns [relation_id => user_id] only for
+// relation_ids that HAVE a roster row. primeUserIdMap widens that to the full
+// pre-scanned set, defaulting a missing (deleted / invalid) relation_id to 0.
+// The per-link path then reads the memo by array_key_exists: a relation_id in
+// the map (even at 0) was looked up in the one batch and never re-queried, so a
+// post with a deleted milpac link still costs exactly one query.
+
+// Resolved ids keep their user_id; a scanned id with no row is filled to 0.
+check(
+    'primeUserIdMap fills a no-row relation_id to 0 and keeps the resolved ones',
+    RosterLink::primeUserIdMap([42, 7, 99], [42 => 100, 7 => 250]) === [42 => 100, 7 => 250, 99 => 0]
+);
+
+// A fully-resolved set is passed through unchanged.
+check(
+    'primeUserIdMap passes a fully-resolved set through unchanged',
+    RosterLink::primeUserIdMap([42, 7], [42 => 100, 7 => 250]) === [42 => 100, 7 => 250]
+);
+
+// The map covers every scanned relation_id, so getRenderedLink finds each by key.
+check(
+    'primeUserIdMap keys exactly the scanned relation_ids',
+    array_keys(RosterLink::primeUserIdMap([42, 7, 99], [42 => 100])) === [42, 7, 99]
+);
+
+// An empty scan yields an empty map (no links => no batch => nothing to prime).
+check(
+    'primeUserIdMap of an empty scan is the empty map',
+    RosterLink::primeUserIdMap([], []) === []
+);
+
+// Defensive: a resolved entry for a relation_id NOT in the scanned set is ignored
+// (the map is keyed by what was scanned, never by stray finder output).
+check(
+    'primeUserIdMap ignores a resolved id that was not scanned',
+    RosterLink::primeUserIdMap([42], [42 => 100, 99 => 300]) === [42 => 100]
+);
+
+// Defensive: an explicit 0 in the resolved map (a row whose user_id is 0) stays 0
+// and is not mistaken for "no row" — either way the link is left unstamped.
+check(
+    'primeUserIdMap keeps an explicit resolved 0 as 0',
+    RosterLink::primeUserIdMap([42], [42 => 0]) === [42 => 0]
+);
+
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
     exit(1);
