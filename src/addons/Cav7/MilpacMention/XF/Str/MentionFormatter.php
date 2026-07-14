@@ -3,7 +3,6 @@
 namespace Cav7\MilpacMention\XF\Str;
 
 use Cav7\MilpacMention\MilpacResolver;
-use XF\Util\Str;
 
 /**
  * The typed-$name server-side seam (issue #123). This is the exact class where
@@ -38,6 +37,44 @@ class MentionFormatter extends XFCP_MentionFormatter
      *      messages never leaks — the cache dies with the per-message formatter.
      */
     protected $milpacLinkCache = [];
+
+    /**
+     * The XF:User finder the batched typed-$name lookup runs its single IN(…) query through,
+     * injectable so the query dependency is a seam rather than a hard-wired \XF::finder call
+     * (#132). Null in production — userFinder() then hands the batch a FRESH
+     * \XF::finder('XF:User') for each query, exactly as the inlined lookup did, so behaviour
+     * and the query count are byte-for-byte unchanged; setUserFinder is the seam a
+     * live-XenForo integration test would drive this shell with. The pure
+     * re-key/cache/numeric/link-building logic is exercised without XenForo in
+     * TypedMilpacBatchLookupTest via MilpacResolver::buildTypedMilpacLinks.
+     *
+     * @var \XF\Finder\UserFinder|null
+     */
+    protected $userFinder;
+
+    /**
+     * Inject the finder the batched lookup queries (#132). Production never calls this —
+     * userFinder() defaults to a fresh \XF::finder('XF:User') per query.
+     *
+     * @param \XF\Finder\UserFinder $userFinder
+     */
+    public function setUserFinder($userFinder): void
+    {
+        $this->userFinder = $userFinder;
+    }
+
+    /**
+     * The injected \XF:User finder, or a fresh real one by default (#132). A XenForo finder
+     * accumulates its where()/with() constraints by mutation, and the inlined lookup built a
+     * new finder on each call that queried, so the default stays per-call fresh rather than
+     * memoised — an un-injected formatter queries exactly as it did before.
+     *
+     * @return \XF\Finder\UserFinder
+     */
+    protected function userFinder()
+    {
+        return $this->userFinder ?? \XF::finder('XF:User');
+    }
 
     /**
      * Run the stock @ pass first (unchanged: @username -> [USER=…], mentionedUsers
@@ -115,10 +152,17 @@ class MentionFormatter extends XFCP_MentionFormatter
      * member, or a member who owns no milpac — the INNER join drops them) is absent from
      * the map, so its typed $username stays literal.
      *
-     * Memoised per message: only cores not already resolved are queried, and hits AND
-     * misses are cached, so a $name repeated in a message never re-queries and a second
-     * getMentionsBbCode call on this formatter adds no query. The cache dies with the
-     * per-message formatter, so nothing leaks across messages.
+     * A thin delegate (#132): the re-keying, the hit-and-miss caching, the numeric-core
+     * handling and the link-building are the pure MilpacResolver::buildTypedMilpacLinks,
+     * unit-tested with a stub lookup and no live XenForo. This XenForo-coupled shell supplies
+     * only the two things that need a live XenForo — the batched finder call
+     * (findMilpacOwnersByUsernames over the injected \XF:User finder) as the owner lookup, and
+     * this formatter's per-message cache. The finder still runs its single IN(…) query here in
+     * the closure, memoised per message (only uncached cores are queried, hits AND misses
+     * cached), so a $name repeated in a message never re-queries and a second getMentionsBbCode
+     * call on this formatter adds no query. The cache dies with the per-message formatter, so
+     * nothing leaks across messages. Output and the query count are byte-for-byte what the
+     * inlined logic produced before the extraction.
      *
      * @param list<string> $cores
      *
@@ -126,46 +170,12 @@ class MentionFormatter extends XFCP_MentionFormatter
      */
     protected function lookupMilpacLinks(array $cores): array
     {
-        // Usernames match case-insensitively at the DB collation (as @'s lookup does), so
-        // key the cache on the lower-cased core: "$Markel.Z" and "$markel.z" share one
-        // cache slot and one IN(…) entry. Collect the cores not yet resolved.
-        $uncached = []; // lower-cased key => the core to query (first-seen casing)
-        foreach ($cores as $core) {
-            $core = (string) $core; // a purely-numeric core (e.g. "$5") arrives as an int key
-            $key = Str::strtolower($core);
-            if (!array_key_exists($key, $this->milpacLinkCache)) {
-                $uncached[$key] = $core;
-            }
-        }
-
-        if ($uncached) {
-            /** @var \XF\Finder\UserFinder $userFinder */
-            $userFinder = \XF::finder('XF:User');
-            $found = MilpacResolver::findMilpacOwnersByUsernames($userFinder, array_values($uncached));
-
-            // The finder keys its map by the stored username casing; re-key to lower-case
-            // so a typed core matches its holder regardless of case.
-            $foundByKey = [];
-            foreach ($found as $username => $shaped) {
-                $foundByKey[Str::strtolower((string) $username)] = $shaped;
-            }
-
-            // Cache every queried core — hit or miss (null) — so a repeat never re-queries.
-            foreach ($uncached as $key => $core) {
-                $this->milpacLinkCache[$key] = $foundByKey[$key] ?? null;
-            }
-        }
-
-        // Build the core => link map the pure pass consumes: only cores that resolved.
-        $links = [];
-        foreach ($cores as $core) {
-            $core = (string) $core;
-            $shaped = $this->milpacLinkCache[Str::strtolower($core)] ?? null;
-            if ($shaped !== null) {
-                $links[$core] = $shaped;
-            }
-        }
-
-        return $links;
+        return MilpacResolver::buildTypedMilpacLinks(
+            $cores,
+            function (array $usernames): array {
+                return MilpacResolver::findMilpacOwnersByUsernames($this->userFinder(), $usernames);
+            },
+            $this->milpacLinkCache
+        );
     }
 }
