@@ -257,6 +257,48 @@ check(
     'the hovercard is XenForo\'s own member_tooltip, not a bespoke card (ADR 0001)'
 );
 
+// =========================================================================
+// issue #131 — the per-link fail-open log must be traceable
+// =========================================================================
+// The \Throwable containment pinned above keeps a hovercard fault from breaking the post
+// render (fail-open, unchanged). Issue #131 adds that when it DOES fail open, the log names
+// WHICH link and WHICH milpac triggered it, so a production event is actionable. Pin the
+// per-link getRenderedLink log specifically — isolated by its "hovercard stamping failed"
+// message — and assert both the link url and the resolved relation_id are folded into the
+// logException message string. The batch-resolve log (setupRender, issue #129,
+// "hovercard batch resolve failed") is a separate render boundary and is deliberately
+// NOT asserted here.
+$stampingLog = '';
+if (preg_match('/logException\([^;]*hovercard stamping failed[^;]*;/s', $htmlSrc, $m)) {
+    $stampingLog = $m[0];
+}
+check(
+    'the per-link fail-open log folds the link url and the resolved relation_id into the logException message (issue #131)',
+    $stampingLog !== ''
+        && (str_contains($stampingLog, '$urlString') || str_contains($stampingLog, '$url'))
+        && str_contains($stampingLog, '$relationId'),
+    'a hovercard fail-open must record which link url and which relation_id triggered it, not just a fixed prefix, so a production fault is traceable'
+);
+
+// Issue #131, ordering pin. The log above only names the link and milpac when a fault lands
+// BEFORE the in-try assignment (an un-stringable $url whose (string) cast throws as the first
+// in-try statement) because $urlString and $relationId are SEEDED before the try. Deleting
+// those seeds still passes the assertion above, so pin the ordering directly: capture the gap
+// between the parent render and the try, and assert both seeds live in it. If they move into
+// or after the try, the fail-open log degrades to a fixed prefix and AC #3 "degrades cleanly"
+// regresses silently — this pin is what makes that regression fail CI.
+$seedRegion = '';
+if (preg_match('/parent::getRenderedLink\(.*?\btry\b\s*\{/s', $htmlSrc, $m)) {
+    $seedRegion = $m[0];
+}
+check(
+    'getRenderedLink seeds $urlString and $relationId BEFORE the try, so the fail-open log names them even when the fault precedes the in-try assignment (issue #131)',
+    $seedRegion !== ''
+        && (bool) preg_match('/\$urlString\s*=\s*\'\'/', $seedRegion)
+        && (bool) preg_match('/\$relationId\s*=\s*0/', $seedRegion),
+    'moving the seeds into or after the try leaves the log with a fixed prefix when (string) $url throws first — the fault is then untraceable to a link or milpac'
+);
+
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
     exit(1);

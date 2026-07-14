@@ -102,7 +102,10 @@ class Html extends XFCP_Html
      * Contained: getRenderedLink runs on every link of every render, so a finder or DB
      * fault while resolving must not break the whole post render. A \Throwable is logged
      * (non-fatal) and the un-stamped stock anchor is returned, mirroring the fail-open
-     * containment the sibling MilpacMention uses on its shared save path.
+     * containment the sibling MilpacMention uses on its shared save path. The log folds in
+     * the link url and the resolved relation_id so a production fail-open is traceable to
+     * the link and milpac that triggered it (issue #131); both are seeded before the try so
+     * the log still names them even when the fault lands before they are assigned.
      *
      * @param string $text
      * @param string $url
@@ -113,6 +116,13 @@ class Html extends XFCP_Html
     protected function getRenderedLink($text, $url, array $options)
     {
         $rendered = parent::getRenderedLink($text, $url, $options);
+
+        // Seed the two identifiers the fail-open log reports BEFORE the try, so the catch can
+        // always name the link and milpac even if the throw lands before the try assigns them
+        // (issue #131). The risky cast stays inside the try, so an un-stringable $url still
+        // fails open; here they hold safe defaults ('' url, 0 = "none resolved").
+        $urlString = '';
+        $relationId = 0;
 
         try
         {
@@ -137,7 +147,11 @@ class Html extends XFCP_Html
         }
         catch (\Throwable $e)
         {
-            \XF::logException($e, false, '[Cav7/MilpacTooltip] hovercard stamping failed: ');
+            \XF::logException($e, false, sprintf(
+                '[Cav7/MilpacTooltip] hovercard stamping failed (url: %s, relation_id: %d): ',
+                $urlString,
+                $relationId
+            ));
         }
 
         return $rendered;
