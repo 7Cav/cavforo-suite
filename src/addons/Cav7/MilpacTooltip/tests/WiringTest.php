@@ -257,6 +257,28 @@ check(
     'the hovercard is XenForo\'s own member_tooltip, not a bespoke card (ADR 0001)'
 );
 
+// =========================================================================
+// issue #131 — the per-link fail-open log must be traceable
+// =========================================================================
+// The \Throwable containment pinned above keeps a hovercard fault from breaking the post
+// render (fail-open, unchanged). Issue #131 adds that when it DOES fail open, the log names
+// WHICH link and WHICH milpac triggered it, so a production event is actionable. Pin the
+// per-link getRenderedLink log specifically — isolated by its "hovercard stamping failed"
+// message — and assert both the link url and the resolved relation_id are folded into the
+// logException message string. The batch-resolve log (setupRender, issue #129, "batch
+// resolve failed") is a separate bounded context and is deliberately NOT asserted here.
+$stampingLog = '';
+if (preg_match('/logException\([^;]*hovercard stamping failed[^;]*;/s', $htmlSrc, $m)) {
+    $stampingLog = $m[0];
+}
+check(
+    'the per-link fail-open log folds the link url and the resolved relation_id into the logException message (issue #131)',
+    $stampingLog !== ''
+        && (str_contains($stampingLog, '$urlString') || str_contains($stampingLog, '$url'))
+        && str_contains($stampingLog, '$relationId'),
+    'a hovercard fail-open must record which link url and which relation_id triggered it, not just a fixed prefix, so a production fault is traceable'
+);
+
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
     exit(1);
