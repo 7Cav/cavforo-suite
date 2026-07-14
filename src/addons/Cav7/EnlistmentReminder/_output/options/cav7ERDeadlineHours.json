@@ -8,6 +8,6 @@
     "advanced": false,
     "default_value": "24",
     "relations": {
-        "cav7EnlistmentReminder": 40
+        "cav7EnlistmentReminder": 70
     }
 }

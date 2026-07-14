@@ -2,10 +2,12 @@
 
 /**
  * Behavioural unit test for PositionIdList::parse — the parse that turns the
- * cav7ERClerkPositionIds option into the clerk seat set. Pure PHP, no XenForo, so
- * every branch runs for real here rather than being pinned by shape. If it
- * mis-parses, the whole reminder mis-fires: drop every id and QueueReminder aborts
- * the run; keep a 0 or a junk token and the seat query resolves the wrong clerks.
+ * per-type clerk-position and prefix options (cav7ERStandard/ReenlistClerkPositionIds
+ * and cav7ERStandard/ReenlistPrefixIds since issue #144) into their id sets. Pure
+ * PHP, no XenForo, so every branch runs for real here rather than being pinned by
+ * shape. If it mis-parses, the whole reminder mis-fires: drop every id and
+ * QueueReminder aborts the run; keep a 0 or a junk token and the seat or prefix
+ * match resolves the wrong ids.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *

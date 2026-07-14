@@ -3,11 +3,14 @@
 /**
  * Issue #75 — pins the vendor-coupled wiring of the enlistment reminder so a
  * regression fails CI rather than shipping silently. The decision itself is
- * exercised for real in ReminderDecisionTest; this holds the parts that need a
- * live XenForo + NF/Rosters to run: the hourly cron entry, the four options and
- * their runtime reads, the marker table created on install and dropped on
- * uninstall, the deadline clamp, the clerk-seat query, the node-scoped scan, and
- * the SteamChecker-style bot post with its first_post_id correction.
+ * exercised for real in ReminderDecisionTest (the remind rule) and
+ * EnlistmentRoutingTest (the #144 type split); this holds the parts that need a
+ * live XenForo + NF/Rosters to run: the hourly cron entry, the options and their
+ * runtime reads, the marker table created on install and dropped on uninstall,
+ * the deadline clamp, the clerk-seat query, the node-scoped scan, the
+ * SteamChecker-style bot post with its first_post_id correction, and — per issue
+ * #144 — the per-type alert routing, the prefix-badged alert template, the
+ * skip-and-log of an unrecognized thread, and the option-retiring upgrade step.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -80,6 +83,29 @@ function methodBody(string $src, string $name): string
     return $body;
 }
 
+/**
+ * A skip branch's source, from a start marker up to its first `continue;`. Both
+ * #144 skip branches (unrecognized prefix, empty per-type audience) are a single
+ * `if (...) { ...logError(...); continue; }` with no nested braces, so slicing to
+ * the first `continue;` after the marker captures exactly that branch body. Used
+ * to assert the branch writes nothing: a regression that slipped a
+ * postReminderNote/recordReminder in before the `continue` would mark a real
+ * enlistment done with no clerk alerted — dropping its alert for good — yet still
+ * satisfy a looser "a continue exists somewhere after the branch" pin.
+ */
+function branchToContinue(string $src, string $startMarker): string
+{
+    $start = strpos($src, $startMarker);
+    if ($start === false) {
+        return '';
+    }
+    $end = strpos($src, 'continue;', $start);
+    if ($end === false) {
+        return '';
+    }
+    return substr($src, $start, $end - $start);
+}
+
 // --- the hourly cron entry is registered ----------------------------------
 $cronXml = @simplexml_load_file("$root/_data/cron.xml");
 check('_data/cron.xml could be read', $cronXml !== false);
@@ -116,7 +142,10 @@ check(
 $scanSrc = (string) file_get_contents("$root/Cron/ScanQueue.php");
 check('ScanQueue exposes a static run() entry method', (bool) preg_match('/static\s+function\s+run\s*\(/', $scanSrc));
 
-// --- the four options exist and are read at runtime -----------------------
+// --- the options exist and are read at runtime ----------------------------
+// Issue #144 replaced the single cav7ERClerkPositionIds with four per-type
+// options (a prefix list and a clerk-position list for each of Standard and
+// Re-Enlistment). All four, plus node/bot/deadline, must be defined and read.
 $optXml = @simplexml_load_file("$root/_data/options.xml");
 check('_data/options.xml could be read', $optXml !== false);
 
@@ -126,17 +155,28 @@ if ($optXml !== false) {
         $optionIds[] = (string) $option['option_id'];
     }
 }
-$expectedOptions = ['cav7ERQueueNodeId', 'cav7ERBotUserId', 'cav7ERClerkPositionIds', 'cav7ERDeadlineHours'];
+$expectedOptions = [
+    'cav7ERQueueNodeId', 'cav7ERBotUserId', 'cav7ERDeadlineHours',
+    'cav7ERStandardPrefixIds', 'cav7ERStandardClerkPositionIds',
+    'cav7ERReenlistPrefixIds', 'cav7ERReenlistClerkPositionIds',
+];
 foreach ($expectedOptions as $id) {
     check("option $id is defined", in_array($id, $optionIds, true));
 }
+// The single pre-split option must be gone, not merely joined by the new four —
+// a lingering cav7ERClerkPositionIds is dead config nothing reads any more.
+check(
+    'the retired single-clerk option cav7ERClerkPositionIds is removed',
+    !in_array('cav7ERClerkPositionIds', $optionIds, true),
+    'the type split replaces it with the four per-type options'
+);
 check(
     '_output has one options file per _data option',
     count(outputItems($root, 'options')) === ($optXml !== false ? count($optXml->option) : -1)
 );
 
 // Every option is read at runtime (the cron entry reads the deadline; the worker
-// reads the node, bot user, and clerk positions).
+// reads the node, bot user, and the four per-type prefix/clerk-position options).
 $worker = (string) file_get_contents("$root/QueueReminder.php");
 $runtime = $scanSrc . $worker;
 foreach ($expectedOptions as $id) {
@@ -147,23 +187,38 @@ foreach ($expectedOptions as $id) {
     );
 }
 
-// The deadline default 24 and the queue node default 325 are what the issue asks.
+// The deadline default 24 and the queue node default 325 are what the issue asks;
+// the four routing defaults are the agreed per-type sets whose position lists
+// union to the pre-split default (579,580,751,960,1012), so pickup coverage is
+// unchanged and only the alert audience narrows.
+$defaults = [
+    'cav7ERDeadlineHours'            => '24',
+    'cav7ERQueueNodeId'              => '325',
+    'cav7ERStandardPrefixIds'        => '57',
+    'cav7ERStandardClerkPositionIds' => '579,580,751,1012',
+    'cav7ERReenlistPrefixIds'        => '58',
+    'cav7ERReenlistClerkPositionIds' => '579,960,1012',
+];
+$defaultByOption = [];
 if ($optXml !== false) {
     foreach ($optXml->option as $option) {
-        if ((string) $option['option_id'] === 'cav7ERDeadlineHours') {
-            check('the deadline default is 24 hours', (string) $option->default_value === '24');
-        }
-        if ((string) $option['option_id'] === 'cav7ERQueueNodeId') {
-            check('the queue node default is 325', (string) $option->default_value === '325');
-        }
-        if ((string) $option['option_id'] === 'cav7ERClerkPositionIds') {
-            check(
-                'the clerk positions default to the five configured seats',
-                (string) $option->default_value === '579,580,751,960,1012'
-            );
-        }
+        $defaultByOption[(string) $option['option_id']] = (string) $option->default_value;
     }
 }
+foreach ($defaults as $id => $want) {
+    check("the $id default is $want", ($defaultByOption[$id] ?? null) === $want);
+}
+// The union of the two default position sets is exactly the old single default,
+// so pickup coverage does not change when the alert audience splits by type.
+$standardSeats = array_map('intval', explode(',', $defaults['cav7ERStandardClerkPositionIds']));
+$reenlistSeats = array_map('intval', explode(',', $defaults['cav7ERReenlistClerkPositionIds']));
+$union = array_values(array_unique(array_merge($standardSeats, $reenlistSeats)));
+sort($union);
+check(
+    'the union of the two default clerk sets equals the pre-split five seats',
+    $union === [579, 580, 751, 960, 1012],
+    'got: ' . implode(',', $union)
+);
 
 // --- the option group renders from the standard phrase pair ----------------
 $phraseXml = @simplexml_load_file("$root/_data/phrases.xml");
@@ -253,6 +308,14 @@ check(
         $worker
     ),
     'flipping discussion_open to 0 or changing the bound visible literal must fail this, not merely renaming a column'
+);
+// Issue #144: the type split reads a thread's enlistment type from its primary
+// prefix, so the queue fetch must additionally select prefix_id — without it the
+// per-type routing has nothing to route on and every thread reads as unrouted.
+check(
+    'the queue scan selects prefix_id for type routing',
+    (bool) preg_match('/SELECT[^;]*\bprefix_id\b.*?FROM xf_thread/s', $worker),
+    'the alert audience is chosen from the thread prefix, which must be fetched'
 );
 
 // The reply-author query counts only visible replies, so a soft-deleted clerk
@@ -418,12 +481,14 @@ check(
 // Mechanism and rationale: docs/adr/0001-alert-not-mention.md.
 // =========================================================================
 
-// The alert targets the SAME primary-or-secondary clerk set the pickup check
-// already resolved (#75's $clerkUserIds), not a fresh, differently-scoped query.
+// Issue #144: the alert no longer targets the global clerk set. It targets the
+// per-type set the router resolved for this thread's prefix ($alertUserIds),
+// while pickup and the mass-remind guard still resolve the union ($clerkUserIds).
 check(
-    'the clerk alert reuses the resolved $clerkUserIds set',
-    (bool) preg_match('/alertClerks\(\s*\$threadId\s*,\s*\$botUserId\s*,\s*\$clerkUserIds\s*\)/', $worker),
-    'the alert must reach the same clerks whose reply would have counted as a pickup'
+    'the clerk alert targets the per-type resolved set, not the global clerk set',
+    (bool) preg_match('/alertClerks\(\s*\$threadId\s*,\s*\$botUserId\s*,\s*\$alertUserIds\s*\)/', $worker)
+        && !(bool) preg_match('/alertClerks\(\s*\$threadId\s*,\s*\$botUserId\s*,\s*\$clerkUserIds\s*\)/', $worker),
+    'the alert must reach only the clerks who own this thread\'s enlistment type'
 );
 
 // The alert goes through UserAlertRepository::alert (not insertAlert), so a clerk
@@ -507,6 +572,15 @@ check(
         && str_contains($alertTemplateBody, 'cav7_er_alert_thread_awaiting_pickup'),
     'a clerk must reach the application in one click; the pointed wording is a phrase, not inline text'
 );
+// Issue #144: the alert renders the thread's prefix the stock XenForo way, so a
+// Senior/Lead clerk who receives both types can tell a re-enlistment from a
+// standard enlistment straight from the bell. prefix('thread', $content) is the
+// same idiom stock alert_* templates use.
+check(
+    'the alert template renders the thread prefix badge (stock prefix() idiom)',
+    (bool) preg_match("/prefix\(\s*'thread'\s*,\s*\\\$content\s*\)/", $alertTemplateBody),
+    'without the prefix badge the two types are indistinguishable in the notification'
+);
 check(
     'the _output template file ships under the public style folder',
     is_file("$root/_output/templates/public/alert_thread_enlistment_reminder.html"),
@@ -564,6 +638,137 @@ check(
     'the staff-facing alert body phrase cav7_er_alert_thread_awaiting_pickup is declared',
     in_array('cav7_er_alert_thread_awaiting_pickup', $phraseTitles, true),
     'the pointed wording only clerks see lives in this phrase'
+);
+
+// =========================================================================
+// Issue #144 — route the un-actioned alert by enlistment type. The pure rule is
+// exercised in EnlistmentRoutingTest; this pins the vendor-coupled wiring: the
+// worker builds the router from the four options, pickup resolves the union, the
+// per-type set is alerted, an unrecognized thread is skipped with one breadcrumb,
+// an overlap config is warned, and the Setup upgrade step retires the old option.
+// =========================================================================
+
+// The pure routing seam exists and is a plain-PHP twin of the other seams.
+check(
+    'the EnlistmentRouting seam file exists',
+    is_file("$root/EnlistmentRouting.php"),
+    'the type-routing rule is extracted so it can be unit-tested without XenForo'
+);
+check(
+    'a pure EnlistmentRoutingTest exercises the seam',
+    is_file("$root/tests/EnlistmentRoutingTest.php"),
+    'the routing branches must be covered for real in plain PHP, like ReminderDecisionTest'
+);
+
+// The worker builds the router from the four parsed options and delegates the
+// type decision to it, rather than re-implementing the prefix-to-clerks mapping.
+check(
+    'the worker constructs EnlistmentRouting and routes per thread',
+    str_contains($worker, 'new EnlistmentRouting(')
+        && (bool) preg_match('/->route\(\s*\$prefixByThread\[/', $worker),
+    'the prefix-to-clerks decision must go through the pure seam'
+);
+
+// Pickup and the mass-remind guard resolve the UNION of both position lists, so a
+// reply from any of the five seats still clears the reminder — unchanged from the
+// single-option behaviour. The guard names the new options, not the retired one.
+check(
+    'pickup resolves the union of both clerk sets via pickupPositionIds()',
+    (bool) preg_match('/resolveClerkUserIds\(\s*\$routing->pickupPositionIds\(\)\s*\)/', $worker),
+    'pickup coverage must be the union, so any seat replying counts as a pickup'
+);
+check(
+    'the empty-clerk guard names the new per-type options, not cav7ERClerkPositionIds',
+    (bool) preg_match('/if\s*\(\s*!\$clerkUserIds\s*\).*?logError\(.*?return;/s', $worker)
+        && str_contains($worker, 'cav7ERStandardClerkPositionIds')
+        && str_contains($worker, 'cav7ERReenlistClerkPositionIds')
+        && !str_contains($worker, 'cav7ERClerkPositionIds'),
+    'the abort log must point an admin at the options that actually exist'
+);
+
+// An unrecognized thread (prefix in neither type set) is skipped: it is NOT noted,
+// NOT alerted and NOT marked, but a breadcrumb is logged because it reached the
+// remind list, i.e. it would otherwise have been reminded (stories 13-14). The
+// TYPE_UNRECOGNIZED branch must `continue` before postReminderNote — and it must
+// sit AFTER selectThreadsToRemind, so a within-deadline unroutable thread stays
+// silent (story 15) rather than log-spamming the whole queue every hour.
+check(
+    'an unrecognized-prefix thread is skipped with a breadcrumb, after the remind decision and before any note',
+    (bool) preg_match(
+        '/selectThreadsToRemind\(.*?TYPE_UNRECOGNIZED\s*\)\s*\{.*?logError\(.*?\bcontinue;/s',
+        $worker
+    ),
+    'a junk or mis-prefixed thread must be logged and skipped only if it would otherwise have been reminded'
+);
+// The pin above matches even if a note-post or marker-write were slipped into the
+// branch before its `continue` (the `.*?` swallows it). Slice the branch body and
+// assert it writes nothing: noting or marking an unrecognized thread would mark a
+// mis-prefixed real enlistment done and drop its alert for good (stories 13-14),
+// the exact failure the skip exists to prevent.
+$unrecognizedSkip = branchToContinue($worker, 'EnlistmentRouting::TYPE_UNRECOGNIZED');
+check(
+    'the unrecognized-prefix skip branch logs but never notes, alerts, or marks before it continues',
+    $unrecognizedSkip !== ''
+        && str_contains($unrecognizedSkip, 'logError')
+        && !str_contains($unrecognizedSkip, 'postReminderNote')
+        && !str_contains($unrecognizedSkip, 'recordReminder')
+        && !str_contains($unrecognizedSkip, 'alertClerks'),
+    'a postReminderNote/recordReminder/alertClerks inside this branch would mark a mis-prefixed enlistment done and never alert a clerk, yet still pass the looser ordering pin above'
+);
+
+// A RECOGNIZED thread whose per-type clerk positions resolve to no seated holder
+// (a blank per-type option, or an all-vacant seat set, while the OTHER type still
+// has holders so the union guard above passed) must be skipped like an
+// unrecognized one — logged and left UNMARKED so it retries once the config is
+// fixed or a seat is filled. Silently posting the note and recording the marker
+// with no clerk alerted would drop a real enlistment's alert for good. Pin: right
+// after resolving $alertUserIds, an empty set logs and `continue`s before the note.
+check(
+    'a recognized thread that resolves no clerk to alert is logged and skipped, not silently noted+marked',
+    (bool) preg_match(
+        '/\$alertUserIds\s*=\s*\$this->resolveClerkUserIds\([^;]*;\s*if\s*\(\s*!\$alertUserIds\s*\)\s*\{.*?logError\(.*?\bcontinue;/s',
+        $worker
+    ),
+    'an empty per-type audience must not post a note or write a marker; it must log and retry'
+);
+// As with the unrecognized branch, the pin above tolerates a write slipped in
+// before the `continue`. Slice the branch body and assert it neither notes nor
+// marks: doing either with no clerk resolved would post the applicant note and
+// record the marker with nobody alerted — silently dropping a real enlistment's
+// alert, the very failure this skip guards against.
+$emptyAudienceSkip = branchToContinue($worker, 'if (!$alertUserIds)');
+check(
+    'the empty-audience skip branch logs but never notes, alerts, or marks before it continues',
+    $emptyAudienceSkip !== ''
+        && str_contains($emptyAudienceSkip, 'logError')
+        && !str_contains($emptyAudienceSkip, 'postReminderNote')
+        && !str_contains($emptyAudienceSkip, 'recordReminder')
+        && !str_contains($emptyAudienceSkip, 'alertClerks'),
+    'a postReminderNote/recordReminder/alertClerks inside this branch would silently mark the thread done with no clerk alerted, yet still pass the looser structural pin above'
+);
+
+// A prefix listed under BOTH type sets is a config error: it fail-safes to the
+// union (handled in the seam) and the worker logs a config warning once.
+check(
+    'an overlapping-prefix config is surfaced with a warning',
+    str_contains($worker, 'overlappingPrefixIds()')
+        && (bool) preg_match('/if\s*\(\s*\$overlapPrefixIds\s*\)\s*\{\s*[^}]*?logError\(/s', $worker),
+    'an ambiguous prefix must never silently drop a responsible clerk'
+);
+
+// --- the Setup upgrade step retires the old option -------------------------
+// A real 1.0.0 -> 1.1.0 upgrade must remove the retired cav7ERClerkPositionIds so
+// no dead option lingers in the ACP; the step is keyed to the 1.1.0 version id.
+check(
+    'a Setup upgrade step for 1.1.0 removes the retired cav7ERClerkPositionIds option',
+    (bool) preg_match('/function\s+upgrade1010070Step1\b/', $setup)
+        && (bool) preg_match("/delete\(\s*'xf_option'\s*,.*?cav7ERClerkPositionIds/s", $setup),
+    'without the removal an admin upgrading keeps a dead option nothing reads'
+);
+check(
+    'the addon.json version is bumped so the upgrade step runs',
+    (bool) preg_match('/"version_id"\s*:\s*1010070/', (string) file_get_contents("$root/addon.json")),
+    'the upgrade1010070Step1 step only runs if the installed version crosses 1.1.0'
 );
 
 if ($failures > 0) {

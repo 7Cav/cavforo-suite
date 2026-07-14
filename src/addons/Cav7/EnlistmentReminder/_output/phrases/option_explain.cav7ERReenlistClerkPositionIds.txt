@@ -1,0 +1,1 @@
+Roster position IDs alerted about un-actioned re-enlistments: by default the Re-Enlistment Processing Clerk and the Senior and Lead clerks. Holders are matched as a primary or a secondary seat. A reply from any processing clerk, in either set, still counts as a pickup. Enter one ID per line or separate with commas. Default: 579, 960, 1012.
