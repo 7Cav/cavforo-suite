@@ -1,10 +1,10 @@
 <?php
 
 /**
- * Issue #148 — pins the vendor-coupled half of the fix, the part CI cannot run
- * because it needs a live XenForo plus NF/Discord. The decision itself is
- * exercised for real in RoleClaimTest; what is held here is the wiring that
- * carries it: the class extension against the vendor's per-user sync message,
+ * Issue #148 — pins the vendor-coupled wiring that CI cannot run because it needs a
+ * live XenForo plus NF/Discord. The decision itself is exercised for real in
+ * RoleClaimTest; what is held here is the wiring that carries it: the class
+ * extension against the vendor's per-user sync message,
  * both method overrides on that extension, and the properties of the adapter that
  * a dev-stack run confirmed and a later edit could quietly undo.
  *
@@ -244,7 +244,7 @@ check(
 check(
     'the adapter bails out when the guild is not one the server map knows',
     (bool) preg_match('/\$serverId\s*=\s*\$serverRepo->getServerIdFromGuildId\(\$guildId\)\s*;\s*if\s*\(\s*!\$serverId\s*\)/s', $applyBody),
-    'the vendor lookup answers false, not null, for an unknown guild; a === null guard would let server 0 through'
+    'the vendor lookup returns int(0), not false or null, for an unknown guild; a === null or === false guard would both let server 0 through'
 );
 check(
     'the adapter holds no decision logic of its own',

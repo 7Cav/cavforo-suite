@@ -5,10 +5,11 @@ namespace Cav7\DiscordSyncPatch\NF\Discord\ApiMessage;
 use Cav7\DiscordSyncPatch\RoleClaim;
 
 /**
- * Issue #148 — the two halves of the fix, as overrides on the vendor's per-user
- * sync message. Neither depends on the other: the eviction alone stops new bad
- * records being created but leaves existing ones permanent, and the claim alone
- * repairs existing ones but lets the race keep producing them.
+ * Issue #148 — two overrides on the vendor's per-user sync message: an eviction at
+ * the message entry point and a claim over the roles a member's forum groups grant.
+ * Neither depends on the other: the eviction alone stops new bad records being
+ * created but leaves existing ones permanent, and the claim alone repairs existing
+ * ones but lets the race keep producing them.
  *
  * dispatch() is the first half. The sync runs as queued messages processed by one
  * long-lived worker, and that worker keeps loaded entities in the identity map for
@@ -36,8 +37,8 @@ use Cav7\DiscordSyncPatch\RoleClaim;
  *    widened value never reaches the database.
  *  - findOrCreateSyncLogForGuild() returns the identity-mapped instance for a
  *    record that exists, so the vendor sees the object this override widened.
- *  - Mapped role ids carry a "<serverId>:" prefix, split the way
- *    SyncUser::groupRoleIdsByServer splits it.
+ *  - A mapped role id MAY carry a "<serverId>:" prefix; a bare id belongs to the
+ *    default server, split the way SyncUser::groupRoleIdsByServer splits it.
  */
 class SyncUser extends XFCP_SyncUser
 {
@@ -76,8 +77,11 @@ class SyncUser extends XFCP_SyncUser
         }
 
         // A guild the server map does not know is not one this addon can scope a
-        // claim to. The vendor's lookup answers false rather than null when the map
-        // has no entry, so test it for falsiness: server ids start at 1.
+        // claim to. The vendor's lookup returns int(0) for an unknown guild — its
+        // array_search miss is false, coerced to int at the ?int return boundary
+        // (the vendor file declares no strict_types) — so the value is neither false
+        // nor null. Test it for falsiness: server ids start at 1, and a === null or
+        // === false guard would both let server 0 through.
         $serverRepo = \SV\StandardLib\Helper::repository(\NF\Discord\Repository\Server::class);
         $serverId = $serverRepo->getServerIdFromGuildId($guildId);
         if (!$serverId) {
@@ -105,8 +109,10 @@ class SyncUser extends XFCP_SyncUser
     }
 
     /**
-     * Every Discord role any user group grants, in "<serverId>:<roleId>" form,
-     * across every server. RoleClaim narrows them to the guild being synced.
+     * Every Discord role any user group grants across every server. A mapped id MAY
+     * carry a "<serverId>:" prefix; a bare id belongs to the default server, split
+     * the way groupRoleIdsByServer splits it. RoleClaim narrows them to the guild
+     * being synced.
      *
      * One small query per message, against a message that already spends a
      * rate-limited API round trip. Not cached, so a mapping change takes effect on

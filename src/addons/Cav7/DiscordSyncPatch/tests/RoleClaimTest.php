@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Issue #148 — the claim as a pure function.
+ * Issue #148 — exercises RoleClaim, the claim decided as a pure function.
  *
  * RoleClaim::claim takes the role ids the sync already recorded granting, every
  * role any user group grants (in "<serverId>:<roleId>" form), the server being
@@ -52,6 +52,18 @@ check(
     'server 2\'s role must not enter server 1\'s claim'
 );
 
+// The acceptance side of the same decision, for a NON-default guild. Syncing server
+// 2 while server 1 is the default: the role prefixed 2: is claimed, the role
+// prefixed 1: (the default server's) is rejected, and the recorded id survives even
+// though serverId != defaultServerId. A claim that compared the prefixed branch
+// against the default server instead of the server being synced would pass every
+// case where serverId == defaultServerId but strip another guild's roles here.
+check(
+    'a prefixed role is claimed for a non-default synced server while the default-server role is rejected',
+    sameSet(RoleClaim::claim(['900'], ['1:100', '2:200'], 2, 1), ['900', '200']),
+    'syncing server 2 must claim 2:200, reject 1:100, and keep the recorded 900'
+);
+
 // The result is a union, not a replacement. Whatever the sync recorded granting
 // stays claimed even when no user group maps to it any more, so a role that is
 // cleaned up today does not stop being cleaned up.
@@ -72,6 +84,16 @@ check(
     'an unprefixed mapped id is not claimed when the default server is a different one',
     sameSet(RoleClaim::claim([], ['100'], 2, 1), []),
     'the bare id belongs to server 1, so server 2 must not claim it'
+);
+
+// A token that is a bare prefix with no role id ("<serverId>:") names no role. The
+// empty whole token is filtered before it reaches here, but an empty role id after
+// a valid prefix is not, so the unit itself must drop it rather than record a
+// phantom empty id the vendor would then compare against real Discord role ids.
+check(
+    'a "<serverId>:" token with an empty role id contributes nothing to the claim',
+    RoleClaim::claim([], ['1:'], 1, 1) === [],
+    'an empty role id after a valid prefix must not enter the claim as an empty id'
 );
 
 // The claim is a set. The same role reached twice — recorded and mapped, or mapped
