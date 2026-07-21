@@ -2,6 +2,7 @@
 
 namespace Cav7\MilpacMention\XF\Service\Post;
 
+use Cav7\MilpacMention\MilpacResolver;
 use Cav7\MilpacMention\MilpacStash;
 use XF\Entity\User;
 use XF\Repository\UserAlertRepository;
@@ -75,6 +76,25 @@ class NotifierService extends XFCP_NotifierService
         // recipient. Mirrors XF\Service\Report\NotifierService.
         try
         {
+            // The suppressed-area gate (issue #147). A post's place is its thread's
+            // forum node, and an admin can name nodes where milpac mentions do not
+            // fire. Suppression is by PLACE, so it decides once for the whole post
+            // rather than per recipient: it never asks who can view the post, who
+            // wrote it, or who is watching it. Only the alert is withheld — the
+            // milpac link in a suppressed node still renders, still resolves, and the
+            // $name completer still works there, because detection is untouched.
+            //
+            // Inside the outer guard on purpose: reading the Thread relation and the
+            // options can fault on an already-committed post action, and the catch
+            // below turns that into a logged, alert-free pass instead of a 500. A
+            // thread that will not load leaves the node id at 0, which the predicate
+            // fails OPEN on — suppression is only ever what the admin explicitly named.
+            $nodeId = $post->Thread ? (int) $post->Thread->node_id : 0;
+            if (MilpacResolver::isSuppressedArea(\XF::options()->cav7MMSuppressedNodeIds ?? [], $nodeId))
+            {
+                return;
+            }
+
             $users = \XF::em()->findByIds(User::class, $milpacUserIds, ['Profile', 'Option']);
 
             /** @var UserAlertRepository $alertRepo */

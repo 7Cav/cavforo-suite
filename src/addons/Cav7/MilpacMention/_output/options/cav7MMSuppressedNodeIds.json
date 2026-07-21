@@ -1,0 +1,15 @@
+{
+    "edit_format": "callback",
+    "edit_format_params": "XF\\Option\\Forum::renderSelectMultiple",
+    "data_type": "array",
+    "sub_options": [
+        "*"
+    ],
+    "validation_class": "",
+    "validation_method": "",
+    "advanced": false,
+    "default_value": "[]",
+    "relations": {
+        "cav7MilpacMention": 10
+    }
+}

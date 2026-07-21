@@ -44,7 +44,9 @@ The firing rules match `@`-mention behaviour: a member linking their own milpac 
 not alerted, any number of links to one member is a single alert, a member both
 `@`-mentioned and milpac-linked gets only the `@` alert, editing content to add a
 link fires nothing, and milpac links count against the author's
-`maxMentionedUsers` budget with `@` kept first.
+`maxMentionedUsers` budget with `@` kept first. One rule has no `@` equivalent: an
+admin can name forum nodes and ticket categories where the alert does not fire at
+all, which [Configuration](#configuration) covers.
 
 ## The `$name` completer
 
@@ -100,9 +102,41 @@ user.
 2. Install the add-on: **Admin CP → Add-ons → Milpac Mention → Install**
    (or `php cmd.php xf-addon:install Cav7/MilpacMention`)
 
-There is nothing to configure and no `Setup.php`: the add-on is class extensions
-plus alert data. Its alert rows carry `depends_on_addon_id`, so they clear
-themselves when the add-on is uninstalled.
+There is no `Setup.php`: the add-on is class extensions plus options, phrases and
+alert data. Its alert rows carry `depends_on_addon_id`, so they clear themselves
+when the add-on is uninstalled.
+
+## Configuration
+
+**Admin CP → Setup → Options → Milpac Mention** holds two lists of places where a
+milpac link raises no alert.
+
+- **Forums where milpac mentions are suppressed** picks forum nodes. It ships
+  empty.
+- **Ticket categories where milpac mentions are suppressed** picks NF/Tickets
+  categories. It ships holding S1 Citations (17), Medal Recommendations (18),
+  Medal Approvals (20) and Medal posting (21).
+
+Selecting an area suppresses it; anything you leave unselected alerts exactly as
+it always has, so suppression is only ever something you asked for. Both controls
+are pickers of real names rather than boxes for ids.
+
+Suppression withholds the notification and nothing else. In a suppressed area the
+milpac link still renders, still resolves, and the `$name` completer still works,
+because it is the firing edge that is gated, not detection. That matters for the
+ticket queues: several 7Cav workflows treat the link as the record of which member
+a ticket is about, and only the alert about it causes harm.
+
+Suppression is by place. It does not consult who opened the ticket, who is a
+participant, or who can view it. The four seeded categories are the award queues,
+where the linked milpac names the member an award is being processed for rather
+than someone being addressed, so the alert, whose line carries the ticket title,
+tells a member about their own pending award.
+
+The four ship selected because the disclosure is happening now, so installing this
+version should be the fix rather than the thing you do before the fix. Clear them
+if your board is laid out differently. With NF/Tickets absent the ticket-category
+row renders read-only (greyed out) and says why.
 
 ## License
 

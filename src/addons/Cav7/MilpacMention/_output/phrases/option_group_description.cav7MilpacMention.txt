@@ -1,0 +1,1 @@
+Places where a milpac link raises no alert. The link still renders and still resolves everywhere; these lists withhold the notification only.

@@ -2,6 +2,7 @@
 
 namespace Cav7\MilpacMention\NF\Tickets\Service\Message;
 
+use Cav7\MilpacMention\MilpacResolver;
 use Cav7\MilpacMention\MilpacStash;
 use XF\Entity\User;
 use XF\Repository\UserAlertRepository;
@@ -106,6 +107,32 @@ class Notifier extends XFCP_Notifier
         // Mirrors XF\Service\Report\NotifierService.
         try
         {
+            // The suppressed-area gate (issue #147), and the reason this issue exists.
+            // A ticket message's place is its ticket's category, and the award queues
+            // are categories where the linked milpac names the SUBJECT of an award
+            // rather than someone being addressed — so the alert, whose line carries
+            // the ticket title, discloses a pending award to its own recipient.
+            //
+            // Suppression is by PLACE. It decides once for the whole message and never
+            // asks who opened the ticket, who is a participant, or who can view it —
+            // deliberately, because the ticket's own view check is what failed to
+            // contain this: the active-member group holds a global viewOthers allow, so
+            // roughly 800 members pass it on the award categories. Only the alert is
+            // withheld; the milpac link still renders and still resolves, which matters
+            // because the S1 workflow treats that link as the record of who a ticket is
+            // about.
+            //
+            // Inside the outer guard on purpose: reading the Ticket relation and the
+            // options can fault on an already-committed ticket action, and the catch
+            // below turns that into a logged, alert-free pass instead of a 500. A ticket
+            // that will not load leaves the category id at 0, which the predicate fails
+            // OPEN on — suppression is only ever what the admin explicitly named.
+            $categoryId = $message->Ticket ? (int) $message->Ticket->ticket_category_id : 0;
+            if (MilpacResolver::isSuppressedArea(\XF::options()->cav7MMSuppressedTicketCategoryIds ?? [], $categoryId))
+            {
+                return;
+            }
+
             $users = \XF::em()->findByIds(User::class, $milpacUserIds, ['Profile', 'Option']);
 
             /** @var UserAlertRepository $alertRepo */

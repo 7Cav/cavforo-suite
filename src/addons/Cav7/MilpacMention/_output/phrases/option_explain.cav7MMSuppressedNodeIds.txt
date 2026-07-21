@@ -1,0 +1,1 @@
+Select the forums where a milpac link should raise no alert. The link still renders, still resolves, and the $name completer still works there; only the notification is withheld. A forum you leave unselected alerts as it always has. Nothing is selected by default.
