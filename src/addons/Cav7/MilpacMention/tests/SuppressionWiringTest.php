@@ -136,6 +136,21 @@ foreach ($gatedSurfaces as $file => $expected) {
             : 'cav7MMSuppressedNodeIds')
     );
 
+    // The suppression-option read must array-default (issue #147 review). On a partial
+    // upgrade the option can be unbuilt and read null; without the `?? []` coalesce that
+    // null reaches MilpacResolver::isSuppressedArea's `array` type-hint as a TypeError,
+    // which the outer try here swallows — silently withholding EVERY milpac alert on this
+    // surface, not just the suppressed ones. Pin the coalesce on the \XF::options() read
+    // at the firing edge so a refactor that drops it fails here, not in production.
+    check(
+        "$file coalesces its $expected[option] read to an empty array",
+        (bool) preg_match(
+            '/\\\\XF::options\(\)->' . preg_quote($expected['option'], '/') . '\s*\?\?\s*\[\s*\]/',
+            $fireCode
+        ),
+        'a null option value would hit the predicate\'s array type-hint as a TypeError the outer try swallows, killing every alert on this surface'
+    );
+
     // The area id itself: the relation hop and the column, so a gate asking about the
     // thread_id, the post_id or the ticket_id instead fails here.
     check(
@@ -298,17 +313,34 @@ check(
 
 // What the absent case renders is the whole point of the guard. A vanished row
 // leaves an admin with no explanation for the absence, and an empty but enabled
-// picker states something false, namely that no categories exist. So: disabled, with
-// an explanation.
+// picker states something false, namely that no categories exist. So the row is
+// rendered inert WITH an explanation — but inert as READONLY, never plain `disabled`.
+//
+// The readonly-vs-disabled distinction is load-bearing on SAVE (issue #147 review).
+// A plain disabled <select> submits nothing, yet the option row is still emitted into
+// options_listed[], so XF's save path (OptionController::actionUpdate ->
+// updateOptions -> Option::castOptionValue) casts the listed-but-unsubmitted
+// data_type=array option to [] — wiping the shipped ["17","18","20","21"] seed the
+// moment an admin saves this group on a board WITHOUT NF/Tickets, so the suppression
+// silently evaporates if NF/Tickets is later installed. `readonly` renders just as
+// visually disabled (XF's formSelect sets disabled internally for it) but re-emits the
+// stored ids as hidden inputs, so the seed round-trips and survives the save. Pin the
+// readonly posture AND the absence of a value-wiping plain disabled, so the seed-
+// dropping behaviour cannot come back.
 check(
-    'with NF/Tickets absent the row renders DISABLED',
-    (bool) preg_match("/\['disabled'\]\s*=\s*true|'disabled'\s*=>\s*true/", $rendererCode),
-    'an enabled empty picker claims there are no categories'
+    'with NF/Tickets absent the row renders READONLY (value-preserving), not plain disabled',
+    (bool) preg_match("/\['readonly'\]\s*=\s*true|'readonly'\s*=>\s*true/", $rendererCode),
+    'a disabled select submits nothing while staying listed, so save casts the array option to [] and wipes the seed'
+);
+check(
+    'with NF/Tickets absent the row does NOT use a value-wiping plain disabled',
+    !preg_match("/\['disabled'\]\s*=\s*true|'disabled'\s*=>\s*true/", $rendererCode),
+    'plain disabled drops the control from the POST while leaving it listed, so save overwrites the seeded deny-list with []'
 );
 check(
     'with NF/Tickets absent the row carries an explanation phrase',
     str_contains($rendererCode, 'cav7_mm_option_ticket_categories_no_tickets'),
-    'a disabled control with no reason given is just a broken control'
+    'an inert control with no reason given is just a broken control'
 );
 check(
     'the absent case still returns a rendered row rather than nothing',

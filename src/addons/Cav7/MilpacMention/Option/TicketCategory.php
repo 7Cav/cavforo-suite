@@ -24,11 +24,15 @@ use XF\Option\AbstractOption;
  * the options page whether or not NF/Tickets is installed, so it has to check for
  * itself before reaching for anything of theirs.
  *
- * When NF/Tickets is absent the row is rendered DISABLED with the reason attached,
+ * When NF/Tickets is absent the row is rendered READ-ONLY with the reason attached,
  * rather than being dropped or left as an empty picker. Both of the easier options
  * mislead: a vanished row leaves an admin with no explanation for why a documented
  * setting is not there, and an empty but enabled picker asserts something false,
- * that the board has no ticket categories.
+ * that the board has no ticket categories. Read-only rather than plain `disabled`
+ * because a disabled <select> submits nothing while the option row stays listed, so a
+ * save would cast the array option to [] and wipe the seeded deny-list; read-only
+ * renders just as inert but re-emits the stored ids as hidden inputs, so the seed
+ * survives the save (issue #147 review).
  */
 class TicketCategory extends AbstractOption
 {
@@ -52,7 +56,16 @@ class TicketCategory extends AbstractOption
         // a guard that runs after the lookup guards nothing.
         if (!\XF::isAddOnActive('NF/Tickets'))
         {
-            $controlOptions['disabled'] = true;
+            // READONLY, not disabled (issue #147 review). Both render the <select>
+            // visually disabled — XF's formSelect sets `disabled` internally for a
+            // readonly control — but a plain disabled select submits nothing while the
+            // option row stays listed in options_listed[], so XF's save path casts the
+            // listed-but-unsubmitted array option to [] and wipes the shipped
+            // ["17","18","20","21"] seed the moment an admin saves this group on a board
+            // WITHOUT NF/Tickets. readonly re-emits the stored ids as hidden inputs, so
+            // the seed round-trips and survives the save; the suppression is still there
+            // if NF/Tickets is later installed.
+            $controlOptions['readonly'] = true;
             $rowOptions['explain'] = static::appendMissingTicketsNotice($rowOptions['explain'] ?? '');
 
             return static::getTemplater()->formSelectRow($controlOptions, [], $rowOptions);
@@ -87,9 +100,9 @@ class TicketCategory extends AbstractOption
 
     /**
      * The option's own explain text with the "NF/Tickets is not installed" reason
-     * appended, so the disabled control says why it is disabled instead of just
-     * sitting there greyed out. The phrase is escaped because it lands in an HTML
-     * explain block.
+     * appended, so the inert control says why it is inert instead of just sitting
+     * there greyed out. The phrase is escaped because it lands in an HTML explain
+     * block.
      *
      * @param string $explainHtml
      *
