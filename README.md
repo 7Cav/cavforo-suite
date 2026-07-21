@@ -20,6 +20,7 @@ Addons sit at `src/addons/Cav7/<AddonId>/`, mirroring a XenForo install's tree, 
 | `Cav7/AvatarByRole` | Forces avatars to match 7Cav rank |
 | `Cav7/MilpacTooltip` | Milpac (rank/billet/status) on the member hovercard |
 | `Cav7/EnlistmentReminder` | Reminds the processing team about enlistment applications stalled in the queue |
+| `Cav7/DiscordSyncPatch` | Makes forum user groups authoritative for the Discord roles they grant |
 
 The vendor prefix is `Cav7`, not `7Cav`, because a PHP namespace cannot start with a digit. The GitHub org is `7Cav`; the code vendor is `Cav7`.
 
