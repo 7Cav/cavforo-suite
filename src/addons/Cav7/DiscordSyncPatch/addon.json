@@ -1,0 +1,23 @@
+{
+    "legacy_addon_id": "",
+    "title": "7Cav - Discord Sync Patch",
+    "description": "Makes forum user groups authoritative for every Discord role a group grants, so a member's roles follow their groups instead of the sync's own stored record.",
+    "version_id": 1000070,
+    "version_string": "1.0.0",
+    "dev": "Cav7",
+    "dev_url": "https://github.com/7Cav",
+    "faq_url": "",
+    "support_url": "",
+    "extra_urls": [],
+    "require": {
+        "XF": [
+            2030070,
+            "XenForo 2.3.0+"
+        ],
+        "NF/Discord": [
+            2120070,
+            "Discord Integration 2.12.0+"
+        ]
+    },
+    "icon": ""
+}
