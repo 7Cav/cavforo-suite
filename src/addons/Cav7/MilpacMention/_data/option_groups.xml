@@ -1,2 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<option_groups/>
+<option_groups>
+  <group group_id="cav7MilpacMention" icon="fa-bell-slash" display_order="1330" debug_only="0"/>
+</option_groups>

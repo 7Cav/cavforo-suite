@@ -229,6 +229,265 @@ check(
     $formatterCode !== '' && !str_contains($formatterCode, 'isSuppressedArea')
 );
 
+// =========================================================================
+// the ticket-category option renderer, and the add-on's first ACTIVE
+// soft-dependency check
+// =========================================================================
+
+// Forum nodes need no renderer of our own: XF\Option\Forum::renderSelectMultiple is
+// core, and is the same renderer EWR/Porta's article-forums option uses. Ticket
+// categories have none — NF/Tickets ships three option renderers and all three are
+// single-select, none for categories — so this one is ours.
+//
+// Being ours is what makes it the first place NF/Tickets' absence has to be handled
+// actively. Everywhere else the add-on's soft dependency is PASSIVE: without
+// NF/Tickets the from_class never loads, XF never builds the XFCP proxy, and the two
+// ticket extensions simply never run. An option renderer is a class of ours that the
+// ACP loads whether or not NF/Tickets is there, so it has to guard itself.
+$rendererFile = "$root/Option/TicketCategory.php";
+$rendererSrc = (string) @file_get_contents($rendererFile);
+check('Option/TicketCategory.php source exists', $rendererSrc !== '');
+
+$rendererCode = stripComments($rendererSrc);
+
+check(
+    'the renderer is built on the XF\\Option\\AbstractOption shape',
+    (bool) preg_match('/class\s+TicketCategory\s+extends\s+AbstractOption\b/', $rendererCode)
+        && str_contains($rendererCode, 'use XF\Option\AbstractOption;'),
+    'options are rendered by a static callback on that shape; anything else is not called'
+);
+
+// The option is a multi-select, so the callback the option names has to be the
+// multiple variant. A single-select renderer would let an admin suppress exactly one
+// category.
+check(
+    'the renderer exposes renderSelectMultiple as a static callback',
+    (bool) preg_match(
+        '/public\s+static\s+function\s+renderSelectMultiple\s*\(\s*Option\s+\$option\s*,\s*array\s+\$htmlParams\s*\)/',
+        $rendererCode
+    ),
+    'a deny-list needs to name several categories at once'
+);
+
+// Real names, not id textboxes: the choices come from the NF/Tickets category
+// records themselves.
+check(
+    'the renderer lists real NF/Tickets categories rather than asking for ids',
+    str_contains($rendererCode, 'NF\Tickets:Category'),
+    'the picker has to show category names an admin recognises'
+);
+
+$renderBody = methodBody($rendererCode, 'renderSelectMultiple');
+check('the renderer has a renderSelectMultiple body', $renderBody !== '');
+
+// The active guard. Without it the first line of the render would reach for an
+// NF/Tickets class that is not there and take the whole options page down with it.
+check(
+    'the renderer checks NF/Tickets is active before touching anything of theirs',
+    str_contains($rendererCode, "isAddOnActive('NF/Tickets')"),
+    'the ACP loads this class whether or not NF/Tickets is installed'
+);
+
+$guardPos = strpos($rendererCode, "isAddOnActive('NF/Tickets')");
+$categoryPos = strpos($rendererCode, 'NF\Tickets:Category');
+check(
+    'the guard runs BEFORE the first NF/Tickets lookup',
+    $guardPos !== false && $categoryPos !== false && $guardPos < $categoryPos,
+    'a guard after the lookup guards nothing'
+);
+
+// What the absent case renders is the whole point of the guard. A vanished row
+// leaves an admin with no explanation for the absence, and an empty but enabled
+// picker states something false, namely that no categories exist. So: disabled, with
+// an explanation.
+check(
+    'with NF/Tickets absent the row renders DISABLED',
+    (bool) preg_match("/\['disabled'\]\s*=\s*true|'disabled'\s*=>\s*true/", $rendererCode),
+    'an enabled empty picker claims there are no categories'
+);
+check(
+    'with NF/Tickets absent the row carries an explanation phrase',
+    str_contains($rendererCode, 'cav7_mm_option_ticket_categories_no_tickets'),
+    'a disabled control with no reason given is just a broken control'
+);
+check(
+    'the absent case still returns a rendered row rather than nothing',
+    (bool) preg_match('/return\s+(?:static|self)::getSelectRow\(/', $renderBody)
+        || (bool) preg_match('/return\s+static::getTemplater\(\)->formSelectRow\(/', $renderBody),
+    'returning an empty string would make the row disappear, which is the failure mode being avoided'
+);
+
+// =========================================================================
+// the two options, and the seeded defaults they ship with
+// =========================================================================
+
+$addon = json_decode((string) @file_get_contents("$root/addon.json"), true);
+$versionId = is_array($addon) ? ($addon['version_id'] ?? null) : null;
+check('addon.json is valid JSON with a positive version_id', is_int($versionId) && $versionId > 0);
+
+// This add-on had no admin option before #147, so the group is new too.
+$groupsXml = @simplexml_load_file("$root/_data/option_groups.xml");
+check('_data/option_groups.xml could be read', $groupsXml !== false);
+
+$groupIds = [];
+if ($groupsXml !== false) {
+    foreach ($groupsXml->group as $group) {
+        $groupIds[] = (string) $group['group_id'];
+    }
+}
+check(
+    'the cav7MilpacMention option group is declared',
+    in_array('cav7MilpacMention', $groupIds, true)
+);
+
+$optionsXml = @simplexml_load_file("$root/_data/options.xml");
+check('_data/options.xml could be read', $optionsXml !== false);
+
+$options = [];
+if ($optionsXml !== false) {
+    foreach ($optionsXml->option as $optionEl) {
+        $groupId = '';
+        $relation = $optionEl->relation;
+        if ($relation !== null && isset($relation[0])) {
+            $groupId = (string) $relation[0]['group_id'];
+        }
+        $options[(string) $optionEl['option_id']] = [
+            'edit_format' => (string) $optionEl['edit_format'],
+            'data_type' => (string) $optionEl['data_type'],
+            'edit_format_params' => trim((string) $optionEl->edit_format_params),
+            'default_value' => trim((string) $optionEl->default_value),
+            'group_id' => $groupId,
+        ];
+    }
+}
+
+/**
+ * Both options are deny-lists of ids, so both are data_type=array behind a callback
+ * edit format: an array option is what stores a multi-select, and a callback is what
+ * lets the control be a picker of real names instead of a textbox of ids.
+ */
+$expectedOptions = [
+    'cav7MMSuppressedNodeIds' => [
+        // Forum nodes need no renderer of ours; this is the core one.
+        'renderer' => 'XF\Option\Forum::renderSelectMultiple',
+        // Ships EMPTY. There is no known forum node with the award-queue shape, and
+        // an option that suppresses something on a fresh install without anyone
+        // choosing it would be the opposite of an explicit act.
+        'default' => [],
+    ],
+    'cav7MMSuppressedTicketCategoryIds' => [
+        'renderer' => 'Cav7\MilpacMention\Option\TicketCategory::renderSelectMultiple',
+        // Ships PRE-CONFIGURED with the four award queues: S1 Citations (17), Medal
+        // Recommendations (18), Medal Approvals (20) and Medal posting (21). The leak
+        // is firing today, so installing the version has to BE the remediation rather
+        // than the prerequisite for it. The four came from measurement, not from
+        // reading category titles: they are where 88-95% of milpac links point at
+        // someone other than the member who opened the ticket. Every other queue on
+        // the board sits between 38% and 80%.
+        //
+        // Two near misses stay off the list on purpose. Military Service Awards (25)
+        // reads like an award queue but members open those tickets about their own
+        // awards, and S1 Personnel Administration (5) is mixed enough that suppressing
+        // it would cost legitimate notifications.
+        'default' => [17, 18, 20, 21],
+    ],
+];
+
+foreach ($expectedOptions as $optionId => $expected) {
+    check("$optionId is declared in _data/options.xml", isset($options[$optionId]));
+    if (!isset($options[$optionId])) {
+        continue;
+    }
+    $declared = $options[$optionId];
+
+    check(
+        "$optionId is a data_type=array option behind a callback edit format",
+        $declared['data_type'] === 'array' && $declared['edit_format'] === 'callback',
+        'a multi-select saves an array, and only a callback can render a picker of real names'
+    );
+    check(
+        "$optionId renders through $expected[renderer]",
+        $declared['edit_format_params'] === $expected['renderer'],
+        'the wrong callback renders the wrong id space, or an id textbox'
+    );
+    check(
+        "$optionId belongs to the cav7MilpacMention group",
+        $declared['group_id'] === 'cav7MilpacMention'
+    );
+
+    $default = json_decode($declared['default_value'], true);
+    check(
+        "$optionId ships a JSON array default",
+        is_array($default),
+        'XF stores an array option default as JSON; anything else installs as garbage'
+    );
+    check(
+        "$optionId ships the seeded default " . json_encode($expected['default']),
+        is_array($default) && array_map('intval', $default) === $expected['default'],
+        'a fresh install has to arrive already suppressing the award queues, and suppressing no forum node'
+    );
+
+    // _output is the other half of the same export, and CI validates one against the
+    // other. Pin the default there too, since a hand-edit of one side is exactly how
+    // the two drift.
+    $outputJson = json_decode((string) @file_get_contents("$root/_output/options/$optionId.json"), true);
+    // Both sides store the default as a JSON string, so decode before comparing:
+    // "[]" and "[\"17\",…]" are strings inside the record, not arrays.
+    $outputDefault = is_array($outputJson) ? json_decode((string) ($outputJson['default_value'] ?? ''), true) : null;
+    check(
+        "$optionId has an _output record agreeing on the default and the callback",
+        is_array($outputDefault)
+            && array_map('intval', $outputDefault) === $expected['default']
+            && trim((string) ($outputJson['edit_format_params'] ?? '')) === $expected['renderer']
+    );
+}
+
+// =========================================================================
+// the phrases the options are read through
+// =========================================================================
+
+$phrasesXml = @simplexml_load_file("$root/_data/phrases.xml");
+check('_data/phrases.xml could be read', $phrasesXml !== false);
+
+$phraseText = [];
+if ($phrasesXml !== false) {
+    foreach ($phrasesXml->phrase as $phrase) {
+        $phraseText[(string) $phrase['title']] = (string) $phrase;
+    }
+}
+
+$requiredPhrases = [
+    'option_group.cav7MilpacMention',
+    'option_group_description.cav7MilpacMention',
+    'option.cav7MMSuppressedNodeIds',
+    'option_explain.cav7MMSuppressedNodeIds',
+    'option.cav7MMSuppressedTicketCategoryIds',
+    'option_explain.cav7MMSuppressedTicketCategoryIds',
+    // The reason the disabled ticket row gives for being disabled.
+    'cav7_mm_option_ticket_categories_no_tickets',
+];
+foreach ($requiredPhrases as $title) {
+    check(
+        "phrase $title is declared and non-empty",
+        ($phraseText[$title] ?? '') !== ''
+    );
+    check(
+        "phrase $title has an _output file matching _data byte-for-byte",
+        @file_get_contents("$root/_output/phrases/$title.txt") === ($phraseText[$title] ?? null)
+    );
+}
+
+// The seeded ids are the one thing an admin cannot read off the picker, since a
+// suppressed category shows as selected but not as "shipped that way". Say so in the
+// explain text, the way EnlistmentReminder names its own seeded defaults.
+foreach ([17, 18, 20, 21] as $seeded) {
+    check(
+        "the ticket-category explain phrase names the seeded category $seeded",
+        str_contains($phraseText['option_explain.cav7MMSuppressedTicketCategoryIds'] ?? '', (string) $seeded),
+        'an admin reading the option should be able to tell which selections came shipped'
+    );
+}
+
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
     exit(1);

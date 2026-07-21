@@ -1,2 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<options/>
+<options>
+  <option option_id="cav7MMSuppressedNodeIds" edit_format="callback" data_type="array" advanced="0">
+    <default_value>[]</default_value>
+    <edit_format_params>XF\Option\Forum::renderSelectMultiple</edit_format_params>
+    <sub_options>*</sub_options>
+    <relation group_id="cav7MilpacMention" display_order="10"/>
+  </option>
+  <option option_id="cav7MMSuppressedTicketCategoryIds" edit_format="callback" data_type="array" advanced="0">
+    <default_value>["17","18","20","21"]</default_value>
+    <edit_format_params>Cav7\MilpacMention\Option\TicketCategory::renderSelectMultiple</edit_format_params>
+    <sub_options>*</sub_options>
+    <relation group_id="cav7MilpacMention" display_order="20"/>
+  </option>
+</options>

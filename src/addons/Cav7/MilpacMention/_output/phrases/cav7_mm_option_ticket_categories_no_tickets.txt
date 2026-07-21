@@ -1,0 +1,1 @@
+NF/Tickets is not installed, so there are no ticket categories to list. Install it and this setting becomes editable.

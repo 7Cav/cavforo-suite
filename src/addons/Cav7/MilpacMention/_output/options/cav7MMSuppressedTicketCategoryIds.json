@@ -1,0 +1,15 @@
+{
+    "edit_format": "callback",
+    "edit_format_params": "Cav7\\MilpacMention\\Option\\TicketCategory::renderSelectMultiple",
+    "data_type": "array",
+    "sub_options": [
+        "*"
+    ],
+    "validation_class": "",
+    "validation_method": "",
+    "advanced": false,
+    "default_value": "[\"17\",\"18\",\"20\",\"21\"]",
+    "relations": {
+        "cav7MilpacMention": 20
+    }
+}
