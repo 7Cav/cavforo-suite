@@ -136,7 +136,7 @@ tells a member about their own pending award.
 The four ship selected because the disclosure is happening now, so installing this
 version should be the fix rather than the thing you do before the fix. Clear them
 if your board is laid out differently. With NF/Tickets absent the ticket-category
-row renders disabled and says why.
+row renders read-only (greyed out) and says why.
 
 ## License
 

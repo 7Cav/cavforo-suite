@@ -495,7 +495,7 @@ $requiredPhrases = [
     'option_explain.cav7MMSuppressedNodeIds',
     'option.cav7MMSuppressedTicketCategoryIds',
     'option_explain.cav7MMSuppressedTicketCategoryIds',
-    // The reason the disabled ticket row gives for being disabled.
+    // The reason the read-only ticket row gives for being inert.
     'cav7_mm_option_ticket_categories_no_tickets',
 ];
 foreach ($requiredPhrases as $title) {
