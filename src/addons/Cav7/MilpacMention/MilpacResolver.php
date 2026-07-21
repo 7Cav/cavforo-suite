@@ -14,6 +14,7 @@ namespace Cav7\MilpacMention;
  *   resolveUserIds()      relation_id -> user_id via the roster finder (§2.3)
  *   userIdsFromMap()      shape the finder result into ordered user_ids (§2.3)
  *   milpacRecipients()    apply the firing rules to pick who is alerted (§2.5)
+ *   isSuppressedArea()    withhold the alert entirely in an admin-named place (#147)
  *
  * The find-endpoint path (phase 2) drives the $name completer the other way, from a
  * typed query to the milpac-owning members it may insert as named profile links:
@@ -280,6 +281,59 @@ class MilpacResolver
         }
 
         return array_slice($milpac, 0, $remaining);
+    }
+
+    /**
+     * Whether milpac mentions are suppressed in the area this content sits in
+     * (issue #147) — the seventh firing rule, and the only one that asks about the
+     * PLACE rather than the people.
+     *
+     * $suppressedAreaIds is the admin deny-list for one surface's id space: forum
+     * node_ids for posts, ticket_category_ids for ticket messages. The question "is
+     * this area on the list" is identical either way, so the two share this
+     * predicate and the caller supplies the matching pair; nothing here knows or
+     * cares which id space it was handed.
+     *
+     * Selected means suppressed. An empty list suppresses nothing, and an area the
+     * admin never named behaves exactly as it did before the options existed, so
+     * suppression is always an explicit act rather than a default.
+     *
+     * Suppression withholds the ALERT and nothing else: the milpac link still
+     * renders, still resolves, and the $name completer still works in a suppressed
+     * area. This predicate therefore sits at the firing edge, not in detection.
+     *
+     * Two shapes the callers hand in, both handled here rather than at each call
+     * site:
+     *
+     *  - The deny-list arrives from a data_type=array option, whose multi-select
+     *    round-trips through the request as STRINGS ("17"), while the area id is an
+     *    int column off an entity. Both sides are cast, so the option's own storage
+     *    shape can never silently disable suppression.
+     *  - A non-positive area id means the surface could not resolve its place (a
+     *    missing Thread or Ticket relation). That area is not NAMED on the list, so
+     *    it FAILS OPEN and the alert fires, the same as today — even if a literal 0
+     *    is on the list, which XF\Option\Forum::renderSelectMultiple lets an admin
+     *    save via its "(none)" choice. Inventing a suppression the admin never
+     *    configured would be the one behaviour the deny-list shape rules out.
+     *
+     * Pure, like every other firing rule, so it is unit-tested in plain PHP.
+     *
+     * @param array<int|string> $suppressedAreaIds the admin deny-list for this surface
+     * @param int               $areaId            the node/category this content sits in
+     */
+    public static function isSuppressedArea(array $suppressedAreaIds, int $areaId): bool
+    {
+        if ($areaId <= 0) {
+            return false; // unresolvable place: nothing was explicitly named, so fire
+        }
+
+        foreach ($suppressedAreaIds as $suppressedAreaId) {
+            if ((int) $suppressedAreaId === $areaId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // =====================================================================
