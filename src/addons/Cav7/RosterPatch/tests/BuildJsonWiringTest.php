@@ -10,10 +10,19 @@
  * It needs pinning because the guard cannot report its own failure. XF's
  * ReleaseBuilderService::execCmds() runs each entry through passthru() and
  * throws the exit status away, and `rm -rf` on a path that is not there exits 0,
- * so a renamed add-on directory or a changed staging layout would leave the
- * fixtures in the zip without a word. Nothing else covers it: the no-XenForo
- * path (tools/package-addon.sh) has its own tests/ exclusion and never reads
- * exec at all.
+ * so a build.json that names the wrong path leaves the fixtures in the zip
+ * without a word. Nothing else covers it: the no-XenForo path
+ * (tools/package-addon.sh) has its own tests/ exclusion and never reads exec at
+ * all.
+ *
+ * What that comes down to here: the exec list holds the delete, spelled exactly,
+ * with {addon_id} written bare rather than inside quotes of build.json's own
+ * (execCmds() expands it through escapeshellarg(), so quoting it a second time
+ * has rm looking for a directory whose name carries apostrophes), and nothing
+ * later in the list puts the directory back. The add-on's own id is read from
+ * where the add-on sits, so a rename is covered; the `_build/upload/src/addons/`
+ * prefix is not — it is a literal here compared against the literal in
+ * build.json, and a XenForo release that restaged elsewhere would pass both.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -53,30 +62,51 @@ check(
     'without one, xf-addon:build-release ships tests/ and its vendor fixtures'
 );
 
-/**
- * One exec entry as XenForo would run it. execCmds() chdir()s to the add-on
- * directory and expands {placeholder} tokens from the AddOn's own properties
- * through escapeshellarg() before handing the command to passthru(), so a
- * relative path is relative to the add-on root and {addon_id} arrives quoted.
- */
-$asXenForoRunsIt = static function (string $cmd) use ($addOnId): string {
-    $expanded = (string) preg_replace_callback(
-        '/\{([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)\}/',
-        static fn (array $m) => $m[1] === 'addon_id' ? escapeshellarg($addOnId) : $m[0],
-        $cmd
-    );
+$rawExec = is_array($exec) ? $exec : [];
 
-    // The shell strips the quoting escapeshellarg() adds before rm sees a path.
-    return str_replace(["'", '"'], '', $expanded);
-};
+// passthru() takes a string, so a non-string entry is a TypeError inside the
+// build rather than a command. Named here, because an uncaught one below would
+// take this whole file down with no FAIL line and no remaining checks.
+$notStrings = array_keys(array_filter($rawExec, static fn ($entry) => !is_string($entry)));
+check(
+    'every exec entry is a string',
+    $notStrings === [],
+    'entries at ' . (implode(', ', $notStrings) ?: 'none') . ' are not strings'
+);
 
-$commands = array_map($asXenForoRunsIt, is_array($exec) ? $exec : []);
-$wanted = "rm -rf _build/upload/src/addons/$addOnId/tests";
+// execCmds() chdir()s to the add-on directory and expands {placeholder} tokens
+// from the AddOn's own properties before handing the command to passthru(), so a
+// relative path is relative to the add-on root. Only the token is substituted
+// here: the expansion goes through escapeshellarg(), so an entry that wraps the
+// token in quotes of its own no longer matches the wanted command — which is the
+// point, since those quotes end up in the path rm looks for.
+$commands = array_map(
+    static fn (string $entry) => str_replace('{addon_id}', $addOnId, $entry),
+    array_values(array_filter($rawExec, 'is_string'))
+);
+
+$staged = "_build/upload/src/addons/$addOnId/tests";
+$wanted = "rm -rf $staged";
+$deleteAt = array_search($wanted, $commands, true);
 
 check(
-    "an exec command deletes this add-on's own staged tests directory",
-    in_array($wanted, $commands, true),
+    "an exec command deletes this add-on's own staged tests directory, unquoted",
+    $deleteAt !== false,
     'expected: ' . $wanted . ' — got: ' . (implode(' | ', $commands) ?: 'nothing')
+);
+
+// exec is an ordered list run top to bottom, so a later entry can stage the
+// directory straight back — a `cp -R tests <staged>` after the delete ships the
+// fixtures again, and the delete above still reads as present.
+$afterDelete = $deleteAt === false ? [] : array_slice($commands, (int) $deleteAt + 1);
+$restagers = array_values(array_filter(
+    $afterDelete,
+    static fn (string $cmd) => str_contains($cmd, $staged)
+));
+check(
+    'no later exec command touches the staged tests directory again',
+    $restagers === [],
+    'after the delete: ' . implode(' | ', $restagers)
 );
 
 // The guard is silent about a target that is not there, so say here that there
