@@ -35,9 +35,10 @@ function check(string $label, bool $ok, string $detail = ''): void
 $root = dirname(__DIR__);
 
 /**
- * The modification records as XenForo would load them, keyed by modification_key.
+ * The enabled modification records as XenForo would load them, keyed by
+ * modification_key.
  *
- * @return array<string, array{action: string, find: string, replace: string, template: string}>
+ * @return array<string, array{action: string, find: string, replace: string}>
  */
 function loadModifications(string $root): array
 {
@@ -52,10 +53,9 @@ function loadModifications(string $root): array
             continue;
         }
         $mods[(string) $mod['modification_key']] = [
-            'action'   => (string) $mod['action'],
-            'find'     => (string) $mod->find,
-            'replace'  => (string) $mod->replace,
-            'template' => (string) $mod['template'],
+            'action'  => (string) $mod['action'],
+            'find'    => (string) $mod->find,
+            'replace' => (string) $mod->replace,
         ];
     }
 
@@ -106,16 +106,33 @@ function applyModification(array $mod, string $template): array
 
 $mods = loadModifications($root);
 
-// The date cell each modification owns, and what has to be true of the template
-// once XenForo has applied it.
+// The date cell each modification owns: the UTC getter it has to install, a
+// pattern for the viewer-timezone call it has to remove, and the spellings of
+// that call it has to cope with.
 $dateCells = [
     'cav7RosterPatchRecordDateUtc' => [
         'getter'   => '{$record.getRecordDate()}',
         'vendorRe' => '/date\s*\(\s*\$record\.record_date/',
+        'spellings' => [
+            'the vendor spelling'               => "{{ date(\$record.record_date, 'Y-m-d') }}",
+            "the style's trailing 'Z' argument" => "{{ date(\$record.record_date, 'Y-m-d', 'Z' )}}",
+            'no space inside the braces'        => "{{date(\$record.record_date, 'Y-m-d')}}",
+            'space around the argument list'    => "{{ date( \$record.record_date , 'Y-m-d' ) }}",
+            'a line break inside the call'      => "{{ date(\n    \$record.record_date,\n    'Y-m-d'\n) }}",
+            'no format argument at all'         => '{{ date($record.record_date) }}',
+        ],
     ],
     'cav7RosterPatchAwardDateUtc' => [
         'getter'   => '{$award.getAwardDate()}',
         'vendorRe' => '/date\s*\(\s*\$award\.award_date/',
+        'spellings' => [
+            'the vendor spelling'            => "{{ date(\$award.award_date, 'Y-m-d') }}",
+            "a trailing 'Z' argument"        => "{{ date(\$award.award_date, 'Y-m-d', 'Z' )}}",
+            'no space inside the braces'     => "{{date(\$award.award_date, 'Y-m-d')}}",
+            'space around the argument list' => "{{ date( \$award.award_date , 'Y-m-d' ) }}",
+            'a line break inside the call'   => "{{ date(\n    \$award.award_date,\n    'Y-m-d'\n) }}",
+            'no format argument at all'      => '{{ date($award.award_date) }}',
+        ],
     ],
 ];
 
@@ -175,44 +192,18 @@ foreach ($fixtures as $fixtureLabel => $file) {
 // A style copy can differ from the vendor in whitespace or carry arguments the
 // vendor never wrote. None of that changes what the call renders, so none of it
 // should decide whether the swap happens.
-$spellings = [
-    'cav7RosterPatchRecordDateUtc' => [
-        'getter'   => '{$record.getRecordDate()}',
-        'variants' => [
-            "the vendor spelling"                 => "{{ date(\$record.record_date, 'Y-m-d') }}",
-            "the style's trailing 'Z' argument"   => "{{ date(\$record.record_date, 'Y-m-d', 'Z' )}}",
-            'no space inside the braces'          => "{{date(\$record.record_date, 'Y-m-d')}}",
-            'space around the argument list'      => "{{ date( \$record.record_date , 'Y-m-d' ) }}",
-            'a line break inside the call'        => "{{ date(\n    \$record.record_date,\n    'Y-m-d'\n) }}",
-            'no format argument at all'           => '{{ date($record.record_date) }}',
-        ],
-    ],
-    'cav7RosterPatchAwardDateUtc' => [
-        'getter'   => '{$award.getAwardDate()}',
-        'variants' => [
-            'the vendor spelling'                 => "{{ date(\$award.award_date, 'Y-m-d') }}",
-            "a trailing 'Z' argument"             => "{{ date(\$award.award_date, 'Y-m-d', 'Z' )}}",
-            'no space inside the braces'          => "{{date(\$award.award_date, 'Y-m-d')}}",
-            'space around the argument list'      => "{{ date( \$award.award_date , 'Y-m-d' ) }}",
-            'a line break inside the call'        => "{{ date(\n    \$award.award_date,\n    'Y-m-d'\n) }}",
-            'no format argument at all'           => '{{ date($award.award_date) }}',
-        ],
-    ],
-];
-
-foreach ($spellings as $key => $spec) {
+foreach ($dateCells as $key => $cell) {
     $mod = $mods[$key] ?? null;
-    check("$key is present and enabled", $mod !== null);
     if ($mod === null) {
         continue;
     }
 
-    foreach ($spec['variants'] as $label => $cell) {
-        $template = "<xf:datarow>\n    <xf:cell>$cell</xf:cell>\n</xf:datarow>";
+    foreach ($cell['spellings'] as $label => $call) {
+        $template = "<xf:datarow>\n    <xf:cell>$call</xf:cell>\n</xf:datarow>";
         [$result] = applyModification($mod, $template);
         check(
             "$key rewrites $label",
-            str_contains($result, $spec['getter']),
+            str_contains($result, $cell['getter']),
             'got: ' . str_replace("\n", '\n', $result)
         );
     }
