@@ -39,3 +39,20 @@ message. It is never stored, because the record it is written into is overwritte
 with the member's correct roles before the sync saves.
 _Avoid_: treating the claim as a set of roles to grant. It decides removability
 only, and never changes which roles a group hands out.
+
+**Divergence**:
+A member's **managed role**s on Discord disagreeing with the roles their current
+forum groups grant: a managed role they hold that no group grants them, or one a
+group grants that they do not hold. Only managed roles count, so a self-assigned
+interest or game role is never a divergence, however it got there. The condition
+is the same whether it arose from a group change the sync never applied or from a
+hand edit made in Discord.
+_Avoid_: "mismatch" (reads as any role difference, including the self-assigned
+roles this excludes), and "drift" for the whole thing (keep it for the Discord-side
+origin alone if origins need naming).
+
+**Reconciliation sweep**:
+The scheduled pass that finds the members currently in **divergence** and corrects
+only those, leaving members already in agreement untouched.
+_Avoid_: "full sync" and "resync" (both read as re-running the sync for every
+member, the blind shape this is defined against).
