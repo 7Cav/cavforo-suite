@@ -10,8 +10,10 @@ namespace Cav7\EnlistmentDefaults;
  * This is the deep module. The decisions (which dates are still pending, who an
  * award is attributed to) come from EnlistmentDecisions; the entity-world work
  * goes through an EnlistmentGateway. The applier owns the orchestration and the
- * fail-open policy: every grant and the record write are isolated, so one
- * failure is logged and never blocks enlistment nor aborts the rest.
+ * fail-open policy: every grant and the record write are isolated as far as the
+ * log seam holds, so one failure is logged and does not abort the rest. If the
+ * log seam itself throws, the remaining grants and the enlistment record go with
+ * it. The milpac save survives either way, so enlistment is never blocked.
  *
  * The caller (the RosterUser entity extension) is responsible for the
  * insert-only gate; by the time apply() runs, this is a new milpac.

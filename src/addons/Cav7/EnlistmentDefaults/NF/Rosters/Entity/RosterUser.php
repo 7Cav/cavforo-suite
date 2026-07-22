@@ -18,7 +18,10 @@ use Cav7\EnlistmentDefaults\RosterUserGateway;
  * done.
  *
  * Fail-open: the applier isolates and logs each grant and the record write, so a
- * failure is recorded in the XF error log and the milpac save still succeeds.
+ * failure is recorded in the XF error log and the milpac save still succeeds. If
+ * the error log seam is what fails, nothing is recorded and the rest of the set
+ * is lost; the milpac save survives even then. The note on the last-resort catch
+ * below has the reasoning.
  */
 class RosterUser extends XFCP_RosterUser
 {
