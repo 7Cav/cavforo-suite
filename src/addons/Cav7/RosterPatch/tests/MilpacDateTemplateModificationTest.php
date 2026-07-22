@@ -218,10 +218,8 @@ function applyPass(array $mods, string $template): array
 }
 
 /**
- * The expression $dateCells says a fixture spells, or null when the table and
- * the fixture have drifted apart. Whether the table has an entry for this
- * fixture at all is checked once, separately, below — so a null here means one
- * thing: the entry no longer matches the fixture.
+ * The expression $dateCells says a fixture spells, when the fixture still
+ * spells it; null when the table and the fixture have drifted apart.
  *
  * The expectations below are derived with str_replace() over the fixture, and
  * str_replace() is a silent no-op when its needle is absent: a recaptured
@@ -232,7 +230,7 @@ function applyPass(array $mods, string $template): array
  *
  * @param array{fixtureExpressions: array<string, string>} $cell
  */
-function tableExpression(array $cell, string $fixtureLabel, string $template): ?string
+function expressionStillInFixture(array $cell, string $fixtureLabel, string $template): ?string
 {
     $spelt = $cell['fixtureExpressions'][$fixtureLabel] ?? null;
 
@@ -390,7 +388,7 @@ foreach ($fixtures as $fixtureLabel => $file) {
         // fixture spells. The README asks for a recapture on every NF/Rosters
         // upgrade, which is exactly when the two drift apart; without this, that
         // drift surfaces as a pattern failure dumping the whole template.
-        $spelt = tableExpression($cell, $fixtureLabel, $template);
+        $spelt = expressionStillInFixture($cell, $fixtureLabel, $template);
         check(
             "\$dateCells['$key'] spells the expression $fixtureLabel actually carries",
             $spelt !== null,
@@ -484,7 +482,7 @@ check(
 foreach ($passCarriesBoth ? $fixtureText : [] as $fixtureLabel => $template) {
     $expected = $template;
     foreach ($dateCells as $key => $cell) {
-        $spelt = tableExpression($cell, $fixtureLabel, $template);
+        $spelt = expressionStillInFixture($cell, $fixtureLabel, $template);
         if ($spelt === null) {
             // Already reported per fixture above; deriving an expectation from a
             // table that no longer matches would only fail for the wrong reason.
