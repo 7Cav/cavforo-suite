@@ -1,4 +1,4 @@
-# ADR-0002: Reconcile by detecting divergence, not by re-syncing everyone
+# ADR-0002: The reconciliation sweep corrects only the members it finds divergent
 
 - **Status:** Accepted
 - **Date:** 2026-07-21

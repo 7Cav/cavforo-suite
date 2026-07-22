@@ -1,4 +1,4 @@
-# ADR-0003: One reconciler for roles; neutralize the vendor's sync cron
+# ADR-0003: One scheduled reconciler for roles; neutralize the vendor's sync cron
 
 - **Status:** Accepted
 - **Date:** 2026-07-21
@@ -31,11 +31,11 @@ nothing, never calling the parent. XenForo resolves a cron entry's class through
 `extendClass` before invoking it, the same seam this addon already uses for the sync
 message, so the override runs wherever the entry fires. While this addon is
 installed the vendor's cron cannot reconcile roles, whatever its option says.
-Reconciliation has exactly one owner: the sweep.
+Scheduled reconciliation has exactly one owner: the sweep.
 
 ## Consequences
 
-- There is one role reconciler, not a race between two. Nobody can turn a second,
+- There is one scheduled role reconciler, not a race between two. Nobody can turn a second,
   blind one on by defining a hidden option.
 - This is a third override on vendor internals, on a different vendor class from the
   sync-message fix, so ADR-0001's "one class extension" holds for what it was about
