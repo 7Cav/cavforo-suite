@@ -377,6 +377,26 @@ check(
     $assertPostPos !== false && $queuePos !== false && $assertPostPos < $queuePos,
     'the button is a form so prefetchers and link-preview bots cannot resync on a member\'s behalf; the assertion is what makes that true'
 );
+// This extension ADDS an action. It does not replace one, and the difference is the
+// whole revert story: disabling the addon has to hand the vendor's page back exactly
+// as it was. XenForo chains extensions, and NF/Discord extends this same controller
+// for its join-server and reconnect actions, so an override written here sits in
+// front of the vendor's own and in front of core's — the widest blast radius any edit
+// to this file has. Overriding actionConnectedAccounts() by accident takes out the
+// connected-accounts page for every member on the forum, linked to Discord or not.
+//
+// Counted rather than named, so a method added later is caught whatever it is called.
+// Three functions: the action, and the two protected helpers below it.
+preg_match_all('/^\s*(?:(public|protected|private)\s+)?function\s+(\w+)/m', $accountCode, $accountFns);
+$accountActions = array_values(array_filter(
+    $accountFns[2],
+    fn ($name) => str_starts_with($name, 'action')
+));
+check(
+    'the controller extension adds exactly one action and overrides none',
+    count($accountFns[2]) === 3 && $accountActions === ['actionConnectedAccountDiscordResync'],
+    'every other check here reads inside the resync action, so a second method on this class is invisible to all of them; an override of a vendor or core action on a chained controller extension breaks the connected-accounts page for everyone and makes "disable the addon to revert" untrue'
+);
 // $visitor is assigned once, from the session, and never reassigned. Counted by
 // pattern rather than by literal text: CI runs php -l and nothing else, so a second
 // assignment written with different spacing would be invisible to a substring count
@@ -426,16 +446,49 @@ check(
 // repository class, the lookup on it, the negated test, and the return that ends the
 // action, in that order. The map is kept, not discarded: the unexplained branch below
 // logs it.
+//
+// Ahead of the pending guard too, and that ordering is the one with a member-visible
+// consequence. Deactivating a server is not deleting it, so Entity\Server
+// ::_postDelete() never archives anything and rows queued earlier by the vendor's own
+// paths stay in the table. With this check below the pending guard, a member on a
+// forum whose last server was switched off is told "a Discord sync is already queued
+// for your account" — true of the row, false of the world, because the map is empty
+// and nothing will ever run against it. The refusal written to hand that member the
+// diagnosis is skipped, and staff hear nothing.
 $serverMapPos = strpos($resyncBody, 'getServerMap(');
 check(
-    'a server map with nothing active in it ends the action up front, before the cooldown is spent',
+    'a server map with nothing syncable in it ends the action up front, before the pending guard and the cooldown',
     $serverMapPos !== false && $floodPos !== false && $queuePos !== false
-        && $serverMapPos < $floodPos && $serverMapPos < $queuePos
+        && $firstPendingPos !== false
+        && $serverMapPos < $firstPendingPos && $serverMapPos < $floodPos
+        && $serverMapPos < $queuePos
         && (bool) preg_match(
-            '~\$serverRepo\s*=\s*\$this->repository\(\s*\\\\NF\\\\Discord\\\\Repository\\\\Server::class\s*\)\s*;\s*\$serverMap\s*=\s*\$serverRepo->getServerMap\(\)\s*;\s*if\s*\(\s*!\s*\$serverMap\s*\)\s*\{\s*return\s+\$this->error\(\s*\\\\XF::phrase\(\'cav7_discord_resync_no_servers\'\)\s*\)\s*;\s*\}~s',
+            '~\$serverRepo\s*=\s*\$this->repository\(\s*\\\\NF\\\\Discord\\\\Repository\\\\Server::class\s*\)\s*;\s*\$serverMap\s*=\s*array_filter\(\s*\$serverRepo->getServerMap\(\)\s*\)\s*;\s*if\s*\(\s*!\s*\$serverMap\s*\)\s*\{\s*return\s+\$this->error\(\s*\\\\XF::phrase\(\'cav7_discord_resync_no_servers\'\)\s*\)\s*;\s*\}~s',
             $resyncBody
         ),
-    'getServerMap() is what the vendor fan-out iterates, so an empty one is a failure this action can name; asking after the fact instead spends the member\'s cooldown and appends an unbounded xf_error_log row per press, because assertNotFlooding() writes nothing at all for a general:bypassFloodCheck holder and there is then no flood entry to withhold'
+    'getServerMap() is what the vendor fan-out iterates, so a map with nothing syncable in it is a failure this action can name. Below the pending guard, a stale row left by a switched-off server answers first and the member is told a sync is already queued when none can run. Below the cooldown, the press spends the member five minutes and appends an unbounded xf_error_log row, because assertNotFlooding() writes nothing at all for a general:bypassFloodCheck holder and there is then no flood entry to withhold'
+);
+// The map is not the same thing as the set of guilds a sync can reach.
+// updateServerCache() applies isActive() and stops there — it does not apply the
+// vendor's own hasGuildId() predicate (`where('guild_id', '!=', '')`), which
+// Finder\Server defines for exactly this case. A row with active = 1 and an empty
+// guild id is reachable and not exotic: the column defaults active to 1, and the
+// vendor's own upgrade step inserts `'guild_id' => $options['guild_id'] ?? ''`
+// through a raw db()->insert with 'ignore', which bypasses the entity's
+// required => true. So getServerMap() can hand back ['1' => ''] and a bare
+// emptiness test waves it through.
+//
+// What follows is the worst outcome this action can produce, because every layer
+// reports success. Api::factory('', false) does not take the null bail-out, so a row
+// queues with the right user_id; the pending lookup finds it; the member is told the
+// resync is queued. On drain, SyncUser::dispatch() reads the empty guild id and
+// RETURNS TRUE — success — so Queue::run() archives it with no error log, no fail
+// count and no retry. The pending guard clears when the row archives, so it is
+// infinitely repeatable. Roles never move, and nothing anywhere says so.
+check(
+    'the server map drops rows with no guild id before it is tested for emptiness',
+    (bool) preg_match('/array_filter\(\s*\$serverRepo->getServerMap\(\)\s*\)/', $resyncBody),
+    'the vendor applies isActive() to that map but not hasGuildId(), and a row with active = 1 and an empty guild id queues a message that SyncUser::dispatch() returns TRUE for, so it archives as a success: the member is told the resync is queued, every press repeats it, and no log row is ever written'
 );
 check(
     'the server map is read once, and only as the precondition',
@@ -504,10 +557,32 @@ $pendingBody = methodBody($accountCode, 'hasPendingDiscordSync');
 check(
     'the pending lookup reads the vendor\'s live queue table, filtered to this member\'s per-user sync messages',
     (bool) preg_match(
-        '~FROM\s+xf_nf_discord_queue\s+WHERE\s+class_name\s*=\s*\?\s+AND\s+user_id\s*=\s*\?\s+LIMIT\s+1\s*\'\s*,\s*\[\s*\\\\NF\\\\Discord\\\\ApiMessage\\\\SyncUser::class\s*,\s*\$userId\s*\]~',
+        '~FROM\s+xf_nf_discord_queue\s+WHERE\s+class_name\s*=\s*\?\s+AND\s+user_id\s*=\s*\?\s+AND\s+queue_date\s*>\s*\?\s+LIMIT\s+1\s*\'\s*,\s*\[\s*\\\\NF\\\\Discord\\\\ApiMessage\\\\SyncUser::class\s*,\s*\$userId\s*,\s*\\\\XF::\$time\s*-\s*self::RESYNC_PENDING_MAX_AGE_SECONDS\s*,?\s*\]~',
         $pendingBody
     ),
-    'OR in place of AND lets any member\'s queued sync satisfy the guard, so nobody can ever resync; the binds swapped round match nothing, so the guard goes permanently blind and every success reports failure. The vendor stores the ROOT class name for an extended message — Queue::queueMessage() resolves it before the insert — and the connected-account renderer builds its pending indicator from the same predicate; xf_nf_discord_queue_archive holds messages that have already run, so pointing at it would blind both guards at once'
+    'OR in place of AND lets any member\'s queued sync satisfy the guard, so nobody can ever resync; the binds swapped round match nothing, so the guard goes permanently blind and every success reports failure. The vendor stores the ROOT class name for an extended message — Queue::queueMessage() resolves it before the insert — and the connected-account renderer builds its pending indicator from the same predicate; xf_nf_discord_queue_archive holds messages that have already run, so pointing at it would blind both guards at once. The queue_date bound is what stops a stranded row refusing every press forever: drop it and an unqueued job wedges this member permanently'
+);
+// A row is only evidence of work in flight for as long as the vendor would still run
+// it. Queue::queueMessage() inserts the row and then calls enqueueJob(), whose
+// enqueueLater() sits inside an empty `catch (\Exception $e)` — the vendor's own
+// comment names a deadlock on xf_job as the reason. The insert survives, the job does
+// not, and nothing re-drives it: NF/Discord's three cron entries are CleanUp
+// (archive pruning only), ReportNotifications and SyncUsersFromDiscord, and none of
+// them reads xf_nf_discord_queue. Queue::run()'s own age-out only runs inside the job
+// that was never enqueued.
+//
+// Unbounded, the pending guard then refuses this member every press, forever, with
+// nothing written anywhere. Bounded to the vendor's own abandonment threshold, the
+// lockout expires exactly when the row stops meaning anything: Queue::run() archives
+// on `queue_date < \XF::$time - 86400` without a Discord round trip, so a row older
+// than that would be thrown away on sight rather than run.
+check(
+    'the pending lookup stops believing a row the vendor would itself have abandoned',
+    (bool) preg_match(
+        '/const\s+RESYNC_PENDING_MAX_AGE_SECONDS\s*=\s*86400\s*;/',
+        $accountCode
+    ),
+    'Queue::run() archives any entry older than 86400s without running it, so past that age a row is not work in flight — it is litter, and refusing on it turns one swallowed job enqueue into a permanent lockout for that member'
 );
 
 // Polarity, pinned inside the helper as well as at the two call sites. The call-site
@@ -583,9 +658,27 @@ check(
 // than offer a theory, and it has to name the member, because the phrase the member
 // is shown sends them to staff and this row is the only thing staff get to read.
 // Anchored inside the logError( argument list — an unrooted pattern is satisfied by
-// the $visitor->user_id in releaseResyncCooldown() two lines further down, which
-// leaves a log row naming nobody free to pass.
-preg_match('/\\\\XF::logError\(\s*sprintf\(\s*\'([^\']*)\'\s*,(.*?)\)\s*\)\s*;/s', $resyncBody, $logCall);
+// the $visitor->user_id in the releaseResyncCooldown() call further down the branch,
+// which leaves a log row naming nobody free to pass.
+preg_match('/\\\\XF::logError\(\s*sprintf\(\s*\'([^\']*)\'\s*,(.*?)\)\s*,\s*true\s*\)\s*;/s', $resyncBody, $logCall);
+// \XF::logError($message, $forceLog = false) hands straight to XF\Error
+// ::logException(), which on the default drops the write entirely when
+// hasPendingUpgrade() is true. That is not just a version mismatch: it is also true
+// while ANY row in xf_addon carries is_processing = 1, which every add-on install,
+// upgrade, uninstall and rebuild sets for the length of its setup job, with the forum
+// still serving members throughout. The likeliest moment for this branch to fire is
+// an NF/Discord upgrade, which is exactly a window where the flag is set.
+//
+// The member is shown cav7_discord_resync_unavailable, which tells them to go to
+// staff. Without the flag, staff have nothing to go to: no user id, no time, no
+// server map. The volume argument that normally justifies leaving forceLog off does
+// not reach this branch, because the three standing faults return above it and what
+// is left is a case nothing accounts for.
+check(
+    'the failure log is forced, so it survives a forum with an add-on mid-install',
+    isset($logCall[1]),
+    'XF\\Error::logException() returns without writing when hasPendingUpgrade() is true, and that covers any row in xf_addon with is_processing = 1 — so on the default the one row staff were promised is dropped during exactly the upgrade window this branch is likeliest to fire in, and the member is sent to staff empty-handed'
+);
 check(
     'the failure log names the member it is about',
     isset($logCall[2]) && (bool) preg_match('/\A\s*\$visitor->user_id\s*,/', $logCall[2]),
@@ -697,13 +790,24 @@ $modReplace = $resyncMod !== null ? (string) $resyncMod->replace : '';
 // picks router.public, link() emits the public URL, the CSRF cookie is shared
 // between the two, and pressing it resyncs the admin — which is exactly what the
 // label on it promises.
+// Two assertions rather than one pattern, so the check tracks the gate rather than
+// the markup around it. Comparing the two ids either way round is the same test, and
+// what sits first inside the gate is layout. Pinning those made three behaviour-
+// neutral edits fail a build with a message about admins.
+$gateOpen = (bool) preg_match(
+    '~<xf:if\s+is="\s*(?:\$user\.user_id\s*===?\s*\$xf\.visitor\.user_id|\$xf\.visitor\.user_id\s*===?\s*\$user\.user_id)\s*"\s*>~',
+    $modReplace,
+    $gateMatch,
+    PREG_OFFSET_CAPTURE
+);
+$formPos = strpos($modReplace, '<xf:form');
 check(
     'the button renders only for the member whose account it is, never for an admin viewing them',
-    (bool) preg_match(
-        '~<xf:if is="\$user\.user_id ===? \$xf\.visitor\.user_id">\s*<xf:form~',
-        $modReplace
-    ),
-    'the admin template user_extra renders this same public template for the VIEWED member, so without the gate the ACP shows a button that resyncs whoever pressed it — the admin — and tells an unlinked admin they have no Discord account while a linked member is on screen (user story 4)'
+    $gateOpen
+        && $formPos !== false
+        && $gateMatch[0][1] < $formPos
+        && substr_count($modReplace, '<xf:form') === 1,
+    'the admin template user_extra renders this same public template for the VIEWED member, so without the gate the ACP shows a button that resyncs whoever pressed it — the admin — and tells an unlinked admin they have no Discord account while a linked member is on screen'
 );
 check(
     'the button is a form posting to the resync action, not a link to it',
@@ -725,9 +829,10 @@ check(
 );
 // The two messages the action redirects with only exist if the reply is rendered as
 // JSON. XF\Mvc\Renderer\Html::renderRedirect() sets the response code and the
-// Location header and does nothing with $message; XF\Mvc\Renderer\Json
-// ::renderRedirect() is the only one that returns it, and that renderer is reached
-// only for an XHR. XF\Template\Templater::form() adds data-xf-init="ajax-submit"
+// Location header and does nothing with $message, and Raw does the same;
+// XF\Mvc\Renderer\Json::renderRedirect() carries it, and so does Xml, but Json is the
+// one a browser reaches, and only for an XHR. XF\Template\Templater::form() adds
+// data-xf-init="ajax-submit"
 // only when ajax is set, and nothing in js/xf/core.js binds plain forms, so without
 // this attribute a press is an ordinary POST and the member is told nothing at all
 // about the press they just made. data-force-flash-message is the other half:
