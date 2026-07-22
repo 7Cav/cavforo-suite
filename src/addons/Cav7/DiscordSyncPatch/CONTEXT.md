@@ -52,7 +52,23 @@ roles this excludes), and "drift" for the whole thing (keep it for the Discord-s
 origin alone if origins need naming).
 
 **Reconciliation sweep**:
-The scheduled pass that finds the members currently in **divergence** and corrects
-only those, leaving members already in agreement untouched.
+The scheduled pass that finds the members needing correction and corrects only
+those, leaving everyone already in agreement untouched. It reconciles two distinct
+populations from one guild member fetch: linked members in **divergence**, and
+**unlinked holder**s. The two never overlap — a member either has a link or does
+not — so the sweep partitions them on that one question.
 _Avoid_: "full sync" and "resync" (both read as re-running the sync for every
 member, the blind shape this is defined against).
+
+**Unlinked holder**:
+A Discord guild member who holds at least one **managed role** but has no nfDiscord
+connected account linking them to a forum user. Only the sync grants managed roles
+and the sync requires a link, so an unlinked holder is the residue of a link that
+went away: a disconnect whose role strip failed or never fired, a link removed by a
+path that bypassed the disconnect event, or a managed role hand-added in Discord.
+They carry no forum-side trace — a clean disconnect deletes both the **grant
+record** and the connected account — so the sweep can only find them from the
+Discord side, and their correct end state is simply no managed roles at all.
+_Avoid_: "**divergence**" (that presumes a link and a group set to reconcile
+against, neither of which an unlinked holder has), and naming the member an
+"orphaned role" (the member is not the role).
