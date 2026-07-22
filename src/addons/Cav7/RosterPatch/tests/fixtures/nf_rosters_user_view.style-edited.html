@@ -1,0 +1,92 @@
+<!--
+    The same two datalists as they stand in the board style that customises
+    nf_rosters_user_view. The service-record date carries a hand-added third
+    date() argument, 'Z', from an earlier attempt to force Zulu time; it does
+    nothing at render time but it is enough to make an exact-string find miss,
+    which is what left service-record dates in the viewer timezone (issue #106).
+    The award line in the same style is untouched, which is why awards were
+    unaffected.
+-->
+        <xf:if is="$serviceRecord is not empty">
+            <h3 class="block-formSectionHeader">{{ phrase('nf_rosters_service_record') }}</h3>
+            <div class="block-body block-row">
+                <xf:datalist data-xf-init="responsive-data-list">
+                    <xf:datarow rowtype="header">
+                        <xf:cell>{{ phrase('date') }}</xf:cell>
+                        <xf:cell>{{ phrase('nf_rosters_record') }}</xf:cell>
+						<xf:cell>{{ phrase('type') }}</xf:cell>
+                        <xf:cell>{{ phrase('nf_rosters_citation') }}</xf:cell>
+                        <xf:if is="$rosterUser.canManageRecords()"><xf:cell>&nbsp;</xf:cell></xf:if>
+                    </xf:datarow>
+                    <xf:foreach loop="$serviceRecord" value="$record">
+                        <xf:datarow>
+                            <xf:cell>{{ date($record.record_date, 'Y-m-d', 'Z' )}}</xf:cell>
+							<xf:cell>{{ $record.details }}</xf:cell>
+							<xf:cell>{{ $record.record_type_id ? $record.Type.title : '-' }}</xf:cell>
+                            <xf:cell>
+                                <xf:if is="$record.citation_date">
+                                    <a href="{{ $record.getImageUrl() }}" target="_blank">{{ phrase('nf_rosters_citation') }}</a>
+                                <xf:else />
+                                    -
+                                </xf:if>
+                            </xf:cell>
+                            <xf:if is="$rosterUser.canManageRecords()">
+                                <xf:cell>
+                                    <xf:button class="menuTrigger" data-xf-click="menu" aria-expanded="false" aria-haspopup="true" title="{{ phrase('more_options') }}">&#8226;&#8226;&#8226;</xf:button>
+                                    <div class="menu" data-menu="menu" aria-hidden="true">
+                                        <div class="menu-content">
+                                            <h4 class="menu-header">{{ phrase('more_options') }}</h4>
+                                            <a href="{{ link('rosters/service-record/edit', $record) }}" class="menu-linkRow" data-xf-click="overlay">{{ phrase('edit') }}</a>
+                                            <a href="{{ link('rosters/service-record/delete', $record) }}" class="menu-linkRow" data-xf-click="overlay">{{ phrase('delete') }}</a>
+                                        </div>
+                                    </div>
+                                </xf:cell>
+                            </xf:if>
+                        </xf:datarow>
+                    </xf:foreach>
+                </xf:datalist>
+            </div>
+        </xf:if>
+
+        <xf:if is="$awards is not empty">
+            <h3 class="block-formSectionHeader">{{ phrase('nf_rosters_awards_and_recognition') }}</h3>
+            <div class="block-body block-row">
+                <xf:datalist data-xf-init="responsive-data-list">
+                    <xf:datarow rowtype="header">
+                        <xf:cell>{{ phrase('date') }}</xf:cell>
+                        <xf:cell>{{ phrase('nf_rosters_award') }}</xf:cell>
+                        <xf:cell>&nbsp;</xf:cell>
+                        <xf:cell>{{ phrase('details') }}</xf:cell>
+                        <xf:if is="$rosterUser.canManageAwards()"><xf:cell>{{ phrase('nf_rosters_citation') }}</xf:cell></xf:if>
+                        <xf:cell>&nbsp;</xf:cell>
+                    </xf:datarow>
+                    <xf:foreach loop="$awards" value="$award">
+                        <xf:datarow>
+                            <xf:cell>{{ date($award.award_date, 'Y-m-d') }}</xf:cell>
+                            <xf:cell>{$award.Award.title}</xf:cell>
+                            <xf:cell><img src="{$award.Award.getImageUrl()}" alt="{{ $award.Award.title }}" /></xf:cell>
+                            <xf:cell>{$award.details}</xf:cell>
+                            <xf:cell>
+                                <xf:if is="$award.citation_date">
+                                    <a href="{{ $award.getImageUrl() }}" target="_blank">{{ phrase('nf_rosters_citation') }}</a>
+                                <xf:else />
+                                    -
+                                </xf:if>
+                            </xf:cell>
+                            <xf:if is="$rosterUser.canManageAwards()">
+                                <xf:cell>
+                                    <xf:button class="menuTrigger" data-xf-click="menu" aria-expanded="false" aria-haspopup="true" title="{{ phrase('more_options') }}">&#8226;&#8226;&#8226;</xf:button>
+                                    <div class="menu" data-menu="menu" aria-hidden="true">
+                                        <div class="menu-content">
+                                            <h4 class="menu-header">{{ phrase('more_options') }}</h4>
+                                            <a href="{{ link('rosters/awards/edit', $award) }}" class="menu-linkRow" data-xf-click="overlay">{{ phrase('edit') }}</a>
+                                            <a href="{{ link('rosters/awards/delete', $award) }}" class="menu-linkRow" data-xf-click="overlay">{{ phrase('delete') }}</a>
+                                        </div>
+                                    </div>
+                                </xf:cell>
+                            </xf:if>
+                        </xf:datarow>
+                    </xf:foreach>
+                </xf:datalist>
+            </div>
+        </xf:if>

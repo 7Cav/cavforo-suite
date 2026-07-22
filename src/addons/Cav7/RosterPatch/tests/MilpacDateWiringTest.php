@@ -150,9 +150,10 @@ check('_data/template_modifications.xml could be read', $tmodXml !== false);
 $mods = [];
 if ($tmodXml !== false) {
     foreach ($tmodXml->modification as $mod) {
-        $mods[] = [
+        $mods[(string) $mod['modification_key']] = [
             'template' => (string) $mod['template'],
             'enabled'  => (string) $mod['enabled'],
+            'action'   => (string) $mod['action'],
             'find'     => (string) $mod->find,
             'replace'  => (string) $mod->replace,
         ];
@@ -161,42 +162,52 @@ if ($tmodXml !== false) {
 
 // Each profile date cell must move from the viewer-timezone date() function to
 // the vendor's UTC getter, so the profile reads the same for everyone and agrees
-// with the edit form (which already uses the getter).
+// with the edit form (which already uses the getter). What the finds actually
+// match is checked against real markup in MilpacDateTemplateModificationTest;
+// this only holds the records themselves in shape.
 $expectedMods = [
-    [
-        'findContains'    => "date(\$record.record_date, 'Y-m-d')",
+    'cav7RosterPatchRecordDateUtc' => [
+        'column'          => '$record.record_date',
         'replaceContains' => '{$record.getRecordDate()}',
     ],
-    [
-        'findContains'    => "date(\$award.award_date, 'Y-m-d')",
+    'cav7RosterPatchAwardDateUtc' => [
+        'column'          => '$award.award_date',
         'replaceContains' => '{$award.getAwardDate()}',
     ],
 ];
 
-foreach ($expectedMods as $want) {
-    $match = null;
-    foreach ($mods as $mod) {
-        if (str_contains($mod['find'], $want['findContains'])) {
-            $match = $mod;
-            break;
-        }
-    }
+foreach ($expectedMods as $key => $want) {
+    $match = $mods[$key] ?? null;
     check(
-        'a modification targets ' . $want['findContains'],
+        "a modification named $key exists",
         $match !== null
     );
     if ($match !== null) {
         check(
-            $want['findContains'] . ' targets the profile template (nf_rosters_user_view) and is enabled',
+            "$key targets the profile template (nf_rosters_user_view) and is enabled",
             $match['template'] === 'nf_rosters_user_view' && $match['enabled'] === '1'
         );
         check(
-            $want['findContains'] . ' is replaced with the UTC getter',
+            "$key finds the vendor's " . $want['column'] . ' call',
+            str_contains($match['find'], 'date') && str_contains(
+                str_replace('\\', '', $match['find']),
+                $want['column']
+            ),
+            'got find: ' . $match['find']
+        );
+        check(
+            "$key matches by pattern, not by exact vendor markup",
+            $match['action'] === 'preg_replace',
+            'got action: ' . $match['action']
+                . ' — an exact find misses any style that edited the call, and misses silently'
+        );
+        check(
+            "$key is replaced with the UTC getter",
             str_contains($match['replace'], $want['replaceContains']),
             'got replace: ' . $match['replace']
         );
         check(
-            $want['findContains'] . ' no longer renders via the viewer-timezone date() function',
+            "$key no longer renders via the viewer-timezone date() function",
             !str_contains($match['replace'], 'date('),
             'leaving date() in place keeps the per-viewer shift'
         );
