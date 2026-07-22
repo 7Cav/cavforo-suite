@@ -151,6 +151,7 @@ $mods = [];
 if ($tmodXml !== false) {
     foreach ($tmodXml->modification as $mod) {
         $mods[(string) $mod['modification_key']] = [
+            'type'     => (string) $mod['type'],
             'template' => (string) $mod['template'],
             'enabled'  => (string) $mod['enabled'],
             'action'   => (string) $mod['action'],
@@ -183,13 +184,24 @@ foreach ($expectedMods as $key => $want) {
         $match !== null
     );
     if ($match !== null) {
+        // XenForo looks a modification up by type *and* template. An admin-type
+        // record against a public template never fires, and nothing reports it:
+        // the add-on still installs and still shows as active.
         check(
-            "$key targets the profile template (nf_rosters_user_view) and is enabled",
-            $match['template'] === 'nf_rosters_user_view' && $match['enabled'] === '1'
+            "$key targets the public profile template (nf_rosters_user_view) and is enabled",
+            $match['type'] === 'public'
+                && $match['template'] === 'nf_rosters_user_view'
+                && $match['enabled'] === '1',
+            'got type: ' . $match['type'] . ', template: ' . $match['template']
+                . ', enabled: ' . $match['enabled']
         );
+        // 'date' on its own is satisfied by the 'date' inside 'record_date', so
+        // require the call: 'date' followed by an escaped opening paren, with
+        // the pattern's own \s* between them dropped first.
+        $findNoSpacePattern = str_replace('\s*', '', $match['find']);
         check(
-            "$key finds the vendor's " . $want['column'] . ' call',
-            str_contains($match['find'], 'date') && str_contains(
+            "$key finds a date() call on the vendor's " . $want['column'],
+            str_contains($findNoSpacePattern, 'date\(') && str_contains(
                 str_replace('\\', '', $match['find']),
                 $want['column']
             ),

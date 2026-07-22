@@ -1,9 +1,15 @@
 <!--
-    Provenance: the two milpac date rows as they stand in the
-    nf_rosters_user_view template shipped with NF/Rosters 2.1.5
-    (_data/templates.xml), quoted only as far as the template modifications
-    reach. Recapture from the installed template when NF/Rosters is upgraded;
-    the filename carries the version this copy came from.
+    Provenance: the master (style_id 0) copy of the nf_rosters_user_view
+    template shipped with NF/Rosters 2.1.5 (_data/templates.xml), cut down to
+    the two milpac date cells and the <xf:foreach>/<xf:datarow> wrappers around
+    them. Each real row carries more cells after the date one — the record's
+    details, type and citation, the award's title, image and details, and the
+    manage-menu cell behind a canManage* check — and every one of those is
+    elided here. The date cells themselves are verbatim, which is all the
+    template modifications reach.
+
+    Recapture from the installed template when NF/Rosters is upgraded; the
+    filename carries the version this copy came from.
 -->
                     <xf:foreach loop="$serviceRecord" value="$record">
                         <xf:datarow>

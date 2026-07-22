@@ -1,9 +1,18 @@
 <!--
-    Provenance: the same two rows as they stand in the board style that
-    customises nf_rosters_user_view, captured against NF/Rosters 2.1.5. The
-    service-record cell carries the style's hand-added third date() argument,
-    'Z'. Recapture from the style's own copy when either the style or
-    NF/Rosters changes; the filename carries the version this copy came from.
+    Provenance: the "7th Cavalry Gaming" style's own copy (style_id 3) of
+    nf_rosters_user_view, captured against NF/Rosters 2.1.5 and cut down the
+    same way as the vendor fixture beside it — the two date cells and their
+    wrappers, everything after the date cell in each row elided.
+
+    The board holds three copies of this template: the master (style_id 0, what
+    the vendor fixture holds), "Default style" (style_id 1), whose date cells
+    are byte-identical to the master's, and this one, which is the only copy
+    that edits a date cell: the service-record cell carries a hand-added third
+    date() argument, 'Z'. The remaining styles have no copy of their own and
+    inherit.
+
+    Recapture from the style's own copy when either the style or NF/Rosters
+    changes; the filename carries the version this copy came from.
 -->
                     <xf:foreach loop="$serviceRecord" value="$record">
                         <xf:datarow>
