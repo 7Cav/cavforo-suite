@@ -279,6 +279,11 @@ function expressionStillInFixture(array $cell, string $fixtureLabel, string $tem
  *                       into the same plain cell — because the property is that
  *                       nothing matches, which no wrapper can turn into a match
  *                       the whole-expression patterns would otherwise refuse.
+ *                       Each has to be markup a style could actually carry, so
+ *                       the concatenation entry uses '.', XenForo's concat
+ *                       operator. Twig's '~' is not one: the compiler rejects
+ *                       `{{ date(...) ~ ' UTC' }}` as a syntax error whatever
+ *                       this add-on does, so it records no limit.
  *
  * Keys are modification_key, joining against loadModifications().
  *
@@ -313,7 +318,7 @@ $dateCells = [
         'nonMatches' => [
             'a null-guard ternary around the record call' => "{{ \$record.record_date ? date(\$record.record_date, 'Y-m-d') : '-' }}",
             'a filter after the record call'              => "{{ date(\$record.record_date, 'Y-m-d')|escape }}",
-            'a concatenated suffix on the record call'    => "{{ date(\$record.record_date, 'Y-m-d') ~ ' UTC' }}",
+            'a concatenated suffix on the record call'    => "{{ date(\$record.record_date, 'Y-m-d') . ' UTC' }}",
             'a nested call as the record format'          => "{{ date(\$record.record_date, fmt('Y-m-d')) }}",
         ],
     ],
@@ -339,7 +344,7 @@ $dateCells = [
         'nonMatches' => [
             'a null-guard ternary around the award call' => "{{ \$award.award_date ? date(\$award.award_date, 'Y-m-d') : '-' }}",
             'a filter after the award call'              => "{{ date(\$award.award_date, 'Y-m-d')|escape }}",
-            'a concatenated suffix on the award call'    => "{{ date(\$award.award_date, 'Y-m-d') ~ ' UTC' }}",
+            'a concatenated suffix on the award call'    => "{{ date(\$award.award_date, 'Y-m-d') . ' UTC' }}",
             'a nested call as the award format'          => "{{ date(\$award.award_date, fmt('Y-m-d')) }}",
         ],
     ],
@@ -363,6 +368,18 @@ foreach ($dateCells as $key => $cell) {
         ($mods[$key]['replace'] ?? null) === $cell['replacement'],
         'got: ' . var_export($mods[$key]['replace'] ?? null, true)
     );
+    // The wrapper-free shape the docblock describes, asserted rather than
+    // described. Every expectation below is built by putting this literal into
+    // markup the fixture or the table already carries, so a replacement that
+    // brought its own <xf:cell> would be wrapped twice on a board while every
+    // expectation agreed with it — the check above included, since it compares
+    // the shipped <replace> against this same literal.
+    check(
+        "$key's replacement carries no markup of its own",
+        !str_contains($cell['replacement'], '<'),
+        'got: ' . var_export($cell['replacement'], true)
+            . ' — the modification owns the expression, not the cell around it'
+    );
 }
 
 // --- both dates render in UTC in the captured vendor rows and the style copy -
@@ -383,6 +400,54 @@ foreach ($dateCells as $key => $cell) {
         'no entry for: ' . (implode(', ', $missing) ?: 'none')
             . '; entry for no such fixture: ' . (implode(', ', $unknown) ?: 'none')
     );
+}
+
+// The same completeness question for the other two tables, which have no
+// $fixtures to be checked against and so are checked against themselves.
+//
+// Every assertion further down is written "for each entry, assert X". That says
+// nothing at all about a table with no entries — set 'spellings' or 'nonMatches'
+// to [] and the loops below run zero times and report zero failures — and it
+// says the same thing repeatedly about a table whose entries are copies of one
+// another: replace three spellings with byte copies of the vendor spelling and
+// the whitespace narrowing, the single-line narrowing and the trailing anchor
+// all stop being covered while the label list still reads as ten spellings.
+// nonMatches is the worse of the two to lose, being what the README points at as
+// the record of the patterns' deliberate limits.
+foreach ($dateCells as $key => $cell) {
+    $signatures = [
+        'spellings'  => array_map(
+            static fn (array $spelling) => $spelling[1] . "\0" . $spelling[0],
+            $cell['spellings']
+        ),
+        // Every nonMatch goes into the same plain cell, so the expression alone
+        // is the whole of what one entry covers.
+        'nonMatches' => $cell['nonMatches'],
+    ];
+
+    foreach ($signatures as $table => $entries) {
+        check(
+            "\$dateCells['$key'] carries $table to run",
+            $entries !== [],
+            'an emptied table runs no checks and reddens nothing'
+        );
+
+        $duplicates = [];
+        $seen = [];
+        foreach ($entries as $label => $signature) {
+            if (isset($seen[$signature])) {
+                $duplicates[] = "'$label' repeats '" . $seen[$signature] . "'";
+            } else {
+                $seen[$signature] = $label;
+            }
+        }
+        check(
+            "no two \$dateCells['$key'] $table are the same expression in the same wrapper",
+            $duplicates === [],
+            (implode('; ', $duplicates) ?: 'none')
+                . ' — a copied entry reads as coverage this table does not have'
+        );
+    }
 }
 
 /** @var array<string, string> $fixtureText */
@@ -680,14 +745,27 @@ foreach ($dateCells as $key => $cell) {
 // --- and the cells the pattern deliberately will not touch -------------------
 // The pattern matches a whole {{ date(...) }} expression, not the date() call
 // inside one, so a style that wrapped or extended the expression is left alone.
-// That is the right trade: anchoring on the call alone would rewrite
-// `{{ $record.record_date ? date(...) : '-' }}` into
-// `{{ $record.record_date ? {$record.getRecordDate()} : '-' }}`, which is not
-// valid template markup, and a broken page is worse than a per-viewer date.
+//
+// Not because a call-anchored replacement would be invalid markup. Compiled
+// through XenForo 2.3.11's own compiler, `{{ $record.record_date ?
+// {$record.getRecordDate()} : '-' }}` compiles, and to the right thing —
+// {$...} is an expression term inside {{ ... }} the same way it is a variable
+// in running text. So do the filter and nested-call spellings below.
+//
+// The limit stays because a <find> is a regex over template text rather than a
+// parse of it, and these patterns swallow the format argument. Held to the
+// whole {{ ... }} expression they only reach a cell that renders a date, where
+// losing the style's format is the cost the fix owns. Anchored on the call they
+// would reach every date($record.record_date, ...) in the template, including
+// the ones where the format is load-bearing — a comparison in an <xf:if is>, a
+// data attribute something else parses — and those compile too, so nothing
+// reports the change. Widening the find means reading the surrounding logic of
+// every expression it would newly take.
 //
 // So these are limits, recorded rather than fixed. Widening the pattern to
 // cover one of them is a decision to take deliberately, with this list in front
-// of you.
+// of you. The README ("What the patterns deliberately will not match") carries
+// the same list and the compiler output behind it.
 foreach ($dateCells as $key => $cell) {
     $mod = $mods[$key] ?? null;
     if ($mod === null) {

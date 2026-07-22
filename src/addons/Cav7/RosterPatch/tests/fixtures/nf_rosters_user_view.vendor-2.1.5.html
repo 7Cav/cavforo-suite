@@ -6,8 +6,10 @@
     manage-menu cell behind a canManage* check. The date cells themselves are
     verbatim, which is all the template modifications reach.
 
-    Recapture from the installed template when NF/Rosters is upgraded; the
-    filename carries the version this copy came from.
+    Recapture from that same _data/templates.xml when NF/Rosters is upgraded,
+    not from the admin control panel: master templates are not editable, and so
+    not listed, outside development mode. The filename carries the version this
+    copy came from.
 -->
                     <xf:foreach loop="$serviceRecord" value="$record">
                         <xf:datarow>

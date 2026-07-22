@@ -17,16 +17,25 @@
  *
  * What that comes down to here: the exec list holds the delete, spelled exactly,
  * with {addon_id} written bare rather than inside quotes of build.json's own,
- * and nothing later in the list puts the directory back. That delete is compared
- * against one canonical spelling, literally, so any quoting of the token fails
- * here — including the quoting a shell would have forgiven. Double quotes do
- * break the build: execCmds() expands the token through escapeshellarg(), and rm
- * then looks for a directory whose name carries apostrophes. Single quotes it
- * collapses back to the right path, and that spelling is rejected here anyway.
- * The add-on's own id is read from where the add-on sits, so a rename is
- * covered; the `_build/upload/src/addons/` prefix is not — it is a literal here
- * compared against the literal in build.json, and a XenForo release that
- * restaged elsewhere would pass both.
+ * and no later entry restages the directory in a spelling this can see. That
+ * delete is compared against one canonical spelling, literally, so any quoting
+ * of the token fails here — including the quoting a shell would have forgiven.
+ * Double quotes break the prune, not the build: execCmds() expands the token
+ * through escapeshellarg(), so rm goes looking for a directory whose name
+ * carries apostrophes, finds none, and exits 0 — after which the build carries
+ * on and zips the fixtures. Single quotes collapse back to the right path, and
+ * that spelling is rejected here anyway.
+ *
+ * Two things it holds less tightly than it looks. The add-on's own id is read
+ * from where the add-on sits, so a rename is covered; the
+ * `_build/upload/src/addons/` prefix is not — it is a literal here compared
+ * against the literal in build.json, and a XenForo release that restaged
+ * elsewhere would pass both. And the restager scan below is a substring test for
+ * that same staged path, so it sees every entry that spells the path flat. It
+ * does not see one that reaches the directory another way: `cd
+ * _build/upload/src/addons && cp -R ../../../../tests {addon_id}/` restages the
+ * fixtures and mentions the staged path nowhere. Both are the sort of entry
+ * nobody has needed yet; if one arrives, this is the check that has to grow.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -111,10 +120,17 @@ check(
 // root is what gets matched, not the staged tests path: `cp -R tests` naming the
 // parent directory puts tests/ back just as surely, and mentions the tests path
 // nowhere.
+//
+// A later `rm -rf` under the staged root is exempt. It takes things out of the
+// staged tree rather than putting them back, and a second prune — `rm -rf
+// _build/upload/src/addons/{addon_id}/_data`, say — is a plausible edit that has
+// nothing to do with what this check is for. Reported, it would name the wrong
+// thing: the entry is not a restager, and the fixtures are still out of the zip.
 $afterDelete = $deleteAt === false ? [] : array_slice($commands, (int) $deleteAt + 1);
 $restagers = array_values(array_filter(
     $afterDelete,
     static fn (string $cmd) => str_contains($cmd, $stagedRoot)
+        && !str_starts_with(ltrim($cmd), 'rm -rf ')
 ));
 check(
     "no later exec command writes into this add-on's staged directory again",
