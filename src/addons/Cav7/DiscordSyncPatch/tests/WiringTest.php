@@ -495,8 +495,8 @@ check(
 );
 // Dev mode imports _output, production imports _data. Let the two drift and the
 // dev-stack run verifies bytes production never ships — a different anchor, or an
-// enabled flag off on one side. check-data-consistency only counts modifications
-// (#165), so the two copies are compared here, field for field.
+// enabled flag off on one side. check-data-consistency only counts modifications, so
+// the two copies are compared here, field for field.
 $modOut = json_decode((string) @file_get_contents($modOutFile), true);
 check(
     'the _output copy of the modification is the same modification as the _data one',

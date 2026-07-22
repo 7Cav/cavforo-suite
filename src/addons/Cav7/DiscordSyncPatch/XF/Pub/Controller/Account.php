@@ -22,11 +22,11 @@ use XF\Mvc\Reply\AbstractReply;
  *
  * A resync runs blind, with no divergence check first — see ADR-0005. In front of it
  * sit a precondition and two limits. Neither limit is about correctness: both exist
- * so that one member cannot spend the forum's Discord rate limit. Do not read the
- * cooldown as a limit every member meets — general:bypassFloodCheck is granted by
- * ordinary member groups on this forum, not only staff ones, so in that
- * configuration the pending check is the only guard that binds anybody. Whether that
- * grant is right is #167, not this.
+ * so that one member cannot spend the forum's Discord rate limit. The cooldown is
+ * XenForo's own flood check, and the flood check does not apply to anyone holding
+ * general:bypassFloodCheck. Which groups hold that permission is per-forum
+ * configuration this addon does not set, so the pending check is the guard that
+ * binds regardless of it.
  *
  * Assumptions this makes about vendor internals:
  *
@@ -90,7 +90,7 @@ class Account extends XFCP_Account
         // member wants: pressing twice in a row should say when, not just no.
         $this->assertNotFlooding(self::RESYNC_FLOOD_ACTION, self::RESYNC_COOLDOWN_SECONDS);
 
-        $syncRepo = \SV\StandardLib\Helper::repository(\NF\Discord\Repository\Sync::class);
+        $syncRepo = $this->repository(\NF\Discord\Repository\Sync::class);
         $syncRepo->queueSyncJobsForUser($visitor);
 
         // Queueing for yourself is how the vendor spots a fresh link, and it records
@@ -104,7 +104,7 @@ class Account extends XFCP_Account
         if (!$this->hasPendingDiscordSync($visitor->user_id)) {
             // The member is told to go to staff, so leave staff something to read.
             // An empty server map is the one configuration fault that lands here.
-            $serverRepo = \SV\StandardLib\Helper::repository(\NF\Discord\Repository\Server::class);
+            $serverRepo = $this->repository(\NF\Discord\Repository\Server::class);
             \XF::logError(sprintf(
                 'Cav7/DiscordSyncPatch: Discord resync for user %d queued nothing; NF/Discord\'s server map holds %d server(s)',
                 $visitor->user_id,

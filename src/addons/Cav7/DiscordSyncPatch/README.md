@@ -54,20 +54,18 @@ member who pressed it and nobody else, across every guild the forum syncs. It
 promises no completion time, because the sync drains behind a queue that yields to
 Discord's rate limits.
 
-A member with no Discord account linked is turned away first. There is nothing to
-sync for them, and the integration would queue a row anyway if it were asked.
+A member with no Discord account linked is turned away first, and told why.
 
-Then two guards. A press is refused while a sync is already pending for that
-member, and a member may queue at most one resync every five minutes. The
-five-minute limit is XenForo's own flood check, which exempts anyone holding
-`general:bypassFloodCheck`, and on this forum that permission comes from groups
-ordinary members are in, not just staff ones. Configured that way, the cooldown
-reaches nobody and the pending check is the only guard left doing anything. If
-nothing was queued, the member is told so rather than left waiting on a sync that
-will never run, the failure goes to the server error log for staff, and the
-cooldown is handed back instead of spent.
+Then two guards. A press made while a sync is already pending for that member is
+refused, with a note that one is on its way. Past that, a member may queue at most
+one resync every five minutes; that limit is XenForo's own flood check, which does
+not apply to anyone holding `general:bypassFloodCheck`. If nothing was queued, the
+member is told so rather than left waiting on a sync that will never run, the
+failure goes to the server error log for staff, and the cooldown is handed back
+instead of spent.
 
-The button syncs whether or not anything is actually wrong. The reasoning is in
+The button syncs whether or not anything is actually wrong. Why it does not check
+first, and what the two guards are there to protect, is in
 [ADR-0005](docs/adr/0005-honour-a-resync-request-without-checking-divergence.md).
 
 ## The behavior change worth knowing about
