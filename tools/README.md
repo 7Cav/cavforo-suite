@@ -64,8 +64,13 @@ The copy and placement match what `xf-addon:build-release` does. The `<xf:js>`
 resolution check is an extra guard this path adds, not something XenForo runs at
 build time. It needs `php` on the PATH.
 
-The one thing it does not reproduce is XenForo's `hashes.json` file-health
-manifest, which the real build generates. The zip installs fine without it.
+Two things it does not reproduce. XenForo's `hashes.json` file-health manifest,
+which the real build generates; the zip installs fine without it. And
+`build.json`'s `exec` commands: `package-web-assets.php` reads only
+`additional_files` and `minify`, so an addon that prunes staged files through
+`exec` (RosterPatch drops its `tests/` that way) gets that pruning from this
+path's own exclusion list instead, and an `exec` doing anything else does not
+run here at all.
 
 ```
 tools/package-addon.sh SteamChecker
