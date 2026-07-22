@@ -149,10 +149,10 @@ phrases that put the button on the page.
 One check exists only on a dev-stack run: whether the template modification still
 lands, because the vendor template is not in this repo for CI to match it against.
 
-And one thing is not observable locally at all. The Discord role change a resync
-produces cannot be seen on a dev stack, because that stack has no bot token to drain
-the queue with. The queue row landing is the outcome that can be observed, and it is
-the one the action itself checks.
+The role change itself is a different matter. A resync only moves roles once the
+queue drains, and draining it means real calls to Discord against a real guild, which
+no test run can count on reaching. What a run does show is the queue row landing, and
+that is the outcome the action itself checks.
 
 Two of the preconditions decide whether a press gets that far. The action refuses
 before it queues anything if the integration has no credentials, and again if no
