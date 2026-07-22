@@ -1,5 +1,5 @@
 {
     "exec": [
-        "rm -rf _build/upload/src/addons/Cav7/RosterPatch/tests"
+        "rm -rf _build/upload/src/addons/{addon_id}/tests"
     ]
 }
