@@ -178,17 +178,19 @@ function applyModification(array $mod, string $template): array
 /**
  * The captured markup a fixture file holds, without the leading provenance
  * comment — or null when the file does not open with one. That comment says
- * where the capture came from and what it left out; it is not part of the
- * template, and the style fixture's header names date() in prose, so everything
- * below runs over the body alone. A silent no-strip would hand every assertion a
- * template with prose in it, so the caller is told instead.
+ * where the capture came from and what it left out, and it is not template
+ * markup. Nothing below actually trips over it today: neither the finds nor the
+ * surviving-call patterns can reach that prose, and leaving a header in place
+ * passes every assertion. It comes off because every assertion below is written
+ * as though the file were the template, and a file that does not open with a
+ * header is reported rather than quietly run whole.
  *
  * Line endings are normalised here, the one place fixture text enters this file.
  * applyModification() normalises its own input, while the expectations below are
  * built from this text, so a fixture arriving as CRLF would redden checks that
- * have nothing to do with the patterns — and the README sends a maintainer
- * recapturing a fixture to the XenForo admin template editor, whose textarea
- * hands back CRLF by spec.
+ * have nothing to do with the patterns. A recapture that goes through a browser
+ * — the admin template editor's textarea, say — is where that would come from:
+ * HTML form submission normalises line breaks to CRLF by spec.
  */
 function fixtureBody(string $text): ?string
 {
@@ -219,7 +221,9 @@ function applyPass(array $mods, string $template): array
 
 /**
  * The expression $dateCells says a fixture spells, when the fixture still
- * spells it; null when the table and the fixture have drifted apart.
+ * spells it; null when the table and the fixture have drifted apart, and null
+ * too when the table carries no entry for that fixture at all — a different
+ * mistake with a different fix, which the caller checks and names on its own.
  *
  * The expectations below are derived with str_replace() over the fixture, and
  * str_replace() is a silent no-op when its needle is absent: a recaptured
@@ -243,32 +247,43 @@ function expressionStillInFixture(array $cell, string $fixtureLabel, string $tem
  * The modification replaces a whole {{ date(...) }} expression with a bare
  * getter expression; the <xf:cell> tags around it belong to whatever markup the
  * expression sits in, and the modification neither matches nor writes them. So
- * the expectations here are wrapper-free: each one is built by swapping the
- * expression out of its surrounding markup for the modification's own
- * replacement, which asserts the whole rewritten template — rather than "the
- * getter turns up somewhere" — and so still kills a find that matches only the
- * column reference, or one truncated so the tail of the date() call survives.
+ * the replacement literal below is wrapper-free — the expression alone, none of
+ * the markup around it. What gets asserted is not: each expectation is a whole
+ * template, wrapper and all, with that one expression swapped for the literal.
+ * That kills a find that matches only the column reference, or one truncated so
+ * the tail of the date() call survives, and it kills a replacement that carries
+ * markup of its own.
  *
+ * - replacement:        the getter expression the modification is expected to
+ *                       write, spelled out here rather than read back off the
+ *                       record under test. fixtureExpressions and spellings pin
+ *                       the span the find takes; this pins what lands in it, so
+ *                       an expectation cannot agree with a replacement that
+ *                       broke the row it was written into.
  * - survivingCallRe:    a PCRE pattern, delimiters included, that finds a
  *                       viewer-timezone date() call the modification failed to
  *                       remove.
  * - fixtureExpressions: the exact expression each fixture spells, keyed by the
  *                       fixture labels in $fixtures below.
  * - spellings:          date() call spellings the pattern has to cope with, each
- *                       as [expression, the markup it sits in as a sprintf
- *                       format]. The wrappers vary on purpose: a find
- *                       re-anchored onto <xf:cell> passes a harness that only
- *                       ever hands it a bare <xf:cell>, while on a board it
- *                       silently misses every style that attributes the cell or
- *                       lifts the expression out of the table.
- * - nonMatches:         expressions the pattern deliberately leaves alone. These
- *                       stay bare: the property is that nothing matches, which
- *                       no wrapper can turn into a match the whole-expression
- *                       patterns would otherwise refuse.
+ *                       as [expression, the markup it sits in]. That markup is a
+ *                       sprintf format carrying exactly one %s, which is where
+ *                       the expression goes. The wrappers vary on purpose: a
+ *                       find re-anchored onto <xf:cell> passes a harness that
+ *                       only ever hands it a bare <xf:cell>, while on a board it
+ *                       silently misses every style that attributes the cell,
+ *                       lifts the expression out of the table, or writes
+ *                       anything of its own after it.
+ * - nonMatches:         expressions the pattern deliberately leaves alone. They
+ *                       carry no markup of their own — the loop below drops each
+ *                       into the same plain cell — because the property is that
+ *                       nothing matches, which no wrapper can turn into a match
+ *                       the whole-expression patterns would otherwise refuse.
  *
  * Keys are modification_key, joining against loadModifications().
  *
  * @var array<string, array{
+ *     replacement: string,
  *     survivingCallRe: string,
  *     fixtureExpressions: array<string, string>,
  *     spellings: array<string, array{0: string, 1: string}>,
@@ -277,21 +292,23 @@ function expressionStillInFixture(array $cell, string $fixtureLabel, string $tem
  */
 $dateCells = [
     'cav7RosterPatchRecordDateUtc' => [
+        'replacement'     => '{$record.getRecordDate()}',
         'survivingCallRe' => '/date\s*\(\s*\$record\.record_date/',
         'fixtureExpressions' => [
             'the captured vendor rows' => "{{ date(\$record.record_date, 'Y-m-d') }}",
             'the style-edited copy'    => "{{ date(\$record.record_date, 'Y-m-d', 'Z' )}}",
         ],
         'spellings' => [
-            'the vendor spelling'               => ["{{ date(\$record.record_date, 'Y-m-d') }}", '<xf:cell>%s</xf:cell>'],
-            "the style's trailing 'Z' argument" => ["{{ date(\$record.record_date, 'Y-m-d', 'Z' )}}", '<xf:cell>%s</xf:cell>'],
-            'no space inside the braces'        => ["{{date(\$record.record_date, 'Y-m-d')}}", '<xf:cell>%s</xf:cell>'],
-            'a space before the argument list'  => ["{{ date (\$record.record_date, 'Y-m-d') }}", '<xf:cell>%s</xf:cell>'],
-            'space around the argument list'    => ["{{ date( \$record.record_date , 'Y-m-d' ) }}", '<xf:cell>%s</xf:cell>'],
-            'a line break inside the call'      => ["{{ date(\n    \$record.record_date,\n    'Y-m-d'\n) }}", '<xf:cell>%s</xf:cell>'],
-            'no format argument at all'         => ['{{ date($record.record_date) }}', '<xf:cell>%s</xf:cell>'],
-            'an attributed cell around it'      => ["{{ date(\$record.record_date, 'Y-m-d') }}", '<xf:cell class="u-alignRight">%s</xf:cell>'],
-            'no cell around it at all'          => ["{{ date(\$record.record_date, 'Y-m-d') }}", '%s'],
+            'the vendor spelling'                 => ["{{ date(\$record.record_date, 'Y-m-d') }}", '<xf:cell>%s</xf:cell>'],
+            "the style's trailing 'Z' argument"   => ["{{ date(\$record.record_date, 'Y-m-d', 'Z' )}}", '<xf:cell>%s</xf:cell>'],
+            'no space inside the braces'          => ["{{date(\$record.record_date, 'Y-m-d')}}", '<xf:cell>%s</xf:cell>'],
+            'a space before the argument list'    => ["{{ date (\$record.record_date, 'Y-m-d') }}", '<xf:cell>%s</xf:cell>'],
+            'space around the argument list'      => ["{{ date( \$record.record_date , 'Y-m-d' ) }}", '<xf:cell>%s</xf:cell>'],
+            'a line break inside the call'        => ["{{ date(\n    \$record.record_date,\n    'Y-m-d'\n) }}", '<xf:cell>%s</xf:cell>'],
+            'no format argument at all'           => ['{{ date($record.record_date) }}', '<xf:cell>%s</xf:cell>'],
+            'an attributed cell around it'        => ["{{ date(\$record.record_date, 'Y-m-d') }}", '<xf:cell class="u-alignRight">%s</xf:cell>'],
+            'no cell around it at all'            => ["{{ date(\$record.record_date, 'Y-m-d') }}", '%s'],
+            'a style suffix after the expression' => ["{{ date(\$record.record_date, 'Y-m-d') }}", '<xf:cell>%s (UTC)</xf:cell>'],
         ],
         'nonMatches' => [
             'a null-guard ternary around the record call' => "{{ \$record.record_date ? date(\$record.record_date, 'Y-m-d') : '-' }}",
@@ -301,21 +318,23 @@ $dateCells = [
         ],
     ],
     'cav7RosterPatchAwardDateUtc' => [
+        'replacement'     => '{$award.getAwardDate()}',
         'survivingCallRe' => '/date\s*\(\s*\$award\.award_date/',
         'fixtureExpressions' => [
             'the captured vendor rows' => "{{ date(\$award.award_date, 'Y-m-d') }}",
             'the style-edited copy'    => "{{ date(\$award.award_date, 'Y-m-d') }}",
         ],
         'spellings' => [
-            'the vendor spelling'              => ["{{ date(\$award.award_date, 'Y-m-d') }}", '<xf:cell>%s</xf:cell>'],
-            "a trailing 'Z' argument"          => ["{{ date(\$award.award_date, 'Y-m-d', 'Z' )}}", '<xf:cell>%s</xf:cell>'],
-            'no space inside the braces'       => ["{{date(\$award.award_date, 'Y-m-d')}}", '<xf:cell>%s</xf:cell>'],
-            'a space before the argument list' => ["{{ date (\$award.award_date, 'Y-m-d') }}", '<xf:cell>%s</xf:cell>'],
-            'space around the argument list'   => ["{{ date( \$award.award_date , 'Y-m-d' ) }}", '<xf:cell>%s</xf:cell>'],
-            'a line break inside the call'     => ["{{ date(\n    \$award.award_date,\n    'Y-m-d'\n) }}", '<xf:cell>%s</xf:cell>'],
-            'no format argument at all'        => ['{{ date($award.award_date) }}', '<xf:cell>%s</xf:cell>'],
-            'an attributed cell around it'     => ["{{ date(\$award.award_date, 'Y-m-d') }}", '<xf:cell class="u-alignRight">%s</xf:cell>'],
-            'no cell around it at all'         => ["{{ date(\$award.award_date, 'Y-m-d') }}", '%s'],
+            'the vendor spelling'                 => ["{{ date(\$award.award_date, 'Y-m-d') }}", '<xf:cell>%s</xf:cell>'],
+            "a trailing 'Z' argument"             => ["{{ date(\$award.award_date, 'Y-m-d', 'Z' )}}", '<xf:cell>%s</xf:cell>'],
+            'no space inside the braces'          => ["{{date(\$award.award_date, 'Y-m-d')}}", '<xf:cell>%s</xf:cell>'],
+            'a space before the argument list'    => ["{{ date (\$award.award_date, 'Y-m-d') }}", '<xf:cell>%s</xf:cell>'],
+            'space around the argument list'      => ["{{ date( \$award.award_date , 'Y-m-d' ) }}", '<xf:cell>%s</xf:cell>'],
+            'a line break inside the call'        => ["{{ date(\n    \$award.award_date,\n    'Y-m-d'\n) }}", '<xf:cell>%s</xf:cell>'],
+            'no format argument at all'           => ['{{ date($award.award_date) }}', '<xf:cell>%s</xf:cell>'],
+            'an attributed cell around it'        => ["{{ date(\$award.award_date, 'Y-m-d') }}", '<xf:cell class="u-alignRight">%s</xf:cell>'],
+            'no cell around it at all'            => ["{{ date(\$award.award_date, 'Y-m-d') }}", '%s'],
+            'a style suffix after the expression' => ["{{ date(\$award.award_date, 'Y-m-d') }}", '<xf:cell>%s (UTC)</xf:cell>'],
         ],
         'nonMatches' => [
             'a null-guard ternary around the award call' => "{{ \$award.award_date ? date(\$award.award_date, 'Y-m-d') : '-' }}",
@@ -330,8 +349,20 @@ $mods = loadModifications($root);
 
 // Nothing below can mean anything if a modification failed to load, so say so
 // once here rather than once per fixture. Their shape is MilpacDateWiringTest's.
-foreach (array_keys($dateCells) as $key) {
+//
+// The replacement is pinned here too, once, against the table's own literal.
+// Every expectation below is built by putting that literal into the markup, so
+// this is the only place the shipped replacement is read for what it says rather
+// than used as its own expected value: a replacement carrying a stray
+// </xf:cell>, or a second expression beside the getter, breaks the row on a
+// board while satisfying an expectation derived from itself.
+foreach ($dateCells as $key => $cell) {
     check("$key loaded as an enabled modification", isset($mods[$key]));
+    check(
+        "$key replaces the date expression with exactly " . $cell['replacement'],
+        ($mods[$key]['replace'] ?? null) === $cell['replacement'],
+        'got: ' . var_export($mods[$key]['replace'] ?? null, true)
+    );
 }
 
 // --- both dates render in UTC in the captured vendor rows and the style copy -
@@ -399,6 +430,16 @@ foreach ($fixtures as $fixtureLabel => $file) {
             continue;
         }
 
+        // survivingCallRe is only ever asserted negatively — no such call is
+        // left. A pattern that matches nothing at all satisfies every one of
+        // those, so pin it positively here: before the modification runs, the
+        // fixture holds exactly the call it is supposed to find.
+        check(
+            "\$dateCells['$key'] finds a viewer-timezone call in $fixtureLabel before the modification runs",
+            preg_match_all($cell['survivingCallRe'], $template) === 1,
+            'a pattern that cannot match the unmodified fixture turns every "no call survived" check into a tautology'
+        );
+
         [$result, $count] = applyModification($mod, $template);
 
         check(
@@ -409,12 +450,14 @@ foreach ($fixtures as $fixtureLabel => $file) {
         );
 
         // The whole fixture, with that one expression swapped for the getter and
-        // nothing else touched. The span comes from the table by hand rather
-        // than from the find, so a find that matches the wrong span fails here
-        // instead of agreeing with itself.
-        $expected = str_replace($spelt, $mod['replace'], $template);
+        // nothing else touched. Both halves come from the table by hand rather
+        // than from the record: the span from fixtureExpressions, the text that
+        // lands in it from replacement. A find that matches the wrong span, or a
+        // replacement that writes the wrong thing, fails here instead of
+        // agreeing with itself.
+        $expected = str_replace($spelt, $cell['replacement'], $template);
         check(
-            "$key rewrites the date expression in $fixtureLabel to exactly " . $mod['replace'],
+            "$key rewrites the date expression in $fixtureLabel to exactly " . $cell['replacement'],
             $result === $expected,
             'got: ' . var_export($result, true)
         );
@@ -481,23 +524,30 @@ check(
 
 foreach ($passCarriesBoth ? $fixtureText : [] as $fixtureLabel => $template) {
     $expected = $template;
+    $drifted = false;
     foreach ($dateCells as $key => $cell) {
         $spelt = expressionStillInFixture($cell, $fixtureLabel, $template);
         if ($spelt === null) {
-            // Already reported per fixture above; deriving an expectation from a
-            // table that no longer matches would only fail for the wrong reason.
-            continue 2;
+            // Already reported per fixture above, and an expectation derived
+            // from a table that no longer matches would only fail for the wrong
+            // reason. Only the comparison against it is dropped: an NF/Rosters
+            // upgrade drifts both fixtures at once, which is precisely when the
+            // checks below — none of which read $expected — are worth running.
+            $drifted = true;
+            break;
         }
-        $expected = str_replace($spelt, $mods[$key]['replace'], $expected);
+        $expected = str_replace($spelt, $cell['replacement'], $expected);
     }
 
     [$composed, $counts] = applyPass($pass, $template);
 
-    check(
-        "one composed pass over $fixtureLabel rewrites both date expressions and nothing else",
-        $composed === $expected,
-        'got: ' . var_export($composed, true)
-    );
+    if (!$drifted) {
+        check(
+            "one composed pass over $fixtureLabel rewrites both date expressions and nothing else",
+            $composed === $expected,
+            'got: ' . var_export($composed, true)
+        );
+    }
 
     // $dateCells is written record-first while the pass runs award-first — the
     // two share an execution_order, so modification_key breaks the tie — and ===
@@ -514,25 +564,6 @@ foreach ($passCarriesBoth ? $fixtureText : [] as $fixtureLabel => $template) {
         'counts: ' . var_export($counts, true)
     );
 
-    // Every key in the pass, not just the two the table knows: applyModification()
-    // hands back a string sentinel where XenForo would record a status against
-    // the modification and apply nothing, and the intersect above drops exactly
-    // the third-modification case building the pass from the XML exists to pick
-    // up — an enabled preg_replace whose find is an invalid regex is silent
-    // otherwise.
-    //
-    // Deliberately not asserting every count is non-zero: the fixtures are
-    // trimmed to the date rows, so a legitimate later modification aimed at
-    // markup they elide would match nothing here for a reason that is not a
-    // defect.
-    $errored = array_keys(array_filter($counts, fn ($count) => !is_int($count)));
-    check(
-        "no modification in the composed pass over $fixtureLabel reports an error status",
-        $errored === [],
-        'errored: ' . implode(', ', $errored)
-            . ' — XenForo records the status and the modification does nothing'
-    );
-
     // Scoped to the two milpac columns, not to the string 'date(' anywhere: the
     // fixtures are trimmed captures, and a recapture that keeps a neighbouring
     // cell with an unrelated date() call in it is not a regression.
@@ -547,6 +578,40 @@ foreach ($passCarriesBoth ? $fixtureText : [] as $fixtureLabel => $template) {
         $surviving === [],
         'still matched by: ' . implode(', ', $surviving)
             . ' — a surviving date() call keeps the per-viewer shift'
+    );
+}
+
+// --- no shipped modification, on any template, comes back as a status --------
+// applyModification() hands back a string sentinel instead of a count wherever
+// this mirror stops, and those places are not all places XenForo stops. It does
+// record a status and apply nothing for a find that will not compile, and for an
+// unknown action. It does not for the other two: on a find carrying the /e
+// modifier it records the error and replaces anyway, and action 'callback'
+// shares the preg_replace branch and comes back with a match count. So this
+// asserts something narrower than "XenForo would do nothing here" — that no
+// modification the add-on ships reaches a status this mirror calls an error.
+// Add a legitimate callback modification later and this reddens while the board
+// is fine: the mirror is what needs teaching then, not the modification.
+//
+// Every (type, template) the XML targets, not just the pair the fixtures cover.
+// This add-on is the declared home for later NF/Rosters patches, and a patch on
+// another template has no fixture here, so an enabled preg_replace whose find
+// will not compile would otherwise be exercised by nothing. The subject is an
+// empty template on purpose: a find that cannot compile fails against any
+// subject, and match counts are the fixtures' business, not this sweep's.
+$targets = [];
+foreach ($mods as $mod) {
+    $targets[$mod['type'] . ':' . $mod['template']] = [$mod['type'], $mod['template']];
+}
+
+foreach ($targets as $label => [$type, $template]) {
+    [, $counts] = applyPass(modificationsForTemplate($mods, $type, $template), '');
+    $errored = array_keys(array_filter($counts, fn ($count) => !is_int($count)));
+    check(
+        "no modification in the pass over $label reports an error status",
+        $errored === [],
+        'errored: ' . implode(', ', $errored)
+            . ' — XenForo records the status and the modification does nothing'
     );
 }
 
@@ -570,8 +635,20 @@ foreach ($dateCells as $key => $cell) {
     }
 
     foreach ($cell['spellings'] as $label => [$call, $wrapper]) {
+        // The wrapper is a sprintf format and the %s is where the expression
+        // goes. Drop it and sprintf() quietly returns the wrapper alone, so the
+        // template never carries the call and every check below reports a match
+        // count of 0 — which reads as a broken pattern rather than a broken row
+        // of this table. Say which it is.
+        check(
+            "the wrapper \$dateCells['$key'] gives $label has exactly one %s for the expression",
+            substr_count($wrapper, '%s') === 1,
+            'got: ' . var_export($wrapper, true)
+                . ' — without it the spelling never reaches the template it is meant to be found in'
+        );
+
         $template = "<xf:datarow>\n    " . sprintf($wrapper, $call) . "\n</xf:datarow>";
-        $expected = str_replace($call, $mod['replace'], $template);
+        $expected = str_replace($call, $cell['replacement'], $template);
 
         [$result, $count] = applyModification($mod, $template);
 
@@ -581,7 +658,7 @@ foreach ($dateCells as $key => $cell) {
             'match count: ' . var_export($count, true)
         );
         check(
-            "$key rewrites $label to exactly " . $mod['replace'] . ', wrapper untouched',
+            "$key rewrites $label to exactly " . $cell['replacement'] . ', wrapper untouched',
             $result === $expected,
             'got: ' . str_replace("\n", '\n', $result)
         );
@@ -618,6 +695,18 @@ foreach ($dateCells as $key => $cell) {
     }
 
     foreach ($cell['nonMatches'] as $label => $call) {
+        // "The pattern does not match this" is satisfied by any string at all,
+        // so a table entry that stopped being a date() call on this column would
+        // pass while asserting nothing. These four are the documented limits, so
+        // pin what each one is: a viewer-timezone call on the column this
+        // modification owns, which the find is deliberately declining to take.
+        check(
+            "$label really is a viewer-timezone call on the column $key owns",
+            preg_match($cell['survivingCallRe'], $call) === 1,
+            'got: ' . var_export($call, true)
+                . ' — an entry the surviving-call pattern cannot find records no limit'
+        );
+
         $template = "<xf:datarow>\n    <xf:cell>$call</xf:cell>\n</xf:datarow>";
         [$result, $count] = applyModification($mod, $template);
 

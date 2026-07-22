@@ -16,13 +16,17 @@
  * all.
  *
  * What that comes down to here: the exec list holds the delete, spelled exactly,
- * with {addon_id} written bare rather than inside quotes of build.json's own
- * (execCmds() expands it through escapeshellarg(), so quoting it a second time
- * has rm looking for a directory whose name carries apostrophes), and nothing
- * later in the list puts the directory back. The add-on's own id is read from
- * where the add-on sits, so a rename is covered; the `_build/upload/src/addons/`
- * prefix is not — it is a literal here compared against the literal in
- * build.json, and a XenForo release that restaged elsewhere would pass both.
+ * with {addon_id} written bare rather than inside quotes of build.json's own,
+ * and nothing later in the list puts the directory back. That delete is compared
+ * against one canonical spelling, literally, so any quoting of the token fails
+ * here — including the quoting a shell would have forgiven. Double quotes do
+ * break the build: execCmds() expands the token through escapeshellarg(), and rm
+ * then looks for a directory whose name carries apostrophes. Single quotes it
+ * collapses back to the right path, and that spelling is rejected here anyway.
+ * The add-on's own id is read from where the add-on sits, so a rename is
+ * covered; the `_build/upload/src/addons/` prefix is not — it is a literal here
+ * compared against the literal in build.json, and a XenForo release that
+ * restaged elsewhere would pass both.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -77,15 +81,21 @@ check(
 // execCmds() chdir()s to the add-on directory and expands {placeholder} tokens
 // from the AddOn's own properties before handing the command to passthru(), so a
 // relative path is relative to the add-on root. Only the token is substituted
-// here: the expansion goes through escapeshellarg(), so an entry that wraps the
-// token in quotes of its own no longer matches the wanted command — which is the
-// point, since those quotes end up in the path rm looks for.
+// here, not the escapeshellarg() quoting execCmds() puts around the expansion,
+// so what the comparison below holds is one canonical spelling: an entry that
+// quotes the token itself does not match it, whether or not a shell would have
+// forgiven the quotes. "{addon_id}" it would not — the expansion is already
+// quoted, and rm goes looking for a path whose name carries apostrophes.
+// '{addon_id}' it would, and that one is rejected here regardless: one spelling
+// compared literally is cheaper to hold than a rule about which quoting survives
+// which shell.
 $commands = array_map(
     static fn (string $entry) => str_replace('{addon_id}', $addOnId, $entry),
     array_values(array_filter($rawExec, 'is_string'))
 );
 
-$staged = "_build/upload/src/addons/$addOnId/tests";
+$stagedRoot = "_build/upload/src/addons/$addOnId";
+$staged = "$stagedRoot/tests";
 $wanted = "rm -rf $staged";
 $deleteAt = array_search($wanted, $commands, true);
 
@@ -97,14 +107,17 @@ check(
 
 // exec is an ordered list run top to bottom, so a later entry can stage the
 // directory straight back — a `cp -R tests <staged>` after the delete ships the
-// fixtures again, and the delete above still reads as present.
+// fixtures again, and the delete above still reads as present. The staged add-on
+// root is what gets matched, not the staged tests path: `cp -R tests` naming the
+// parent directory puts tests/ back just as surely, and mentions the tests path
+// nowhere.
 $afterDelete = $deleteAt === false ? [] : array_slice($commands, (int) $deleteAt + 1);
 $restagers = array_values(array_filter(
     $afterDelete,
-    static fn (string $cmd) => str_contains($cmd, $staged)
+    static fn (string $cmd) => str_contains($cmd, $stagedRoot)
 ));
 check(
-    'no later exec command touches the staged tests directory again',
+    "no later exec command writes into this add-on's staged directory again",
     $restagers === [],
     'after the delete: ' . implode(' | ', $restagers)
 );
@@ -115,10 +128,14 @@ check(
     'there is a tests/ directory for it to delete',
     is_dir("$root/tests")
 );
+// glob() returns false on error rather than an empty array, so "not empty" alone
+// would pass on the one input it cannot read.
+$fixtureFiles = glob("$root/tests/fixtures/*.html");
 check(
     'the vendor fixtures it keeps out of the zip live under it',
     is_dir("$root/tests/fixtures")
-        && glob("$root/tests/fixtures/*.html") !== [],
+        && is_array($fixtureFiles)
+        && $fixtureFiles !== [],
     'tests/fixtures/ is the NF/Rosters markup that must not reach an installed board'
 );
 

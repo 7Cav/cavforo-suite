@@ -67,10 +67,12 @@ build time. It needs `php` on the PATH.
 Two things it does not reproduce. XenForo's `hashes.json` file-health manifest,
 which the real build generates; the zip installs fine without it. And the
 `build.json` keys `package-web-assets.php` never reads, `exec` and `rollup`: it
-reads `additional_files` and `minify` and nothing else, so an addon that prunes
-staged files through `exec` gets that pruning from this path's own exclusion list
-instead, while an `exec` doing anything else, and any `rollup` bundling, does not
-happen here at all.
+reads `additional_files` and `minify` and nothing else. RosterPatch's `exec`
+prunes `tests/`, which this path leaves out anyway, so the two agree there by
+coincidence rather than by design — an `exec` pruning anything else needs that
+path adding to the `excludes` array in `package-addon.sh` to be reproduced here,
+and an `exec` doing something other than pruning, along with any `rollup`
+bundling, does not happen here at all.
 
 ```
 tools/package-addon.sh SteamChecker

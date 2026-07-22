@@ -237,11 +237,15 @@ foreach ($expectedMods as $key => $want) {
 // the file, and stores enabled as a JSON bool, so those two are compared through
 // the shape _output uses.
 $tmodDir = "$root/_output/template_modifications";
+// glob() reports an unreadable directory as false, not as an empty list, so the
+// count below has to be told apart from a count of nothing.
 $tmodOutput = glob("$tmodDir/*/*.json");
 check(
     '_output has one template-modification file per _data modification',
-    count($tmodOutput) === ($tmodXml !== false ? count($tmodXml->modification) : -1),
-    'output: ' . count($tmodOutput) . ', data: ' . ($tmodXml !== false ? count($tmodXml->modification) : 'n/a')
+    is_array($tmodOutput)
+        && count($tmodOutput) === ($tmodXml !== false ? count($tmodXml->modification) : -1),
+    'output: ' . (is_array($tmodOutput) ? count($tmodOutput) : 'unreadable')
+        . ', data: ' . ($tmodXml !== false ? count($tmodXml->modification) : 'n/a')
 );
 
 $tmodMeta = json_decode((string) @file_get_contents("$tmodDir/_metadata.json"), true);

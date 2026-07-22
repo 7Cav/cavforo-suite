@@ -20,6 +20,7 @@ The vendor is `Cav7` and the PHP namespace root is `Cav7\<AddonId>`. It is `Cav7
 - `Setup.php`: only if the addon creates tables, options, fields, or other install state. A class-extension-only addon does not need one.
 - PHP classes under namespaced directories that match XenForo's conventions (`XF/`, `Pub/`, `Admin/`, `Entity/`, `Repository/`, `Job/`, and so on).
 - `README.md`: a short description, the requirements, and a provenance note (see below).
+- `build.json`: only if the addon needs XenForo's build-time handling — web assets copied out of `_files/`, or `exec` commands run over the staged tree. XenForo reads it during `xf-addon:build-release` and keeps it out of the zip; most addons do not have one.
 
 ### addon.json
 
