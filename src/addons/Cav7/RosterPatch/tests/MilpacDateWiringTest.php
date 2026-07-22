@@ -151,12 +151,14 @@ $mods = [];
 if ($tmodXml !== false) {
     foreach ($tmodXml->modification as $mod) {
         $mods[(string) $mod['modification_key']] = [
-            'type'     => (string) $mod['type'],
-            'template' => (string) $mod['template'],
-            'enabled'  => (string) $mod['enabled'],
-            'action'   => (string) $mod['action'],
-            'find'     => (string) $mod->find,
-            'replace'  => (string) $mod->replace,
+            'type'            => (string) $mod['type'],
+            'template'        => (string) $mod['template'],
+            'description'     => (string) $mod['description'],
+            'execution_order' => (int) $mod['execution_order'],
+            'enabled'         => (string) $mod['enabled'],
+            'action'          => (string) $mod['action'],
+            'find'            => (string) $mod->find,
+            'replace'         => (string) $mod->replace,
         ];
     }
 }
@@ -229,10 +231,11 @@ foreach ($expectedMods as $key => $want) {
 // _output is what a dev-stack install imports, and what an export round-trips
 // back into _data, so a count alone leaves every field inside those files free
 // to drift: an item reverted to an exact str_replace find, pointed at another
-// template, or switched off passes a count check and ships. Content-check each
-// one against its _data record instead. _output carries the type in the
-// directory name rather than in the file, and stores enabled as a JSON bool, so
-// those two are compared through the shape _output uses.
+// template, reordered against a sibling, or switched off passes a count check
+// and ships. Content-check every field the item file carries against its _data
+// record instead. _output carries the type in the directory name rather than in
+// the file, and stores enabled as a JSON bool, so those two are compared through
+// the shape _output uses.
 $tmodDir = "$root/_output/template_modifications";
 $tmodOutput = glob("$tmodDir/*/*.json");
 check(
@@ -251,10 +254,15 @@ foreach ($mods as $key => $want) {
     $raw = @file_get_contents("$tmodDir/$file");
     $decoded = json_decode((string) $raw, true);
 
+    // execution_order decides which of two modifications on one template sees
+    // the other's output, and _output is the side an install reads, so a drift
+    // there is a real behaviour change that _data alone cannot show.
     check(
         "the _output export $file describes the same modification as _data",
         is_array($decoded)
             && ($decoded['template'] ?? null) === $want['template']
+            && ($decoded['description'] ?? null) === $want['description']
+            && ($decoded['execution_order'] ?? null) === $want['execution_order']
             && ($decoded['enabled'] ?? null) === ($want['enabled'] === '1')
             && ($decoded['action'] ?? null) === $want['action']
             && ($decoded['find'] ?? null) === $want['find']
@@ -273,6 +281,23 @@ foreach ($mods as $key => $want) {
         'XenForo hashes an item as md5 of its contents with CRs stripped; a stale or blanked hash means the export was hand-edited'
     );
 }
+
+// The other direction. The loop above walks _data, so it can only find an item
+// file that should be there and is not; an index entry naming a file nobody
+// ships — the residue of a modification deleted from _data without re-exporting
+// — passes it unseen.
+$orphanedIndex = [];
+foreach (is_array($tmodMeta) ? array_keys($tmodMeta) : [] as $indexed) {
+    if (!is_file("$tmodDir/$indexed")) {
+        $orphanedIndex[] = (string) $indexed;
+    }
+}
+check(
+    '_output/template_modifications/_metadata.json names no item file that is gone',
+    $orphanedIndex === [],
+    'indexed but missing: ' . implode(', ', $orphanedIndex)
+        . ' — re-export rather than deleting the file by hand'
+);
 
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
