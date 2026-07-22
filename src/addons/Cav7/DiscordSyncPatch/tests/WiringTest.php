@@ -441,7 +441,7 @@ check(
     'the server map is read once, and only as the precondition',
     substr_count($resyncBody, 'getServerMap(') === 1
         && substr_count($resyncBody, '\NF\Discord\Repository\Server::class') === 1,
-    'a second read after the queueing call is the shape this branch was restructured out of'
+    'the map the failure log reports has to be the one the fan-out actually ran over, and a second read after the queueing call is a fresh observation of a table staff can edit at any time: a server switched off in between would have the log describe a map nothing ever iterated'
 );
 
 // --- the precondition: the integration itself has no working credentials ---
@@ -569,8 +569,8 @@ check(
 // is absorbed whole and stays green, and CI runs php -l with no style linter behind
 // it. Anchored on the semicolon that ends the statement before it, so anything but a
 // plain statement fails: a bare `if (...)` leaves a `)` there and a braced one leaves
-// a `{`. Both are the conditional release that two earlier commits removed, and both
-// leave the press that queued nothing costing the member five minutes.
+// a `{`. Both are a release the code decides on rather than performs, and both leave
+// the press that queued nothing costing the member five minutes.
 check(
     'the cooldown is handed back unconditionally, not to whoever the code thinks paid one',
     (bool) preg_match('/;\s*\$this->releaseResyncCooldown\(\s*\$visitor->user_id\s*\)\s*;/', $resyncBody)
@@ -885,7 +885,7 @@ check(
         && (bool) preg_match('/discord server/i', $phraseText['cav7_discord_resync_no_servers'] ?? '')
         && (bool) preg_match('/\bstaff\b/i', $phraseText['cav7_discord_resync_no_servers'] ?? '')
         && !preg_match('/set one up/i', $phraseText['cav7_discord_resync_no_servers'] ?? ''),
-    'this is the whole diagnosis staff receive, and the dev stack is already in the state it describes wrongly: one server row, with a guild id, inactive. "Ask staff to set one up" then invites a second row the guild_id unique constraint refuses'
+    'this is the whole diagnosis staff receive, and the state it has to describe is the one getServerMap() filters out: a server row that exists, with a guild id, and active = 0. "Ask staff to set one up" then invites a second row the guild_id unique constraint refuses'
 );
 // The credentials refusal has to name the credentials, because the member carries it
 // to staff and the two forum-wide faults are fixed in different places: this one on

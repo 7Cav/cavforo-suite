@@ -85,6 +85,14 @@ The button syncs whether or not anything is actually wrong. Why it does not chec
 first, and what the two guards are there to protect, is in
 [ADR-0005](docs/adr/0005-honour-a-resync-request-without-checking-divergence.md).
 
+The two outcomes that are not refusals — the resync was queued, one was already
+pending — reach the member as a flash message, which is a JavaScript path. XenForo
+discards a redirect's message on any other path, and does so for every redirect in
+the product. With JavaScript off a press still queues, and the page it lands on
+still shows the pending line beside the button, but the message naming what happened
+is gone. Why that ships rather than getting a mechanism of its own is in
+[ADR-0006](docs/adr/0006-let-the-resync-reply-follow-xenforos-own-flash-message-behaviour.md).
+
 ## The behavior change worth knowing about
 
 **A role that a user group grants can no longer be assigned by hand in Discord and
