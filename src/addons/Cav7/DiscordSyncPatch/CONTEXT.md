@@ -57,8 +57,19 @@ those, leaving everyone already in agreement untouched. It reconciles two distin
 populations from one guild member fetch: linked members in **divergence**, and
 **unlinked holder**s. The two never overlap — a member either has a link or does
 not — so the sweep partitions them on that one question.
-_Avoid_: "full sync" and "resync" (both read as re-running the sync for every
-member, the blind shape this is defined against).
+_Avoid_: "full sync" (reads as re-running the sync for every member, the blind
+shape this is defined against). A **resync** is that blind shape narrowed to one
+member who asked for it, so it names a different thing rather than this one.
+
+**Resync**:
+One member asking the integration to run its per-user sync for them, without
+waiting for a group change or for the **reconciliation sweep** to come round. It is
+blind: it runs whether or not the member is in **divergence**, because honouring
+the request costs about what checking first would. It corrects the member who asked
+and nobody else, and it decides nothing an ordinary sync does not already decide.
+_Avoid_: "force sync" (nothing is forced; the request is queued and can be
+refused), and using it for the **reconciliation sweep**, which is scheduled,
+covers a population and corrects only the members it finds divergent.
 
 **Unlinked holder**:
 A Discord guild member who holds at least one **managed role** but has no nfDiscord
