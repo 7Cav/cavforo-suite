@@ -638,7 +638,9 @@ check(
 );
 
 // =========================================================================
-// issue #158 — the surface: one template modification, six phrases, no options
+// issue #158 — the surface: one template modification, the phrases behind it, and no
+// options. How many of each is asserted below rather than counted here, so the
+// inventory a reader checks against cannot disagree with the checks themselves.
 // =========================================================================
 $tmXml = @simplexml_load_file("$root/_data/template_modifications.xml");
 check('_data/template_modifications.xml could be read', $tmXml !== false);
@@ -720,6 +722,24 @@ check(
         && (!preg_match('~\bmethod\s*=~i', $formTag[0])
             || (bool) preg_match('~\bmethod\s*=\s*"post"~i', $formTag[0])),
     'the action asserts POST, so a GET form is refused on every press; the default is post, which makes this a pin on nothing having overridden it'
+);
+// The two messages the action redirects with only exist if the reply is rendered as
+// JSON. XF\Mvc\Renderer\Html::renderRedirect() sets the response code and the
+// Location header and does nothing with $message; XF\Mvc\Renderer\Json
+// ::renderRedirect() is the only one that returns it, and that renderer is reached
+// only for an XHR. XF\Template\Templater::form() adds data-xf-init="ajax-submit"
+// only when ajax is set, and nothing in js/xf/core.js binds plain forms, so without
+// this attribute a press is an ordinary POST and the member is told nothing at all
+// about the press they just made. data-force-flash-message is the other half:
+// XF.AjaxSubmit defaults forceFlashMessage to false, and on that default the
+// data.message branch in js/xf/form.js calls XF.redirect() without flashing
+// anything, so the phrase is fetched and thrown away one layer further out.
+check(
+    'the form submits over XHR and flashes the reply before it redirects',
+    isset($formTag[0])
+        && (bool) preg_match('~\bajax\s*=\s*"true"~i', $formTag[0])
+        && (bool) preg_match('~\bdata-force-flash-message\s*=\s*"true"~i', $formTag[0]),
+    'these two attributes are the whole delivery path for cav7_discord_resync_queued and cav7_discord_resync_pending. Drop ajax and the reply renders through XF\\Mvc\\Renderer\\Html, which discards the message entirely; keep ajax and drop the flash attribute and js/xf/form.js redirects on data.redirect without ever showing data.message. Either way the button works, nothing errors, and a member who presses it is told nothing'
 );
 // XF\Template\Templater::button() falls back to type="button" when the attribute is
 // absent or empty, and a type="button" inside a form submits nothing. The mutation

@@ -4,7 +4,7 @@
     <find><![CDATA[/\z/]]></find>
     <replace><![CDATA[
 <xf:if is="$user.user_id == $xf.visitor.user_id">
-	<xf:form action="{{ link('account/connected-accounts/discord-resync') }}" class="u-inputSpacer">
+	<xf:form action="{{ link('account/connected-accounts/discord-resync') }}" class="u-inputSpacer" ajax="true" data-force-flash-message="true">
 		<xf:button type="submit" icon="refresh">{{ phrase('cav7_discord_resync') }}</xf:button>
 		<xf:if is="$syncingServers is not empty">
 			<span class="u-muted">{{ phrase('cav7_discord_resync_pending') }}</span>

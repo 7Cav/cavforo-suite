@@ -5,5 +5,5 @@
     "enabled": true,
     "action": "preg_replace",
     "find": "/\\z/",
-    "replace": "\n<xf:if is=\"$user.user_id == $xf.visitor.user_id\">\n\t<xf:form action=\"{{ link('account/connected-accounts/discord-resync') }}\" class=\"u-inputSpacer\">\n\t\t<xf:button type=\"submit\" icon=\"refresh\">{{ phrase('cav7_discord_resync') }}</xf:button>\n\t\t<xf:if is=\"$syncingServers is not empty\">\n\t\t\t<span class=\"u-muted\">{{ phrase('cav7_discord_resync_pending') }}</span>\n\t\t</xf:if>\n\t\t<div class=\"u-muted\">{{ phrase('cav7_discord_resync_note') }}</div>\n\t</xf:form>\n</xf:if>"
+    "replace": "\n<xf:if is=\"$user.user_id == $xf.visitor.user_id\">\n\t<xf:form action=\"{{ link('account/connected-accounts/discord-resync') }}\" class=\"u-inputSpacer\" ajax=\"true\" data-force-flash-message=\"true\">\n\t\t<xf:button type=\"submit\" icon=\"refresh\">{{ phrase('cav7_discord_resync') }}</xf:button>\n\t\t<xf:if is=\"$syncingServers is not empty\">\n\t\t\t<span class=\"u-muted\">{{ phrase('cav7_discord_resync_pending') }}</span>\n\t\t</xf:if>\n\t\t<div class=\"u-muted\">{{ phrase('cav7_discord_resync_note') }}</div>\n\t</xf:form>\n</xf:if>"
 }

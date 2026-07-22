@@ -114,32 +114,20 @@ class Account extends XFCP_Account
 
         // The first precondition, ahead of both guards. The template only offers the
         // button to a linked member, but that is markup, not a guard: the endpoint
-        // takes a post from anyone. Queueing without a link writes one unusable row
-        // per guild that neither guard below can see, so ask first — and ask before
-        // the cooldown, so an unlinked member does not spend one on it either.
+        // takes a post from anyone. What queueing without a link leaves behind is in
+        // the docblock; ask first, and ask before the cooldown, so an unlinked member
+        // does not spend one on it either.
         if (empty($visitor->ConnectedAccounts['nfDiscord'])) {
             return $this->error(\XF::phrase('cav7_discord_resync_not_linked'));
         }
 
-        // The second precondition, and the one that wedges if it is skipped. The
-        // server rows say nothing about whether the integration can talk to Discord:
-        // Api::getDiscordConfiguration() returns null when the token, the client id,
-        // the client secret or the discord_server_id option is empty, so a rotated
-        // bot token left blank leaves a full server map behind a dead integration.
-        // The fan-out queues anyway — Api::__construct() assigns the guild id only
-        // inside its `if ($provider !== null)` branch, Api::factory($guildId, false)
-        // hands back the Api for any non-null guild id, and Queue::queueMessage()
-        // inserts a row with a null guild_id and this member's user_id. The pending
-        // lookup below sees that row, so the member gets told their resync is queued,
-        // and then Repository\Queue::run() opens with Api::factory(null, false) —
-        // null guild id and no configuration, the one call that does return null —
-        // and exits before it touches the queue. The row is only ever removed from
-        // inside run(), its own age-out branch included, so it never expires: the
-        // pending guard below then refuses every later press indefinitely, with
-        // nothing written to xf_error_log. Asked here instead, the first press says
-        // so. Cheap, too: the provider entity is one find the request has usually
-        // made already, and asking before the server map skips the cache rewrite
-        // below for a forum that could not sync either way.
+        // The second precondition, and the one that wedges if it is skipped: it ends
+        // in a permanent, silent lockout, which the docblock traces call by call.
+        // Note that the server rows below cannot stand in for it — none of the four
+        // settings it reads live on them. Asked here, the first press says so.
+        // Cheap, too: the provider entity is one find the request has usually made
+        // already, and asking before the server map skips the cache rewrite below for
+        // a forum that could not sync either way.
         if (\NF\Discord\Api::getDiscordConfiguration() === null) {
             return $this->error(\XF::phrase('cav7_discord_resync_not_configured'));
         }
