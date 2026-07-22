@@ -106,32 +106,69 @@ function applyModification(array $mod, string $template): array
 
 $mods = loadModifications($root);
 
-// --- the service-record date survives a style's edited copy ------------------
-// The board style's copy carries a hand-added third date() argument. An exact
-// find misses it, and that style keeps rendering in the viewer's timezone.
-$styleEdited = (string) file_get_contents("$root/tests/fixtures/nf_rosters_user_view.style-edited.html");
+// The date cell each modification owns, and what has to be true of the template
+// once XenForo has applied it.
+$dateCells = [
+    'cav7RosterPatchRecordDateUtc' => [
+        'getter'   => '{$record.getRecordDate()}',
+        'vendorRe' => '/date\s*\(\s*\$record\.record_date/',
+    ],
+    'cav7RosterPatchAwardDateUtc' => [
+        'getter'   => '{$award.getAwardDate()}',
+        'vendorRe' => '/date\s*\(\s*\$award\.award_date/',
+    ],
+];
 
-$mod = $mods['cav7RosterPatchRecordDateUtc'] ?? null;
-check('the service-record modification is present and enabled', $mod !== null);
+// --- both dates render in UTC in the vendor template and in the style copy ---
+// "vendor" is the markup NF/Rosters 2.1.5 ships, so a vendor update that moves
+// the date cell fails here instead of shipping a modification that matches
+// nothing. "style-edited" is the copy the board style carries: a third argument
+// on the record-date call, which is what an exact-string find missed.
+$fixtures = [
+    'the vendor template'      => 'nf_rosters_user_view.vendor.html',
+    'the style-edited copy'    => 'nf_rosters_user_view.style-edited.html',
+];
 
-if ($mod !== null) {
-    [$result, $count] = applyModification($mod, $styleEdited);
+foreach ($fixtures as $fixtureLabel => $file) {
+    $template = (string) file_get_contents("$root/tests/fixtures/$file");
+    check("$fixtureLabel fixture could be read", $template !== '');
 
-    check(
-        'the service-record date modification matches the style-edited template',
-        $count === 1,
-        'match count: ' . var_export($count, true) . ' — a find that matches nothing leaves that style on the viewer timezone'
-    );
-    check(
-        'the style-edited service-record date renders through getRecordDate()',
-        str_contains($result, '{$record.getRecordDate()}'),
-        'the UTC getter never reached the template'
-    );
-    check(
-        'no date($record.record_date, ...) call is left in the style-edited template',
-        !preg_match('/date\s*\(\s*\$record\.record_date/', $result),
-        'a surviving date() call keeps the per-viewer shift'
-    );
+    foreach ($dateCells as $key => $cell) {
+        $mod = $mods[$key] ?? null;
+        check("$key is present and enabled", $mod !== null);
+        if ($mod === null) {
+            continue;
+        }
+
+        [$result, $count] = applyModification($mod, $template);
+
+        check(
+            "$key matches $fixtureLabel exactly once",
+            $count === 1,
+            'match count: ' . var_export($count, true)
+                . ' — 0 means the date keeps rendering in the viewer timezone and XenForo says nothing'
+        );
+        check(
+            "$key puts " . $cell['getter'] . " into $fixtureLabel",
+            str_contains($result, $cell['getter']),
+            'the UTC getter never reached the template'
+        );
+        check(
+            "$key leaves no viewer-timezone date() call in $fixtureLabel",
+            !preg_match($cell['vendorRe'], $result),
+            'a surviving date() call keeps the per-viewer shift'
+        );
+
+        // XenForo re-applies every modification each time the template is
+        // recompiled, so a second pass has to be a no-op. A pattern that also
+        // matched its own replacement would multiply the cell on every rebuild.
+        [$again, $againCount] = applyModification($mod, $result);
+        check(
+            "$key is idempotent over $fixtureLabel",
+            $againCount === 0 && $again === $result,
+            're-applying matched ' . var_export($againCount, true) . ' time(s)'
+        );
+    }
 }
 
 // --- both dates survive however the date() call is spelled -------------------

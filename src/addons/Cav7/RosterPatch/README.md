@@ -50,6 +50,8 @@ For release builds, generate hashes first: `php cmd.php xf-addon:build-release C
 
 **The hook runs inside the position's save.** The re-sync happens in `_postSave`, within the same transaction as the position edit, mirroring how the vendor's Adder and Editor apply grants. A position holds at most a handful of members, so the per-save cost is small.
 
+**The date cells are matched by pattern, not by exact vendor markup.** A style can carry its own edited copy of `nf_rosters_user_view`. If that copy differs from the vendor's by so much as a space, an exact find matches nothing in it, and XenForo does not treat that as an error: the add-on still reports as installed and active while that style renders the date in the viewer's timezone. Both modifications are `preg_replace` patterns over the `date()` call itself. The tests apply them the way XenForo applies them, to committed copies of the vendor template and of an edited style copy, so a find that stops matching fails the suite instead of shipping.
+
 **If a vendor update adds its own re-sync, this add-on becomes redundant** and can be dropped.
 
 ## Layout
@@ -63,7 +65,7 @@ src/addons/Cav7/RosterPatch/
   NF/Rosters/Pub/Controller/Roster.php   reject bad dates, default a new entry to the editor's today
   Repository/PositionGroupSync.php       holder query + the re-apply logic
   Cli/Command/SyncPositionGroups.php     one-off backlog reconcile
-  tests/                                 pure-logic tests + shape guards, no stack required
+  tests/                                 pure-logic tests, shape guards, and the template fixtures they run against, no stack required
   _data/, _output/                       class-extension + template-modification registration
 ```
 
