@@ -20,9 +20,8 @@ tools/run-tests.sh SteamChecker
 ### `run-tools-tests.sh`
 
 Runs the repo-level tool tests (`tools/tests/*.php`), which pin the scripts in
-this directory (`package-addon.sh`, `package-web-assets.php`,
-`check-data-consistency.php`, ...) against failure modes the live build's happy
-path does not exercise. Like the
+this directory (`package-web-assets.php`, `check-data-consistency.php`, ...)
+against failure modes the live build's happy path does not exercise. Like the
 addon tests, each is a self-contained script that exits non-zero on failure, so
 there is no framework and no XenForo. It discovers every `tools/tests/*.php`, so
 a new one is picked up with no change here. Takes no arguments and needs only
