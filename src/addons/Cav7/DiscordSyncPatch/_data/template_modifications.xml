@@ -3,11 +3,13 @@
   <modification type="public" template="connected_account_associated_nfDiscord" modification_key="cav7DiscordSyncPatchResyncButton" description="Adds a button that queues a resync of the member's own Discord roles" execution_order="10" enabled="1" action="preg_replace">
     <find><![CDATA[/\z/]]></find>
     <replace><![CDATA[
-<xf:form action="{{ link('account/connected-accounts/discord-resync') }}" class="u-inputSpacer">
-	<xf:button type="submit" icon="refresh">{{ phrase('cav7_discord_resync') }}</xf:button>
-	<xf:if is="$syncingServers is not empty">
-		<span class="u-muted">{{ phrase('cav7_discord_resync_pending') }}</span>
-	</xf:if>
-</xf:form>]]></replace>
+<xf:if is="$user.user_id == $xf.visitor.user_id">
+	<xf:form action="{{ link('account/connected-accounts/discord-resync') }}" class="u-inputSpacer">
+		<xf:button type="submit" icon="refresh">{{ phrase('cav7_discord_resync') }}</xf:button>
+		<xf:if is="$syncingServers is not empty">
+			<span class="u-muted">{{ phrase('cav7_discord_resync_pending') }}</span>
+		</xf:if>
+	</xf:form>
+</xf:if>]]></replace>
   </modification>
 </template_modifications>

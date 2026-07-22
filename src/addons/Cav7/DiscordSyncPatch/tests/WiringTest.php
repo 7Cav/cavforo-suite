@@ -136,6 +136,7 @@ if ($classExtXml !== false) {
         $extByFrom[(string) $ext['from_class']] = [
             'to' => (string) $ext['to_class'],
             'active' => (string) $ext['active'],
+            'order' => (string) $ext['execute_order'],
         ];
     }
 }
@@ -181,6 +182,38 @@ check(
     'the account-controller extension ships its _output export',
     is_file("$root/_output/class_extensions/XF-Pub-Controller-AccountController_Cav7-DiscordSyncPatch-XF-Pub-Controller-Account.json"),
     'a registration without its export count-mismatches in check-data-consistency instead of failing clearly here'
+);
+// Dev mode imports _output, production imports _data, so the two copies of a
+// registration have to say the same thing. check-data-consistency compares
+// from_class, to_class and active and stops there, which leaves execute_order free
+// to drift: chain position decides whether this addon's overrides run inside or
+// outside another addon's, and a dev-stack run would then exercise an order
+// production never ships. Compared here field for field, the same way the template
+// modification and the phrases are.
+$extDrift = [];
+foreach (outputItems($root, 'class_extensions') as $extOutFile) {
+    $extOut = json_decode((string) @file_get_contents($extOutFile), true);
+    $from = is_array($extOut) ? (string) ($extOut['from_class'] ?? '') : '';
+    if (!isset($extByFrom[$from])) {
+        $extDrift[] = basename($extOutFile) . ': from_class has no matching _data <extension>';
+        continue;
+    }
+    if ((string) ($extOut['to_class'] ?? '') !== $extByFrom[$from]['to']) {
+        $extDrift[] = basename($extOutFile) . ': to_class differs from _data';
+    }
+    if ((string) (int) ($extOut['execute_order'] ?? -1) !== $extByFrom[$from]['order']) {
+        $extDrift[] = basename($extOutFile) . ': execute_order differs from _data';
+    }
+    if (((bool) ($extOut['active'] ?? false)) !== ($extByFrom[$from]['active'] === '1')) {
+        $extDrift[] = basename($extOutFile) . ': active differs from _data';
+    }
+}
+check(
+    'each _output class extension is the same registration as its _data one, execute_order included',
+    $extDrift === [],
+    $extDrift === []
+        ? ''
+        : 'check-data-consistency compares from_class, to_class and active only, so this is the field it cannot see drift in: ' . implode('; ', $extDrift)
 );
 
 // =========================================================================
@@ -331,11 +364,16 @@ check(
     $assertPostPos !== false && $queuePos !== false && $assertPostPos < $queuePos,
     'the button is a form so prefetchers and link-preview bots cannot resync on a member\'s behalf; the assertion is what makes that true'
 );
+// $visitor is assigned once, from the session, and never reassigned. Counted by
+// pattern rather than by literal text: CI runs php -l and nothing else, so a second
+// assignment written with different spacing would be invisible to a substring count
+// while pointing the queueing call at another member.
+preg_match_all('/\$visitor\s*=(?!=)/', $resyncBody, $visitorAssignments);
 check(
     'the resync queues the vendor\'s per-user sync for the visitor, and for nobody it was handed',
     (bool) preg_match('/\$visitor\s*=\s*\\\\XF::visitor\(\)\s*;/', $resyncBody)
         && (bool) preg_match('/queueSyncJobsForUser\(\s*\$visitor\s*\)/', $resyncBody)
-        && substr_count($resyncBody, '$visitor =') === 1,
+        && count($visitorAssignments[0]) === 1,
     'one press has to cover every guild the forum syncs, and it may never target another member — which holds only while $visitor is the session visitor and stays that way'
 );
 
@@ -374,12 +412,23 @@ check(
     'the vendor queueing call returns nothing and cannot fail loudly, so a row landing is the only evidence the resync worked'
 );
 $pendingBody = methodBody($accountCode, 'hasPendingDiscordSync');
+// One pattern over the whole statement, not three substrings, because the pieces
+// only mean anything together. It pins the table, both conditions, the AND between
+// them, and the bind values in the order the placeholders take them. Rooted on the
+// opening bracket of the bind array so the class name has to be the vendor's root
+// name and not this addon's subclass of it: NF\Discord\Repository\Queue::queueMessage()
+// runs the message through resolveExtendedClassToRoot() before the insert, so the
+// row never carries the extended name. "We extend that class, so surely it should
+// say ours" is the likeliest edit anyone makes here, and it would make both lookups
+// permanently false — the pending guard would never fire, and every successful
+// resync would report itself unavailable.
 check(
     'the pending lookup reads the vendor\'s live queue table, filtered to this member\'s per-user sync messages',
-    (bool) preg_match('/FROM\s+xf_nf_discord_queue\s/', $pendingBody)
-        && str_contains($pendingBody, '\NF\Discord\ApiMessage\SyncUser::class')
-        && str_contains($pendingBody, 'user_id = ?'),
-    'the vendor stores the root class name for an extended message, and the connected-account renderer builds its pending indicator from exactly this lookup; xf_nf_discord_queue_archive holds messages that have already run, so pointing at it would blind both guards at once'
+    (bool) preg_match(
+        '~FROM\s+xf_nf_discord_queue\s+WHERE\s+class_name\s*=\s*\?\s+AND\s+user_id\s*=\s*\?\s+LIMIT\s+1\s*\'\s*,\s*\[\s*\\\\NF\\\\Discord\\\\ApiMessage\\\\SyncUser::class\s*,\s*\$userId\s*\]~',
+        $pendingBody
+    ),
+    'OR in place of AND lets any member\'s queued sync satisfy the guard, so nobody can ever resync; the binds swapped round match nothing, so the guard goes permanently blind and every success reports failure. The vendor stores the ROOT class name for an extended message — Queue::queueMessage() resolves it before the insert — and the connected-account renderer builds its pending indicator from exactly this lookup; xf_nf_discord_queue_archive holds messages that have already run, so pointing at it would blind both guards at once'
 );
 
 // --- second guard: one resync per member per five minutes ---
@@ -408,9 +457,9 @@ check(
     'the vendor sets it whenever it queues for the visitor themselves, which a resync always is, and its connected-account renderer reads it as a fresh link: left set, every joinable server claims a join is pending and loses its Join link'
 );
 check(
-    'no row after queueing is the failure case: it is logged, the cooldown is handed back, and the member is told plainly',
+    'no row after queueing is the failure case: it is logged, and the member is told plainly',
     (bool) preg_match(
-        '/if\s*\(\s*!\s*\$this->hasPendingDiscordSync\(\s*\$visitor->user_id\s*\)\s*\)\s*\{.*?\\\\XF::logError\(.*?releaseResyncCooldown\(\s*\$visitor->user_id\s*\)\s*;\s*return\s+\$this->error\(\s*\\\\XF::phrase\(\'cav7_discord_resync_unavailable\'\)\s*\)\s*;/s',
+        '/if\s*\(\s*!\s*\$this->hasPendingDiscordSync\(\s*\$visitor->user_id\s*\)\s*\)\s*\{.*?\\\\XF::logError\(.*?releaseResyncCooldown\(\s*\$visitor->user_id\s*\)\s*;.*?return\s+\$this->error\(\s*\\\\XF::phrase\(\'cav7_discord_resync_unavailable\'\)\s*\)\s*;/s',
         $resyncBody
     ),
     'drop the ! and every success reports failure while every failure reports success; a member who is told to go to staff needs staff to have something to read'
@@ -419,7 +468,23 @@ check(
     'the failure log carries the member and the size of the server map',
     (bool) preg_match('/getServerMap\(\)/', $resyncBody)
         && (bool) preg_match('/\\\\XF::logError\(.*?\$visitor->user_id.*?\)\s*;/s', $resyncBody),
-    'an empty server map is the only configuration fault that reaches this branch, so it is the thing worth writing down'
+    'an empty server map is the fault this branch was written for, and the count is what separates it from the drain race that also lands here, so both belong in what staff read'
+);
+// The cooldown goes back only for the failure the release was written for. An empty
+// server map is an operator fault that a retry five seconds later hits identically,
+// and XF\Error::logException inserts a row per call with no dedupe, so releasing
+// there lets one member append xf_error_log rows as fast as they can press —
+// exactly the volume ADR-0005 says the guards are the only thing bounding. A
+// non-empty map means the messages drained between queueing and the check, where an
+// immediate retry is worth something, so the cooldown is handed back for that alone.
+check(
+    'the cooldown is handed back only when the server map is non-empty',
+    (bool) preg_match(
+        '/if\s*\(\s*\$serverCount\s*>\s*0\s*\)\s*\{\s*\$this->releaseResyncCooldown\(\s*\$visitor->user_id\s*\)\s*;\s*\}/s',
+        $resyncBody
+    )
+        && substr_count($resyncBody, 'releaseResyncCooldown(') === 1,
+    'releasing unconditionally removes every bound on this branch: the pending guard cannot bind there because no row landed, which is the branch\'s premise, so a member holding down the button writes one error-log row per press'
 );
 $queuedPhrasePos = strpos($resyncBody, 'cav7_discord_resync_queued');
 check(
@@ -433,11 +498,12 @@ check(
 );
 $releaseBody = methodBody($accountCode, 'releaseResyncCooldown');
 check(
-    'the release clears this member\'s flood entry for this action only',
-    str_contains($releaseBody, 'xf_flood_check')
-        && str_contains($releaseBody, '\'user_id = ? AND flood_action = ?\'')
-        && (bool) preg_match('/\[\s*\$userId\s*,\s*self::RESYNC_FLOOD_ACTION\s*\]/', $releaseBody),
-    'narrowing the WHERE to user_id alone leaves the flood action in the bind array and still looks scoped, while wiping every cooldown the member holds — their posting cooldown included'
+    'the release deletes this member\'s flood entry for this action only',
+    (bool) preg_match(
+        '/\\\\XF::db\(\)->delete\(\s*\'xf_flood_check\'\s*,\s*\'user_id = \? AND flood_action = \?\'\s*,\s*\[\s*\$userId\s*,\s*self::RESYNC_FLOOD_ACTION\s*\]\s*,?\s*\)\s*;/s',
+        $releaseBody
+    ),
+    'the verb is half the method: any other db() call over the same table and binds still reads as scoped and still leaves the cooldown spent. Narrowing the WHERE to user_id alone leaves the flood action in the bind array and still looks scoped, while wiping every cooldown the member holds — their posting cooldown included'
 );
 
 // =========================================================================
@@ -476,6 +542,26 @@ check(
 );
 
 $modReplace = $resyncMod !== null ? (string) $resyncMod->replace : '';
+// connected_account_associated_nfDiscord has two callers, not one. The member's own
+// account/connected-accounts page is the intended one. The other is the ADMIN
+// template user_extra, which loops the viewed member's associated providers and
+// calls {$provider.renderAssociated($user)|raw} — and
+// XF\ConnectedAccount\Provider\AbstractProvider::renderAssociated() renders this
+// same public template with the VIEWED user bound to $user. Ungated, an admin
+// looking at a Discord-linked member is shown "Resync my Discord roles"; the link
+// builds a public URL, the admin's own CSRF token is valid there and assertPostOnly()
+// passes, so pressing it resyncs the ADMIN and not the member on screen. An admin
+// with no Discord link of their own is told they have none while looking at a member
+// who does. Both callers put $user in scope, and $xf.visitor is always available, so
+// the gate is the one thing separating them.
+check(
+    'the button renders only for the member whose account it is, never for an admin viewing them',
+    (bool) preg_match(
+        '~<xf:if is="\$user\.user_id ===? \$xf\.visitor\.user_id">\s*<xf:form~',
+        $modReplace
+    ),
+    'the admin template user_extra renders this same public template for the VIEWED member, so without the gate the ACP shows a button that resyncs whoever pressed it — the admin — and tells an unlinked admin they have no Discord account while a linked member is on screen (user story 4)'
+);
 check(
     'the button is a form posting to the resync action, not a link to it',
     str_contains($modReplace, '<xf:form')
@@ -538,6 +624,22 @@ check(
     'those five phrases are the whole set',
     ($phrasesXml !== false ? count($phrasesXml->phrase) : -1) === 5,
     'the button label, the queued message, the pending note, the unavailable message and the refusal for a member with no account linked'
+);
+// A phrase key the addon does not ship renders as the raw key, so the button would
+// read "cav7_discord_resync" to every member. Nothing else here connects the
+// modification's markup to the phrase set, and the dev stack is the only other
+// place it would show.
+preg_match_all('/phrase\(\s*\'([^\']+)\'/', $modReplace, $phraseRefs);
+$missingPhraseRefs = array_values(array_diff(
+    array_unique($phraseRefs[1]),
+    array_keys($phraseText)
+));
+check(
+    'every phrase the modification renders is one this addon ships',
+    $phraseRefs[1] !== [] && $missingPhraseRefs === [],
+    $missingPhraseRefs === []
+        ? 'the modification renders no phrases at all, so the button has no label'
+        : 'a key with no phrase behind it renders as the key itself: ' . implode(', ', $missingPhraseRefs)
 );
 
 // The core account/connected-accounts route already reaches the action, by prefixing

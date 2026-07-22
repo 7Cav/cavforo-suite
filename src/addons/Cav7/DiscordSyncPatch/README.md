@@ -1,7 +1,7 @@
 # 7Cav - Discord Sync Patch
 
 Makes a member's forum user groups authoritative for every Discord role a user
-group grants, and gives members a button that asks for that sync themselves.
+group grants, and lets members ask for that sync themselves.
 Extends [NF Discord Integration](https://nixfifty.com/products/discord-integration.7/);
 it changes no vendor file.
 
@@ -54,6 +54,11 @@ member who pressed it and nobody else, across every guild the forum syncs. It
 promises no completion time, because the sync drains behind a queue that yields to
 Discord's rate limits.
 
+One thing a reconnect does that this does not: the integration treats a reconnect as
+a fresh link, and a fresh link re-adds a member to a guild they have left where that
+guild joins members automatically. A resync syncs roles and leaves joining alone. A
+member who left a Discord server still has to go back to it themselves.
+
 A member with no Discord account linked is turned away first, and told why.
 
 Then two guards. A press made while a sync is already pending for that member is
@@ -92,8 +97,13 @@ only what the sync may remove.
 
 Disable the addon. Everything it adds is a class extension, a template
 modification or a phrase, so the integration is back to stock behavior on the next
-message and the button is gone from the next page render, with no data to unwind:
-the addon never writes anything the vendor would not have written.
+message and the button is gone from the next page render.
+
+There is one thing it writes that the vendor would not: a flood-check row under its
+own `cav7_discord_resync` key, one per member who has used the button. It is not
+worth unwinding, because XenForo's daily cleanup prunes flood-check rows a day after
+they were last touched, so they age out on their own. Nothing else it writes is
+anything the vendor would not have written itself.
 
 ## Requirements
 
@@ -102,11 +112,16 @@ the addon never writes anything the vendor would not have written.
 
 ## Assumptions about vendor internals
 
-Both halves depend on things being true of NF/Discord that the vendor never
-promised. Each is checked at the seam where it would break the addon rather than
-reimplemented in the test suite, so a vendor upgrade that breaks one is caught
-rather than discovered in production. They are listed in the docblocks of
-`NF/Discord/ApiMessage/SyncUser.php` and `XF/Pub/Controller/Account.php`.
+Both halves depend on things nobody promised would stay true. Mostly that is
+NF/Discord: how it queues a per-user sync, what it stores about one, and what it
+reads back. The resync action also leans on XenForo core — how the router builds an
+action name out of a route's action prefix, how the flood check treats the bypass
+permission, and how wide `xf_flood_check.flood_action` is — so a core upgrade can
+break it as readily as a vendor one. Each is checked at the seam where it would
+break the addon rather than reimplemented in the test suite, so an upgrade on either
+side that breaks one is caught rather than discovered in production. They are listed
+in the docblocks of `NF/Discord/ApiMessage/SyncUser.php` and
+`XF/Pub/Controller/Account.php`.
 
 ## Tests
 

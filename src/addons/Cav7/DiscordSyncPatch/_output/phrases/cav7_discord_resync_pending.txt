@@ -1,1 +1,1 @@
-A Discord resync is already queued for you.
+A Discord sync is already queued for your account.

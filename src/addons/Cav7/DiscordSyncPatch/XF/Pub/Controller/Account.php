@@ -11,6 +11,13 @@ use XF\Mvc\Reply\AbstractReply;
  * connected-account row makes NF/Discord queue a per-user sync; this asks for that
  * sync directly, without revoking the OAuth link a member may be logging in with.
  *
+ * It covers the role sync, which is the part the standing instruction was reached
+ * for, and not everything a reconnect does. NF/Discord's UserConnectedAccount queues
+ * with queueSyncJobsForUser($user, $this->isInsert()), so a reconnect runs with the
+ * asNew flag set and this does not. SyncUser::syncRoles() gates its join path on
+ * that flag, so a member who has LEFT a guild would be re-added by a reconnect on an
+ * auto-join server and is not re-added by this.
+ *
  * The action hangs off the public account controller and needs no route of its own.
  * The core account/connected-accounts route carries action_prefix=connectedAccount,
  * and XF\Mvc\Router::suffixMatchesRoute() prepends that prefix to whatever trails
@@ -20,13 +27,12 @@ use XF\Mvc\Reply\AbstractReply;
  * own actionConnectedAccountDiscordReconnect gets its name the same way, on the same
  * controller, which XenForo chains with this extension.
  *
- * A resync runs blind, with no divergence check first — see ADR-0005. In front of it
- * sit a precondition and two limits. Neither limit is about correctness: both exist
- * so that one member cannot spend the forum's Discord rate limit. The cooldown is
- * XenForo's own flood check, and the flood check does not apply to anyone holding
- * general:bypassFloodCheck. Which groups hold that permission is per-forum
- * configuration this addon does not set, so the pending check is the guard that
- * binds regardless of it.
+ * A resync runs blind, with no divergence check first, and what the two limits in
+ * front of it are for is recorded in ADR-0005. The cooldown is XenForo's own flood
+ * check, which does not apply to anyone holding general:bypassFloodCheck. The
+ * pending check does apply to them, but it lapses the moment the queue drains, so
+ * what it bounds is duplicate work in flight rather than how often anyone can press.
+ * Nothing here rate-limits a bypass holder.
  *
  * Assumptions this makes about vendor internals:
  *
@@ -46,8 +52,10 @@ use XF\Mvc\Reply\AbstractReply;
  *    joinable server. A resync is not a link, so the flag is cleared again below.
  *  - a queued message is stored under its root class name, so the lookup matches on
  *    NF\Discord\ApiMessage\SyncUser even though this addon extends that class.
- *  - the connected-account renderer builds $syncingServers from the same lookup, so
- *    the note beside the button agrees with what the action itself decided.
+ *  - the connected-account renderer builds $syncingServers from the same lookup,
+ *    but binds it to the user it was handed where this binds the visitor. The
+ *    template modification draws the button only when those are the same person, so
+ *    wherever the note renders it agrees with what the action itself decides.
  */
 class Account extends XFCP_Account
 {
@@ -58,7 +66,11 @@ class Account extends XFCP_Account
      */
     protected const RESYNC_COOLDOWN_SECONDS = 300;
 
-    /** Keyed to this action alone. xf_flood_check.flood_action is varchar(25). */
+    /**
+     * Keyed to this action alone, and kept short enough to survive being written:
+     * xf_flood_check.flood_action is varchar(25), and a key that gets truncated on
+     * the way in stops matching the untruncated one the read looks for.
+     */
     protected const RESYNC_FLOOD_ACTION = 'cav7_discord_resync';
 
     public function actionConnectedAccountDiscordResync(): AbstractReply
@@ -86,32 +98,49 @@ class Account extends XFCP_Account
             );
         }
 
-        // Second guard. Refuses with the time remaining, which is the answer the
-        // member wants: pressing twice in a row should say when, not just no.
+        // Second guard. It refuses by throwing, so nothing past this line runs on a
+        // refusal, and it refuses with the time remaining — the answer a member who
+        // pressed twice wants, which is when rather than just no.
         $this->assertNotFlooding(self::RESYNC_FLOOD_ACTION, self::RESYNC_COOLDOWN_SECONDS);
 
         $syncRepo = $this->repository(\NF\Discord\Repository\Sync::class);
         $syncRepo->queueSyncJobsForUser($visitor);
 
-        // Queueing for yourself is how the vendor spots a fresh link, and it records
-        // that in the session. Left set, the page tells the member a join is pending
-        // on every server they have not joined and takes the Join link away.
+        // The vendor's fresh-link flag, cleared for the reason in the docblock.
         \XF::session()->remove('nfDiscordJustAssociated');
 
-        // The queueing call cannot fail loudly, so the row is the evidence. Say so
-        // plainly when there is none rather than report a success the member would
-        // wait on, and hand the cooldown back so the retry is not five minutes away.
+        // The queueing call cannot fail loudly, so a row is the only evidence.
         if (!$this->hasPendingDiscordSync($visitor->user_id)) {
-            // The member is told to go to staff, so leave staff something to read.
-            // An empty server map is the one configuration fault that lands here.
             $serverRepo = $this->repository(\NF\Discord\Repository\Server::class);
+            $serverCount = count($serverRepo->getServerMap());
+
+            // The member is sent to staff, so leave staff something to read — and
+            // say which of the two cases this is rather than hand them a number to
+            // interpret. An empty map is the fault this branch was written for; a
+            // non-empty one is the accepted race where the queue drained between the
+            // call above and the check, which is not a fault at all.
             \XF::logError(sprintf(
-                'Cav7/DiscordSyncPatch: Discord resync for user %d queued nothing; NF/Discord\'s server map holds %d server(s)',
+                'Cav7/DiscordSyncPatch: Discord resync for user %d queued nothing. %s',
                 $visitor->user_id,
-                count($serverRepo->getServerMap())
+                $serverCount === 0
+                    ? 'NF/Discord\'s server map is empty, so the fan-out had nothing to queue against — configure a server.'
+                    : sprintf(
+                        'NF/Discord\'s server map holds %d server(s), so the messages were most likely drained before this check ran. No action needed unless this repeats.',
+                        $serverCount
+                    )
             ));
 
-            $this->releaseResyncCooldown($visitor->user_id);
+            // Deviation from #158's "the flood entry is cleared": it is cleared for
+            // the drain race only. The pending guard cannot bind on this branch —
+            // no row landed, which is the branch's premise — so the cooldown is the
+            // only thing left holding the volume down, and an empty server map fails
+            // a retry five seconds later exactly as it failed this one. Handing the
+            // cooldown back there would let one member append an xf_error_log row
+            // per press, because XF\Error::logException inserts every call with no
+            // dedupe. The race is worth an immediate retry, so it gets one.
+            if ($serverCount > 0) {
+                $this->releaseResyncCooldown($visitor->user_id);
+            }
 
             return $this->error(\XF::phrase('cav7_discord_resync_unavailable'));
         }
@@ -141,10 +170,12 @@ class Account extends XFCP_Account
     }
 
     /**
-     * Clears this member's flood entry for this action, where there is one to clear:
-     * the cooldown check writes nothing at all for a member holding
-     * general:bypassFloodCheck, and refreshes an existing row at least as often as it
-     * writes a new one. Scoped to the one action, so nothing else the member is
+     * Clears this member's flood entry for this action, where there is one to clear.
+     * A member who got past the cooldown check holds exactly one row for this action
+     * afterwards, whether the check refreshed an old row or inserted a new one; a
+     * member holding general:bypassFloodCheck holds none, because the check returns
+     * before it writes anything. So this either removes exactly what the check wrote
+     * or removes nothing. Scoped to the one action, so nothing else the member is
      * waiting on is handed back with it.
      */
     protected function releaseResyncCooldown(int $userId): void
