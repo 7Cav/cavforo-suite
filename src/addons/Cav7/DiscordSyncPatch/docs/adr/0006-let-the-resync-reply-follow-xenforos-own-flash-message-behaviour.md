@@ -7,8 +7,11 @@
 ## Context
 
 The resync button posts a form. Two of its outcomes are redirects that carry a
-phrase — the resync was queued, or one was already pending — and the other four are
-refusals returned through `$this->error()`.
+phrase — the resync was queued, or one was already pending — and the other five are
+refusals that reach the member through `$this->error()`. Four of those name their own
+phrase here; the fifth is the cooldown, which `assertNotFlooding()` throws and
+`XF\Pub\Controller\AbstractController::responseFlooding()` turns into an `error()`
+carrying XenForo's own must-wait phrase.
 
 A redirect's message only survives as far as the renderer that handles the reply.
 `XF\Mvc\Renderer\Json::renderRedirect()` puts it in the response body, where
@@ -35,10 +38,11 @@ two redirect outcomes.
 
 Three things make that a smaller hole than it reads as.
 
-Every refusal is already visible without JavaScript. All four go out through
+Every refusal is already visible without JavaScript. All five go out through
 `$this->error()`, which renders a full message page, so a member who is not linked,
-or who presses on a forum with no credentials or no active server, is told why on
-any browser. The quiet path is the one where the press worked.
+who presses on a forum with no credentials or no active server, who is inside the
+cooldown, or whose press queued nothing, is told why on any browser. The quiet path
+is the one where the press worked.
 
 The page a successful press lands on is not the page the member left. The vendor's
 `ConnectedAccount\Provider\Discord::renderAssociated()` builds `$syncingServers` by
