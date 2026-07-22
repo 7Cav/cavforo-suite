@@ -20,7 +20,7 @@ The vendor is `Cav7` and the PHP namespace root is `Cav7\<AddonId>`. It is `Cav7
 - `Setup.php`: only if the addon creates tables, options, fields, or other install state. A class-extension-only addon does not need one.
 - PHP classes under namespaced directories that match XenForo's conventions (`XF/`, `Pub/`, `Admin/`, `Entity/`, `Repository/`, `Job/`, and so on).
 - `README.md`: a short description, the requirements, and a provenance note (see below).
-- `build.json`: only if the addon needs XenForo's build-time handling — web assets copied out of `_files/` (`additional_files`, `minify`, `rollup`), or `exec` commands. `exec` does *not* run in the staged tree: `ReleaseBuilderService::execCmds()` chdirs to the addon's own source directory, and the staged copy sits under `_build/upload/src/addons/<Vendor>/<Id>/`, a path the command has to spell for itself. So `rm -rf tests` deletes your source; the staged one is `rm -rf _build/upload/src/addons/<Vendor>/<Id>/tests`. XenForo reads `build.json` during `xf-addon:build-release` and keeps it out of the zip; most addons do not have one.
+- `build.json`: only if the addon needs XenForo's build-time handling — web assets copied out of `_files/` (`additional_files`, `minify`, `rollup`), or `exec` commands, which run from the addon's own source directory and have to spell the staged path themselves. XenForo reads it during `xf-addon:build-release` and keeps it out of the zip; most addons do not have one. For what each key does here and how an `exec` goes wrong, see [`tools/README.md`](../tools/README.md) and the docblock on `src/addons/Cav7/RosterPatch/tests/BuildJsonWiringTest.php`.
 
 ### addon.json
 

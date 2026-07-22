@@ -746,26 +746,11 @@ foreach ($dateCells as $key => $cell) {
 // The pattern matches a whole {{ date(...) }} expression, not the date() call
 // inside one, so a style that wrapped or extended the expression is left alone.
 //
-// Not because a call-anchored replacement would be invalid markup. Compiled
-// through XenForo 2.3.11's own compiler, `{{ $record.record_date ?
-// {$record.getRecordDate()} : '-' }}` compiles, and to the right thing —
-// {$...} is an expression term inside {{ ... }} the same way it is a variable
-// in running text. So do the filter and nested-call spellings below.
-//
-// The limit stays because a <find> is a regex over template text rather than a
-// parse of it, and these patterns swallow the format argument. Held to the
-// whole {{ ... }} expression they only reach a cell that renders a date, where
-// losing the style's format is the cost the fix owns. Anchored on the call they
-// would reach every date($record.record_date, ...) in the template, including
-// the ones where the format is load-bearing — a comparison in an <xf:if is>, a
-// data attribute something else parses — and those compile too, so nothing
-// reports the change. Widening the find means reading the surrounding logic of
-// every expression it would newly take.
-//
-// So these are limits, recorded rather than fixed. Widening the pattern to
-// cover one of them is a decision to take deliberately, with this list in front
-// of you. The README ("What the patterns deliberately will not match") carries
-// the same list and the compiler output behind it.
+// These four are limits, recorded rather than fixed, and widening a pattern to
+// cover one of them is a decision to take deliberately with the list in front
+// of you. The README ("What the patterns deliberately will not match") is where
+// that decision is argued: it carries the same list, the compiler output for
+// each, and why the limit stays.
 foreach ($dateCells as $key => $cell) {
     $mod = $mods[$key] ?? null;
     if ($mod === null) {
@@ -792,7 +777,8 @@ foreach ($dateCells as $key => $cell) {
             "$key leaves $label alone",
             $count === 0 && $result === $template,
             'match count: ' . var_export($count, true)
-                . ' — matching here would rewrite the expression into invalid markup'
+                . ' — matching here would swallow the format argument of an'
+                . ' expression whose surrounding logic nobody has read'
         );
     }
 }

@@ -65,11 +65,11 @@ resolution check is an extra guard this path adds, not something XenForo runs at
 build time. It needs `php` on the PATH.
 
 It does not reproduce the whole of what `xf-addon:build-release` does, and the
-list below is what has come up rather than all of it. XenForo's `hashes.json`
-file-health manifest, which the real build generates; the zip installs fine
-without it. The `build.json` keys `package-web-assets.php` never reads, `exec`
-and `rollup`: it reads `additional_files` and `minify` and nothing else.
-RosterPatch's `exec` prunes `tests/`, which this path leaves out anyway, so the
+list below is what has come up rather than all of it. It writes no
+`hashes.json`, the file-health manifest the real build generates, and the zip
+installs fine without it. It ignores two `build.json` keys, `exec` and
+`rollup`, because `package-web-assets.php` reads `additional_files` and
+`minify` and nothing else. RosterPatch's `exec` prunes `tests/`, which this path leaves out anyway, so the
 two agree there by coincidence rather than by design — an `exec` pruning
 anything else needs that path adding to the `excludes` array in
 `package-addon.sh` to be reproduced here, and an `exec` doing something other
