@@ -19,11 +19,26 @@ _Avoid_: treating "PUC" as the whole "Unit Awards" award group (that group also
 holds other unit citations and a separator row); PUC is specifically award 61.
 
 **PUC set**:
-The fixed list of dated PUC grants every milpac receives — currently six dates
-(2003-03-18, 2004-09-01, 2009-08-10, 2010-09-18, 2011-06-02, 2021-05-16). The
-set grows only when the unit earns another PUC; it is bundled with the addon,
-not derived at runtime (see `docs/adr/0001-bundle-citation-set.md`).
-_Avoid_: "all unit awards" (only the PUC, award 61, is auto-applied today).
+The fixed list of dated PUC grants every milpac is meant to receive — currently
+six dates (2003-03-18, 2004-09-01, 2009-08-10, 2010-09-18, 2011-06-02,
+2021-05-16). The set grows only when the unit earns another PUC; it is bundled
+with the addon, not derived at runtime (see
+`docs/adr/0001-bundle-citation-set.md`).
+_Avoid_: "all unit awards" (only the PUC, award 61, is auto-applied today). Also
+_avoid_ reading "the set" as a guarantee of what a milpac carries — the dates are
+applied one at a time and a milpac can end up holding only some of them (see
+**Dropped grant**).
+
+**Dropped grant**:
+A bundled PUC date that failed to apply when the milpac was created and was
+skipped, leaving that milpac permanently short of the full **PUC set**. The
+remaining dates and the **Enlistment record** still apply, so the milpac looks
+ordinary; the only trace is an admin error-log entry. Nothing re-applies it —
+repair is granting the award by hand (see
+`docs/adr/0002-error-log-is-the-only-failure-surface.md`).
+_Avoid_: "failed enlistment" (the milpac is created and the member is enlisted
+either way) and "pending date" (**pending** means not yet carried at the moment
+the set is applied, which is the normal state of every date on a new milpac).
 
 **Citation**:
 The JPG document attached to a PUC grant, stored per award row at
@@ -74,6 +89,11 @@ exception a recruiter just overrides.
   is a milpac creation. Moving a member between rosters
   (`Service\Profile\Mover`) updates the existing row, so it never triggers this
   addon. Re-applying PUCs to an existing milpac is explicitly never done.
+- **Applied vs carried** — resolved: the **PUC set** is what the addon tries to
+  apply, not what the milpac is guaranteed to hold afterwards. Each date is
+  applied independently, so a failure on one leaves a **Dropped grant** and the
+  other dates still land. A milpac carrying five of six PUCs is a real state, and
+  an unremarkable-looking one.
 - **Prefill vs apply** — two different moments. The **Enlistment defaults** are
   the add-form's _initial state_ (the recruiter sees and edits them before
   saving); the PUC set and the Enlistment record are _applied on save_. Prefill
