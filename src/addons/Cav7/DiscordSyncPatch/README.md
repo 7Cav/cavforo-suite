@@ -57,13 +57,21 @@ Discord's rate limits.
 One thing a reconnect does that this does not: the integration treats a reconnect as
 a fresh link, and a fresh link re-adds a member to a guild they have left where that
 guild joins members automatically. A resync syncs roles and leaves joining alone. A
-member who left a Discord server still has to go back to it themselves.
+member who left a Discord server still has to go back to it themselves. The note
+under the button says so, because the page a press lands on can still show a join as
+pending: the integration builds that indicator from the queue rows a resync writes,
+and there is no suppressing it from this side.
 
-Two things are checked before a press costs anything. A member with no Discord
-account linked is turned away and told so. So is everyone, if the forum has no
-Discord servers configured at all. That second refusal names its own cause, because
-a resync cannot work for anybody until staff set a server up, and this way the
-member can say exactly that when they report it.
+Three things are checked before a press costs anything. A member with no Discord
+account linked is turned away and told so. So is everyone, if the integration is
+missing its Discord credentials, and so is everyone if no Discord server on the forum
+is active. Each refusal names its own cause, because the three are fixed in different
+places and the member is the one carrying the diagnosis to staff.
+
+The credentials check is the one that has to be there. Without it the queueing call
+still lands a row, so the member is told the resync is queued, while the integration's
+queue runner bails out before it ever reads the queue. Nothing removes that row, and
+the pending guard below then refuses every press after it, indefinitely and silently.
 
 Then two guards. A press made while a sync is already pending for that member is
 refused, with a note that one is on its way. Past that, a member may queue at most
@@ -135,7 +143,7 @@ in the docblocks of `NF/Discord/ApiMessage/SyncUser.php` and
 a plain unit with no XenForo dependency, and is exercised for real in
 `tests/RoleClaimTest.php`. `tests/WiringTest.php` pins the parts that need a live
 stack to run: both class-extension registrations, the method overrides, the resync
-action with its two preconditions and two guards, and the template modification and
+action with its three preconditions and two guards, and the template modification and
 phrases that put the button on the page.
 
 One check exists only on a dev-stack run: whether the template modification still
@@ -145,6 +153,12 @@ And one thing is not observable locally at all. The Discord role change a resync
 produces cannot be seen on a dev stack, because that stack has no bot token to drain
 the queue with. The queue row landing is the outcome that can be observed, and it is
 the one the action itself checks.
+
+Reaching that row takes a bit of setup, though. The dev stack ships with a blank bot
+token and its only server row inactive, which is both of the forum-wide refusals at
+once: the action turns every press away at a precondition and never reaches the
+queueing call. Give the integration a token and switch a server to active before
+expecting to see anything land, and put both back afterwards.
 
 ## Addon info
 

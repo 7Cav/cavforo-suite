@@ -1,0 +1,1 @@
+A resync updates your roles. It will not put you back into a Discord server you have left.

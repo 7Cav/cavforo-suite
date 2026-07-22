@@ -10,7 +10,7 @@
  * is exercised for real in RoleClaimTest.
  *
  * Issue #158 — the member-facing resync button: the class extension against the
- * public account controller, the action the button posts to, the two preconditions
+ * public account controller, the action the button posts to, the three preconditions
  * and two guards in front of it, and the template modification and phrases that put
  * it on the page.
  *
@@ -335,7 +335,7 @@ check(
 );
 
 // =========================================================================
-// issue #158 — the resync action, and the two preconditions and two guards in
+// issue #158 — the resync action, and the three preconditions and two guards in
 // front of it
 // =========================================================================
 $accountSrc = (string) @file_get_contents("$root/XF/Pub/Controller/Account.php");
@@ -412,32 +412,63 @@ check(
     'without a link the vendor still queues one row per guild — setupFromUser() returns a Noop before it records a user id and the repository queues the original message anyway — and each row carries a null user_id no lookup here can see, so both guards go blind and every press releases the cooldown'
 );
 
-// --- the precondition: no Discord servers configured on the forum at all ---
+// --- the precondition: the forum has no ACTIVE Discord server ---
 // The fan-out iterates the server map, so an empty map queues nothing however many
-// times it is pressed. Answered here rather than after the queueing call. Not
-// because the answer is free — an empty map is what sends getServerMap() through
+// times it is pressed. What an empty map means is narrower than "no server exists":
+// getServerMap() falls through to updateServerCache(), which selects
+// findServersForList()->isActive(), so a row with a guild id and active = 0 lands
+// here too. Answered up front rather than after the queueing call. Not because the
+// answer is free — an empty map is what sends getServerMap() through
 // updateServerCache(), so every press pays a Finder query and a rewrite of two
 // registry keys — but because those writes overwrite rather than accumulate, where
 // the alternative spends a cooldown and appends an xf_error_log row per press for a
 // standing fault staff can see in the admin panel. Rooted as one pattern: the
 // repository class, the lookup on it, the negated test, and the return that ends the
-// action, in that order.
+// action, in that order. The map is kept, not discarded: the unexplained branch below
+// logs it.
 $serverMapPos = strpos($resyncBody, 'getServerMap(');
 check(
-    'an empty server map ends the action up front, before the cooldown is spent',
+    'a server map with nothing active in it ends the action up front, before the cooldown is spent',
     $serverMapPos !== false && $floodPos !== false && $queuePos !== false
         && $serverMapPos < $floodPos && $serverMapPos < $queuePos
         && (bool) preg_match(
-            '~\$serverRepo\s*=\s*\$this->repository\(\s*\\\\NF\\\\Discord\\\\Repository\\\\Server::class\s*\)\s*;\s*if\s*\(\s*!\s*\$serverRepo->getServerMap\(\)\s*\)\s*\{\s*return\s+\$this->error\(\s*\\\\XF::phrase\(\'cav7_discord_resync_no_servers\'\)\s*\)\s*;\s*\}~s',
+            '~\$serverRepo\s*=\s*\$this->repository\(\s*\\\\NF\\\\Discord\\\\Repository\\\\Server::class\s*\)\s*;\s*\$serverMap\s*=\s*\$serverRepo->getServerMap\(\)\s*;\s*if\s*\(\s*!\s*\$serverMap\s*\)\s*\{\s*return\s+\$this->error\(\s*\\\\XF::phrase\(\'cav7_discord_resync_no_servers\'\)\s*\)\s*;\s*\}~s',
             $resyncBody
         ),
-    'getServerMap() is what the vendor fan-out iterates, so an empty one is the one failure this action can name; asking after the fact instead spends the member\'s cooldown and appends an unbounded xf_error_log row per press, because assertNotFlooding() writes nothing at all for a general:bypassFloodCheck holder and there is then no flood entry to withhold'
+    'getServerMap() is what the vendor fan-out iterates, so an empty one is a failure this action can name; asking after the fact instead spends the member\'s cooldown and appends an unbounded xf_error_log row per press, because assertNotFlooding() writes nothing at all for a general:bypassFloodCheck holder and there is then no flood entry to withhold'
 );
 check(
     'the server map is read once, and only as the precondition',
     substr_count($resyncBody, 'getServerMap(') === 1
         && substr_count($resyncBody, '\NF\Discord\Repository\Server::class') === 1,
     'a second read after the queueing call is the shape this branch was restructured out of'
+);
+
+// --- the precondition: the integration itself has no working credentials ---
+// An empty server map is not the only standing fault, and it is not the one that
+// wedges. Api::getDiscordConfiguration() returns null when the token, the client id,
+// the client secret or the discord_server_id option is empty, independently of the
+// server rows — so a rotated bot token left blank leaves a full map behind a dead
+// integration. The fan-out then still queues: Api::__construct() only assigns the
+// guild id inside its `if ($provider !== null)`, Api::factory($guildId, false)
+// returns the Api for any non-null guild id, and Queue::queueMessage() inserts a row
+// with a null guild_id and the right user_id. The pending lookup below finds that
+// row, so the member is told their resync is queued — while Queue::run() opens with
+// Api::factory(null, false), the one call that does return null with no
+// configuration, and exits before touching the queue. Nothing removes the row,
+// including run()'s own age-out branch, because run() never gets that far. Every
+// later press is then refused by the pending guard, forever, with nothing in
+// xf_error_log. Asked here, the member gets told the truth on the first press.
+$configPos = strpos($resyncBody, 'getDiscordConfiguration(');
+check(
+    'an unconfigured Discord integration ends the action up front, before the cooldown is spent',
+    $configPos !== false && $floodPos !== false && $firstPendingPos !== false && $queuePos !== false
+        && $configPos < $firstPendingPos && $configPos < $floodPos && $configPos < $queuePos
+        && (bool) preg_match(
+            '~if\s*\(\s*\\\\NF\\\\Discord\\\\Api::getDiscordConfiguration\(\)\s*===\s*null\s*\)\s*\{\s*return\s+\$this->error\(\s*\\\\XF::phrase\(\'cav7_discord_resync_not_configured\'\)\s*\)\s*;\s*\}~s',
+            $resyncBody
+        ),
+    'without this the fan-out queues a row the queue runner can never reach, the member is told the resync is queued, and the pending guard above refuses every press after it for as long as the row sits there — a permanent, silent lockout that no log row records'
 );
 
 // --- first guard: nothing is queued while a sync is already pending ---
@@ -479,6 +510,20 @@ check(
     'OR in place of AND lets any member\'s queued sync satisfy the guard, so nobody can ever resync; the binds swapped round match nothing, so the guard goes permanently blind and every success reports failure. The vendor stores the ROOT class name for an extended message — Queue::queueMessage() resolves it before the insert — and the connected-account renderer builds its pending indicator from the same predicate; xf_nf_discord_queue_archive holds messages that have already run, so pointing at it would blind both guards at once'
 );
 
+// Polarity, pinned inside the helper as well as at the two call sites. The call-site
+// pins read `if ($this->hasPendingDiscordSync(...))` and
+// `if (!$this->hasPendingDiscordSync(...))`, so a `!` added to the return here flips
+// both at once in the one place neither of them looks, and the suite stays green.
+// What that ships: the first guard fires when nothing is pending, so every ordinary
+// press is refused with cav7_discord_resync_pending, the button never queues
+// anything, and no error-log row is written on the way.
+check(
+    'the pending lookup answers yes when a row is there, not when one is missing',
+    (bool) preg_match('/return\s+\(bool\)\s*\\\\XF::db\(\)->fetchOne\(/', $pendingBody)
+        && !preg_match('/return\s+!/', $pendingBody),
+    'negated here, both call sites invert together: the guard refuses every press for a member with nothing pending, and the confirmation step calls a resync that queued nothing a success'
+);
+
 // --- second guard: one resync per member per five minutes ---
 check(
     'the cooldown is 300 seconds, held as a class constant rather than an option',
@@ -507,7 +552,7 @@ check(
     'the vendor\'s just-associated session flag is cleared once the queueing is done',
     (bool) preg_match('/\\\\XF::session\(\)->remove\(\s*\'nfDiscordJustAssociated\'\s*\)\s*;/', $resyncBody)
         && strpos($resyncBody, 'nfDiscordJustAssociated') > $queuePos,
-    'the vendor sets it whenever it queues for the visitor themselves, which a resync always is, and its connected-account renderer reads it as a fresh link: left set, every joinable server claims a join is pending and loses its Join link. The renderer consumes the flag on read, so that costs exactly one render — and the one render it costs is the connected-accounts page this action redirects the member straight to, which is the worst one available to get wrong'
+    'the vendor sets it whenever it queues for the visitor themselves, which a resync always is, and its connected-account renderer reads it as a fresh link: left set, every joinable server claims a join is pending and loses its Join link, on the page this action redirects the member straight to. Clearing it settles the flag and not the page — the vendor tests $justAssociated || ($isSyncing && $server.canAutoJoinUser($user)), and the right arm comes off the rows this action just wrote — so the note beside the button is what tells the member a resync does not rejoin anything'
 );
 check(
     'no row after queueing is the failure case: it is logged, the cooldown is handed straight back, and the member is told plainly',
@@ -518,19 +563,44 @@ check(
         && substr_count($resyncBody, 'releaseResyncCooldown(') === 1,
     'drop the ! and every success reports failure while every failure reports success; a member who is told to go to staff needs staff to have something to read, and a press that queued nothing must not cost them five minutes'
 );
-// With the empty server map answered up front, this branch has exactly one cause
-// left, and it is one nobody has an explanation for: the map held servers, the
-// fan-out ran, and no row is there. The log has to say that rather than offer a
-// theory, and it has to name the member, because the phrase the member is shown
-// sends them to staff and this row is the only thing staff get to read. Anchored
-// inside the logError( argument list — an unrooted pattern is satisfied by the
-// $visitor->user_id in releaseResyncCooldown() two lines further down, which leaves
-// a log row naming nobody free to pass.
-preg_match('/\\\\XF::logError\(\s*sprintf\(\s*\'([^\']*)\'\s*,\s*([^)]*)\)\s*\)\s*;/s', $resyncBody, $logCall);
+// The release is a statement of its own, not a conditional one. The pattern above
+// counts the call once and lets `.*?` run from logError( to it, so a braceless
+// `if (!$visitor->hasPermission('general', 'bypassFloodCheck')) $this->release...`
+// is absorbed whole and stays green, and CI runs php -l with no style linter behind
+// it. Anchored on the semicolon that ends the statement before it, so anything but a
+// plain statement fails: a bare `if (...)` leaves a `)` there and a braced one leaves
+// a `{`. Both are the conditional release that two earlier commits removed, and both
+// leave the press that queued nothing costing the member five minutes.
+check(
+    'the cooldown is handed back unconditionally, not to whoever the code thinks paid one',
+    (bool) preg_match('/;\s*\$this->releaseResyncCooldown\(\s*\$visitor->user_id\s*\)\s*;/', $resyncBody)
+        && !preg_match('/bypassFloodCheck/', $resyncBody),
+    'the delete is already the no-op it needs to be for a member who paid no cooldown, so guarding it buys nothing and costs the member five minutes whenever the guard is wrong'
+);
+// With the three preconditions answered up front, this branch has no cause anyone
+// has an explanation for: the map held an active server, the integration had its
+// credentials, the fan-out ran, and no row is there. The log has to say that rather
+// than offer a theory, and it has to name the member, because the phrase the member
+// is shown sends them to staff and this row is the only thing staff get to read.
+// Anchored inside the logError( argument list — an unrooted pattern is satisfied by
+// the $visitor->user_id in releaseResyncCooldown() two lines further down, which
+// leaves a log row naming nobody free to pass.
+preg_match('/\\\\XF::logError\(\s*sprintf\(\s*\'([^\']*)\'\s*,(.*?)\)\s*\)\s*;/s', $resyncBody, $logCall);
 check(
     'the failure log names the member it is about',
-    isset($logCall[2]) && trim($logCall[2]) === '$visitor->user_id',
+    isset($logCall[2]) && (bool) preg_match('/\A\s*\$visitor->user_id\s*,/', $logCall[2]),
     'staff are the member\'s next step, so a row that does not say who it is about strands them: it is the only record of a press the member was told to report'
+);
+// The map is the state that narrows this. It was already fetched for the
+// precondition, so carrying it into the log costs nothing, and the difference between
+// "the map held three guilds" and "the map held one stale guild" is most of the
+// diagnosis staff would otherwise have to reconstruct from a bare user id.
+check(
+    'the failure log carries the server map that the precondition read',
+    isset($logCall[2])
+        && (bool) preg_match('/count\(\s*\$serverMap\s*\)/', $logCall[2])
+        && (bool) preg_match('/implode\([^)]*\$serverMap\s*\)/', $logCall[2]),
+    'this branch tells staff to investigate from one row, and the only state that narrows it is the map the action fetched and then threw away'
 );
 check(
     'the failure log says the cause is unknown rather than explaining it away',
@@ -538,7 +608,7 @@ check(
         && str_contains($logCall[1], 'Cav7/DiscordSyncPatch:')
         && (bool) preg_match('/\bunknown\b/i', $logCall[1])
         && !preg_match('/\bno action needed\b|\bmost likely\b/i', $logCall[1]),
-    'a row leaves xf_nf_discord_queue only through Repository\\Queue::archiveQueueEntry(), which runs after a completed Discord round trip, and the window here is one \\XF::session()->remove() call — so "drained in between" is not a cause anyone has evidence for, and a log row that says so talks staff out of looking'
+    'the theory to resist is that the queue drained in between. It is not impossible — Entity\\Server::_postDelete() archives and deletes every row for a deleted server\'s guild, and staff deleting the last server inside this window would empty the rows and make the server-map precondition retroactively the cause — but for a row inserted milliseconds ago it is a guess, and a log row that offers it talks staff out of looking'
 );
 $logPos = strpos($resyncBody, '\XF::logError(');
 check(
@@ -618,6 +688,13 @@ $modReplace = $resyncMod !== null ? (string) $resyncMod->replace : '';
 // with no Discord link of their own is told they have none while looking at a member
 // who does. Both callers put $user in scope, and $xf.visitor is always available, so
 // the gate is the one thing separating them.
+//
+// The gate does leave the button visible on one ACP screen: an admin's own user
+// record, where the viewed user IS the visitor. That is harmless and correct.
+// renderAssociated() renders this template as public:, so Templater::getRouter()
+// picks router.public, link() emits the public URL, the CSRF cookie is shared
+// between the two, and pressing it resyncs the admin — which is exactly what the
+// label on it promises.
 check(
     'the button renders only for the member whose account it is, never for an admin viewing them',
     (bool) preg_match(
@@ -674,6 +751,22 @@ check(
     ),
     'the member has to be able to see that the first press registered without pressing again — and the endpoint refuses a press on exactly this condition, so a negated note contradicts the refusal the member gets'
 );
+// Clearing nfDiscordJustAssociated only defuses one arm of the vendor's condition.
+// The template tests `$justAssociated || ($isSyncing && $server.canAutoJoinUser($user))`,
+// and the right arm is built from $syncingServers, which
+// NF\Discord\ConnectedAccount\Provider\Discord::renderAssociated() derives from the
+// very rows this action just wrote. So on an auto-join server, for a member in an
+// auto-join group, the page still says "Join pending" and still withholds the
+// Join/Rejoin link, while the resync queues with asNew false and SyncUser::dispatch()
+// never enters the join path. Those rows are the vendor's to read and there is no
+// suppressing them from here. What is ours is the note beside the button, so the note
+// is where the member gets told the truth: roles yes, rejoining no.
+check(
+    'the button carries a note saying what a resync does and does not do',
+    (bool) preg_match('~phrase\(\s*\'cav7_discord_resync_note\'\s*\)~', $modReplace),
+    'the page the action redirects to renders the vendor\'s own join-pending state off the rows this action wrote, so a member who left a guild is told a join is pending by a resync that will never join them; the note is the only surface here that can say so'
+);
+
 $modOutFile = "$root/_output/template_modifications/public/cav7DiscordSyncPatchResyncButton.json";
 check(
     'the modification ships its _output export',
@@ -709,8 +802,10 @@ foreach ([
     'cav7_discord_resync',
     'cav7_discord_resync_not_linked',
     'cav7_discord_resync_no_servers',
+    'cav7_discord_resync_not_configured',
     'cav7_discord_resync_queued',
     'cav7_discord_resync_pending',
+    'cav7_discord_resync_note',
     'cav7_discord_resync_unavailable',
 ] as $title) {
     $phraseOutFile = "$root/_output/phrases/$title.txt";
@@ -722,21 +817,74 @@ foreach ([
     );
 }
 check(
-    'those six phrases are the whole set',
-    ($phrasesXml !== false ? count($phrasesXml->phrase) : -1) === 6,
-    'the button label, the queued message, the pending note, the unavailable message, and the two refusals that name their own cause — no account linked, and no Discord server configured on the forum'
+    'those eight phrases are the whole set',
+    ($phrasesXml !== false ? count($phrasesXml->phrase) : -1) === 8,
+    'the button label, the note beside it, the queued message, the pending note, the unavailable message, and the three refusals that name their own cause — no account linked, no active Discord server, and an integration with no working credentials'
 );
-// The two refusals a member can hit have to tell them apart, because they lead to
-// different next steps: one is the member's own account, the other is a forum-wide
-// setting only staff can change. Same words for both and the member takes the wrong
-// one to staff.
+// The three refusals a member can hit have to tell them apart, because they lead to
+// different next steps: one is the member's own account, one is the forum's Discord
+// server list, one is the credentials on the integration itself, and the last two are
+// staff's to fix. Compared pairwise, because any two of them sharing wording sends a
+// member to staff about a fault that is not theirs — or, for the not-linked one,
+// sends a member who simply never linked Discord to staff about a forum-wide fault
+// that does not exist. The unavailable message is kept out of the no-servers wording
+// for the same reason.
+$memberRefusals = [
+    'cav7_discord_resync_not_linked',
+    'cav7_discord_resync_no_servers',
+    'cav7_discord_resync_not_configured',
+];
+$refusalClashes = [];
+foreach ($memberRefusals as $i => $refusal) {
+    if (($phraseText[$refusal] ?? '') === '') {
+        $refusalClashes[] = "$refusal says nothing at all";
+        continue;
+    }
+    foreach (array_slice($memberRefusals, $i + 1) as $other) {
+        if (($phraseText[$refusal] ?? '') === ($phraseText[$other] ?? null)) {
+            $refusalClashes[] = "$refusal and $other say the same thing";
+        }
+    }
+}
 check(
-    'the no-servers refusal says it is the forum that is unconfigured, and does not repeat the unavailable wording',
-    ($phraseText['cav7_discord_resync_no_servers'] ?? '') !== ''
+    'each refusal a member can hit says something the other two do not',
+    $refusalClashes === [] && ($phraseText['cav7_discord_resync_no_servers'] ?? '') !== ($phraseText['cav7_discord_resync_unavailable'] ?? ''),
+    $refusalClashes === []
+        ? 'the no-servers refusal repeats the unavailable wording, which is the branch that says the cause is unknown'
+        : 'these are the only diagnosis anyone gets, and each one has a different next step: ' . implode('; ', $refusalClashes)
+);
+// The server-map guard tests getServerMap(), which falls through to
+// updateServerCache() and selects findServersForList()->isActive(). So an empty map
+// means no ACTIVE server, not no configured server: a server row that exists with a
+// guild id and active = 0 lands here too. Telling that member to have staff set a
+// server up sends staff to add a duplicate row against the guild_id unique
+// constraint, when the fix is to switch on the row already there.
+check(
+    'the no-servers refusal says what the guard actually tested, which is that no server is ACTIVE',
+    (bool) preg_match('/\bactive\b/i', $phraseText['cav7_discord_resync_no_servers'] ?? '')
         && (bool) preg_match('/discord server/i', $phraseText['cav7_discord_resync_no_servers'] ?? '')
         && (bool) preg_match('/\bstaff\b/i', $phraseText['cav7_discord_resync_no_servers'] ?? '')
-        && ($phraseText['cav7_discord_resync_no_servers'] ?? '') !== ($phraseText['cav7_discord_resync_unavailable'] ?? ''),
-    'this is the only place the diagnosis is recorded now that the branch logs nothing, so the member has to carry it to staff themselves'
+        && !preg_match('/set one up/i', $phraseText['cav7_discord_resync_no_servers'] ?? ''),
+    'this is the whole diagnosis staff receive, and the dev stack is already in the state it describes wrongly: one server row, with a guild id, inactive. "Ask staff to set one up" then invites a second row the guild_id unique constraint refuses'
+);
+// The credentials refusal has to name the credentials, because the member carries it
+// to staff and the two forum-wide faults are fixed in different places: this one on
+// the connected-account provider, the other on the server list.
+check(
+    'the not-configured refusal points at the integration\'s credentials, not at the server list',
+    (bool) preg_match('/credential/i', $phraseText['cav7_discord_resync_not_configured'] ?? '')
+        && (bool) preg_match('/\bstaff\b/i', $phraseText['cav7_discord_resync_not_configured'] ?? ''),
+    'getDiscordConfiguration() is null on an empty token, client id, client secret or discord_server_id option, none of which live on the server rows; a member sent to staff about servers has staff looking at the wrong screen'
+);
+// The note is the member's only warning that the page they are about to be sent back
+// to may claim a join is pending. It has to name both halves: what a resync covers,
+// and what it leaves them to do themselves.
+check(
+    'the note beside the button says a resync covers roles and does not rejoin a server',
+    (bool) preg_match('/\brole/i', $phraseText['cav7_discord_resync_note'] ?? '')
+        && (bool) preg_match('/\bnot\b/i', $phraseText['cav7_discord_resync_note'] ?? '')
+        && (bool) preg_match('/\bserver\b/i', $phraseText['cav7_discord_resync_note'] ?? ''),
+    'the README calls out the member who left a guild as the case this button does not fix, and the vendor renders "Join pending" at them anyway off the rows this action wrote; a note that only advertises the roles half leaves that contradiction unexplained'
 );
 // A phrase key the addon does not ship renders as the raw key, so the button would
 // read "cav7_discord_resync" to every member. Nothing else here connects the

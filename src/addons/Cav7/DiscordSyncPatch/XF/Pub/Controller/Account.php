@@ -59,16 +59,29 @@ use XF\Mvc\Reply\AbstractReply;
  *    repository drops that return and queues the original message anyway, and the
  *    row lands with a null user_id that the lookup below cannot see. So the link is
  *    checked here, ahead of everything else.
+ *  - it does not refuse an integration with no credentials either, and that one
+ *    wedges. Api::getDiscordConfiguration() is null on an empty token, client id,
+ *    client secret or discord_server_id option, none of which the server rows can
+ *    show. The fan-out still queues a row with this member's user_id, so the pending
+ *    lookup finds it and the member is told the resync is on its way, while
+ *    Repository\Queue::run() opens on Api::factory(null, false), gets null, and
+ *    returns before it reads the queue. Nothing then removes the row, run()'s own
+ *    age-out included, so the pending guard here refuses every later press
+ *    indefinitely. That lockout is this addon's guard, so the configuration is
+ *    checked here as a precondition of its own.
  *  - queueServerSyncJobForUser() sets the nfDiscordJustAssociated session flag
  *    whenever it queues for the visitor themselves, which a resync always is. The
  *    vendor's connected-account renderer reads that flag as "this member just linked
- *    their account" and replaces the Join link with a join-pending note on every
- *    joinable server. It also consumes the flag as it reads it, so leaving it set
- *    costs exactly one render rather than an open-ended wrong state — and that one
- *    render is the connected-accounts page this action redirects to, which makes it
- *    the single worst render to get wrong. The member is sent straight to it and
- *    reads a claim about their guild membership that nothing did. A resync is not a
- *    link, so the flag is cleared again below.
+ *    their account". A resync is not a link, so the flag is cleared below — but that
+ *    settles the flag, not the page. The vendor template tests
+ *    $justAssociated || ($isSyncing && $server.canAutoJoinUser($user)), and the right
+ *    arm is built from $syncingServers, which the renderer derives from the very
+ *    rows this action just wrote. So on an auto-join server, for a member in an
+ *    auto-join group, the connected-accounts page this redirects to still says
+ *    "Join pending" and still withholds the Join/Rejoin link, while the resync
+ *    queues with asNew false and SyncUser::dispatch() never enters the join path.
+ *    Those rows are the vendor's to read and there is no suppressing them from here,
+ *    so the note beside the button says what a resync covers and what it does not.
  *  - a queued message is stored under its root class name, so the lookup matches on
  *    NF\Discord\ApiMessage\SyncUser even though this addon extends that class.
  *  - the connected-account renderer builds $syncingServers from the same predicate,
@@ -99,7 +112,7 @@ class Account extends XFCP_Account
         $visitor = \XF::visitor();
         $connectedAccountsLink = $this->buildLink('account/connected-accounts');
 
-        // The precondition, ahead of both guards. The template only offers the
+        // The first precondition, ahead of both guards. The template only offers the
         // button to a linked member, but that is markup, not a guard: the endpoint
         // takes a post from anyone. Queueing without a link writes one unusable row
         // per guild that neither guard below can see, so ask first — and ask before
@@ -108,16 +121,42 @@ class Account extends XFCP_Account
             return $this->error(\XF::phrase('cav7_discord_resync_not_linked'));
         }
 
-        // The other precondition, here for the same reason. The fan-out iterates the
-        // server map, so an empty map queues nothing however often it is pressed.
+        // The second precondition, and the one that wedges if it is skipped. The
+        // server rows say nothing about whether the integration can talk to Discord:
+        // Api::getDiscordConfiguration() returns null when the token, the client id,
+        // the client secret or the discord_server_id option is empty, so a rotated
+        // bot token left blank leaves a full server map behind a dead integration.
+        // The fan-out queues anyway — Api::__construct() assigns the guild id only
+        // inside its `if ($provider !== null)` branch, Api::factory($guildId, false)
+        // hands back the Api for any non-null guild id, and Queue::queueMessage()
+        // inserts a row with a null guild_id and this member's user_id. The pending
+        // lookup below sees that row, so the member gets told their resync is queued,
+        // and then Repository\Queue::run() opens with Api::factory(null, false) —
+        // null guild id and no configuration, the one call that does return null —
+        // and exits before it touches the queue. The row is only ever removed from
+        // inside run(), its own age-out branch included, so it never expires: the
+        // pending guard below then refuses every later press indefinitely, with
+        // nothing written to xf_error_log. Asked here instead, the first press says
+        // so. Cheap, too: the provider entity is one find the request has usually
+        // made already, and asking before the server map skips the cache rewrite
+        // below for a forum that could not sync either way.
+        if (\NF\Discord\Api::getDiscordConfiguration() === null) {
+            return $this->error(\XF::phrase('cav7_discord_resync_not_configured'));
+        }
+
+        // The third precondition, here for the same reason. The fan-out iterates the
+        // server map, so an empty map queues nothing however often it is pressed. An
+        // empty map is a narrower fact than "no server is configured": getServerMap()
+        // falls through to updateServerCache(), which selects
+        // findServersForList()->isActive(), so a server row that exists with a guild
+        // id and active = 0 arrives here too. The phrase says active for that reason.
         // Asking after the fact instead would spend the member's cooldown on a fault
         // no retry can clear, and would append an xf_error_log row per press with
         // nothing bounding how many: XF\Error::logException() inserts every call with
         // no dedupe, and assertNotFlooding() returns before FloodCheckService
         // ::checkFlooding() writes anything for a general:bypassFloodCheck holder, so
-        // for those members there is no flood entry to withhold in the first place —
-        // and on this forum that permission reaches ordinary member groups. Asking
-        // here is not free: getServerMap() falls through to updateServerCache()
+        // for those members there is no flood entry to withhold in the first place.
+        // Asking here is not free: getServerMap() falls through to updateServerCache()
         // whenever the map is empty, which is exactly this case, so every press pays
         // a Finder query over the server list plus a rewrite of the nfDiscordServers
         // and nfDiscordConfigured registry keys. It is still the cheaper of the two,
@@ -127,7 +166,8 @@ class Account extends XFCP_Account
         // carries the diagnosis to staff on the member's behalf. This is a standing
         // fault staff can see in the admin panel, not an event a log has to preserve.
         $serverRepo = $this->repository(\NF\Discord\Repository\Server::class);
-        if (!$serverRepo->getServerMap()) {
+        $serverMap = $serverRepo->getServerMap();
+        if (!$serverMap) {
             return $this->error(\XF::phrase('cav7_discord_resync_no_servers'));
         }
 
@@ -153,24 +193,39 @@ class Account extends XFCP_Account
 
         // The queueing call cannot fail loudly, so a row is the only evidence.
         if (!$this->hasPendingDiscordSync($visitor->user_id)) {
-            // Every cause anyone can name has already returned above: no link, and no
-            // configured server. Reaching here means the map held servers, the
-            // fan-out ran over them, and no row is there — which nothing accounts
-            // for. Say that, rather than offer a theory. The obvious theory, that the
-            // queue drained in between, does not survive being looked at: a row
-            // leaves xf_nf_discord_queue only through Repository\Queue
-            // ::archiveQueueEntry(), which runs after a completed Discord round trip,
-            // and the window here is one session write. The member is being sent to
-            // staff, so this row is what staff have to go on, and it names them.
+            // The three causes anyone can name have already returned above: no link,
+            // no credentials, no active server. Reaching here means the map held an
+            // active server, the integration had its credentials, the fan-out ran,
+            // and no row is there — which nothing left accounts for. Say that, rather
+            // than offer a theory. The nearest theory is that the queue drained in
+            // between, and it is weak rather than impossible. A row can leave
+            // xf_nf_discord_queue two ways: Repository\Queue::archiveQueueEntry(),
+            // which run() also calls without a Discord round trip for a group-tainted
+            // entry, for one older than 86400s and at fail_count >= 3; and
+            // Entity\Server::_postDelete(), which archives and deletes every row for
+            // a deleted server's guild. That second one does overlap this window —
+            // staff deleting the last server between the fan-out and this re-check
+            // would both remove the rows and make the server-map precondition
+            // retroactively the cause. For a row inserted milliseconds ago, none of
+            // it is more than a guess, and the log says so rather than sending staff
+            // off after one. The member is being sent to staff, so this row is what
+            // staff have to go on: it names them, and it carries the map.
             \XF::logError(sprintf(
-                'Cav7/DiscordSyncPatch: Discord resync for user %d queued nothing, with servers configured and the fan-out having run. Cause unknown — please investigate.',
-                $visitor->user_id
+                'Cav7/DiscordSyncPatch: Discord resync for user %d queued nothing. The server map held %d guild(s) [%s] and the fan-out ran over them. Cause unknown, please investigate.',
+                $visitor->user_id,
+                count($serverMap),
+                implode(', ', $serverMap)
             ));
 
-            // The press bought the member nothing, so it costs them nothing. No
-            // volume argument holds it back any more: the branch that a retry would
-            // repeat identically now returns before the cooldown is reached, and
-            // nothing unbounded is written on the way here.
+            // The press bought the member nothing, so it costs them nothing. There is
+            // no volume argument against that here, but not because nothing unbounded
+            // is written: \XF::logError() sits five lines up, XF\Error
+            // ::logException() inserts per call with no dedupe, and a
+            // general:bypassFloodCheck holder has no flood entry to spend in the
+            // first place, so the cooldown was never bounding them. The defence is
+            // that this branch is near-unreachable: the three standing faults return
+            // above it, and what is left is a case nothing accounts for, which is why
+            // the line above it logs rather than explains.
             $this->releaseResyncCooldown($visitor->user_id);
 
             return $this->error(\XF::phrase('cav7_discord_resync_unavailable'));
@@ -206,10 +261,14 @@ class Account extends XFCP_Account
      * Clears this member's flood entry for this action, where there is one to clear.
      * A member who got past the cooldown check holds exactly one row for this action
      * afterwards, whether the check refreshed an old row or inserted a new one; a
-     * member holding general:bypassFloodCheck holds none, because the check returns
-     * before it writes anything. So this either removes exactly what the check wrote
-     * or removes nothing. Scoped to the one action, so nothing else the member is
-     * waiting on is handed back with it.
+     * member holding general:bypassFloodCheck writes none on this request, because
+     * the check returns before it writes anything. So on the request that calls it
+     * this either removes exactly what the check wrote or removes nothing. It is not
+     * quite "nothing else can be there": a row written by a press made before the
+     * member gained the permission survives up to a day and this clears that too,
+     * which costs nobody anything, since the row it clears is a cooldown on this
+     * action alone. Scoped to that one action, so nothing else the member is waiting
+     * on is handed back with it.
      */
     protected function releaseResyncCooldown(int $userId): void
     {

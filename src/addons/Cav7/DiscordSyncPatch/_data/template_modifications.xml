@@ -9,6 +9,7 @@
 		<xf:if is="$syncingServers is not empty">
 			<span class="u-muted">{{ phrase('cav7_discord_resync_pending') }}</span>
 		</xf:if>
+		<div class="u-muted">{{ phrase('cav7_discord_resync_note') }}</div>
 	</xf:form>
 </xf:if>]]></replace>
   </modification>
