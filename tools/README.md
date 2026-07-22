@@ -20,8 +20,9 @@ tools/run-tests.sh SteamChecker
 ### `run-tools-tests.sh`
 
 Runs the repo-level tool tests (`tools/tests/*.php`), which pin the scripts in
-this directory (`package-web-assets.php`, `check-data-consistency.php`, ...)
-against failure modes the live build's happy path does not exercise. Like the
+this directory (`package-addon.sh`, `package-web-assets.php`,
+`check-data-consistency.php`, ...) against failure modes the live build's happy
+path does not exercise. Like the
 addon tests, each is a self-contained script that exits non-zero on failure, so
 there is no framework and no XenForo. It discovers every `tools/tests/*.php`, so
 a new one is picked up with no change here. Takes no arguments and needs only
@@ -65,12 +66,12 @@ resolution check is an extra guard this path adds, not something XenForo runs at
 build time. It needs `php` on the PATH.
 
 Two things it does not reproduce. XenForo's `hashes.json` file-health manifest,
-which the real build generates; the zip installs fine without it. And
-`build.json`'s `exec` commands: `package-web-assets.php` reads only
-`additional_files` and `minify`, so an addon that prunes staged files through
-`exec` (RosterPatch drops its `tests/` that way) gets that pruning from this
-path's own exclusion list instead, and an `exec` doing anything else does not
-run here at all.
+which the real build generates; the zip installs fine without it. And the
+`build.json` keys `package-web-assets.php` never reads, `exec` and `rollup`: it
+reads `additional_files` and `minify` and nothing else, so an addon that prunes
+staged files through `exec` gets that pruning from this path's own exclusion list
+instead, while an `exec` doing anything else, and any `rollup` bundling, does not
+happen here at all.
 
 ```
 tools/package-addon.sh SteamChecker
