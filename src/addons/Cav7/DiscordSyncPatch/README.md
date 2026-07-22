@@ -65,9 +65,10 @@ Then two guards. A press made while a sync is already pending for that member is
 refused, with a note that one is on its way. Past that, a member may queue at most
 one resync every five minutes; that limit is XenForo's own flood check, which does
 not apply to anyone holding `general:bypassFloodCheck`. If nothing was queued, the
-member is told so rather than left waiting on a sync that will never run, the
-failure goes to the server error log for staff, and the cooldown is handed back
-instead of spent.
+member is told so rather than left waiting on a sync that will never run, and the
+failure goes to the server error log for staff. The cooldown comes back when the
+failure looks transient. It stays spent when the integration has no Discord servers
+configured, because a retry a moment later would fail the same way.
 
 The button syncs whether or not anything is actually wrong. Why it does not check
 first, and what the two guards are there to protect, is in
@@ -110,7 +111,7 @@ anything the vendor would not have written itself.
 - XenForo 2.3+
 - [NF Discord Integration](https://nixfifty.com/products/discord-integration.7/) 2.12.0+
 
-## Assumptions about vendor internals
+## Assumptions about code it does not own
 
 Both halves depend on things nobody promised would stay true. Mostly that is
 NF/Discord: how it queues a per-user sync, what it stores about one, and what it
