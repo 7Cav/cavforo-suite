@@ -100,8 +100,16 @@ class RosterUserGateway implements EnlistmentGateway
         /** @var Image $imageService */
         $imageService = \XF::service('NF\Rosters:AwardRecord\Image', $award);
 
+        // The attacher's cleanup breadcrumbs are logged from the applier path
+        // too, so they go through logFailure and get the same milpac stamp. The
+        // date is folded in here because the attacher is handed an opaque
+        // citation path and has no business parsing a date out of it, and with
+        // up to six grants in flight a breadcrumb without one is ambiguous.
         $attacher = new CitationAttacher(
-            static fn (\Throwable $e, string $prefix) => \XF::logException($e, false, $prefix)
+            fn (\Throwable $e, string $context) => $this->logFailure(
+                $e,
+                $context . ' for ' . gmdate('Y-m-d', $awardDate)
+            )
         );
         $attacher->attach(
             $this->citationAward($award),
@@ -172,9 +180,23 @@ class RosterUserGateway implements EnlistmentGateway
         $record->save();
     }
 
-    public function logError(string $message): void
+    public function logFailure(\Throwable $e, string $context): void
     {
-        \XF::logError($message);
+        // The milpac identity is stamped here rather than threaded through the
+        // applier: this is the only side that holds the entity. Without it a
+        // dropped grant reads as "failed to grant PUC for 2003-03-18" with no
+        // way to tell whose milpac is short an award, and a milpac carrying five
+        // of six PUCs looks entirely ordinary otherwise.
+        //
+        // logException, not logError: the exception keeps its class and stack
+        // trace, so the entry says what broke and not merely that something did.
+        // Never with a rollback — a failure here must not undo the milpac save.
+        \XF::logException($e, false, sprintf(
+            'Cav7/EnlistmentDefaults: milpac %d (user %d): %s: ',
+            (int) $this->rosterUser->relation_id,
+            (int) $this->rosterUser->user_id,
+            $context
+        ));
     }
 
     private function errorText($error): string

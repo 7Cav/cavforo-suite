@@ -48,6 +48,9 @@ function check(string $label, bool $ok, string $detail = ''): void
 /**
  * A fake award row. Records whether it was deleted; can be told to throw from
  * delete() to model a rollback that itself fails (vendor delete() can throw).
+ *
+ * It throws an \Error rather than an \Exception on purpose — see the note on
+ * FakeCitationImage.
  */
 class FakeCitationAward implements CitationAward
 {
@@ -58,7 +61,7 @@ class FakeCitationAward implements CitationAward
     {
         $this->deleteCalls++;
         if ($this->throwOnDelete) {
-            throw new \RuntimeException('row delete failed');
+            throw new \Error('row delete failed');
         }
     }
 }
@@ -68,6 +71,23 @@ class FakeCitationAward implements CitationAward
  * (or rejects) the source, updateImage() copies-then-saves (and so can throw
  * after staging), deleteFile() is the best-effort copied-file cleanup. Records
  * every call so the rollback decision is observable.
+ *
+ * The failure paths raise \Error subclasses, not \Exception ones, and that is
+ * the point. What the attacher's guards exist for is vendor drift, and vendor
+ * drift arrives as an \Error: an NF/Rosters update that renames
+ * deleteImageForAwardDelete() is a "Call to undefined method" \Error, and the
+ * adapter's setImage(string): bool raises a \TypeError the moment the vendor
+ * service hands back null. Since PHP 7 neither is an \Exception, so a fixture
+ * throwing \RuntimeException would let every catch (\Throwable) in
+ * CitationAttacher be narrowed to catch (\Exception) with the suite still green
+ * — quietly abandoning fail-open for exactly the failures it was written for.
+ *
+ * The mirror image is just as real, which is what $failWithException is for.
+ * updateImage()'s everyday failure is \Exception-side (XF's file copy raises
+ * XF\PrintableException, the save() behind it raises a DB exception), so
+ * proving only the \Error half would leave the same guards narrowable to
+ * catch (\Error). Each failure path is driven from both halves of the range,
+ * and the messages are identical either way so the assertions do not care which.
  */
 class FakeCitationImage implements CitationImage
 {
@@ -78,6 +98,9 @@ class FakeCitationImage implements CitationImage
     public bool $throwOnUpdate = false;
     public bool $throwOnDeleteFile = false;
     public string $rejectReason = 'not a valid image';
+
+    /** Raise the \Exception-side failures instead of the \Error-side defaults. */
+    public bool $failWithException = false;
 
     public function setImage(string $path): bool
     {
@@ -94,7 +117,9 @@ class FakeCitationImage implements CitationImage
     {
         $this->updateImageCalls++;
         if ($this->throwOnUpdate) {
-            throw new \RuntimeException('save after copy failed');
+            throw $this->failWithException
+                ? new \RuntimeException('save after copy failed')
+                : new \TypeError('save after copy failed');
         }
     }
 
@@ -102,20 +127,28 @@ class FakeCitationImage implements CitationImage
     {
         $this->deleteFileCalls++;
         if ($this->throwOnDeleteFile) {
-            throw new \RuntimeException('file cleanup failed');
+            throw $this->failWithException
+                ? new \RuntimeException('file cleanup failed')
+                : new \Error('file cleanup failed');
         }
     }
 }
 
-/** A logger that records (prefix => exception message) for rollback breadcrumbs. */
+/**
+ * A logger standing in for the attacher's logFailure seam. The attacher hands it
+ * the cleanup failure and a bare context saying what could not be cleaned; the
+ * production gateway is what appends the PUC date the grant was for, stamps the
+ * milpac identity onto that context, and forwards it to the error log. Recorded
+ * here as (context => exception message).
+ */
 class RecordingLogger
 {
-    /** @var array<int, array{prefix: string, message: string}> */
+    /** @var array<int, array{context: string, message: string}> */
     public array $entries = [];
 
-    public function __invoke(\Throwable $e, string $prefix): void
+    public function __invoke(\Throwable $e, string $context): void
     {
-        $this->entries[] = ['prefix' => $prefix, 'message' => $e->getMessage()];
+        $this->entries[] = ['context' => $context, 'message' => $e->getMessage()];
     }
 }
 
@@ -156,6 +189,11 @@ check(
 check('the copied citation file is cleaned up on a save failure (no orphan)', $image->deleteFileCalls === 1);
 check('the award row is deleted on a save failure (no citationless row)', $award->deleteCalls === 1);
 check('a clean rollback logs no breadcrumb', $logger->entries === []);
+check(
+    'the rollback is driven by a vendor-drift \Error, which no catch (\Exception) would have seen',
+    $caught instanceof \Error && !$caught instanceof \Exception,
+    $caught !== null ? get_class($caught) : '(no throw)'
+);
 
 // --- setImage() rejects before any copy: row rolled back, reason carried ----
 $logger = new RecordingLogger();
@@ -179,6 +217,8 @@ check('a rejected image never commits (updateImage not called)', $image->updateI
 check('a rejected image still rolls the saved row back', $award->deleteCalls === 1);
 
 // --- Rollback that itself fails must NOT mask the original cause ------------
+// Each cleanup step throws an \Error here as well, so narrowing either cleanup
+// guard to catch (\Exception) lets that \Error out and mask the original.
 $logger = new RecordingLogger();
 $award = new FakeCitationAward();
 $award->throwOnDelete = true;        // the compensating row delete fails
@@ -198,13 +238,71 @@ check(
 );
 check('a failed file cleanup is logged as a breadcrumb', count(array_filter(
     $logger->entries,
-    fn ($e) => str_contains($e['prefix'], 'citation file cleanup failed')
+    fn ($e) => str_contains($e['context'], 'citation file cleanup failed')
 )) === 1);
 check('a failed row rollback is logged as a breadcrumb', count(array_filter(
     $logger->entries,
-    fn ($e) => str_contains($e['prefix'], 'award rollback after citation failure failed')
+    fn ($e) => str_contains($e['context'], 'award rollback after citation failure failed')
 )) === 1);
 check('both cleanup attempts are still made even though each throws', $image->deleteFileCalls === 1 && $award->deleteCalls === 1);
+
+// --- The same two failures from the \Exception half of the range ------------
+// The \Error fixtures above close the vendor-drift blind spot; on their own they
+// open its mirror image, because both of these guards could then be narrowed to
+// catch (\Error) with the suite green. And \Exception is where the everyday
+// failure actually lives: updateImage() copies through XF's filesystem
+// abstraction (XF\PrintableException) before a save() that raises a DB
+// exception. Driving each path from both halves pins both guards both ways.
+$logger = new RecordingLogger();
+$award = new FakeCitationAward();
+$image = new FakeCitationImage();
+$image->failWithException = true;
+$image->throwOnUpdate = true;
+$caught = null;
+try {
+    (new CitationAttacher($logger))->attach($award, $image, $path);
+} catch (\Throwable $e) {
+    $caught = $e;
+}
+check(
+    'an \Exception-side citation save failure surfaces as the original cause too',
+    $caught instanceof \Exception && $caught->getMessage() === 'save after copy failed',
+    $caught !== null ? get_class($caught) . ': ' . $caught->getMessage() : '(no throw)'
+);
+check(
+    'an \Exception-side save failure still rolls the file and the row back',
+    $image->deleteFileCalls === 1 && $award->deleteCalls === 1,
+    "deleteFile: {$image->deleteFileCalls}, delete: {$award->deleteCalls}"
+);
+
+// The file-cleanup guard specifically: an \Exception out of deleteFile() has to
+// stay a breadcrumb, exactly as the \Error out of it does.
+$logger = new RecordingLogger();
+$award = new FakeCitationAward();
+$image = new FakeCitationImage();
+$image->failWithException = true;
+$image->throwOnUpdate = true;        // the real cause
+$image->throwOnDeleteFile = true;    // the \Exception-side cleanup failure
+$caught = null;
+try {
+    (new CitationAttacher($logger))->attach($award, $image, $path);
+} catch (\Throwable $e) {
+    $caught = $e;
+}
+check(
+    'an \Exception-side file cleanup failure does not mask the original cause',
+    $caught !== null && $caught->getMessage() === 'save after copy failed',
+    $caught !== null ? $caught->getMessage() : '(no throw)'
+);
+check('an \Exception-side file cleanup failure is logged as a breadcrumb', count(array_filter(
+    $logger->entries,
+    fn ($e) => str_contains($e['context'], 'citation file cleanup failed')
+)) === 1);
+check(
+    'an \Exception-side file cleanup failure still lets the row be rolled back',
+    $award->deleteCalls === 1,
+    'delete calls: ' . $award->deleteCalls
+);
 
 // --- A re-run retries the date: a healthy attach after a failed one works ---
 // The failed attach left no row (it was deleted), so the date is still pending;

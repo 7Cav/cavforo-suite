@@ -3,7 +3,7 @@
     "description": "Render the milpac service-record date in UTC so it reads the same for every viewer and matches the edit form",
     "execution_order": 10,
     "enabled": true,
-    "action": "str_replace",
-    "find": "<xf:cell>{{ date($record.record_date, 'Y-m-d') }}</xf:cell>",
-    "replace": "<xf:cell>{$record.getRecordDate()}</xf:cell>"
+    "action": "preg_replace",
+    "find": "#\\{\\{\\s*date\\s*\\(\\s*\\$record\\.record_date\\s*(?:,[^{}()]*)?\\)\\s*\\}\\}#",
+    "replace": "{$record.getRecordDate()}"
 }

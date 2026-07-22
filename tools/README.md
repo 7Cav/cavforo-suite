@@ -64,8 +64,24 @@ The copy and placement match what `xf-addon:build-release` does. The `<xf:js>`
 resolution check is an extra guard this path adds, not something XenForo runs at
 build time. It needs `php` on the PATH.
 
-The one thing it does not reproduce is XenForo's `hashes.json` file-health
-manifest, which the real build generates. The zip installs fine without it.
+It does not reproduce the whole of what `xf-addon:build-release` does, and the
+list below is what has come up rather than all of it. It writes no
+`hashes.json`, the file-health manifest the real build generates, and the zip
+installs fine without it. It ignores two `build.json` keys, `exec` and
+`rollup`, because `package-web-assets.php` reads `additional_files` and
+`minify` and nothing else. RosterPatch's `exec` prunes `tests/`, which this path leaves out anyway, so the
+two agree there by coincidence rather than by design — an `exec` pruning
+anything else needs that path adding to the `excludes` array in
+`package-addon.sh` to be reproduced here, and an `exec` doing something other
+than pruning, along with any `rollup` bundling, does not happen here at all.
+Nor does XenForo's install-root fallback for an `additional_files` path with no
+`_files/` backing, or its `_no_upload` relocation. And the two paths exclude
+different things: `package-addon.sh` carries a fixed `excludes` array, so
+`_build/`, `_no_upload/`, `_releases/` and `_stubs/` are not dropped here the
+way `ReleaseBuilderService::getExcludedDirectories()` drops them, and it names
+two dotfiles where XenForo's `isExcludedFileName()` strips every dotfile but
+`.htaccess`. None of our addons carry any of that today, which is why the zips
+match; an addon that does needs the array widening first.
 
 ```
 tools/package-addon.sh SteamChecker

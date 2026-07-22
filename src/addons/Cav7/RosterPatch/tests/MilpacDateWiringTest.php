@@ -150,65 +150,157 @@ check('_data/template_modifications.xml could be read', $tmodXml !== false);
 $mods = [];
 if ($tmodXml !== false) {
     foreach ($tmodXml->modification as $mod) {
-        $mods[] = [
-            'template' => (string) $mod['template'],
-            'enabled'  => (string) $mod['enabled'],
-            'find'     => (string) $mod->find,
-            'replace'  => (string) $mod->replace,
+        $mods[(string) $mod['modification_key']] = [
+            'type'            => (string) $mod['type'],
+            'template'        => (string) $mod['template'],
+            'description'     => (string) $mod['description'],
+            'execution_order' => (int) $mod['execution_order'],
+            'enabled'         => (string) $mod['enabled'],
+            'action'          => (string) $mod['action'],
+            'find'            => (string) $mod->find,
+            'replace'         => (string) $mod->replace,
         ];
     }
 }
 
 // Each profile date cell must move from the viewer-timezone date() function to
 // the vendor's UTC getter, so the profile reads the same for everyone and agrees
-// with the edit form (which already uses the getter).
+// with the edit form (which already uses the getter). What the finds actually
+// match is checked against real markup in MilpacDateTemplateModificationTest;
+// this only holds the records themselves in shape.
 $expectedMods = [
-    [
-        'findContains'    => "date(\$record.record_date, 'Y-m-d')",
+    'cav7RosterPatchRecordDateUtc' => [
+        'column'          => '$record.record_date',
         'replaceContains' => '{$record.getRecordDate()}',
     ],
-    [
-        'findContains'    => "date(\$award.award_date, 'Y-m-d')",
+    'cav7RosterPatchAwardDateUtc' => [
+        'column'          => '$award.award_date',
         'replaceContains' => '{$award.getAwardDate()}',
     ],
 ];
 
-foreach ($expectedMods as $want) {
-    $match = null;
-    foreach ($mods as $mod) {
-        if (str_contains($mod['find'], $want['findContains'])) {
-            $match = $mod;
-            break;
-        }
-    }
+foreach ($expectedMods as $key => $want) {
+    $match = $mods[$key] ?? null;
     check(
-        'a modification targets ' . $want['findContains'],
+        "a modification named $key exists",
         $match !== null
     );
     if ($match !== null) {
+        // XenForo looks a modification up by type *and* template. An admin-type
+        // record against a public template never fires, and nothing reports it:
+        // the add-on still installs and still shows as active.
         check(
-            $want['findContains'] . ' targets the profile template (nf_rosters_user_view) and is enabled',
-            $match['template'] === 'nf_rosters_user_view' && $match['enabled'] === '1'
+            "$key targets the public profile template (nf_rosters_user_view) and is enabled",
+            $match['type'] === 'public'
+                && $match['template'] === 'nf_rosters_user_view'
+                && $match['enabled'] === '1',
+            'got type: ' . $match['type'] . ', template: ' . $match['template']
+                . ', enabled: ' . $match['enabled']
+        );
+        // 'date' on its own is satisfied by the 'date' inside 'record_date', so
+        // require the call: 'date' followed by an escaped opening paren, with
+        // the pattern's own \s* between them dropped first.
+        $findNoSpacePattern = str_replace('\s*', '', $match['find']);
+        check(
+            "$key finds a date() call on the vendor's " . $want['column'],
+            str_contains($findNoSpacePattern, 'date\(') && str_contains(
+                str_replace('\\', '', $match['find']),
+                $want['column']
+            ),
+            'got find: ' . $match['find']
         );
         check(
-            $want['findContains'] . ' is replaced with the UTC getter',
+            "$key matches by pattern, not by exact vendor markup",
+            $match['action'] === 'preg_replace',
+            'got action: ' . $match['action']
+                . ' — an exact find misses any style that edited the call, and misses silently'
+        );
+        check(
+            "$key is replaced with the UTC getter",
             str_contains($match['replace'], $want['replaceContains']),
             'got replace: ' . $match['replace']
         );
         check(
-            $want['findContains'] . ' no longer renders via the viewer-timezone date() function',
+            "$key no longer renders via the viewer-timezone date() function",
             !str_contains($match['replace'], 'date('),
             'leaving date() in place keeps the per-viewer shift'
         );
     }
 }
 
-// _output template-modification files must agree with the _data count.
-$tmodOutput = glob("$root/_output/template_modifications/public/*.json");
+// _output is what a dev-stack install imports, and what an export round-trips
+// back into _data, so a count alone leaves every field inside those files free
+// to drift: an item reverted to an exact str_replace find, pointed at another
+// template, reordered against a sibling, or switched off passes a count check
+// and ships. Content-check every field the item file carries against its _data
+// record instead. _output carries the type in the directory name rather than in
+// the file, and stores enabled as a JSON bool, so those two are compared through
+// the shape _output uses.
+$tmodDir = "$root/_output/template_modifications";
+// glob() reports an unreadable directory as false, not as an empty list, so the
+// count below has to be told apart from a count of nothing.
+$tmodOutput = glob("$tmodDir/*/*.json");
 check(
     '_output has one template-modification file per _data modification',
-    count($tmodOutput) === ($tmodXml !== false ? count($tmodXml->modification) : -1),
-    'output: ' . count($tmodOutput) . ', data: ' . ($tmodXml !== false ? count($tmodXml->modification) : 'n/a')
+    is_array($tmodOutput)
+        && count($tmodOutput) === ($tmodXml !== false ? count($tmodXml->modification) : -1),
+    'output: ' . (is_array($tmodOutput) ? count($tmodOutput) : 'unreadable')
+        . ', data: ' . ($tmodXml !== false ? count($tmodXml->modification) : 'n/a')
+);
+
+$tmodMeta = json_decode((string) @file_get_contents("$tmodDir/_metadata.json"), true);
+check('_output/template_modifications/_metadata.json is valid JSON', is_array($tmodMeta));
+
+foreach ($mods as $key => $want) {
+    // The type is the directory: a record exported as admin/ (or renamed) has
+    // no file here, and XenForo would never fire it against a public template.
+    $file = $want['type'] . "/$key.json";
+    $raw = @file_get_contents("$tmodDir/$file");
+    $decoded = json_decode((string) $raw, true);
+
+    // execution_order decides which of two modifications on one template sees
+    // the other's output, and _output is the side an install reads, so a drift
+    // there is a real behaviour change that _data alone cannot show.
+    check(
+        "the _output export $file describes the same modification as _data",
+        is_array($decoded)
+            && ($decoded['template'] ?? null) === $want['template']
+            && ($decoded['description'] ?? null) === $want['description']
+            && ($decoded['execution_order'] ?? null) === $want['execution_order']
+            && ($decoded['enabled'] ?? null) === ($want['enabled'] === '1')
+            && ($decoded['action'] ?? null) === $want['action']
+            && ($decoded['find'] ?? null) === $want['find']
+            && ($decoded['replace'] ?? null) === $want['replace'],
+        '_data and _output must agree on every field the install reads; got: '
+            . var_export($decoded, true)
+    );
+    check(
+        "_output/template_modifications/_metadata.json indexes $file",
+        is_array($tmodMeta) && isset($tmodMeta[$file]),
+        'an item file the index does not name was added by hand'
+    );
+    check(
+        "_output/template_modifications/_metadata.json carries $file's current hash",
+        is_array($tmodMeta) && ($tmodMeta[$file]['hash'] ?? null) === md5(str_replace("\r", '', (string) $raw)),
+        'XenForo hashes an item as md5 of its contents with CRs stripped; a stale or blanked hash means the export was hand-edited'
+    );
+}
+
+// The other direction. The loop above walks _data, so it can only find an item
+// file that should be there and is not; an index entry naming a file nobody
+// ships — the residue of a modification deleted from _data without re-exporting
+// — passes it unseen.
+$orphanedIndex = [];
+foreach (is_array($tmodMeta) ? array_keys($tmodMeta) : [] as $indexed) {
+    if (!is_file("$tmodDir/$indexed")) {
+        $orphanedIndex[] = (string) $indexed;
+    }
+}
+check(
+    '_output/template_modifications/_metadata.json names no item file that is gone',
+    $orphanedIndex === [],
+    'indexed but missing: ' . implode(', ', $orphanedIndex)
+        . ' — re-export rather than deleting the file by hand'
 );
 
 if ($failures > 0) {

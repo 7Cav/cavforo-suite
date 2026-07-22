@@ -2,6 +2,8 @@
 
 Behavioural fixes for the [NF/Rosters](https://nixfifty.com/products/rosters-and-personnel-status-reports.5/) XenForo add-on, built as a companion add-on. It attaches to the vendor code through XenForo class extensions and ships none of the vendor's code, so NF/Rosters can be updated independently.
 
+Vendor markup is quoted verbatim only under `tests/`: `tests/fixtures/` holds a handful of lines of NF/Rosters' `nf_rosters_user_view` template, and the tests that run over it spell out the date cells they expect. Neither build path ships `tests/` — `tools/package-addon.sh` excludes it from the zip, and `build.json` deletes it from what `xf-addon:build-release` has staged — so none of that reaches a board installed from a release zip. Copying the add-on directory into an install by hand, the way the Installation steps below describe, does carry it: neither build path runs on that route. What does reach one is the shipped `_data/template_modifications.xml`, whose `<find>` blocks describe the same vendor expression as a regular expression rather than quoting it.
+
 This is the home for NF/Rosters *behaviour* patches. Its sibling, [RosterAudit](../RosterAudit/), records an audit trail and guards the two gaps that protect that trail; the fixes here change how the roster behaves and carry their own on/off switch, so a misbehaving fix can be disabled without losing audit history.
 
 ## What it does
@@ -50,6 +52,18 @@ For release builds, generate hashes first: `php cmd.php xf-addon:build-release C
 
 **The hook runs inside the position's save.** The re-sync happens in `_postSave`, within the same transaction as the position edit, mirroring how the vendor's Adder and Editor apply grants. A position holds at most a handful of members, so the per-save cost is small.
 
+**The date cells are matched by pattern, not by exact vendor markup.** A style can carry its own edited copy of `nf_rosters_user_view`. If that copy differs from the vendor's by so much as a space, an exact find matches nothing in it, and XenForo does not treat that as an error: the add-on still reports as installed and active while that style renders the date in the viewer's timezone. Both modifications are `preg_replace` patterns over the whole `{{ date(...) }}` expression: whitespace around the call and its arguments, and any argument list that carries no parentheses or braces of its own. The tests apply them over the date rows captured in `tests/fixtures/` from NF/Rosters 2.1.5, taken from both the vendor's own copy of the template and the copy the 7Cav style edits.
+
+**What the patterns deliberately will not match.** They take the whole `{{ … }}` expression, not the `date()` call inside one, so a style that wrapped or extended the expression is left alone. A null-guard ternary (`{{ $record.record_date ? date(...) : '-' }}`), a filter (`{{ date(...)|escape }}`), a concatenated suffix (`{{ date(...) . ' UTC' }}`), and a nested call in the argument list (`{{ date($record.record_date, fmt('Y-m-d')) }}`) all match nothing.
+
+Not because a call-anchored replacement would produce invalid markup. Put each of those four through XenForo 2.3.11's own template compiler with the call swapped for the getter and all four compile, the ternary to exactly the code you would write by hand: `($__vars['record']['record_date'] ? $__templater->escape($__templater->method($__vars['record'], 'getRecordDate', array())) : '-')`. `{$…}` is an expression term inside `{{ … }}` the same way it is a variable in running text (`expression_part ::= var` in the compiler's own grammar), so the nesting is fine.
+
+The reason the limit stays is that a `<find>` is a regular expression over template text rather than a parse of it, and the patterns swallow the format argument. Anchored on the whole `{{ … }}` expression they only ever reach a cell that renders a date, where losing the style's format is the cost the next paragraph owns. Anchored on the call they would reach every `date($record.record_date, …)` in the template, including the ones where the format is doing work: `<xf:if is="date($record.record_date, 'Y') == 2020">` starts comparing `2020-03-04` against `2020`, and `<div data-day="{{ date($record.record_date, 'D') }}">` starts emitting a full date to whatever reads that attribute. Both spellings compile, so nothing reports either. Widening the find means first reading the surrounding logic of every expression it would newly take, and no one has. `MilpacDateTemplateModificationTest` asserts all four as non-matches, so anyone doing that reading later does it with the list in front of them.
+
+The patterns also swallow the format argument rather than preserving it, and the getter always renders `Y-m-d`. A style that reformatted the date loses that reformatting, and a call with no format argument stops using the viewer's language format. The fix is worth that cost, but it is a cost.
+
+The fixtures pin the patterns against markup we have actually seen: change a find until it stops matching one of the captured copies and the suite fails. What they cannot do is pin them against the add-on you have installed. CI has no XenForo and no vendor tree, so a NF/Rosters release that moved the date cell would leave the fixtures matching and the suite green while the board went back to per-viewer dates. Recapture the fixtures when NF/Rosters is upgraded, or when the style's copy is edited. The two copies come from different places. The style's is readable through the admin control panel's template editor, under Appearance → Templates. The vendor's is not, on a production board: `XF\Entity\Style::canEdit()` returns false for `style_id 0` outside development mode, `StyleRepository::createStyleTree()` leaves master out of the style selector for the same reason, and the template editor answers `templates_in_this_style_can_not_be_modified`. Take the vendor copy from NF/Rosters' own `_data/templates.xml`, which is what that fixture's header names. (A style with no copy of its own renders the master, so its template list will show the vendor text — but that is the style's entry, not master's.) The filenames carry the vendor version each was taken from, and each file's header says which copy of the template it came from and what it left out.
+
 **If a vendor update adds its own re-sync, this add-on becomes redundant** and can be dropped.
 
 ## Layout
@@ -63,7 +77,8 @@ src/addons/Cav7/RosterPatch/
   NF/Rosters/Pub/Controller/Roster.php   reject bad dates, default a new entry to the editor's today
   Repository/PositionGroupSync.php       holder query + the re-apply logic
   Cli/Command/SyncPositionGroups.php     one-off backlog reconcile
-  tests/                                 pure-logic tests + shape guards, no stack required
+  tests/                                 pure-logic tests, shape guards, and the template fixtures they run against, no stack required
+  build.json                             drops tests/ from the xf-addon:build-release zip
   _data/, _output/                       class-extension + template-modification registration
 ```
 

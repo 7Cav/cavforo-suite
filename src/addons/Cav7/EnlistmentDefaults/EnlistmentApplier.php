@@ -10,8 +10,10 @@ namespace Cav7\EnlistmentDefaults;
  * This is the deep module. The decisions (which dates are still pending, who an
  * award is attributed to) come from EnlistmentDecisions; the entity-world work
  * goes through an EnlistmentGateway. The applier owns the orchestration and the
- * fail-open policy: every grant and the record write are isolated, so one
- * failure is logged and never blocks enlistment nor aborts the rest.
+ * fail-open policy: every grant and the record write are isolated as far as the
+ * log seam holds, so one failure is logged and does not abort the rest. If the
+ * log seam itself throws, the remaining grants and the enlistment record go with
+ * it. The milpac save survives either way, so enlistment is never blocked.
  *
  * The caller (the RosterUser entity extension) is responsible for the
  * insert-only gate; by the time apply() runs, this is a new milpac.
@@ -30,8 +32,13 @@ class EnlistmentApplier
 
     /**
      * Grant each still-missing PUC date, in earned order. Each grant is
-     * isolated: a failure is logged and the loop continues, so a single bad
-     * citation file or save cannot stop the rest of the set.
+     * isolated as far as the log seam holds: a failure is logged and the loop
+     * continues, so a single bad citation file or save cannot stop the rest of
+     * the set. The logging itself is what is left unguarded — a throw out of
+     * logFailure escapes both this loop and apply(), taking the remaining grants
+     * and the enlistment record with it, and only the milpac save survives (on
+     * the entity extension's last-resort catch). FailureLoggingTest pins that
+     * blast radius; the note on that catch has the reasoning.
      */
     private function grantPucSet(): void
     {
@@ -54,9 +61,10 @@ class EnlistmentApplier
                     PucSet::citationPath($date)
                 );
             } catch (\Throwable $e) {
-                $this->gateway->logError(
-                    "Cav7/EnlistmentDefaults: failed to grant PUC for $date: " . $e->getMessage()
-                );
+                // The date is the half of the entry the applier can name; the
+                // gateway stamps which milpac dropped it. Both are needed for a
+                // reader of the error log to act on a dropped grant.
+                $this->gateway->logFailure($e, "failed to grant PUC for $date");
             }
         }
     }
@@ -82,9 +90,7 @@ class EnlistmentApplier
                 $recordDate
             );
         } catch (\Throwable $e) {
-            $this->gateway->logError(
-                'Cav7/EnlistmentDefaults: failed to write enlistment record: ' . $e->getMessage()
-            );
+            $this->gateway->logFailure($e, 'failed to write enlistment record');
         }
     }
 }
