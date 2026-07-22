@@ -54,9 +54,10 @@ class EnlistmentApplier
                     PucSet::citationPath($date)
                 );
             } catch (\Throwable $e) {
-                $this->gateway->logError(
-                    "Cav7/EnlistmentDefaults: failed to grant PUC for $date: " . $e->getMessage()
-                );
+                // The date is the half of the entry the applier can name; the
+                // gateway stamps which milpac dropped it. Both are needed for a
+                // reader of the error log to act on a dropped grant.
+                $this->gateway->logFailure($e, "failed to grant PUC for $date");
             }
         }
     }
@@ -82,9 +83,7 @@ class EnlistmentApplier
                 $recordDate
             );
         } catch (\Throwable $e) {
-            $this->gateway->logError(
-                'Cav7/EnlistmentDefaults: failed to write enlistment record: ' . $e->getMessage()
-            );
+            $this->gateway->logFailure($e, 'failed to write enlistment record');
         }
     }
 }

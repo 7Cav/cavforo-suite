@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Issues #24 and #45 — the EnlistmentApplier orchestration: what happens, in
- * what order, and what is resilient to failure, when a new milpac is enlisted.
+ * Issues #24, #45 and #62 — the EnlistmentApplier orchestration: what happens,
+ * in what order, and what is resilient to failure, when a new milpac is enlisted.
  *
  * The applier is the deep module that turns the pure decisions into concrete
  * grants and the enlistment record. Its collaborators (the entity world: award
@@ -22,6 +22,10 @@
  *    record still proceed; apply() never throws.
  *  - A failing record write is logged and does not abort; apply() never throws.
  *  - Idempotency: dates the milpac already carries are skipped (no re-grant).
+ *  - A dropped grant is diagnosable: the applier hands the gateway the original
+ *    exception (so its class and trace survive) plus a context naming the date
+ *    that dropped. The milpac identity is stamped by the gateway, which holds
+ *    the entity — see tests/FailureLoggingTest.php.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -92,10 +96,16 @@ class FakeGateway implements EnlistmentGateway
     /** @var WrittenRecord[] */
     public array $records = [];
 
-    /** @var string[] */
-    public array $loggedErrors = [];
+    /** @var array<int, array{context: string, exception: \Throwable}> */
+    public array $loggedFailures = [];
+
+    /** The exception instances this fake threw, so a test can prove the same
+     *  object reached the log seam rather than a flattened message.
+     *  @var \Throwable[] */
+    public array $thrown = [];
 
     public ?string $throwOnDate = null;
+    public bool $throwOnEveryDate = false;
     public bool $throwOnRecord = false;
 
     public function __construct(
@@ -122,8 +132,10 @@ class FakeGateway implements EnlistmentGateway
     public function grantAward(int $awardId, int $awardDate, int $fromUserId, string $citationPath): void
     {
         $date = gmdate('Y-m-d', $awardDate);
-        if ($this->throwOnDate !== null && $date === $this->throwOnDate) {
-            throw new \RuntimeException("boom on $date");
+        if ($this->throwOnEveryDate || ($this->throwOnDate !== null && $date === $this->throwOnDate)) {
+            $e = new \DomainException("boom on $date");
+            $this->thrown[] = $e;
+            throw $e;
         }
         $this->granted[] = new GrantedAward($awardId, $awardDate, $fromUserId, $citationPath);
     }
@@ -131,14 +143,16 @@ class FakeGateway implements EnlistmentGateway
     public function writeServiceRecord(int $recordTypeId, string $body, int $recordDate): void
     {
         if ($this->throwOnRecord) {
-            throw new \RuntimeException('boom on record');
+            $e = new \DomainException('boom on record');
+            $this->thrown[] = $e;
+            throw $e;
         }
         $this->records[] = new WrittenRecord($recordTypeId, $body, $recordDate);
     }
 
-    public function logError(string $message): void
+    public function logFailure(\Throwable $e, string $context): void
     {
-        $this->loggedErrors[] = $message;
+        $this->loggedFailures[] = ['context' => $context, 'exception' => $e];
     }
 }
 
@@ -257,8 +271,49 @@ check(
     count($gw->granted) === count(PucSet::dates()) - 1,
     'granted: ' . count($gw->granted)
 );
-check('the failing grant is logged to the error log', count($gw->loggedErrors) >= 1);
+check('the failing grant is logged to the error log', count($gw->loggedFailures) === 1);
+
+// Issue #62: the log entry has to be actionable. The applier owns the half of
+// that it can see — which date dropped, and the failure itself — while the
+// gateway stamps the milpac identity from the entity it holds.
+check(
+    'the dropped grant is logged with a context naming the date that dropped',
+    count($gw->loggedFailures) === 1
+        && str_contains($gw->loggedFailures[0]['context'], '2009-08-10'),
+    var_export(array_column($gw->loggedFailures, 'context'), true)
+);
+check(
+    'the original exception object reaches the log seam, so its class and trace survive',
+    count($gw->loggedFailures) === 1
+        && count($gw->thrown) === 1
+        && $gw->loggedFailures[0]['exception'] === $gw->thrown[0],
+    count($gw->loggedFailures) === 1 ? get_class($gw->loggedFailures[0]['exception']) : ''
+);
 check('the enlistment record is still written after a failed grant', count($gw->records) === 1);
+
+// --- The worst case: every grant fails -----------------------------------
+// The milpac is still enlisted, and the log carries one entry per dropped date
+// rather than one entry for the whole set, so a reader can see which dates the
+// member is short of.
+$gw = new FakeGateway();
+$gw->throwOnEveryDate = true;
+$threw = false;
+try {
+    (new EnlistmentApplier($gw))->apply();
+} catch (\Throwable $e) {
+    $threw = true;
+}
+check('apply() never throws even when every grant fails', !$threw);
+check('the enlistment record is still written when every grant fails', count($gw->records) === 1);
+$loggedDates = array_map(
+    fn (array $entry) => substr($entry['context'], -10),
+    $gw->loggedFailures
+);
+check(
+    'every dropped date gets its own log entry, naming that date',
+    $loggedDates === PucSet::dates(),
+    implode(', ', $loggedDates)
+);
 
 // --- Fail-open: a failing record write is logged, does not abort ----------
 $gw = new FakeGateway();
@@ -271,7 +326,15 @@ try {
 }
 check('apply() never throws even when the record write fails', !$threw);
 check('all grants still land when the record write fails', count($gw->granted) === count(PucSet::dates()));
-check('the failing record write is logged to the error log', count($gw->loggedErrors) >= 1);
+check('the failing record write is logged to the error log', count($gw->loggedFailures) === 1);
+check(
+    'the failed record write is logged with a context naming the record, and the original exception',
+    count($gw->loggedFailures) === 1
+        && str_contains($gw->loggedFailures[0]['context'], 'enlistment record')
+        && count($gw->thrown) === 1
+        && $gw->loggedFailures[0]['exception'] === $gw->thrown[0],
+    var_export(array_column($gw->loggedFailures, 'context'), true)
+);
 
 // --- Idempotency: already-carried dates are skipped -----------------------
 $gw = new FakeGateway();

@@ -61,12 +61,14 @@ interface CitationImage
 class CitationAttacher
 {
     /**
-     * @param callable(\Throwable, string): void $logException records a cleanup
-     *        failure during rollback without masking the original error. The
-     *        production gateway wires this to \XF::logException.
+     * @param callable(\Throwable, string): void $logFailure records a cleanup
+     *        failure during rollback without masking the original error. Called
+     *        with the exception and a context saying what could not be cleaned;
+     *        the production gateway stamps the milpac identity onto it and
+     *        forwards to \XF::logException.
      */
     public function __construct(
-        private $logException
+        private $logFailure
     ) {}
 
     /**
@@ -120,7 +122,7 @@ class CitationAttacher
             // An orphaned data file is harmless (record_id autoincrements, so a
             // re-run never collides with it) but wasteful; leave a breadcrumb
             // and carry on. The original failure still gets re-thrown.
-            ($this->logException)($cleanup, 'Cav7/EnlistmentDefaults: citation file cleanup failed: ');
+            ($this->logFailure)($cleanup, 'citation file cleanup failed');
         }
 
         try
@@ -132,7 +134,7 @@ class CitationAttacher
             // The row could not be rolled back, so a citationless PUC may stick
             // and the idempotency guard would skip it forever. Record that, but
             // still surface the original attach failure as the cause.
-            ($this->logException)($rollback, 'Cav7/EnlistmentDefaults: award rollback after citation failure failed: ');
+            ($this->logFailure)($rollback, 'award rollback after citation failure failed');
         }
 
         throw $original;

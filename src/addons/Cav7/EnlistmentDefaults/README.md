@@ -88,6 +88,14 @@ citation file) leaves new milpacs missing part of the set until someone reads th
 error log, so check it as part of routine maintenance. This matches the
 [Cav7/RosterAudit](../RosterAudit/README.md) policy.
 
+**The error log is the only failure surface**, which is why an entry has to be
+enough on its own. Each one names the milpac (`relation_id`) and the member
+(`user_id`) it belongs to alongside the PUC date that dropped, and carries the
+exception with its class and stack trace, so a dropped grant can be traced to a
+member and granted by hand. There is no config validation, health-check cron, or
+notification; see
+[docs/adr/0002-error-log-is-the-only-failure-surface.md](docs/adr/0002-error-log-is-the-only-failure-surface.md).
+
 **Insert-only.** The hook is on the milpac entity's post-save, gated on insert.
 A move (`NF\Rosters\Service\Profile\Mover`) and an edit both save an existing
 row, so they never trigger. "New" means a new milpac row on this site, which also

@@ -58,8 +58,14 @@ interface EnlistmentGateway
     public function writeServiceRecord(int $recordTypeId, string $body, int $recordDate): void;
 
     /**
-     * Log a message to the XF error log. A grant or record-write failure is
+     * Record a failure in the XF error log. A grant or record-write failure is
      * logged here and swallowed, so enlistment never blocks.
+     *
+     * The exception is passed whole rather than flattened to its message, so
+     * the entry keeps the class and stack trace. $context says what was being
+     * done ('failed to grant PUC for 2003-03-18'); the implementation stamps
+     * the milpac the failure belongs to, since it is the side that holds the
+     * entity — that is what makes a dropped grant traceable to a member.
      */
-    public function logError(string $message): void;
+    public function logFailure(\Throwable $e, string $context): void;
 }

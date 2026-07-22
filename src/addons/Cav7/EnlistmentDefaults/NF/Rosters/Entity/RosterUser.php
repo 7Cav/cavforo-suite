@@ -35,9 +35,12 @@ class RosterUser extends XFCP_RosterUser
             return;
         }
 
+        // Built before the try so the catch can log through it. The constructor
+        // only holds onto the entity, so there is nothing here that can fail.
+        $gateway = new RosterUserGateway($this);
+
         try
         {
-            $gateway = new RosterUserGateway($this);
             (new EnlistmentApplier($gateway))->apply();
         }
         catch (\Throwable $e)
@@ -45,11 +48,10 @@ class RosterUser extends XFCP_RosterUser
             // Last-resort guard. The applier already isolates per-grant and the
             // record write; this catches anything before the loop (option reads,
             // award-date lookup) so enlistment can never be blocked.
-            \XF::logException(
-                $e,
-                false,
-                'Cav7/EnlistmentDefaults: enlistment defaults failed: '
-            );
+            //
+            // Logged through the gateway so this entry names the milpac exactly
+            // as a dropped grant does — one identity stamp, one place.
+            $gateway->logFailure($e, 'enlistment defaults failed');
         }
     }
 }
