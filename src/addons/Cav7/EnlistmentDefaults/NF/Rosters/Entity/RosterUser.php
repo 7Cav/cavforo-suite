@@ -60,6 +60,16 @@ class RosterUser extends XFCP_RosterUser
             // creation failed over a logging fault. Nothing is left to log the
             // lost entry to, so it is dropped: a guard of last resort has to hold
             // even when the log seam is what broke.
+            //
+            // What it saves is the milpac save, and only that. The applier's own
+            // logFailure calls are not guarded, so the first throw out of the
+            // seam escapes the grant loop and apply() together: the grants after
+            // it are never attempted and the enlistment record is never written.
+            // A broken error log costs the enlistment defaults, not the
+            // enlistment. FailureLoggingTest pins that blast radius, so extending
+            // the guarding to the applier's calls — which would buy the rest of
+            // the set and the record back, in exchange for failures nothing tries
+            // to log at all — has to be taken as the policy choice it is.
             try
             {
                 $gateway->logFailure($e, 'enlistment defaults failed');

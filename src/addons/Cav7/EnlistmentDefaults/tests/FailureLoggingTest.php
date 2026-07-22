@@ -235,12 +235,29 @@ namespace {
         public static bool $optionsThrow = false;
 
         /**
+         * The same pre-loop failure, raised \Exception-side. Pinning the guard
+         * on \Error alone would trade one blind spot for its mirror image:
+         * catch (\Error) would survive the suite, and the everyday production
+         * failure here — an XF\Db\Exception out of the award-date lookup — is an
+         * \Exception. Both flags together pin it against either narrowing.
+         */
+        public static bool $optionsThrowException = false;
+
+        /**
          * Set to make the error log itself refuse the write. Raised as an \Error
          * for the same reason the other fixtures are: the guard around the
          * entity extension's own log call is the last one there is, so it has to
          * hold for the whole \Throwable range and not just \Exception.
          */
         public static bool $logThrows = false;
+
+        /**
+         * The same refusal, raised \Exception-side — an XF\Db\Exception from the
+         * xf_error_log insert is the realistic one, and a guard of last resort
+         * that only held for \Error would not be one. Paired with $logThrows for
+         * the same both-directions reason as $optionsThrowException.
+         */
+        public static bool $logThrowsException = false;
 
         public static ?object $serviceStub = null;
 
@@ -250,6 +267,10 @@ namespace {
                 throw new \Error('error log write failed');
             }
 
+            if (self::$logThrowsException) {
+                throw new \RuntimeException('error log write failed');
+            }
+
             self::$logged[] = ['exception' => $e, 'rollback' => $rollback, 'prefix' => $messagePrefix];
         }
 
@@ -257,6 +278,10 @@ namespace {
         {
             if (self::$optionsThrow) {
                 throw new \Error('option read failed');
+            }
+
+            if (self::$optionsThrowException) {
+                throw new \RuntimeException('option read failed');
             }
 
             return (object) self::$options;
@@ -460,10 +485,13 @@ namespace Cav7\EnlistmentDefaults\Tests {
         $entry['prefix']
     );
     // The one entry whose whole prefix is known and stable, so it is worth
-    // spelling out in full. XF concatenates the prefix with the exception
-    // message, and the trailing ': ' is the only thing keeping the two apart —
-    // without it the line reads '...failed to grant PUC for 2003-03-18citation
-    // image rejected'. Nothing else in this file would notice it going missing.
+    // spelling out in full, separator included. XF\Error::logException normalizes
+    // the prefix before it concatenates — trim() then a single space — so the
+    // trailing ': ' is not what keeps the prefix and the exception message apart;
+    // the space XF adds does that. What the ': ' buys is the colon: drop it and
+    // the line reads '...failed to grant PUC for 2003-03-18 citation image
+    // rejected', with nothing marking where the context ends and the cause
+    // begins. Nothing else in this file would notice it going missing.
     check(
         'the prefix is exactly the addon tag, the identity, the context and a separator',
         $entry['prefix'] === 'Cav7/EnlistmentDefaults: milpac ' . MILPAC_RELATION_ID
@@ -526,6 +554,28 @@ namespace Cav7\EnlistmentDefaults\Tests {
         'the outer catch holds for an \Error, which no catch (\Exception) would have seen',
         count(\XF::$logged) === 1 && !\XF::$logged[0]['exception'] instanceof \Exception,
         count(\XF::$logged) === 1 ? get_class(\XF::$logged[0]['exception']) : 'nothing logged'
+    );
+
+    // The same pre-loop failure from the other half of the \Throwable range. The
+    // \Error case above is the vendor-drift one; this is the everyday one — the
+    // award-date lookup hitting an XF\Db\Exception. Proving only \Error would
+    // leave the guard narrowable to catch (\Error), which is the mirror image of
+    // the blind spot the \Error fixture was added to close.
+    \XF::$logged = [];
+    \XF::$optionsThrowException = true;
+
+    $threw = postSaveThrew(enlistingMilpac());
+
+    \XF::$optionsThrowException = false;
+
+    check('an \Exception before the grant loop never blocks the milpac save either', !$threw);
+    check(
+        'the outer catch holds for an \Exception too, and stamps it the same way',
+        count(\XF::$logged) === 1
+            && allStamped(\XF::$logged)
+            && \XF::$logged[0]['exception'] instanceof \Exception
+            && \XF::$logged[0]['exception']->getMessage() === 'option read failed',
+        prefixes(\XF::$logged) ?: 'nothing logged'
     );
 
     // An existing milpac being saved is not an enlistment: nothing runs, so
@@ -704,7 +754,8 @@ namespace Cav7\EnlistmentDefaults\Tests {
     \XF::$serviceStub = null;   // every citation rejected, so every grant fails
     \XF::$logThrows = true;
 
-    $threwOnBrokenLog = postSaveThrew(enlistingMilpac());
+    $brokenLog = enlistingMilpac();
+    $threwOnBrokenLog = postSaveThrew($brokenLog);
 
     // The same fault reaching the outer catch directly, with no inner catch in
     // front of it: the option read blows up before the grant loop.
@@ -718,6 +769,50 @@ namespace Cav7\EnlistmentDefaults\Tests {
     check(
         'a pre-loop failure the error log itself refuses still lets the milpac save through',
         !$threwOnBrokenLogBeforeLoop
+    );
+
+    // What the milpac save surviving costs, spelled out. The applier's own
+    // per-grant logFailure call is deliberately NOT guarded, so the throw out of
+    // it escapes the loop and apply() both: grant 1 is the only one attempted and
+    // the enlistment record is never written. That is the price of the broken
+    // seam, and it is pinned here so guarding the applier's log call — which
+    // would let all six grants and the record through — cannot be mistaken for a
+    // no-op refactor. Changing it is a policy decision, not a tidy-up.
+    check(
+        'a broken log seam costs the grants after the first one',
+        count($brokenLog->awards) === 1,
+        'award rows taken: ' . count($brokenLog->awards)
+    );
+    check(
+        'a broken log seam costs the enlistment record write as well',
+        $brokenLog->serviceRecords === [],
+        'service records taken: ' . count($brokenLog->serviceRecords)
+    );
+
+    // The broken seam from the \Exception half of the range. The guard around the
+    // entity extension's own log call is the last one there is; proving it only
+    // against \Error would let it be narrowed to catch (\Error), and an
+    // XF\Db\Exception from the xf_error_log insert would then fail the milpac
+    // save — the recruiter told the creation failed, over a logging fault.
+    \XF::$logged = [];
+    \XF::$serviceStub = null;
+    \XF::$logThrowsException = true;
+
+    $threwOnBrokenLogException = postSaveThrew(enlistingMilpac());
+
+    \XF::$optionsThrow = true;
+    $threwOnBrokenLogExceptionBeforeLoop = postSaveThrew(enlistingMilpac());
+    \XF::$optionsThrow = false;
+
+    \XF::$logThrowsException = false;
+
+    check(
+        'a failing grant an \Exception-throwing error log refuses still lets the milpac save through',
+        !$threwOnBrokenLogException
+    );
+    check(
+        'a pre-loop failure an \Exception-throwing error log refuses still lets the milpac save through',
+        !$threwOnBrokenLogExceptionBeforeLoop
     );
 
     // --- Summary ------------------------------------------------------------

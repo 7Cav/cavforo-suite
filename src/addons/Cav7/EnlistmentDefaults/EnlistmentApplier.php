@@ -30,8 +30,13 @@ class EnlistmentApplier
 
     /**
      * Grant each still-missing PUC date, in earned order. Each grant is
-     * isolated: a failure is logged and the loop continues, so a single bad
-     * citation file or save cannot stop the rest of the set.
+     * isolated as far as the log seam holds: a failure is logged and the loop
+     * continues, so a single bad citation file or save cannot stop the rest of
+     * the set. The logging itself is what is left unguarded — a throw out of
+     * logFailure escapes both this loop and apply(), taking the remaining grants
+     * and the enlistment record with it, and only the milpac save survives (on
+     * the entity extension's last-resort catch). FailureLoggingTest pins that
+     * blast radius; the note on that catch has the reasoning.
      */
     private function grantPucSet(): void
     {
