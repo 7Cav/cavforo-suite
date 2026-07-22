@@ -2,14 +2,19 @@
 
 /**
  * Runs the milpac date template modifications the way XenForo runs them, over
- * committed copies of the markup they have to survive: the vendor's own
+ * the captured date rows in tests/fixtures/ — the vendor's own
  * nf_rosters_user_view and the edited copy a board style carries.
  *
- * MilpacDateWiringTest pins the shape of the modification records; this asks the
- * only question that matters in production — after XenForo applies them, does
- * the date cell still go through the UTC getter? An exact-string find answered
- * yes for the vendor template and no for the style copy, and nothing failed
- * (issue #106).
+ * MilpacDateWiringTest pins the shape of the modification records; this asks
+ * what those records do to markup: after XenForo applies them, does the date
+ * cell go through the UTC getter? RosterPatch's README ("The date cells are
+ * matched by pattern") is where that question and its history live.
+ *
+ * What this pins is the patterns, against markup taken from NF/Rosters 2.1.5.
+ * The fixtures are frozen copies, not the installed add-on, and CI has neither
+ * XenForo nor a vendor tree — so a later NF/Rosters release that moves the date
+ * cell leaves the fixtures matching and this suite green. Recapture them when
+ * NF/Rosters is upgraded.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -93,7 +98,7 @@ function applyModification(array $mod, string $template): array
                 return [$template, 'error_invalid_regex'];
             }
 
-            $count = @preg_match_all($find, $template, $null);
+            $count = @preg_match_all($find, $template, $matches);
             if ($count === false) {
                 return [$template, 'error_invalid_regex'];
             }
@@ -107,12 +112,12 @@ function applyModification(array $mod, string $template): array
 $mods = loadModifications($root);
 
 // The date cell each modification owns: the UTC getter it has to install, a
-// pattern for the viewer-timezone call it has to remove, and the spellings of
-// that call it has to cope with.
+// pattern that finds a viewer-timezone date() call the modification failed to
+// remove, and the spellings of that call it has to cope with.
 $dateCells = [
     'cav7RosterPatchRecordDateUtc' => [
-        'getter'   => '{$record.getRecordDate()}',
-        'vendorRe' => '/date\s*\(\s*\$record\.record_date/',
+        'getter'          => '{$record.getRecordDate()}',
+        'survivingCallRe' => '/date\s*\(\s*\$record\.record_date/',
         'spellings' => [
             'the vendor spelling'               => "{{ date(\$record.record_date, 'Y-m-d') }}",
             "the style's trailing 'Z' argument" => "{{ date(\$record.record_date, 'Y-m-d', 'Z' )}}",
@@ -123,8 +128,8 @@ $dateCells = [
         ],
     ],
     'cav7RosterPatchAwardDateUtc' => [
-        'getter'   => '{$award.getAwardDate()}',
-        'vendorRe' => '/date\s*\(\s*\$award\.award_date/',
+        'getter'          => '{$award.getAwardDate()}',
+        'survivingCallRe' => '/date\s*\(\s*\$award\.award_date/',
         'spellings' => [
             'the vendor spelling'            => "{{ date(\$award.award_date, 'Y-m-d') }}",
             "a trailing 'Z' argument"        => "{{ date(\$award.award_date, 'Y-m-d', 'Z' )}}",
@@ -136,14 +141,16 @@ $dateCells = [
     ],
 ];
 
-// --- both dates render in UTC in the vendor template and in the style copy ---
-// "vendor" is the markup NF/Rosters 2.1.5 ships, so a vendor update that moves
-// the date cell fails here instead of shipping a modification that matches
-// nothing. "style-edited" is the copy the board style carries: a third argument
-// on the record-date call, which is what an exact-string find missed.
+// Nothing below can mean anything if a modification failed to load, so say so
+// once here rather than once per fixture. Their shape is MilpacDateWiringTest's.
+foreach (array_keys($dateCells) as $key) {
+    check("$key loaded as an enabled modification", isset($mods[$key]));
+}
+
+// --- both dates render in UTC in the captured vendor rows and the style copy -
 $fixtures = [
-    'the vendor template'      => 'nf_rosters_user_view.vendor.html',
-    'the style-edited copy'    => 'nf_rosters_user_view.style-edited.html',
+    'the captured vendor rows' => 'nf_rosters_user_view.vendor-2.1.5.html',
+    'the style-edited copy'    => 'nf_rosters_user_view.style-edited-2.1.5.html',
 ];
 
 foreach ($fixtures as $fixtureLabel => $file) {
@@ -152,7 +159,6 @@ foreach ($fixtures as $fixtureLabel => $file) {
 
     foreach ($dateCells as $key => $cell) {
         $mod = $mods[$key] ?? null;
-        check("$key is present and enabled", $mod !== null);
         if ($mod === null) {
             continue;
         }
@@ -172,7 +178,7 @@ foreach ($fixtures as $fixtureLabel => $file) {
         );
         check(
             "$key leaves no viewer-timezone date() call in $fixtureLabel",
-            !preg_match($cell['vendorRe'], $result),
+            !preg_match($cell['survivingCallRe'], $result),
             'a surviving date() call keeps the per-viewer shift'
         );
 

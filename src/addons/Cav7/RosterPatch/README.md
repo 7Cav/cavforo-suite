@@ -2,6 +2,8 @@
 
 Behavioural fixes for the [NF/Rosters](https://nixfifty.com/products/rosters-and-personnel-status-reports.5/) XenForo add-on, built as a companion add-on. It attaches to the vendor code through XenForo class extensions and ships none of the vendor's code, so NF/Rosters can be updated independently.
 
+The repository is the one place that does quote the vendor: `tests/fixtures/` holds a handful of lines of NF/Rosters' `nf_rosters_user_view` template, so the template modifications can be tested without a XenForo install. `tools/package-addon.sh` leaves `tests/` out of the release zip, so none of it reaches an installed board.
+
 This is the home for NF/Rosters *behaviour* patches. Its sibling, [RosterAudit](../RosterAudit/), records an audit trail and guards the two gaps that protect that trail; the fixes here change how the roster behaves and carry their own on/off switch, so a misbehaving fix can be disabled without losing audit history.
 
 ## What it does
@@ -50,7 +52,9 @@ For release builds, generate hashes first: `php cmd.php xf-addon:build-release C
 
 **The hook runs inside the position's save.** The re-sync happens in `_postSave`, within the same transaction as the position edit, mirroring how the vendor's Adder and Editor apply grants. A position holds at most a handful of members, so the per-save cost is small.
 
-**The date cells are matched by pattern, not by exact vendor markup.** A style can carry its own edited copy of `nf_rosters_user_view`. If that copy differs from the vendor's by so much as a space, an exact find matches nothing in it, and XenForo does not treat that as an error: the add-on still reports as installed and active while that style renders the date in the viewer's timezone. Both modifications are `preg_replace` patterns over the `date()` call itself. The tests apply them the way XenForo applies them, to committed copies of the vendor template and of an edited style copy, so a find that stops matching fails the suite instead of shipping.
+**The date cells are matched by pattern, not by exact vendor markup.** A style can carry its own edited copy of `nf_rosters_user_view`. If that copy differs from the vendor's by so much as a space, an exact find matches nothing in it, and XenForo does not treat that as an error: the add-on still reports as installed and active while that style renders the date in the viewer's timezone. Both modifications are `preg_replace` patterns over the `date()` call itself. The tests apply them the way XenForo applies them, over the date rows captured in `tests/fixtures/` from NF/Rosters 2.1.5 and from the style's edited copy of the same rows.
+
+That pins the patterns against markup we have actually seen: change a find until it stops matching either copy and the suite fails. What it cannot do is pin them against the add-on you have installed. CI has no XenForo and no vendor tree, so a NF/Rosters release that moved the date cell would leave the fixtures matching and the suite green while the board went back to per-viewer dates. Recapture the fixtures when NF/Rosters is upgraded, or when the style's copy is edited; the filenames carry the vendor version each was taken from.
 
 **If a vendor update adds its own re-sync, this add-on becomes redundant** and can be dropped.
 

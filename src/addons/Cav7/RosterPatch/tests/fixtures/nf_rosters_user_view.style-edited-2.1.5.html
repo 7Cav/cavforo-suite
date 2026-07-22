@@ -1,0 +1,18 @@
+<!--
+    Provenance: the same two rows as they stand in the board style that
+    customises nf_rosters_user_view, captured against NF/Rosters 2.1.5. The
+    service-record cell carries the style's hand-added third date() argument,
+    'Z'. Recapture from the style's own copy when either the style or
+    NF/Rosters changes; the filename carries the version this copy came from.
+-->
+                    <xf:foreach loop="$serviceRecord" value="$record">
+                        <xf:datarow>
+                            <xf:cell>{{ date($record.record_date, 'Y-m-d', 'Z' )}}</xf:cell>
+                        </xf:datarow>
+                    </xf:foreach>
+
+                    <xf:foreach loop="$awards" value="$award">
+                        <xf:datarow>
+                            <xf:cell>{{ date($award.award_date, 'Y-m-d') }}</xf:cell>
+                        </xf:datarow>
+                    </xf:foreach>

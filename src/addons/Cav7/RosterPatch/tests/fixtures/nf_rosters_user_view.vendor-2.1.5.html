@@ -1,0 +1,18 @@
+<!--
+    Provenance: the two milpac date rows as they stand in the
+    nf_rosters_user_view template shipped with NF/Rosters 2.1.5
+    (_data/templates.xml), quoted only as far as the template modifications
+    reach. Recapture from the installed template when NF/Rosters is upgraded;
+    the filename carries the version this copy came from.
+-->
+                    <xf:foreach loop="$serviceRecord" value="$record">
+                        <xf:datarow>
+                            <xf:cell>{{ date($record.record_date, 'Y-m-d') }}</xf:cell>
+                        </xf:datarow>
+                    </xf:foreach>
+
+                    <xf:foreach loop="$awards" value="$award">
+                        <xf:datarow>
+                            <xf:cell>{{ date($award.award_date, 'Y-m-d') }}</xf:cell>
+                        </xf:datarow>
+                    </xf:foreach>
