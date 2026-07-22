@@ -1,0 +1,29 @@
+[     312ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:8081/account/connected-accounts:0
+[   17092ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:8081/account/connected-accounts/:0
+[  146894ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8081/job.php:0
+[  146898ms] TypeError: Failed to fetch
+    at h (http://localhost:8081/js/xf/core-compiled.js?_v=ef488389:98:180)
+[  146963ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:8081/account/connected-accounts:0
+[  147034ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8081/job.php:0
+[  147033ms] TypeError: Failed to fetch
+    at h (http://localhost:8081/js/xf/core-compiled.js?_v=ef488389:98:180)
+[  148592ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:8081/account/connected-accounts/:0
+[  148599ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8081/job.php:0
+[  148599ms] TypeError: Failed to fetch
+    at h (http://localhost:8081/js/xf/core-compiled.js?_v=ef488389:98:180)
+[  165635ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8081/job.php:0
+[  165635ms] TypeError: Failed to fetch
+    at h (http://localhost:8081/js/xf/core-compiled.js?_v=ef488389:98:180)
+[  165638ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:8081/account/connected-accounts/:0
+[  190517ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8081/job.php:0
+[  190518ms] TypeError: Failed to fetch
+    at h (http://localhost:8081/js/xf/core-compiled.js?_v=0b89c36e:98:180)
+[  190525ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:8081/account/connected-accounts:0
+[  190926ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:8081/account/connected-accounts/:0
+[  190945ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8081/job.php:0
+[  190944ms] TypeError: Failed to fetch
+    at h (http://localhost:8081/js/xf/core-compiled.js?_v=0b89c36e:98:180)
+[  217779ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8081/job.php:0
+[  217779ms] TypeError: Failed to fetch
+    at h (http://localhost:8081/js/xf/core-compiled.js?_v=2fa29ef6:98:180)
+[  217800ms] [INFO] Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner. @ http://localhost:8081/account/connected-accounts:0

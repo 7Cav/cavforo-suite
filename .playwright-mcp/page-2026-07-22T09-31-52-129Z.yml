@@ -1,0 +1,85 @@
+- generic [ref=f5e3]:
+  - generic [ref=f5e4]:
+    - navigation [ref=f5e7]:
+      - generic [ref=f5e8]:
+        - link [ref=f5e10] [cursor=pointer]:
+          - /url: https://7cav.us
+          - img "[STAGING] 7th Cavalry Gaming" [ref=f5e11]
+        - list [ref=f5e14]:
+          - listitem [ref=f5e15]:
+            - generic [ref=f5e16]:
+              - link "Forums" [ref=f5e17] [cursor=pointer]:
+                - /url: /forums/
+              - button "Toggle expanded"
+          - listitem [ref=f5e18]:
+            - link "Milpacs" [ref=f5e20] [cursor=pointer]:
+              - /url: /rosters/
+          - listitem [ref=f5e21]:
+            - link "Calendar" [ref=f5e23] [cursor=pointer]:
+              - /url: /events/
+          - listitem [ref=f5e24]:
+            - button "Resources" [ref=f5e26] [cursor=pointer]
+          - listitem [ref=f5e28]:
+            - button "Play" [ref=f5e30] [cursor=pointer]
+        - generic [ref=f5e32]:
+          - generic [ref=f5e33]:
+            - link "Cav7Probe158" [ref=f5e34] [cursor=pointer]:
+              - /url: /account/
+            - link "Direct messages" [ref=f5e36] [cursor=pointer]:
+              - /url: /direct-messages/
+            - text: ·
+            - link "Alerts" [ref=f5e38] [cursor=pointer]:
+              - /url: /account/alerts
+            - text: · ·
+          - link "Search" [ref=f5e41] [cursor=pointer]:
+            - /url: /search/
+    - generic [ref=f5e44]:
+      - list [ref=f5e45]:
+        - listitem [ref=f5e46]:
+          - generic [ref=f5e48]:
+            - link "Dismiss notice" [ref=f5e49] [cursor=pointer]:
+              - /url: /account/dismiss-notice?notice_id=13
+            - text: Welcome to the forums Cav7Probe158! If you're an enlistee trying to find the status of or reply to your enlistment, please visit our enlistment papers subforum
+            - link "here" [ref=f5e50] [cursor=pointer]:
+              - /url: https://7cav.us/forums/325/
+            - text: . We're glad to have you and we hope you enjoy your stay!
+      - generic [ref=f5e53]:
+        - heading "Oops! We ran into some problems." [level=1] [ref=f5e56]
+        - generic [ref=f5e57]: An error occurred while the page was being generated. Please try again later.
+  - contentinfo [ref=f5e59]:
+    - generic [ref=f5e60]:
+      - generic [ref=f5e63]:
+        - list [ref=f5e65]:
+          - listitem [ref=f5e66]: Change width
+        - list [ref=f5e68]:
+          - listitem [ref=f5e69]:
+            - link "Terms and rules" [ref=f5e70] [cursor=pointer]:
+              - /url: /help/terms/
+          - listitem [ref=f5e71]:
+            - link "Privacy policy" [ref=f5e72] [cursor=pointer]:
+              - /url: /help/privacy-policy/
+          - listitem [ref=f5e73]:
+            - link "Help" [ref=f5e74] [cursor=pointer]:
+              - /url: /help/
+          - listitem [ref=f5e75]:
+            - link "Home" [ref=f5e76] [cursor=pointer]:
+              - /url: https://7cav.us
+          - listitem [ref=f5e77]:
+            - link "RSS" [ref=f5e78] [cursor=pointer]:
+              - /url: /forums/-/index.rss
+      - generic [ref=f5e87]:
+        - link [ref=f5e88] [cursor=pointer]:
+          - /url: https://xenforo.com
+          - text: Community platform by XenForo
+          - superscript [ref=f5e89]: ®
+          - text: © 2010-2026 XenForo Ltd.
+        - generic [ref=f5e90]:
+          - text: "Design by:"
+          - link "Pixel Exit" [ref=f5e91] [cursor=pointer]:
+            - /url: https://pixelexit.com
+        - generic [ref=f5e92]:
+          - link "XenPorta 2 PRO" [ref=f5e93] [cursor=pointer]:
+            - /url: https://xenforo.com/community/resources/6023/
+          - text: © Jason Axelrod of
+          - link "8WAYRUN" [ref=f5e94] [cursor=pointer]:
+            - /url: https://8wayrun.com/

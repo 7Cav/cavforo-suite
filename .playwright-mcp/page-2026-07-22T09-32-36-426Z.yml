@@ -1,0 +1,122 @@
+- generic [ref=f6e1]:
+  - generic [ref=f6e3]:
+    - generic [ref=f6e4]:
+      - navigation [ref=f6e7]:
+        - generic [ref=f6e8]:
+          - link [ref=f6e10] [cursor=pointer]:
+            - /url: https://7cav.us
+            - img "[STAGING] 7th Cavalry Gaming" [ref=f6e11]
+          - list [ref=f6e14]:
+            - listitem [ref=f6e15]:
+              - generic [ref=f6e16]:
+                - link "Forums" [ref=f6e17] [cursor=pointer]:
+                  - /url: /forums/
+                - button "Toggle expanded"
+            - listitem [ref=f6e18]:
+              - link "Milpacs" [ref=f6e20] [cursor=pointer]:
+                - /url: /rosters/
+            - listitem [ref=f6e21]:
+              - link "Calendar" [ref=f6e23] [cursor=pointer]:
+                - /url: /events/
+            - listitem [ref=f6e24]:
+              - button "Resources" [ref=f6e26] [cursor=pointer]
+            - listitem [ref=f6e28]:
+              - button "Play" [ref=f6e30] [cursor=pointer]
+          - generic [ref=f6e32]:
+            - generic [ref=f6e33]:
+              - link "Log in" [ref=f6e34] [cursor=pointer]:
+                - /url: /login/
+              - link "Register" [ref=f6e35] [cursor=pointer]:
+                - /url: /register/
+            - link "Search" [ref=f6e37] [cursor=pointer]:
+              - /url: /search/
+      - generic [ref=f6e43]:
+        - heading "Log in" [level=1] [ref=f6e46]
+        - generic [ref=f6e48]:
+          - generic [ref=f6e49]:
+            - generic [ref=f6e50]:
+              - generic [ref=f6e51]:
+                - generic [ref=f6e52]:
+                  - term [ref=f6e53]:
+                    - generic [ref=f6e54]: "Your name or email address:"
+                  - definition [ref=f6e55]:
+                    - textbox "Your name or email address:" [active] [ref=f6e56]
+                - generic [ref=f6e57]:
+                  - term [ref=f6e58]:
+                    - generic [ref=f6e59]: "Password:"
+                  - definition [ref=f6e60]:
+                    - generic [ref=f6e62]:
+                      - textbox "Password:" [ref=f6e63]
+                      - generic [ref=f6e65] [cursor=pointer]:
+                        - checkbox "Show" [ref=f6e66]
+                        - text: Show
+                    - link "Forgot your password?" [ref=f6e68] [cursor=pointer]:
+                      - /url: /lost-password/
+                - generic [ref=f6e69]:
+                  - term [ref=f6e70]
+                  - definition [ref=f6e71]:
+                    - list [ref=f6e72]:
+                      - listitem [ref=f6e73]:
+                        - generic [ref=f6e74]:
+                          - checkbox "Stay logged in" [checked] [ref=f6e75]
+                          - text: Stay logged in
+              - definition [ref=f6e78]:
+                - button "Log in" [ref=f6e82] [cursor=pointer]
+            - generic [ref=f6e88]:
+              - text: Don't have an account?
+              - link "Register now" [ref=f6e89] [cursor=pointer]:
+                - /url: /register/
+          - emphasis [ref=f6e93]: or
+          - generic [ref=f6e98]:
+            - term [ref=f6e99]:
+              - generic [ref=f6e100]: "Log in using:"
+            - definition [ref=f6e101]:
+              - list [ref=f6e102]:
+                - listitem [ref=f6e103]:
+                  - button "Passkey" [ref=f6e105] [cursor=pointer]
+    - contentinfo [ref=f6e107]:
+      - generic [ref=f6e108]:
+        - generic [ref=f6e111]:
+          - list [ref=f6e113]:
+            - listitem [ref=f6e114]: Change width
+          - list [ref=f6e116]:
+            - listitem [ref=f6e117]:
+              - link "Terms and rules" [ref=f6e118] [cursor=pointer]:
+                - /url: /help/terms/
+            - listitem [ref=f6e119]:
+              - link "Privacy policy" [ref=f6e120] [cursor=pointer]:
+                - /url: /help/privacy-policy/
+            - listitem [ref=f6e121]:
+              - link "Help" [ref=f6e122] [cursor=pointer]:
+                - /url: /help/
+            - listitem [ref=f6e123]:
+              - link "Home" [ref=f6e124] [cursor=pointer]:
+                - /url: https://7cav.us
+            - listitem [ref=f6e125]:
+              - link "RSS" [ref=f6e126] [cursor=pointer]:
+                - /url: /forums/-/index.rss
+        - generic [ref=f6e135]:
+          - link [ref=f6e136] [cursor=pointer]:
+            - /url: https://xenforo.com
+            - text: Community platform by XenForo
+            - superscript [ref=f6e137]: ®
+            - text: © 2010-2026 XenForo Ltd.
+          - generic [ref=f6e138]:
+            - text: "Design by:"
+            - link "Pixel Exit" [ref=f6e139] [cursor=pointer]:
+              - /url: https://pixelexit.com
+          - generic [ref=f6e140]:
+            - link "XenPorta 2 PRO" [ref=f6e141] [cursor=pointer]:
+              - /url: https://xenforo.com/community/resources/6023/
+            - text: © Jason Axelrod of
+            - link "8WAYRUN" [ref=f6e142] [cursor=pointer]:
+              - /url: https://8wayrun.com/
+  - list [ref=f6e143]:
+    - listitem [ref=f6e144]:
+      - generic [ref=f6e145]:
+        - generic [ref=f6e146]: This site uses cookies to help personalise content, tailor your experience and to keep you logged in if you register. By continuing to use this site, you are consenting to our use of cookies.
+        - generic [ref=f6e147]:
+          - link "Accept" [ref=f6e148] [cursor=pointer]:
+            - /url: /account/dismiss-notice
+          - link "Learn more…" [ref=f6e153] [cursor=pointer]:
+            - /url: /help/cookies

@@ -86,9 +86,9 @@ first, and what the two guards are there to protect, is in
 [ADR-0005](docs/adr/0005-honour-a-resync-request-without-checking-divergence.md).
 
 The two outcomes that are not refusals — the resync was queued, one was already
-pending — reach the member as a flash message, which is a JavaScript path. XenForo
-discards a redirect's message on any other path, and does so for every redirect in
-the product. With JavaScript off a press still queues, and the page it lands on
+pending — reach the member as a flash message, which is a JavaScript path. The
+renderer a browser gets discards a redirect's message, and does so for every redirect
+in the product. With JavaScript off a press still queues, and the page it lands on
 still shows the pending line beside the button, but the message naming what happened
 is gone. Why that ships rather than getting a mechanism of its own is in
 [ADR-0006](docs/adr/0006-let-the-resync-reply-follow-xenforos-own-flash-message-behaviour.md).
@@ -139,11 +139,16 @@ true. Mostly that is NF/Discord: how it queues a per-user sync, what it stores a
 one, and what it reads back. The resync action also leans on XenForo core — how the router builds an
 action name out of a route's action prefix, how the flood check treats the bypass
 permission, and how wide `xf_flood_check.flood_action` is — so a core upgrade can
-break it as readily as a vendor one. Each is checked at the seam where it would
-break the addon rather than reimplemented in the test suite, so an upgrade on either
-side that breaks one is caught rather than discovered in production. They are listed
-in the docblocks of `NF/Discord/ApiMessage/SyncUser.php` and
-`XF/Pub/Controller/Account.php`.
+break it as readily as a vendor one. They are listed in the docblocks of
+`NF/Discord/ApiMessage/SyncUser.php` and `XF/Pub/Controller/Account.php`.
+
+Be clear about what the test suite does with them. `tests/WiringTest.php` runs with
+no XenForo and no vendor on the include path, and reads only files inside this addon,
+so it pins **this addon's side** of each seam: an edit here that stops matching the
+assumption fails the build. It cannot observe the other side. Rename
+`queueSyncJobsForUser()`, drop `getDiscordConfiguration()`, edit the vendor template,
+or narrow `xf_flood_check.flood_action`, and the suite stays green. Those are found
+on a dev stack, which is why the list below exists.
 
 ## Tests
 
@@ -154,8 +159,21 @@ stack to run: both class-extension registrations, the method overrides, the resy
 action with its three preconditions and two guards, and the template modification and
 phrases that put the button on the page.
 
-One check exists only on a dev-stack run: whether the template modification still
-lands, because the vendor template is not in this repo for CI to match it against.
+### Re-run these on a dev stack after an NF/Discord or XenForo upgrade
+
+CI cannot see any of them, and each one fails silently in production if it breaks.
+
+1. The button renders on the connected-accounts page for a linked member. This is the
+   template modification still finding its anchor in the vendor template, which is the
+   check most likely to break and the one CI is blindest to.
+2. A press lands a per-user sync row in `xf_nf_discord_queue` for that member.
+3. A second press inside five minutes is refused, naming the time remaining.
+4. The pending note renders beside the button once a row is queued.
+
+Getting as far as 2 takes setup: the integration needs its credentials and at least
+one server row that is both active and carries a guild id, or the action refuses at a
+precondition and never reaches the queueing call. Put whatever you changed back
+afterwards.
 
 The role change itself is a different matter. A resync only moves roles once the
 queue drains, and draining it means real calls to Discord against a real guild, which

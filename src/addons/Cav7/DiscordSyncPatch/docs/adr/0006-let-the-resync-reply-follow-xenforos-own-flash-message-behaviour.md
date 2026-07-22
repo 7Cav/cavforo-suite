@@ -17,9 +17,11 @@ A redirect's message only survives as far as the renderer that handles the reply
 `XF\Mvc\Renderer\Json::renderRedirect()` puts it in the response body, where
 `js/xf/form.js` picks it up and calls `XF.flashMessage()`.
 `XF\Mvc\Renderer\Html::renderRedirect()` takes the same `$message` argument and does
-nothing with it: it sets the response code and a `Location` header, and returns. So
-the message reaches a member through JavaScript or it does not reach them at all,
-and that is true of every redirect in XenForo, not of this action.
+nothing with it: it sets the response code and a `Location` header, and returns.
+`Raw` behaves the same way, and `Xml` carries the message as `Json` does, but the
+renderer a browser gets is `Html` unless the request is an XHR. So the message
+reaches a member through JavaScript or it does not reach them at all, and that is
+true of every redirect in XenForo, not of this action.
 
 The form asks for the JavaScript path explicitly. It carries `ajax="true"` so the
 post goes through `js/xf/form.js`, and `data-force-flash-message="true"` so the
@@ -39,7 +41,8 @@ two redirect outcomes.
 Three things make that a smaller hole than it reads as.
 
 Every refusal is already visible without JavaScript. All five go out through
-`$this->error()`, which renders a full message page, so a member who is not linked,
+`$this->error()`, which `Html::renderErrors()` renders through the `XF:Error` view
+and the `error` template as a full page, so a member who is not linked,
 who presses on a forum with no credentials or no active server, who is inside the
 cooldown, or whose press queued nothing, is told why on any browser. The quiet path
 is the one where the press worked.
@@ -54,7 +57,8 @@ or not, and it changes it from the queue itself rather than from anything this
 action remembers.
 
 And a member with JavaScript off already gets a silent redirect from every other
-button on the forum. Giving this one action a session-backed message would make it
+button on the forum that replies with a redirect and a message. Actions that render
+a page of their own are unaffected; this is about the redirect path alone. Giving this one action a session-backed message would make it
 the only reply in the suite that behaves differently from the platform, and would
 add persistent state plus a second template modification to do it.
 

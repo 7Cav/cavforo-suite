@@ -1,0 +1,198 @@
+- generic [active] [ref=f10e1]:
+  - generic [ref=f10e3]:
+    - generic [ref=f10e4]:
+      - navigation [ref=f10e7]:
+        - generic [ref=f10e8]:
+          - link [ref=f10e10] [cursor=pointer]:
+            - /url: https://7cav.us
+            - img "[STAGING] 7th Cavalry Gaming" [ref=f10e11]
+          - list [ref=f10e14]:
+            - listitem [ref=f10e15]:
+              - generic [ref=f10e16]:
+                - link "Forums" [ref=f10e17] [cursor=pointer]:
+                  - /url: /forums/
+                - button "Toggle expanded"
+            - listitem [ref=f10e18]:
+              - link "Milpacs" [ref=f10e20] [cursor=pointer]:
+                - /url: /rosters/
+            - listitem [ref=f10e21]:
+              - link "Calendar" [ref=f10e23] [cursor=pointer]:
+                - /url: /events/
+            - listitem [ref=f10e24]:
+              - button "Resources" [ref=f10e26] [cursor=pointer]
+            - listitem [ref=f10e28]:
+              - button "Play" [ref=f10e30] [cursor=pointer]
+          - generic [ref=f10e32]:
+            - generic [ref=f10e33]:
+              - link "Cav7Probe158" [ref=f10e34] [cursor=pointer]:
+                - /url: /account/
+              - link "Direct messages" [ref=f10e36] [cursor=pointer]:
+                - /url: /direct-messages/
+              - text: ·
+              - link "Alerts" [ref=f10e38] [cursor=pointer]:
+                - /url: /account/alerts
+              - text: · ·
+            - link "Search" [ref=f10e41] [cursor=pointer]:
+              - /url: /search/
+      - generic [ref=f10e44]:
+        - list [ref=f10e45]:
+          - listitem [ref=f10e46]:
+            - generic [ref=f10e48]:
+              - link "Dismiss notice" [ref=f10e49] [cursor=pointer]:
+                - /url: /account/dismiss-notice?notice_id=13
+              - text: Welcome to the forums Cav7Probe158! If you're an enlistee trying to find the status of or reply to your enlistment, please visit our enlistment papers subforum
+              - link "here" [ref=f10e50] [cursor=pointer]:
+                - /url: https://7cav.us/forums/325/
+              - text: . We're glad to have you and we hope you enjoy your stay!
+        - generic [ref=f10e51]:
+          - generic [ref=f10e57]:
+            - generic [ref=f10e59]:
+              - heading "Your account" [level=3] [ref=f10e60]
+              - generic [ref=f10e61]:
+                - link "Your profile" [ref=f10e62] [cursor=pointer]:
+                  - /url: /members/12139/
+                - link "Alerts" [ref=f10e63] [cursor=pointer]:
+                  - /url: /account/alerts
+                - link "Reactions received" [ref=f10e64] [cursor=pointer]:
+                  - /url: /account/reactions
+                - link "Bookmarks" [ref=f10e65] [cursor=pointer]:
+                  - /url: /account/bookmarks
+              - heading "API Key Manager" [level=3] [ref=f10e66]
+              - link "API Key" [ref=f10e68] [cursor=pointer]:
+                - /url: /account/api-key
+              - heading "Settings" [level=3] [ref=f10e69]
+              - generic [ref=f10e70]:
+                - link "Account details" [ref=f10e71] [cursor=pointer]:
+                  - /url: /account/account-details
+                - link "Password and Security" [ref=f10e72] [cursor=pointer]:
+                  - /url: /account/security
+                - link "Privacy" [ref=f10e73] [cursor=pointer]:
+                  - /url: /account/privacy
+                - link "Preferences" [ref=f10e74] [cursor=pointer]:
+                  - /url: /account/preferences
+                - link "Signature" [ref=f10e75] [cursor=pointer]:
+                  - /url: /account/signature
+                - link "Connected accounts" [ref=f10e76] [cursor=pointer]:
+                  - /url: /account/connected-accounts/
+                - link "Applications" [ref=f10e77] [cursor=pointer]:
+                  - /url: /account/applications/
+                - link "Following" [ref=f10e78] [cursor=pointer]:
+                  - /url: /account/following
+                - link "Ignoring" [ref=f10e79] [cursor=pointer]:
+                  - /url: /account/ignored
+            - link "Log out" [ref=f10e83] [cursor=pointer]:
+              - /url: /logout/?t=1784712810%2C1552066fe4bae5f1f5dd0f83b0ae3e85
+          - generic [ref=f10e84]:
+            - generic [ref=f10e85]:
+              - list [ref=f10e86]:
+                - listitem [ref=f10e87]:
+                  - link "Your account" [ref=f10e88] [cursor=pointer]:
+                    - /url: /account/
+              - generic [ref=f10e89]:
+                - link "Facebook" [ref=f10e90] [cursor=pointer]:
+                  - /url: https://www.facebook.com/7thCavalryGaming/
+                - link "Twitter" [ref=f10e92] [cursor=pointer]:
+                  - /url: https://twitter.com/7Cav
+                - link "youtube" [ref=f10e94] [cursor=pointer]:
+                  - /url: https://www.youtube.com/@7CavGaming
+                - link "Discord" [ref=f10e97] [cursor=pointer]:
+                  - /url: https://discord.7cav.us
+                - link "Steam" [ref=f10e100] [cursor=pointer]:
+                  - /url: https://steamcommunity.com/groups/7Cav
+                - link "Instagram" [ref=f10e103] [cursor=pointer]:
+                  - /url: https://www.instagram.com/7thcavgaming/
+                - link "GitHub" [ref=f10e106] [cursor=pointer]:
+                  - /url: https://github.com/7cav
+                - link "RSS" [ref=f10e109] [cursor=pointer]:
+                  - /url: /forums/-/index.rss
+                - link [ref=f10e112] [cursor=pointer]:
+                  - /url: https://linktr.ee/7thcavgaming
+            - heading "Connected accounts" [level=1] [ref=f10e117]
+            - generic [ref=f10e121]:
+              - generic [ref=f10e122]: Connected accounts allow you to log in to this site more easily by using an account you already hold at one of the sites below.
+              - generic [ref=f10e123]:
+                - term [ref=f10e124]:
+                  - generic [ref=f10e125]: "Discord:"
+                - definition [ref=f10e126]:
+                  - generic [ref=f10e127]:
+                    - text: Account associated
+                    - generic [ref=f10e129]:
+                      - heading "Servers" [level=4] [ref=f10e130]
+                      - list [ref=f10e131]:
+                        - listitem [ref=f10e132]:
+                          - text: 7th Cavalry Gaming Regiment
+                          - link "Join" [ref=f10e133] [cursor=pointer]:
+                            - /url: /account/connected-accounts/discord-join-server?server_id=1
+                    - generic [ref=f10e134]:
+                      - button "Resync my Discord roles" [ref=f10e135] [cursor=pointer]
+                      - generic [ref=f10e140]: A resync updates your roles. It will not put you back into a Discord server you have left.
+                  - list [ref=f10e142]:
+                    - listitem [ref=f10e143]:
+                      - generic [ref=f10e144]:
+                        - checkbox "Disassociate Discord account" [ref=f10e145]
+                        - text: Disassociate Discord account
+                      - list [ref=f10e147]:
+                        - listitem [ref=f10e148]:
+                          - button "Confirm disassociation" [disabled] [ref=f10e149]
+            - generic [ref=f10e151]:
+              - list [ref=f10e152]:
+                - listitem [ref=f10e153]:
+                  - link "Your account" [ref=f10e154] [cursor=pointer]:
+                    - /url: /account/
+              - generic [ref=f10e155]:
+                - link "Facebook" [ref=f10e156] [cursor=pointer]:
+                  - /url: https://www.facebook.com/7thCavalryGaming/
+                - link "Twitter" [ref=f10e158] [cursor=pointer]:
+                  - /url: https://twitter.com/7Cav
+                - link "youtube" [ref=f10e160] [cursor=pointer]:
+                  - /url: https://www.youtube.com/@7CavGaming
+                - link "Discord" [ref=f10e163] [cursor=pointer]:
+                  - /url: https://discord.7cav.us
+                - link "Steam" [ref=f10e166] [cursor=pointer]:
+                  - /url: https://steamcommunity.com/groups/7Cav
+                - link "Instagram" [ref=f10e169] [cursor=pointer]:
+                  - /url: https://www.instagram.com/7thcavgaming/
+                - link "GitHub" [ref=f10e172] [cursor=pointer]:
+                  - /url: https://github.com/7cav
+                - link "RSS" [ref=f10e175] [cursor=pointer]:
+                  - /url: /forums/-/index.rss
+                - link [ref=f10e178] [cursor=pointer]:
+                  - /url: https://linktr.ee/7thcavgaming
+    - contentinfo [ref=f10e181]:
+      - generic [ref=f10e182]:
+        - generic [ref=f10e185]:
+          - list [ref=f10e187]:
+            - listitem [ref=f10e188]: Change width
+          - list [ref=f10e190]:
+            - listitem [ref=f10e191]:
+              - link "Terms and rules" [ref=f10e192] [cursor=pointer]:
+                - /url: /help/terms/
+            - listitem [ref=f10e193]:
+              - link "Privacy policy" [ref=f10e194] [cursor=pointer]:
+                - /url: /help/privacy-policy/
+            - listitem [ref=f10e195]:
+              - link "Help" [ref=f10e196] [cursor=pointer]:
+                - /url: /help/
+            - listitem [ref=f10e197]:
+              - link "Home" [ref=f10e198] [cursor=pointer]:
+                - /url: https://7cav.us
+            - listitem [ref=f10e199]:
+              - link "RSS" [ref=f10e200] [cursor=pointer]:
+                - /url: /forums/-/index.rss
+        - generic [ref=f10e209]:
+          - link [ref=f10e210] [cursor=pointer]:
+            - /url: https://xenforo.com
+            - text: Community platform by XenForo
+            - superscript [ref=f10e211]: ®
+            - text: © 2010-2026 XenForo Ltd.
+          - generic [ref=f10e212]:
+            - text: "Design by:"
+            - link "Pixel Exit" [ref=f10e213] [cursor=pointer]:
+              - /url: https://pixelexit.com
+          - generic [ref=f10e214]:
+            - link "XenPorta 2 PRO" [ref=f10e215] [cursor=pointer]:
+              - /url: https://xenforo.com/community/resources/6023/
+            - text: © Jason Axelrod of
+            - link "8WAYRUN" [ref=f10e216] [cursor=pointer]:
+              - /url: https://8wayrun.com/
+  - generic [ref=f10e218]: Your Discord resync is queued. It will run when the queue gets to it.
