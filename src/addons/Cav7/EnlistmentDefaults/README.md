@@ -89,11 +89,13 @@ error log, so check it as part of routine maintenance. This matches the
 [Cav7/RosterAudit](../RosterAudit/README.md) policy.
 
 **The error log is the only failure surface**, which is why an entry has to be
-enough on its own. Each one names the milpac (`relation_id`) and the member
-(`user_id`) it belongs to alongside the PUC date that dropped, and carries the
-exception with its class and stack trace, so a dropped grant can be traced to a
-member and granted by hand. There is no config validation, health-check cron, or
-notification; see
+enough on its own. Every failure from applying the defaults, a dropped grant or
+a failed enlistment record write, is stamped with the milpac (`relation_id`) and
+the member (`user_id`) it belongs to; a dropped grant also names its PUC date,
+and the exception is logged whole, with its class and stack trace, so the grant
+can be traced to a member and granted by hand. (The add-form prefill fails
+before there is a milpac to name, so its entries carry no stamp.) There is no
+config validation, health-check cron, or notification; see
 [docs/adr/0002-error-log-is-the-only-failure-surface.md](docs/adr/0002-error-log-is-the-only-failure-surface.md).
 
 **Insert-only.** The hook is on the milpac entity's post-save, gated on insert.

@@ -102,7 +102,12 @@ namespace NF\Rosters\Entity {
         public $details;
         public $record_date;
 
-        public function save(): void {}
+        public int $saveCalls = 0;
+
+        public function save(): void
+        {
+            $this->saveCalls++;
+        }
     }
 }
 
@@ -116,8 +121,25 @@ namespace NF\Rosters\Service\AwardRecord {
     {
         public bool $acceptImage = false;
 
+        /**
+         * PUC dates whose citation is rejected even when the rest are accepted,
+         * matched against the source filename. Lets one date drop out of a set
+         * that otherwise grants cleanly.
+         *
+         * @var string[]
+         */
+        public array $rejectDates = [];
+
         public function setImage(string $path): bool
         {
+            foreach ($this->rejectDates as $date)
+            {
+                if (str_contains($path, $date . '.jpg'))
+                {
+                    return false;
+                }
+            }
+
             return $this->acceptImage;
         }
 
@@ -160,9 +182,6 @@ namespace {
         /** @var array<int, array{exception: \Throwable, rollback: bool, prefix: string}> */
         public static array $logged = [];
 
-        /** @var string[] */
-        public static array $loggedMessages = [];
-
         public static array $options = [
             'cav7EnlistDefPucAwardId' => 61,
             'cav7EnlistDefRecordTypeId' => 3,
@@ -177,11 +196,6 @@ namespace {
         public static function logException(\Throwable $e, bool $rollback = false, string $messagePrefix = '', bool $forceLog = false): void
         {
             self::$logged[] = ['exception' => $e, 'rollback' => $rollback, 'prefix' => $messagePrefix];
-        }
-
-        public static function logError(string $message, bool $forceLog = false): void
-        {
-            self::$loggedMessages[] = $message;
         }
 
         public static function options(): object
@@ -216,6 +230,7 @@ namespace Cav7\EnlistmentDefaults\Tests {
     require __DIR__ . '/../RosterUserGateway.php';
     require __DIR__ . '/../NF/Rosters/Entity/RosterUser.php';
 
+    use Cav7\EnlistmentDefaults\PucSet;
     use Cav7\EnlistmentDefaults\RosterUserGateway;
 
     $failures = 0;
@@ -239,6 +254,71 @@ namespace Cav7\EnlistmentDefaults\Tests {
         $milpac->user_id = 9317;
 
         return $milpac;
+    }
+
+    /** The same milpac, as the entity extension XenForo actually saves. */
+    function enlistingMilpac(): \Cav7\EnlistmentDefaults\NF\Rosters\Entity\RosterUser
+    {
+        $entity = new \Cav7\EnlistmentDefaults\NF\Rosters\Entity\RosterUser();
+        $entity->relation_id = 4211;
+        $entity->user_id = 9317;
+
+        return $entity;
+    }
+
+    /** Run the real post-save hook; true if it let anything escape. */
+    function postSaveThrew(object $entity): bool
+    {
+        $postSave = new \ReflectionMethod($entity, '_postSave');
+        $postSave->setAccessible(true);
+
+        try {
+            $postSave->invoke($entity);
+        } catch (\Throwable $e) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * The PUC dates the logged entries say dropped, in the order they were
+     * logged.
+     *
+     * @param array<int, array{prefix: string}> $logged
+     * @return string[]
+     */
+    function droppedDates(array $logged): array
+    {
+        $dates = [];
+
+        foreach ($logged as $entry) {
+            if (preg_match('/failed to grant PUC for (\d{4}-\d{2}-\d{2})/', $entry['prefix'], $m)) {
+                $dates[] = $m[1];
+            }
+        }
+
+        return $dates;
+    }
+
+    /** Whether every entry names milpac 4211 and user 9317. */
+    function allStamped(array $logged): bool
+    {
+        foreach ($logged as $entry) {
+            if (!str_contains($entry['prefix'], 'milpac 4211')
+                || !str_contains($entry['prefix'], 'user 9317')
+            ) {
+                return false;
+            }
+        }
+
+        return $logged !== [];
+    }
+
+    /** @param array<int, array{prefix: string}> $logged */
+    function prefixes(array $logged): string
+    {
+        return implode(' | ', array_column($logged, 'prefix'));
     }
 
     // --- a failure logged through the gateway names the milpac ---------------
@@ -349,6 +429,72 @@ namespace Cav7\EnlistmentDefaults\Tests {
     $postSave->invoke($existing);
     \XF::$optionsThrow = false;
     check('an update saves without applying anything, so nothing is logged', \XF::$logged === []);
+
+    // --- the grants themselves failing, through the real post-save ----------
+    // The outer catch above only covers what breaks before the loop. These two
+    // drive the same _postSave() with the grants failing, which is the case the
+    // fail-open policy exists for: the enlistment has to complete anyway, and
+    // every dropped date has to be traceable to this member.
+    //
+    // The default image service stub rejects every citation, so the whole set
+    // drops — an unreadable bundled JPG would look exactly like this.
+    \XF::$logged = [];
+    \XF::$serviceStub = null;
+
+    $entity = enlistingMilpac();
+    $record = new \NF\Rosters\Entity\ServiceRecord();
+    $entity->newServiceRecord = $record;
+
+    check('every grant failing still lets the milpac save through', !postSaveThrew($entity));
+    check(
+        'each dropped date gets its own entry, naming that date, in earned order',
+        droppedDates(\XF::$logged) === PucSet::dates(),
+        prefixes(\XF::$logged)
+    );
+    check(
+        'every one of those entries names the milpac and the member',
+        count(\XF::$logged) === count(PucSet::dates()) && allStamped(\XF::$logged),
+        prefixes(\XF::$logged)
+    );
+    check(
+        'the enlistment record is still written when every grant fails',
+        $record->saveCalls === 1,
+        (string) $record->saveCalls
+    );
+
+    // One bad date out of six: the rest of the set and the record still apply,
+    // and the log names only the date that dropped.
+    \XF::$logged = [];
+    $service = new \NF\Rosters\Service\AwardRecord\Image();
+    $service->acceptImage = true;
+    $service->rejectDates = ['2010-09-18'];
+    \XF::$serviceStub = $service;
+
+    $entity = enlistingMilpac();
+    $award = new \NF\Rosters\Entity\RosterUserAward();
+    $entity->newAward = $award;
+    $record = new \NF\Rosters\Entity\ServiceRecord();
+    $entity->newServiceRecord = $record;
+
+    $threw = postSaveThrew($entity);
+    \XF::$serviceStub = null;
+
+    check('one failing date still lets the milpac save through', !$threw);
+    check(
+        'only the date that dropped is logged, against this milpac and member',
+        droppedDates(\XF::$logged) === ['2010-09-18'] && allStamped(\XF::$logged),
+        prefixes(\XF::$logged)
+    );
+    check(
+        'the other five dates are granted and left in place',
+        $award->saveCalls === count(PucSet::dates()) && $award->deleteCalls === 1,
+        "saved {$award->saveCalls}, rolled back {$award->deleteCalls}"
+    );
+    check(
+        'the enlistment record is still written after a date drops',
+        $record->saveCalls === 1,
+        (string) $record->saveCalls
+    );
 
     // --- a citation rollback breadcrumb carries the identity too -------------
     // Inside a grant, CitationAttacher records cleanup failures separately from
