@@ -226,13 +226,53 @@ foreach ($expectedMods as $key => $want) {
     }
 }
 
-// _output template-modification files must agree with the _data count.
-$tmodOutput = glob("$root/_output/template_modifications/public/*.json");
+// _output is what a dev-stack install imports, and what an export round-trips
+// back into _data, so a count alone leaves every field inside those files free
+// to drift: an item reverted to an exact str_replace find, pointed at another
+// template, or switched off passes a count check and ships. Content-check each
+// one against its _data record instead. _output carries the type in the
+// directory name rather than in the file, and stores enabled as a JSON bool, so
+// those two are compared through the shape _output uses.
+$tmodDir = "$root/_output/template_modifications";
+$tmodOutput = glob("$tmodDir/*/*.json");
 check(
     '_output has one template-modification file per _data modification',
     count($tmodOutput) === ($tmodXml !== false ? count($tmodXml->modification) : -1),
     'output: ' . count($tmodOutput) . ', data: ' . ($tmodXml !== false ? count($tmodXml->modification) : 'n/a')
 );
+
+$tmodMeta = json_decode((string) @file_get_contents("$tmodDir/_metadata.json"), true);
+check('_output/template_modifications/_metadata.json is valid JSON', is_array($tmodMeta));
+
+foreach ($mods as $key => $want) {
+    // The type is the directory: a record exported as admin/ (or renamed) has
+    // no file here, and XenForo would never fire it against a public template.
+    $file = $want['type'] . "/$key.json";
+    $raw = @file_get_contents("$tmodDir/$file");
+    $decoded = json_decode((string) $raw, true);
+
+    check(
+        "the _output export $file describes the same modification as _data",
+        is_array($decoded)
+            && ($decoded['template'] ?? null) === $want['template']
+            && ($decoded['enabled'] ?? null) === ($want['enabled'] === '1')
+            && ($decoded['action'] ?? null) === $want['action']
+            && ($decoded['find'] ?? null) === $want['find']
+            && ($decoded['replace'] ?? null) === $want['replace'],
+        '_data and _output must agree on every field the install reads; got: '
+            . var_export($decoded, true)
+    );
+    check(
+        "_output/template_modifications/_metadata.json indexes $file",
+        is_array($tmodMeta) && isset($tmodMeta[$file]),
+        'an item file the index does not name was added by hand'
+    );
+    check(
+        "_output/template_modifications/_metadata.json carries $file's current hash",
+        is_array($tmodMeta) && ($tmodMeta[$file]['hash'] ?? null) === md5(str_replace("\r", '', (string) $raw)),
+        'XenForo hashes an item as md5 of its contents with CRs stripped; a stale or blanked hash means the export was hand-edited'
+    );
+}
 
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
