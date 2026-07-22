@@ -154,11 +154,10 @@ produces cannot be seen on a dev stack, because that stack has no bot token to d
 the queue with. The queue row landing is the outcome that can be observed, and it is
 the one the action itself checks.
 
-Reaching that row takes a bit of setup, though. The dev stack ships with a blank bot
-token and its only server row inactive, which is both of the forum-wide refusals at
-once: the action turns every press away at a precondition and never reaches the
-queueing call. Give the integration a token and switch a server to active before
-expecting to see anything land, and put both back afterwards.
+Two of the preconditions decide whether a press gets that far. The action refuses
+before it queues anything if the integration has no credentials, and again if no
+Discord server is active. On a stack in either state, a press exercises those
+refusals and never reaches the queueing call.
 
 ## Addon info
 
