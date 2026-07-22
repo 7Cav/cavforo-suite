@@ -2,7 +2,9 @@
 
 Behavioural fixes for the [NF/Rosters](https://nixfifty.com/products/rosters-and-personnel-status-reports.5/) XenForo add-on, built as a companion add-on. It attaches to the vendor code through XenForo class extensions and ships none of the vendor's code, so NF/Rosters can be updated independently.
 
-The repository is the one place that does quote the vendor: `tests/fixtures/` holds a handful of lines of NF/Rosters' `nf_rosters_user_view` template, so the template modifications can be tested without a XenForo install. `tools/package-addon.sh` leaves `tests/` out of the release zip, so none of it reaches an installed board.
+This add-on quotes the vendor in exactly one place: `tests/fixtures/` holds a handful of lines of NF/Rosters' `nf_rosters_user_view` template, so the template modifications can be tested without a XenForo install. Neither build path ships it. `tools/package-addon.sh` excludes `tests/` from the zip, and `build.json` deletes it from what `xf-addon:build-release` has staged, so none of it reaches an installed board.
+
+That is a claim about this add-on, not about the repo. EnlistmentDefaults, RosterSearch, MilpacTooltip, MilpacMention, and ApiKeyManager all quote vendor template markup verbatim in the `<find>` blocks of their shipped `_data/template_modifications.xml`, and that markup does reach installed boards.
 
 This is the home for NF/Rosters *behaviour* patches. Its sibling, [RosterAudit](../RosterAudit/), records an audit trail and guards the two gaps that protect that trail; the fixes here change how the roster behaves and carry their own on/off switch, so a misbehaving fix can be disabled without losing audit history.
 
@@ -52,9 +54,13 @@ For release builds, generate hashes first: `php cmd.php xf-addon:build-release C
 
 **The hook runs inside the position's save.** The re-sync happens in `_postSave`, within the same transaction as the position edit, mirroring how the vendor's Adder and Editor apply grants. A position holds at most a handful of members, so the per-save cost is small.
 
-**The date cells are matched by pattern, not by exact vendor markup.** A style can carry its own edited copy of `nf_rosters_user_view`. If that copy differs from the vendor's by so much as a space, an exact find matches nothing in it, and XenForo does not treat that as an error: the add-on still reports as installed and active while that style renders the date in the viewer's timezone. Both modifications are `preg_replace` patterns over the `date()` call itself. The tests apply them the way XenForo applies them, over the date rows captured in `tests/fixtures/` from NF/Rosters 2.1.5 and from the style's edited copy of the same rows.
+**The date cells are matched by pattern, not by exact vendor markup.** A style can carry its own edited copy of `nf_rosters_user_view`. If that copy differs from the vendor's by so much as a space, an exact find matches nothing in it, and XenForo does not treat that as an error: the add-on still reports as installed and active while that style renders the date in the viewer's timezone. Both modifications are `preg_replace` patterns over the whole `{{ date(...) }}` expression: whitespace anywhere inside it, and any argument list that carries no brackets or braces of its own. The tests apply them over the date rows captured in `tests/fixtures/` from NF/Rosters 2.1.5, taken from both the vendor's own copy of the template and the copy the 7Cav style edits.
 
-That pins the patterns against markup we have actually seen: change a find until it stops matching either copy and the suite fails. What it cannot do is pin them against the add-on you have installed. CI has no XenForo and no vendor tree, so a NF/Rosters release that moved the date cell would leave the fixtures matching and the suite green while the board went back to per-viewer dates. Recapture the fixtures when NF/Rosters is upgraded, or when the style's copy is edited; the filenames carry the vendor version each was taken from.
+**What the patterns deliberately will not match.** They take the whole `{{ … }}` expression, not the `date()` call inside one, so a style that wrapped or extended the expression is left alone. A null-guard ternary (`{{ $record.record_date ? date(...) : '-' }}`), a filter (`{{ date(...)|escape }}`), a concatenated suffix (`{{ date(...) ~ ' UTC' }}`), and a nested call in the argument list (`{{ date($record.record_date, fmt('Y-m-d')) }}`) all match nothing. Anchoring on the call alone would rewrite each of those into invalid template markup, and a broken page is worse than a per-viewer date, so the limit stays. `MilpacDateTemplateModificationTest` asserts all four as non-matches, so anyone widening the pattern later does it with the list in front of them.
+
+The patterns also swallow the format argument rather than preserving it, and the getter always renders `Y-m-d`. A style that reformatted the date loses that reformatting, and a call with no format argument stops using the viewer's language format. The fix is worth that cost, but it is a cost.
+
+The fixtures pin the patterns against markup we have actually seen: change a find until it stops matching one of the captured copies and the suite fails. What they cannot do is pin them against the add-on you have installed. CI has no XenForo and no vendor tree, so a NF/Rosters release that moved the date cell would leave the fixtures matching and the suite green while the board went back to per-viewer dates. Recapture the fixtures when NF/Rosters is upgraded, or when the style's copy is edited. The filenames carry the vendor version each was taken from, and each file's header says which copy of the template it came from and what it left out.
 
 **If a vendor update adds its own re-sync, this add-on becomes redundant** and can be dropped.
 
@@ -70,6 +76,7 @@ src/addons/Cav7/RosterPatch/
   Repository/PositionGroupSync.php       holder query + the re-apply logic
   Cli/Command/SyncPositionGroups.php     one-off backlog reconcile
   tests/                                 pure-logic tests, shape guards, and the template fixtures they run against, no stack required
+  build.json                             drops tests/ from the xf-addon:build-release zip
   _data/, _output/                       class-extension + template-modification registration
 ```
 
