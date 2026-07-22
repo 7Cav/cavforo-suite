@@ -104,8 +104,9 @@ class FakeGateway implements EnlistmentGateway
      *  @var \Throwable[] */
     public array $thrown = [];
 
-    public ?string $throwOnDate = null;
-    public bool $throwOnEveryDate = false;
+    /** @var string[] PUC dates whose grant throws; empty means every grant lands */
+    public array $throwOnDates = [];
+
     public bool $throwOnRecord = false;
 
     public function __construct(
@@ -132,7 +133,7 @@ class FakeGateway implements EnlistmentGateway
     public function grantAward(int $awardId, int $awardDate, int $fromUserId, string $citationPath): void
     {
         $date = gmdate('Y-m-d', $awardDate);
-        if ($this->throwOnEveryDate || ($this->throwOnDate !== null && $date === $this->throwOnDate)) {
+        if (in_array($date, $this->throwOnDates, true)) {
             $e = new \DomainException("boom on $date");
             $this->thrown[] = $e;
             throw $e;
@@ -258,7 +259,7 @@ check('with no visitor (CLI), grants are attributed to the system fallback user'
 
 // --- Fail-open: a grant that throws is logged, the rest still proceed -----
 $gw = new FakeGateway();
-$gw->throwOnDate = '2009-08-10';
+$gw->throwOnDates = ['2009-08-10'];
 $threw = false;
 try {
     (new EnlistmentApplier($gw))->apply();
@@ -296,7 +297,7 @@ check('the enlistment record is still written after a failed grant', count($gw->
 // rather than one entry for the whole set, so a reader can see which dates the
 // member is short of.
 $gw = new FakeGateway();
-$gw->throwOnEveryDate = true;
+$gw->throwOnDates = PucSet::dates();
 $threw = false;
 try {
     (new EnlistmentApplier($gw))->apply();

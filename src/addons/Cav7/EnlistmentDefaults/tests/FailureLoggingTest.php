@@ -21,6 +21,10 @@
  *  - The entity extension's outer catch — the one covering failures raised
  *    before the grant loop — logs through the same gateway, so it carries the
  *    same identity, and still lets the milpac save succeed.
+ *  - Grants failing inside the real post-save: every dropped date gets its own
+ *    stamped entry, and the dates that did not drop keep their own award rows.
+ *  - A failing enlistment record write inside the real post-save: logged, stamped
+ *    the same way, and the milpac still saves.
  *  - A citation rollback breadcrumb, logged from inside a grant, carries the
  *    identity too.
  *
@@ -40,6 +44,11 @@ namespace NF\Rosters\Entity {
      * Stand-in for the vendor milpac entity. Only what the gateway reads or
      * calls: the identity columns, the fields the applier consults, and the two
      * row factories.
+     *
+     * The factories hand out a FRESH row every call, as the vendor's do. That is
+     * what lets a test tell six surviving award rows apart from one row saved six
+     * times: every handed-out row is kept in $awards / $serviceRecords with the
+     * date the grant stamped on it.
      */
     class RosterUser
     {
@@ -49,8 +58,17 @@ namespace NF\Rosters\Entity {
         public $Awards = [];
         public $custom_fields;
 
-        public ?RosterUserAward $newAward = null;
-        public ?ServiceRecord $newServiceRecord = null;
+        /** @var RosterUserAward[] every award row handed out, in grant order */
+        public array $awards = [];
+
+        /** @var ServiceRecord[] every service record row handed out */
+        public array $serviceRecords = [];
+
+        /** Set to make every award row refuse its rollback delete. */
+        public bool $awardsThrowOnDelete = false;
+
+        /** Set to make every service record refuse to save. */
+        public bool $recordsThrowOnSave = false;
 
         public function __construct()
         {
@@ -59,12 +77,20 @@ namespace NF\Rosters\Entity {
 
         public function getNewAward(): RosterUserAward
         {
-            return $this->newAward ?? new RosterUserAward();
+            $award = new RosterUserAward();
+            $award->throwOnDelete = $this->awardsThrowOnDelete;
+            $this->awards[] = $award;
+
+            return $award;
         }
 
         public function getNewServiceRecord(): ServiceRecord
         {
-            return $this->newServiceRecord ?? new ServiceRecord();
+            $record = new ServiceRecord();
+            $record->throwOnSave = $this->recordsThrowOnSave;
+            $this->serviceRecords[] = $record;
+
+            return $record;
         }
     }
 
@@ -88,25 +114,28 @@ namespace NF\Rosters\Entity {
         public function delete(): void
         {
             $this->deleteCalls++;
-            if ($this->throwOnDelete)
-            {
+            if ($this->throwOnDelete) {
                 throw new \RuntimeException('vendor refused the rollback delete');
             }
         }
     }
 
-    /** Stand-in for the vendor service record row. */
+    /** Stand-in for the vendor service record row; can be told to fail its save. */
     class ServiceRecord
     {
         public $record_type_id;
         public $details;
         public $record_date;
 
+        public bool $throwOnSave = false;
         public int $saveCalls = 0;
 
         public function save(): void
         {
             $this->saveCalls++;
+            if ($this->throwOnSave) {
+                throw new \RuntimeException('vendor refused the record write');
+            }
         }
     }
 }
@@ -132,10 +161,8 @@ namespace NF\Rosters\Service\AwardRecord {
 
         public function setImage(string $path): bool
         {
-            foreach ($this->rejectDates as $date)
-            {
-                if (str_contains($path, $date . '.jpg'))
-                {
+            foreach ($this->rejectDates as $date) {
+                if (str_contains($path, $date . '.jpg')) {
                     return false;
                 }
             }
@@ -200,8 +227,7 @@ namespace {
 
         public static function options(): object
         {
-            if (self::$optionsThrow)
-            {
+            if (self::$optionsThrow) {
                 throw new \RuntimeException('option read failed');
             }
 
@@ -233,6 +259,14 @@ namespace Cav7\EnlistmentDefaults\Tests {
     use Cav7\EnlistmentDefaults\PucSet;
     use Cav7\EnlistmentDefaults\RosterUserGateway;
 
+    /**
+     * The fixture milpac's identity. Every assertion about what an entry names is
+     * derived from these two, so changing the fixture cannot leave an assertion
+     * passing against a stale literal.
+     */
+    const MILPAC_RELATION_ID = 4211;
+    const MILPAC_USER_ID = 9317;
+
     $failures = 0;
 
     function check(string $label, bool $ok, string $detail = ''): void
@@ -250,8 +284,8 @@ namespace Cav7\EnlistmentDefaults\Tests {
     function milpac(): \NF\Rosters\Entity\RosterUser
     {
         $milpac = new \NF\Rosters\Entity\RosterUser();
-        $milpac->relation_id = 4211;
-        $milpac->user_id = 9317;
+        $milpac->relation_id = MILPAC_RELATION_ID;
+        $milpac->user_id = MILPAC_USER_ID;
 
         return $milpac;
     }
@@ -260,8 +294,8 @@ namespace Cav7\EnlistmentDefaults\Tests {
     function enlistingMilpac(): \Cav7\EnlistmentDefaults\NF\Rosters\Entity\RosterUser
     {
         $entity = new \Cav7\EnlistmentDefaults\NF\Rosters\Entity\RosterUser();
-        $entity->relation_id = 4211;
-        $entity->user_id = 9317;
+        $entity->relation_id = MILPAC_RELATION_ID;
+        $entity->user_id = MILPAC_USER_ID;
 
         return $entity;
     }
@@ -301,12 +335,52 @@ namespace Cav7\EnlistmentDefaults\Tests {
         return $dates;
     }
 
-    /** Whether every entry names milpac 4211 and user 9317. */
+    /**
+     * The dates whose award row was saved and left in place — one distinct row
+     * per surviving date, which is what tells five survivors apart from one row
+     * saved five times.
+     *
+     * @param \NF\Rosters\Entity\RosterUserAward[] $awards
+     * @return string[]
+     */
+    function survivingDates(array $awards): array
+    {
+        $dates = [];
+
+        foreach ($awards as $award) {
+            if ($award->saveCalls === 1 && $award->deleteCalls === 0) {
+                $dates[] = gmdate('Y-m-d', (int) $award->award_date);
+            }
+        }
+
+        return $dates;
+    }
+
+    /**
+     * The dates whose award row was saved and then rolled back.
+     *
+     * @param \NF\Rosters\Entity\RosterUserAward[] $awards
+     * @return string[]
+     */
+    function rolledBackDates(array $awards): array
+    {
+        $dates = [];
+
+        foreach ($awards as $award) {
+            if ($award->deleteCalls > 0) {
+                $dates[] = gmdate('Y-m-d', (int) $award->award_date);
+            }
+        }
+
+        return $dates;
+    }
+
+    /** Whether every entry names the fixture milpac and the fixture member. */
     function allStamped(array $logged): bool
     {
         foreach ($logged as $entry) {
-            if (!str_contains($entry['prefix'], 'milpac 4211')
-                || !str_contains($entry['prefix'], 'user 9317')
+            if (!str_contains($entry['prefix'], 'milpac ' . MILPAC_RELATION_ID)
+                || !str_contains($entry['prefix'], 'user ' . MILPAC_USER_ID)
             ) {
                 return false;
             }
@@ -321,6 +395,12 @@ namespace Cav7\EnlistmentDefaults\Tests {
         return implode(' | ', array_column($logged, 'prefix'));
     }
 
+    /** @return string[] the bundled dates other than the ones named */
+    function datesExcept(array $dropped): array
+    {
+        return array_values(array_diff(PucSet::dates(), $dropped));
+    }
+
     // --- a failure logged through the gateway names the milpac ---------------
     \XF::$logged = [];
     $gateway = new RosterUserGateway(milpac());
@@ -333,12 +413,12 @@ namespace Cav7\EnlistmentDefaults\Tests {
 
     check(
         'the entry names the milpac by its relation_id',
-        str_contains($entry['prefix'], 'milpac 4211'),
+        str_contains($entry['prefix'], 'milpac ' . MILPAC_RELATION_ID),
         $entry['prefix']
     );
     check(
         "the entry names the member's user_id",
-        str_contains($entry['prefix'], 'user 9317'),
+        str_contains($entry['prefix'], 'user ' . MILPAC_USER_ID),
         $entry['prefix']
     );
     check(
@@ -376,7 +456,7 @@ namespace Cav7\EnlistmentDefaults\Tests {
         count(\XF::$logged) === 1
             && str_contains(\XF::$logged[0]['prefix'], 'milpac 8802')
             && str_contains(\XF::$logged[0]['prefix'], 'user 1155')
-            && !str_contains(\XF::$logged[0]['prefix'], '4211'),
+            && !str_contains(\XF::$logged[0]['prefix'], (string) MILPAC_RELATION_ID),
         \XF::$logged[0]['prefix'] ?? ''
     );
 
@@ -386,29 +466,15 @@ namespace Cav7\EnlistmentDefaults\Tests {
     \XF::$logged = [];
     \XF::$optionsThrow = true;
 
-    $entity = new \Cav7\EnlistmentDefaults\NF\Rosters\Entity\RosterUser();
-    $entity->relation_id = 4211;
-    $entity->user_id = 9317;
-
-    $postSave = new \ReflectionMethod($entity, '_postSave');
-    $postSave->setAccessible(true);
-
-    $threw = false;
-    try {
-        $postSave->invoke($entity);
-    } catch (\Throwable $e) {
-        $threw = true;
-    }
+    $threw = postSaveThrew(enlistingMilpac());
 
     \XF::$optionsThrow = false;
 
     check('a failure before the grant loop never blocks the milpac save', !$threw);
     check(
         'the outer catch logs against the same milpac identity',
-        count(\XF::$logged) === 1
-            && str_contains(\XF::$logged[0]['prefix'], 'milpac 4211')
-            && str_contains(\XF::$logged[0]['prefix'], 'user 9317'),
-        \XF::$logged[0]['prefix'] ?? 'nothing logged'
+        count(\XF::$logged) === 1 && allStamped(\XF::$logged),
+        prefixes(\XF::$logged) ?: 'nothing logged'
     );
     check(
         'the outer catch keeps the exception whole',
@@ -422,11 +488,9 @@ namespace Cav7\EnlistmentDefaults\Tests {
     // nothing is logged (the insert-only gate, unchanged by this).
     \XF::$logged = [];
     \XF::$optionsThrow = true;
-    $existing = new \Cav7\EnlistmentDefaults\NF\Rosters\Entity\RosterUser();
+    $existing = enlistingMilpac();
     $existing->insert = false;
-    $postSave = new \ReflectionMethod($existing, '_postSave');
-    $postSave->setAccessible(true);
-    $postSave->invoke($existing);
+    postSaveThrew($existing);
     \XF::$optionsThrow = false;
     check('an update saves without applying anything, so nothing is logged', \XF::$logged === []);
 
@@ -442,8 +506,6 @@ namespace Cav7\EnlistmentDefaults\Tests {
     \XF::$serviceStub = null;
 
     $entity = enlistingMilpac();
-    $record = new \NF\Rosters\Entity\ServiceRecord();
-    $entity->newServiceRecord = $record;
 
     check('every grant failing still lets the milpac save through', !postSaveThrew($entity));
     check(
@@ -457,13 +519,21 @@ namespace Cav7\EnlistmentDefaults\Tests {
         prefixes(\XF::$logged)
     );
     check(
+        'no award row survives when every citation is rejected',
+        survivingDates($entity->awards) === []
+            && rolledBackDates($entity->awards) === PucSet::dates(),
+        'survivors: ' . implode(', ', survivingDates($entity->awards))
+    );
+    check(
         'the enlistment record is still written when every grant fails',
-        $record->saveCalls === 1,
-        (string) $record->saveCalls
+        count($entity->serviceRecords) === 1 && $entity->serviceRecords[0]->saveCalls === 1,
+        (string) count($entity->serviceRecords)
     );
 
     // One bad date out of six: the rest of the set and the record still apply,
-    // and the log names only the date that dropped.
+    // and the log names only the date that dropped. Each grant asks the entity
+    // for its own award row, so the five that survive are five distinct rows —
+    // counting saves alone could not tell them from one row saved six times.
     \XF::$logged = [];
     $service = new \NF\Rosters\Service\AwardRecord\Image();
     $service->acceptImage = true;
@@ -471,10 +541,6 @@ namespace Cav7\EnlistmentDefaults\Tests {
     \XF::$serviceStub = $service;
 
     $entity = enlistingMilpac();
-    $award = new \NF\Rosters\Entity\RosterUserAward();
-    $entity->newAward = $award;
-    $record = new \NF\Rosters\Entity\ServiceRecord();
-    $entity->newServiceRecord = $record;
 
     $threw = postSaveThrew($entity);
     \XF::$serviceStub = null;
@@ -486,14 +552,59 @@ namespace Cav7\EnlistmentDefaults\Tests {
         prefixes(\XF::$logged)
     );
     check(
-        'the other five dates are granted and left in place',
-        $award->saveCalls === count(PucSet::dates()) && $award->deleteCalls === 1,
-        "saved {$award->saveCalls}, rolled back {$award->deleteCalls}"
+        'the other five dates each keep their own award row, dated to that date',
+        survivingDates($entity->awards) === datesExcept(['2010-09-18']),
+        'survivors: ' . implode(', ', survivingDates($entity->awards))
+    );
+    check(
+        'only the failing date is rolled back',
+        rolledBackDates($entity->awards) === ['2010-09-18'],
+        'rolled back: ' . implode(', ', rolledBackDates($entity->awards))
     );
     check(
         'the enlistment record is still written after a date drops',
-        $record->saveCalls === 1,
-        (string) $record->saveCalls
+        count($entity->serviceRecords) === 1 && $entity->serviceRecords[0]->saveCalls === 1,
+        (string) count($entity->serviceRecords)
+    );
+
+    // --- the record write failing, through the real post-save ---------------
+    // The other half of the fail-open policy, at the layer that ships: the grants
+    // land, the record write blows up in the vendor row, and the enlistment still
+    // completes with an entry a reader can act on.
+    \XF::$logged = [];
+    $service = new \NF\Rosters\Service\AwardRecord\Image();
+    $service->acceptImage = true;
+    \XF::$serviceStub = $service;
+
+    $entity = enlistingMilpac();
+    $entity->recordsThrowOnSave = true;
+
+    $threw = postSaveThrew($entity);
+    \XF::$serviceStub = null;
+
+    check('a failing enlistment record write still lets the milpac save through', !$threw);
+    check(
+        'the failed record write is logged exactly once, naming the record',
+        count(\XF::$logged) === 1
+            && str_contains(\XF::$logged[0]['prefix'], 'failed to write enlistment record'),
+        prefixes(\XF::$logged) ?: 'nothing logged'
+    );
+    check(
+        'the record-write entry carries the same milpac identity as a dropped grant',
+        allStamped(\XF::$logged),
+        prefixes(\XF::$logged) ?: 'nothing logged'
+    );
+    check(
+        'the record-write entry keeps the exception whole',
+        count(\XF::$logged) === 1
+            && \XF::$logged[0]['exception'] instanceof \RuntimeException
+            && \XF::$logged[0]['exception']->getMessage() === 'vendor refused the record write',
+        count(\XF::$logged) === 1 ? get_class(\XF::$logged[0]['exception']) : 'nothing logged'
+    );
+    check(
+        'the whole PUC set is still granted when the record write fails',
+        survivingDates($entity->awards) === PucSet::dates(),
+        'survivors: ' . implode(', ', survivingDates($entity->awards))
     );
 
     // --- a citation rollback breadcrumb carries the identity too -------------
@@ -502,9 +613,7 @@ namespace Cav7\EnlistmentDefaults\Tests {
     // so they are stamped the same way.
     \XF::$logged = [];
     $milpac = milpac();
-    $award = new \NF\Rosters\Entity\RosterUserAward();
-    $award->throwOnDelete = true;
-    $milpac->newAward = $award;
+    $milpac->awardsThrowOnDelete = true;
     \XF::$serviceStub = new \NF\Rosters\Service\AwardRecord\Image();
 
     $rethrown = null;
@@ -524,15 +633,14 @@ namespace Cav7\EnlistmentDefaults\Tests {
     check(
         'the rollback breadcrumb names the milpac it belongs to',
         count(\XF::$logged) === 1
-            && str_contains(\XF::$logged[0]['prefix'], 'milpac 4211')
-            && str_contains(\XF::$logged[0]['prefix'], 'user 9317')
+            && allStamped(\XF::$logged)
             && str_contains(\XF::$logged[0]['prefix'], 'award rollback'),
-        \XF::$logged[0]['prefix'] ?? 'nothing logged'
+        prefixes(\XF::$logged) ?: 'nothing logged'
     );
     check(
         'the rollback breadcrumb names the date the grant was for',
         count(\XF::$logged) === 1 && str_contains(\XF::$logged[0]['prefix'], '2003-03-18'),
-        \XF::$logged[0]['prefix'] ?? 'nothing logged'
+        prefixes(\XF::$logged) ?: 'nothing logged'
     );
 
     // --- Summary ------------------------------------------------------------

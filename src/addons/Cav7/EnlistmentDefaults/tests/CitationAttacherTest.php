@@ -107,15 +107,20 @@ class FakeCitationImage implements CitationImage
     }
 }
 
-/** A logger that records (prefix => exception message) for rollback breadcrumbs. */
+/**
+ * A logger standing in for the attacher's logFailure seam. The attacher hands it
+ * the cleanup failure and a bare context saying what could not be cleaned; the
+ * production gateway is what stamps the milpac identity onto that context and
+ * forwards it to the error log. Recorded here as (context => exception message).
+ */
 class RecordingLogger
 {
-    /** @var array<int, array{prefix: string, message: string}> */
+    /** @var array<int, array{context: string, message: string}> */
     public array $entries = [];
 
-    public function __invoke(\Throwable $e, string $prefix): void
+    public function __invoke(\Throwable $e, string $context): void
     {
-        $this->entries[] = ['prefix' => $prefix, 'message' => $e->getMessage()];
+        $this->entries[] = ['context' => $context, 'message' => $e->getMessage()];
     }
 }
 
@@ -198,11 +203,11 @@ check(
 );
 check('a failed file cleanup is logged as a breadcrumb', count(array_filter(
     $logger->entries,
-    fn ($e) => str_contains($e['prefix'], 'citation file cleanup failed')
+    fn ($e) => str_contains($e['context'], 'citation file cleanup failed')
 )) === 1);
 check('a failed row rollback is logged as a breadcrumb', count(array_filter(
     $logger->entries,
-    fn ($e) => str_contains($e['prefix'], 'award rollback after citation failure failed')
+    fn ($e) => str_contains($e['context'], 'award rollback after citation failure failed')
 )) === 1);
 check('both cleanup attempts are still made even though each throws', $image->deleteFileCalls === 1 && $award->deleteCalls === 1);
 

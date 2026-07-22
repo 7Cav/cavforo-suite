@@ -81,21 +81,20 @@ For release builds, generate hashes first:
 
 ## Design notes
 
-**Fail-open by design.** Each grant and the record write are isolated; a failure
-is logged to the XF error log and the milpac save proceeds. A failure must never
-block enlistment. The cost: a persistent failure (for example an unreadable
-citation file) leaves new milpacs missing part of the set until someone reads the
-error log, so check it as part of routine maintenance. This matches the
-[Cav7/RosterAudit](../RosterAudit/README.md) policy.
-
-**The error log is the only failure surface**, which is why an entry has to be
-enough on its own. Every failure from applying the defaults, a dropped grant or
-a failed enlistment record write, is stamped with the milpac (`relation_id`) and
-the member (`user_id`) it belongs to; a dropped grant also names its PUC date,
-and the exception is logged whole, with its class and stack trace, so the grant
-can be traced to a member and granted by hand. (The add-form prefill fails
-before there is a milpac to name, so its entries carry no stamp.) There is no
-config validation, health-check cron, or notification; see
+**Fail-open by design.** Each grant and the record write are isolated: a failure
+is logged to the XF error log and the milpac save proceeds, because a failure
+must never block enlistment. This matches the
+[Cav7/RosterAudit](../RosterAudit/README.md) policy, and it leaves the error log
+as the only failure surface, so an entry has to be enough on its own. Every
+failure from applying the defaults, a dropped grant or a failed enlistment record
+write, is stamped with the milpac (`relation_id`) and the member (`user_id`) it
+belongs to; a dropped grant also names its PUC date, and the exception is logged
+whole, with its class and stack trace, so the grant can be traced to a member and
+granted by hand. (The add-form prefill fails before there is a milpac to name, so
+its entries carry no stamp.) There is no config validation, health-check cron, or
+notification, so a persistent failure (for example an unreadable citation file)
+leaves new milpacs missing part of the set until someone reads the error log:
+check it as part of routine maintenance. The reasoning is in
 [docs/adr/0002-error-log-is-the-only-failure-surface.md](docs/adr/0002-error-log-is-the-only-failure-surface.md).
 
 **Insert-only.** The hook is on the milpac entity's post-save, gated on insert.
