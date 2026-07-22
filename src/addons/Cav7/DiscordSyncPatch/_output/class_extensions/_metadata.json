@@ -1,5 +1,8 @@
 {
     "NF-Discord-ApiMessage-SyncUser_Cav7-DiscordSyncPatch-NF-Discord-ApiMessage-SyncUser.json": {
         "hash": "7441eb97616f7fac9b79dc0fbe421dd1"
+    },
+    "XF-Pub-Controller-AccountController_Cav7-DiscordSyncPatch-XF-Pub-Controller-Account.json": {
+        "hash": "5408fdc34e71e213be8144082638211c"
     }
 }

@@ -1,2 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<template_modifications/>
+<template_modifications>
+  <modification type="public" template="connected_account_associated_nfDiscord" modification_key="cav7DiscordSyncPatchResyncButton" description="Adds a button that queues a resync of the member's own Discord roles" execution_order="10" enabled="1" action="preg_replace">
+    <find><![CDATA[/\z/]]></find>
+    <replace><![CDATA[
+<xf:if is="$user.user_id == $xf.visitor.user_id">
+	<xf:form action="{{ link('account/connected-accounts/discord-resync') }}" class="u-inputSpacer" ajax="true" data-force-flash-message="true">
+		<xf:button type="submit" icon="refresh">{{ phrase('cav7_discord_resync') }}</xf:button>
+		<xf:if is="$syncingServers is not empty">
+			<span class="u-muted">{{ phrase('cav7_discord_resync_pending') }}</span>
+		</xf:if>
+		<div class="u-muted">{{ phrase('cav7_discord_resync_note') }}</div>
+	</xf:form>
+</xf:if>]]></replace>
+  </modification>
+</template_modifications>

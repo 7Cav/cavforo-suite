@@ -1,0 +1,1 @@
+The forum's Discord integration is missing its credentials, so a resync cannot run. Ask a member of staff to check them.

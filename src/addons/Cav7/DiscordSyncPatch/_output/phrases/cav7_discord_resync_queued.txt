@@ -1,0 +1,1 @@
+Your Discord resync is queued. It will run when the queue gets to it.

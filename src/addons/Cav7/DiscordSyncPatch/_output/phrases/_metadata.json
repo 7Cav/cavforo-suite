@@ -1,0 +1,50 @@
+{
+    "cav7_discord_resync.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "aa2ce801c632d48dd6fc507ffff71117"
+    },
+    "cav7_discord_resync_no_servers.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "7693a212af79cb9dd6afc98b050c7652"
+    },
+    "cav7_discord_resync_not_configured.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "097729e15716e111d244408fb2160046"
+    },
+    "cav7_discord_resync_not_linked.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "9a49b29ac83157dc515c9ee6ccca1cae"
+    },
+    "cav7_discord_resync_note.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "e7f7438eb7cc565e99eaffa453211e01"
+    },
+    "cav7_discord_resync_pending.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "7d9741347dc4628fe503387aa520f867"
+    },
+    "cav7_discord_resync_queued.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "22243acc5cda863ae60217a4ac47d84a"
+    },
+    "cav7_discord_resync_unavailable.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "328d6b684bd23d5ccb47a6a83f7ffa83"
+    }
+}

@@ -1,2 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<phrases/>
+<phrases>
+  <phrase title="cav7_discord_resync" version_id="1000070" version_string="1.0.0"><![CDATA[Resync my Discord roles]]></phrase>
+  <phrase title="cav7_discord_resync_no_servers" version_id="1000070" version_string="1.0.0"><![CDATA[The forum has no active Discord server, so there is nothing for a resync to run against. Ask a member of staff to check the forum's Discord server list.]]></phrase>
+  <phrase title="cav7_discord_resync_not_configured" version_id="1000070" version_string="1.0.0"><![CDATA[The forum's Discord integration is missing its credentials, so a resync cannot run. Ask a member of staff to check them.]]></phrase>
+  <phrase title="cav7_discord_resync_not_linked" version_id="1000070" version_string="1.0.0"><![CDATA[You do not have a Discord account linked, so there is nothing to resync. Reload the page to see your account as it stands now.]]></phrase>
+  <phrase title="cav7_discord_resync_note" version_id="1000070" version_string="1.0.0"><![CDATA[A resync updates your roles. It will not put you back into a Discord server you have left.]]></phrase>
+  <phrase title="cav7_discord_resync_pending" version_id="1000070" version_string="1.0.0"><![CDATA[A Discord sync is already queued for your account.]]></phrase>
+  <phrase title="cav7_discord_resync_queued" version_id="1000070" version_string="1.0.0"><![CDATA[Your Discord resync is queued. It will run when the queue gets to it.]]></phrase>
+  <phrase title="cav7_discord_resync_unavailable" version_id="1000070" version_string="1.0.0"><![CDATA[Your Discord resync could not be queued. Nothing will run, so ask a member of staff to take a look.]]></phrase>
+</phrases>
