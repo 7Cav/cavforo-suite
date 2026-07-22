@@ -64,8 +64,9 @@ class CitationAttacher
      * @param callable(\Throwable, string): void $logFailure records a cleanup
      *        failure during rollback without masking the original error. Called
      *        with the exception and a context saying what could not be cleaned;
-     *        the production gateway stamps the milpac identity onto it and
-     *        forwards to \XF::logException.
+     *        the production gateway appends the PUC date the grant was for,
+     *        stamps the milpac identity onto it, and forwards to
+     *        \XF::logException.
      */
     public function __construct(
         private $logFailure

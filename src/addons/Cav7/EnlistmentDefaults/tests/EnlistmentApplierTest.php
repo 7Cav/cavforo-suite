@@ -82,7 +82,7 @@ class WrittenRecord
 
 /**
  * A fake entity world. Records what the applier asked it to do, and can be told
- * to throw on a specific PUC date's grant or on the record write to exercise
+ * to fail the grants for any set of PUC dates, or the record write, to exercise
  * fail-open.
  */
 class FakeGateway implements EnlistmentGateway
@@ -106,6 +106,16 @@ class FakeGateway implements EnlistmentGateway
 
     /** @var string[] PUC dates whose grant throws; empty means every grant lands */
     public array $throwOnDates = [];
+
+    /**
+     * PUC dates whose grant raises an \Error rather than an \Exception — what a
+     * vendor rename or a changed return type actually looks like from inside
+     * grantAward(). Kept apart from $throwOnDates so a test can say which of the
+     * two it is exercising.
+     *
+     * @var string[]
+     */
+    public array $errorOnDates = [];
 
     public bool $throwOnRecord = false;
 
@@ -135,6 +145,11 @@ class FakeGateway implements EnlistmentGateway
         $date = gmdate('Y-m-d', $awardDate);
         if (in_array($date, $this->throwOnDates, true)) {
             $e = new \DomainException("boom on $date");
+            $this->thrown[] = $e;
+            throw $e;
+        }
+        if (in_array($date, $this->errorOnDates, true)) {
+            $e = new \Error("Call to undefined method NF\\Rosters\\Entity\\RosterUser::getNewAward() on $date");
             $this->thrown[] = $e;
             throw $e;
         }
@@ -291,6 +306,35 @@ check(
     count($gw->loggedFailures) === 1 ? get_class($gw->loggedFailures[0]['exception']) : ''
 );
 check('the enlistment record is still written after a failed grant', count($gw->records) === 1);
+
+// --- Fail-open covers \Error, not only \Exception ------------------------
+// The failure the guard around a grant is really there for is vendor drift: an
+// NF/Rosters update renames getNewAward(), and PHP raises "Call to undefined
+// method" — an \Error, which since PHP 7 is not an \Exception. If the grant
+// guard only saw \Exception, that update would take the throw all the way out
+// of _postSave() and nobody could be enlisted at all, while a suite whose
+// fixtures throw \RuntimeException reported every test passing.
+$gw = new FakeGateway();
+$gw->errorOnDates = ['2009-08-10'];
+$threw = false;
+try {
+    (new EnlistmentApplier($gw))->apply();
+} catch (\Throwable $e) {
+    $threw = true;
+}
+check('apply() never throws when a grant fails with a vendor-drift \Error', !$threw);
+check(
+    'the \Error is the one logged, so no catch (\Exception) could have produced this',
+    count($gw->loggedFailures) === 1
+        && $gw->loggedFailures[0]['exception'] instanceof \Error
+        && !$gw->loggedFailures[0]['exception'] instanceof \Exception,
+    count($gw->loggedFailures) === 1 ? get_class($gw->loggedFailures[0]['exception']) : 'nothing logged'
+);
+check(
+    'the grants after the \Error still land, and the record is still written',
+    count($gw->granted) === count(PucSet::dates()) - 1 && count($gw->records) === 1,
+    'granted: ' . count($gw->granted) . ', records: ' . count($gw->records)
+);
 
 // --- The worst case: every grant fails -----------------------------------
 // The milpac is still enlisted, and the log carries one entry per dropped date

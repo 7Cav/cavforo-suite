@@ -120,7 +120,18 @@ namespace NF\Rosters\Entity {
         }
     }
 
-    /** Stand-in for the vendor service record row; can be told to fail its save. */
+    /**
+     * Stand-in for the vendor service record row; can be told to fail its save.
+     *
+     * It fails with a \TypeError, not an \Exception, and that is deliberate. The
+     * failures these guards exist for come from vendor drift, and vendor drift
+     * arrives as an \Error rather than an \Exception — a renamed
+     * getNewServiceRecord() is a "Call to undefined method" \Error, a changed
+     * return type is a \TypeError. Since PHP 7 neither extends \Exception, so a
+     * fixture that threw \RuntimeException would let the fail-open guards in
+     * EnlistmentApplier and the entity extension be narrowed to
+     * catch (\Exception) with the suite still green.
+     */
     class ServiceRecord
     {
         public $record_type_id;
@@ -134,7 +145,7 @@ namespace NF\Rosters\Entity {
         {
             $this->saveCalls++;
             if ($this->throwOnSave) {
-                throw new \RuntimeException('vendor refused the record write');
+                throw new \TypeError('vendor returned the wrong type');
             }
         }
     }
@@ -215,20 +226,37 @@ namespace {
             'cav7EnlistDefSystemUserId' => 1,
         ];
 
-        /** Set to make an option read blow up before the grant loop is reached. */
+        /**
+         * Set to make an option read blow up before the grant loop is reached.
+         * Raised as an \Error for the same reason ServiceRecord::save() is: the
+         * entity extension's last-resort guard has to hold against vendor and
+         * platform drift, which is \Error territory, not \Exception territory.
+         */
         public static bool $optionsThrow = false;
+
+        /**
+         * Set to make the error log itself refuse the write. Raised as an \Error
+         * for the same reason the other fixtures are: the guard around the
+         * entity extension's own log call is the last one there is, so it has to
+         * hold for the whole \Throwable range and not just \Exception.
+         */
+        public static bool $logThrows = false;
 
         public static ?object $serviceStub = null;
 
         public static function logException(\Throwable $e, bool $rollback = false, string $messagePrefix = '', bool $forceLog = false): void
         {
+            if (self::$logThrows) {
+                throw new \Error('error log write failed');
+            }
+
             self::$logged[] = ['exception' => $e, 'rollback' => $rollback, 'prefix' => $messagePrefix];
         }
 
         public static function options(): object
         {
             if (self::$optionsThrow) {
-                throw new \RuntimeException('option read failed');
+                throw new \Error('option read failed');
             }
 
             return (object) self::$options;
@@ -431,6 +459,17 @@ namespace Cav7\EnlistmentDefaults\Tests {
         str_contains($entry['prefix'], 'Cav7/EnlistmentDefaults'),
         $entry['prefix']
     );
+    // The one entry whose whole prefix is known and stable, so it is worth
+    // spelling out in full. XF concatenates the prefix with the exception
+    // message, and the trailing ': ' is the only thing keeping the two apart —
+    // without it the line reads '...failed to grant PUC for 2003-03-18citation
+    // image rejected'. Nothing else in this file would notice it going missing.
+    check(
+        'the prefix is exactly the addon tag, the identity, the context and a separator',
+        $entry['prefix'] === 'Cav7/EnlistmentDefaults: milpac ' . MILPAC_RELATION_ID
+            . ' (user ' . MILPAC_USER_ID . '): failed to grant PUC for 2003-03-18: ',
+        $entry['prefix']
+    );
     check(
         'the exception object is logged whole, so its class and stack trace survive',
         $entry['exception'] === $dropped,
@@ -479,8 +518,13 @@ namespace Cav7\EnlistmentDefaults\Tests {
     check(
         'the outer catch keeps the exception whole',
         count(\XF::$logged) === 1
-            && \XF::$logged[0]['exception'] instanceof \RuntimeException
+            && \XF::$logged[0]['exception'] instanceof \Error
             && \XF::$logged[0]['exception']->getMessage() === 'option read failed',
+        count(\XF::$logged) === 1 ? get_class(\XF::$logged[0]['exception']) : 'nothing logged'
+    );
+    check(
+        'the outer catch holds for an \Error, which no catch (\Exception) would have seen',
+        count(\XF::$logged) === 1 && !\XF::$logged[0]['exception'] instanceof \Exception,
         count(\XF::$logged) === 1 ? get_class(\XF::$logged[0]['exception']) : 'nothing logged'
     );
 
@@ -597,8 +641,13 @@ namespace Cav7\EnlistmentDefaults\Tests {
     check(
         'the record-write entry keeps the exception whole',
         count(\XF::$logged) === 1
-            && \XF::$logged[0]['exception'] instanceof \RuntimeException
-            && \XF::$logged[0]['exception']->getMessage() === 'vendor refused the record write',
+            && \XF::$logged[0]['exception'] instanceof \TypeError
+            && \XF::$logged[0]['exception']->getMessage() === 'vendor returned the wrong type',
+        count(\XF::$logged) === 1 ? get_class(\XF::$logged[0]['exception']) : 'nothing logged'
+    );
+    check(
+        'the record-write guard holds for an \Error, which no catch (\Exception) would have seen',
+        count(\XF::$logged) === 1 && !\XF::$logged[0]['exception'] instanceof \Exception,
         count(\XF::$logged) === 1 ? get_class(\XF::$logged[0]['exception']) : 'nothing logged'
     );
     check(
@@ -641,6 +690,34 @@ namespace Cav7\EnlistmentDefaults\Tests {
         'the rollback breadcrumb names the date the grant was for',
         count(\XF::$logged) === 1 && str_contains(\XF::$logged[0]['prefix'], '2003-03-18'),
         prefixes(\XF::$logged) ?: 'nothing logged'
+    );
+
+    // --- the last-resort guard survives a broken error log -------------------
+    // Both layers log through the same gateway seam now, so a fault in that seam
+    // repeats rather than happening once: the per-grant catch calls logFailure,
+    // it throws, the throw escapes the loop and apply(), the entity's outer catch
+    // calls the identical logFailure, and it throws identically. If the outer
+    // call is unguarded the milpac save fails and the recruiter is told the
+    // creation failed — over a logging fault. The guard has to be last-resort for
+    // real, so the failure it cannot log is the one it swallows.
+    \XF::$logged = [];
+    \XF::$serviceStub = null;   // every citation rejected, so every grant fails
+    \XF::$logThrows = true;
+
+    $threwOnBrokenLog = postSaveThrew(enlistingMilpac());
+
+    // The same fault reaching the outer catch directly, with no inner catch in
+    // front of it: the option read blows up before the grant loop.
+    \XF::$optionsThrow = true;
+    $threwOnBrokenLogBeforeLoop = postSaveThrew(enlistingMilpac());
+    \XF::$optionsThrow = false;
+
+    \XF::$logThrows = false;
+
+    check('a failing grant the error log itself refuses still lets the milpac save through', !$threwOnBrokenLog);
+    check(
+        'a pre-loop failure the error log itself refuses still lets the milpac save through',
+        !$threwOnBrokenLogBeforeLoop
     );
 
     // --- Summary ------------------------------------------------------------

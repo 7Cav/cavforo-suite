@@ -102,7 +102,8 @@ class RosterUserGateway implements EnlistmentGateway
 
         // The attacher's cleanup breadcrumbs are logged from the applier path
         // too, so they go through logFailure and get the same milpac stamp. The
-        // date is folded in here because the attacher does not know it, and with
+        // date is folded in here because the attacher is handed an opaque
+        // citation path and has no business parsing a date out of it, and with
         // up to six grants in flight a breadcrumb without one is ambiguous.
         $attacher = new CitationAttacher(
             fn (\Throwable $e, string $context) => $this->logFailure(

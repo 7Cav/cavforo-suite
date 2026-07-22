@@ -48,6 +48,9 @@ function check(string $label, bool $ok, string $detail = ''): void
 /**
  * A fake award row. Records whether it was deleted; can be told to throw from
  * delete() to model a rollback that itself fails (vendor delete() can throw).
+ *
+ * It throws an \Error rather than an \Exception on purpose — see the note on
+ * FakeCitationImage.
  */
 class FakeCitationAward implements CitationAward
 {
@@ -58,7 +61,7 @@ class FakeCitationAward implements CitationAward
     {
         $this->deleteCalls++;
         if ($this->throwOnDelete) {
-            throw new \RuntimeException('row delete failed');
+            throw new \Error('row delete failed');
         }
     }
 }
@@ -68,6 +71,16 @@ class FakeCitationAward implements CitationAward
  * (or rejects) the source, updateImage() copies-then-saves (and so can throw
  * after staging), deleteFile() is the best-effort copied-file cleanup. Records
  * every call so the rollback decision is observable.
+ *
+ * The failure paths raise \Error subclasses, not \Exception ones, and that is
+ * the point. What the attacher's guards exist for is vendor drift, and vendor
+ * drift arrives as an \Error: an NF/Rosters update that renames
+ * deleteImageForAwardDelete() is a "Call to undefined method" \Error, and the
+ * adapter's setImage(string): bool raises a \TypeError the moment the vendor
+ * service hands back null. Since PHP 7 neither is an \Exception, so a fixture
+ * throwing \RuntimeException would let every catch (\Throwable) in
+ * CitationAttacher be narrowed to catch (\Exception) with the suite still green
+ * — quietly abandoning fail-open for exactly the failures it was written for.
  */
 class FakeCitationImage implements CitationImage
 {
@@ -94,7 +107,7 @@ class FakeCitationImage implements CitationImage
     {
         $this->updateImageCalls++;
         if ($this->throwOnUpdate) {
-            throw new \RuntimeException('save after copy failed');
+            throw new \TypeError('save after copy failed');
         }
     }
 
@@ -102,7 +115,7 @@ class FakeCitationImage implements CitationImage
     {
         $this->deleteFileCalls++;
         if ($this->throwOnDeleteFile) {
-            throw new \RuntimeException('file cleanup failed');
+            throw new \Error('file cleanup failed');
         }
     }
 }
@@ -110,8 +123,9 @@ class FakeCitationImage implements CitationImage
 /**
  * A logger standing in for the attacher's logFailure seam. The attacher hands it
  * the cleanup failure and a bare context saying what could not be cleaned; the
- * production gateway is what stamps the milpac identity onto that context and
- * forwards it to the error log. Recorded here as (context => exception message).
+ * production gateway is what appends the PUC date the grant was for, stamps the
+ * milpac identity onto that context, and forwards it to the error log. Recorded
+ * here as (context => exception message).
  */
 class RecordingLogger
 {
@@ -161,6 +175,11 @@ check(
 check('the copied citation file is cleaned up on a save failure (no orphan)', $image->deleteFileCalls === 1);
 check('the award row is deleted on a save failure (no citationless row)', $award->deleteCalls === 1);
 check('a clean rollback logs no breadcrumb', $logger->entries === []);
+check(
+    'the rollback is driven by a vendor-drift \Error, which no catch (\Exception) would have seen',
+    $caught instanceof \Error && !$caught instanceof \Exception,
+    $caught !== null ? get_class($caught) : '(no throw)'
+);
 
 // --- setImage() rejects before any copy: row rolled back, reason carried ----
 $logger = new RecordingLogger();
@@ -184,6 +203,8 @@ check('a rejected image never commits (updateImage not called)', $image->updateI
 check('a rejected image still rolls the saved row back', $award->deleteCalls === 1);
 
 // --- Rollback that itself fails must NOT mask the original cause ------------
+// Each cleanup step throws an \Error here as well, so narrowing either cleanup
+// guard to catch (\Exception) lets that \Error out and mask the original.
 $logger = new RecordingLogger();
 $award = new FakeCitationAward();
 $award->throwOnDelete = true;        // the compensating row delete fails

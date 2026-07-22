@@ -58,14 +58,23 @@ interface EnlistmentGateway
     public function writeServiceRecord(int $recordTypeId, string $body, int $recordDate): void;
 
     /**
-     * Record a failure in the XF error log. A grant or record-write failure is
-     * logged here and swallowed, so enlistment never blocks.
+     * Record a failure in the XF error log. Everything that can go wrong during
+     * enlistment comes through here: a failed grant, a failed record write,
+     * anything raised before the grant loop (the entity extension's last-resort
+     * guard), and the citation rollback's cleanup breadcrumbs. The first three
+     * are swallowed after logging, so enlistment never blocks; a breadcrumb is
+     * not swallowed in that sense — the attach failure it accompanies is still
+     * re-thrown past it, and the guard around the grant is what absorbs that.
      *
      * The exception is passed whole rather than flattened to its message, so
      * the entry keeps the class and stack trace. $context says what was being
      * done ('failed to grant PUC for 2003-03-18'); the implementation stamps
      * the milpac the failure belongs to, since it is the side that holds the
      * entity — that is what makes a dropped grant traceable to a member.
+     *
+     * $context is a bare phrase: the implementation supplies the addon prefix
+     * and the trailing punctuation, so a caller adding its own double-prefixes
+     * the entry.
      */
     public function logFailure(\Throwable $e, string $context): void;
 }

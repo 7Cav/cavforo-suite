@@ -51,7 +51,22 @@ class RosterUser extends XFCP_RosterUser
             //
             // Logged through the gateway so this entry names the milpac exactly
             // as a dropped grant does — one identity stamp, one place.
-            $gateway->logFailure($e, 'enlistment defaults failed');
+            //
+            // The log call is itself guarded, because sharing that one seam with
+            // the applier's inner catches means a fault in it repeats rather than
+            // happening once: logFailure throws from a per-grant catch, the throw
+            // lands here, and logging it again throws identically. Unguarded, that
+            // would fail the milpac save — the recruiter would be told the
+            // creation failed over a logging fault. Nothing is left to log the
+            // lost entry to, so it is dropped: a guard of last resort has to hold
+            // even when the log seam is what broke.
+            try
+            {
+                $gateway->logFailure($e, 'enlistment defaults failed');
+            }
+            catch (\Throwable)
+            {
+            }
         }
     }
 }
