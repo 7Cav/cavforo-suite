@@ -116,10 +116,16 @@ class Account extends XFCP_Account
         // no dedupe, and assertNotFlooding() returns before FloodCheckService
         // ::checkFlooding() writes anything for a general:bypassFloodCheck holder, so
         // for those members there is no flood entry to withhold in the first place —
-        // and on this forum that permission reaches ordinary member groups. Asked
-        // here it costs one read, and the phrase carries the diagnosis to staff on
-        // the member's behalf. This is a standing fault staff can see in the admin
-        // panel, not an event a log has to preserve.
+        // and on this forum that permission reaches ordinary member groups. Asking
+        // here is not free: getServerMap() falls through to updateServerCache()
+        // whenever the map is empty, which is exactly this case, so every press pays
+        // a Finder query over the server list plus a rewrite of the nfDiscordServers
+        // and nfDiscordConfigured registry keys. It is still the cheaper of the two,
+        // because a registry write overwrites one key rather than appending a row:
+        // repeated presses leave the same two rows behind, where the alternative
+        // leaves a spent cooldown and a fresh error-log row each time. And the phrase
+        // carries the diagnosis to staff on the member's behalf. This is a standing
+        // fault staff can see in the admin panel, not an event a log has to preserve.
         $serverRepo = $this->repository(\NF\Discord\Repository\Server::class);
         if (!$serverRepo->getServerMap()) {
             return $this->error(\XF::phrase('cav7_discord_resync_no_servers'));

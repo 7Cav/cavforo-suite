@@ -135,8 +135,8 @@ in the docblocks of `NF/Discord/ApiMessage/SyncUser.php` and
 a plain unit with no XenForo dependency, and is exercised for real in
 `tests/RoleClaimTest.php`. `tests/WiringTest.php` pins the parts that need a live
 stack to run: both class-extension registrations, the method overrides, the resync
-action and its two guards, and the template modification and phrases that put the
-button on the page.
+action with its two preconditions and two guards, and the template modification and
+phrases that put the button on the page.
 
 One check exists only on a dev-stack run: whether the template modification still
 lands, because the vendor template is not in this repo for CI to match it against.

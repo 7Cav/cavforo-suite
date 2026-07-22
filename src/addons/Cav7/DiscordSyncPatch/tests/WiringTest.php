@@ -10,9 +10,9 @@
  * is exercised for real in RoleClaimTest.
  *
  * Issue #158 — the member-facing resync button: the class extension against the
- * public account controller, the action the button posts to, the linked-account
- * precondition and two guards in front of it, and the template modification and
- * phrases that put it on the page.
+ * public account controller, the action the button posts to, the two preconditions
+ * and two guards in front of it, and the template modification and phrases that put
+ * it on the page.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -335,7 +335,8 @@ check(
 );
 
 // =========================================================================
-// issue #158 — the resync action, and the two guards in front of it
+// issue #158 — the resync action, and the two preconditions and two guards in
+// front of it
 // =========================================================================
 $accountSrc = (string) @file_get_contents("$root/XF/Pub/Controller/Account.php");
 $accountCode = stripComments($accountSrc);
@@ -413,11 +414,14 @@ check(
 
 // --- the precondition: no Discord servers configured on the forum at all ---
 // The fan-out iterates the server map, so an empty map queues nothing however many
-// times it is pressed. Answered here rather than after the queueing call, because
-// the answer costs one cached read and the alternative spends a cooldown and appends
-// an xf_error_log row per press for a standing fault staff can see in the admin
-// panel. Rooted as one pattern: the repository class, the lookup on it, the negated
-// test, and the return that ends the action, in that order.
+// times it is pressed. Answered here rather than after the queueing call. Not
+// because the answer is free — an empty map is what sends getServerMap() through
+// updateServerCache(), so every press pays a Finder query and a rewrite of two
+// registry keys — but because those writes overwrite rather than accumulate, where
+// the alternative spends a cooldown and appends an xf_error_log row per press for a
+// standing fault staff can see in the admin panel. Rooted as one pattern: the
+// repository class, the lookup on it, the negated test, and the return that ends the
+// action, in that order.
 $serverMapPos = strpos($resyncBody, 'getServerMap(');
 check(
     'an empty server map ends the action up front, before the cooldown is spent',
@@ -564,7 +568,7 @@ check(
 );
 
 // =========================================================================
-// issue #158 — the surface: one template modification, four phrases, no options
+// issue #158 — the surface: one template modification, six phrases, no options
 // =========================================================================
 $tmXml = @simplexml_load_file("$root/_data/template_modifications.xml");
 check('_data/template_modifications.xml could be read', $tmXml !== false);
