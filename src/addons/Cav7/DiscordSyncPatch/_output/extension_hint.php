@@ -12,3 +12,8 @@ namespace Cav7\DiscordSyncPatch\NF\Discord\ApiMessage
 {
 	class XFCP_SyncUser extends \NF\Discord\ApiMessage\SyncUser {}
 }
+
+namespace Cav7\DiscordSyncPatch\XF\Pub\Controller
+{
+	class XFCP_Account extends \XF\Pub\Controller\AccountController {}
+}

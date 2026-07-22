@@ -1,12 +1,17 @@
 <?php
 
 /**
- * Issue #148 — pins the vendor-coupled wiring that CI cannot run because it needs a
- * live XenForo plus NF/Discord. The decision itself is exercised for real in
- * RoleClaimTest; what is held here is the wiring that carries it: the class
- * extension against the vendor's per-user sync message,
- * both method overrides on that extension, and the properties of the adapter that
- * a dev-stack run confirmed and a later edit could quietly undo.
+ * Pins the vendor-coupled wiring that CI cannot run because it needs a live XenForo
+ * plus NF/Discord.
+ *
+ * Issue #148 — the class extension against the vendor's per-user sync message, both
+ * method overrides on that extension, and the properties of the adapter that a
+ * dev-stack run confirmed and a later edit could quietly undo. The decision itself
+ * is exercised for real in RoleClaimTest.
+ *
+ * Issue #158 — the member-facing resync button: the class extension against the
+ * public account controller, the action the button posts to, its two guards, and
+ * the template modification and phrases that put it on the page.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -118,7 +123,8 @@ check(
 );
 
 // =========================================================================
-// the class extension — one seam, on the vendor's per-user sync message
+// the class extensions — the vendor's per-user sync message, and the public
+// account controller the resync button posts to
 // =========================================================================
 $classExtXml = @simplexml_load_file("$root/_data/class_extensions.xml");
 check('_data/class_extensions.xml could be read', $classExtXml !== false);
@@ -140,18 +146,35 @@ check(
         && $extByFrom['NF\Discord\ApiMessage\SyncUser']['active'] === '1',
     'a registration that goes missing must fail the build rather than ship silently'
 );
+// Issue #158 — the button is a form posting to an action on the public account
+// controller. NF/Discord extends the same controller for its own connected-account
+// actions and XenForo chains extensions, so both apply. The modern class name is
+// the one to register against: XF 2.3 renamed the controller, and Cav7/ApiKeyManager
+// registers its own extension of it under the same name.
 check(
-    'the per-user sync message is the only class this addon extends',
-    ($classExtXml !== false ? count($classExtXml->extension) : -1) === 1,
-    'both halves live on that one message; a second seam would be a change of design'
+    'XF\\Pub\\Controller\\AccountController is extended to the addon\'s Account and is active',
+    isset($extByFrom['XF\Pub\Controller\AccountController'])
+        && $extByFrom['XF\Pub\Controller\AccountController']['to'] === 'Cav7\DiscordSyncPatch\XF\Pub\Controller\Account'
+        && $extByFrom['XF\Pub\Controller\AccountController']['active'] === '1',
+    'the button posts to an action on this extension; a registration that goes missing takes the button with it'
+);
+check(
+    'those two vendor classes are the only ones this addon extends',
+    ($classExtXml !== false ? count($classExtXml->extension) : -1) === 2,
+    'the sync message carries the claim, the account controller carries the resync action; a third seam would be a change of design'
 );
 check(
     '_output has one class_extensions file per _data extension',
     count(outputItems($root, 'class_extensions')) === ($classExtXml !== false ? count($classExtXml->extension) : -1)
 );
 check(
-    'the extension ships its _output export',
+    'the sync-message extension ships its _output export',
     is_file("$root/_output/class_extensions/NF-Discord-ApiMessage-SyncUser_Cav7-DiscordSyncPatch-NF-Discord-ApiMessage-SyncUser.json"),
+    'a registration without its export count-mismatches in check-data-consistency instead of failing clearly here'
+);
+check(
+    'the account-controller extension ships its _output export',
+    is_file("$root/_output/class_extensions/XF-Pub-Controller-AccountController_Cav7-DiscordSyncPatch-XF-Pub-Controller-Account.json"),
     'a registration without its export count-mismatches in check-data-consistency instead of failing clearly here'
 );
 
@@ -271,6 +294,178 @@ check(
     'every group with a mapping is read, not just the member\'s own groups',
     !preg_match('/user_group_id\s+IN|current_user_group_ids/i', $mappedBody),
     'a role granted by a group the member is NOT in is exactly the role that has to become removable'
+);
+
+// =========================================================================
+// issue #158 — the resync action, and the two guards in front of it
+// =========================================================================
+$accountSrc = (string) @file_get_contents("$root/XF/Pub/Controller/Account.php");
+$accountCode = stripComments($accountSrc);
+
+check(
+    'the account extension extends the XFCP proxy, so it chains with the vendor\'s own extension of that controller',
+    (bool) preg_match('/class\s+Account\s+extends\s+XFCP_Account/', $accountSrc)
+);
+check(
+    'the resync action is named for the path account/connected-accounts/discord-resync',
+    (bool) preg_match('/function\s+actionConnectedAccountDiscordResync\s*\(/', $accountSrc),
+    'XenForo resolves the nested path segments to this method name, which is why no route entry is needed; renaming it unroutes the button'
+);
+
+$resyncBody = methodBody($accountCode, 'actionConnectedAccountDiscordResync');
+$assertPostPos = strpos($resyncBody, 'assertPostOnly()');
+$queuePos = strpos($resyncBody, 'queueSyncJobsForUser(');
+check(
+    'the resync action asserts a POST before it does anything else',
+    $assertPostPos !== false && $queuePos !== false && $assertPostPos < $queuePos,
+    'the button is a form so prefetchers and link-preview bots cannot resync on a member\'s behalf; the assertion is what makes that true'
+);
+check(
+    'the resync queues the vendor\'s per-user sync for the visitor, across every configured guild',
+    (bool) preg_match('/queueSyncJobsForUser\(\s*\$visitor\s*\)/', $resyncBody),
+    'one press has to cover every guild the forum syncs, and it may never target another member'
+);
+
+// --- first guard: nothing is queued while a sync is already pending ---
+$pendingCalls = substr_count($resyncBody, 'hasPendingDiscordSync(');
+$firstPendingPos = strpos($resyncBody, 'hasPendingDiscordSync(');
+$lastPendingPos = strrpos($resyncBody, 'hasPendingDiscordSync(');
+check(
+    'a pending sync is looked for before queueing, and looked for again after it',
+    $pendingCalls === 2 && $firstPendingPos < $queuePos && $lastPendingPos > $queuePos,
+    'the vendor queueing call returns nothing and cannot fail loudly, so a row landing is the only evidence the resync worked'
+);
+$pendingBody = methodBody($accountCode, 'hasPendingDiscordSync');
+check(
+    'the pending lookup is the vendor\'s own: its queue table, filtered to this member\'s per-user sync messages',
+    str_contains($pendingBody, 'xf_nf_discord_queue')
+        && str_contains($pendingBody, '\NF\Discord\ApiMessage\SyncUser::class')
+        && str_contains($pendingBody, 'user_id = ?'),
+    'the vendor stores the root class name for an extended message, and the connected-account renderer builds its pending indicator from exactly this lookup'
+);
+
+// --- second guard: one resync per member per five minutes ---
+check(
+    'the cooldown is 300 seconds, held as a class constant rather than an option',
+    (bool) preg_match('/const\s+RESYNC_COOLDOWN_SECONDS\s*=\s*300\s*;/', $accountCode),
+    'the addon gains no options, so that reverting it stays a single toggle'
+);
+check(
+    'the cooldown runs through XenForo\'s flood check, keyed to this action and limited to that constant',
+    (bool) preg_match('/assertNotFlooding\(\s*self::RESYNC_FLOOD_ACTION\s*,\s*self::RESYNC_COOLDOWN_SECONDS\s*\)/', $resyncBody),
+    'XenForo\'s own rules then exempt staff holding the flood-bypass permission, which is why the pending check exists independently'
+);
+preg_match('/const\s+RESYNC_FLOOD_ACTION\s*=\s*\'([^\']*)\'/', $accountCode, $floodKeyMatch);
+check(
+    'the flood key fits xf_flood_check.flood_action',
+    isset($floodKeyMatch[1]) && $floodKeyMatch[1] !== '' && strlen($floodKeyMatch[1]) <= 25,
+    'the column is varchar(25); a longer key is truncated on write and stops matching on read'
+);
+check(
+    'a resync that queued nothing releases the cooldown instead of spending it, and says so',
+    (bool) preg_match('/releaseResyncCooldown\([^)]*\)\s*;\s*return\s+\$this->error\(/s', $resyncBody),
+    'a member whose resync could not be queued must be able to retry once the problem is fixed'
+);
+$releaseBody = methodBody($accountCode, 'releaseResyncCooldown');
+check(
+    'the release clears this member\'s flood entry for this action only',
+    str_contains($releaseBody, 'xf_flood_check')
+        && str_contains($releaseBody, 'self::RESYNC_FLOOD_ACTION')
+        && str_contains($releaseBody, 'user_id = ?'),
+    'clearing more than the one entry would hand back cooldowns the member is still owed elsewhere'
+);
+
+// =========================================================================
+// issue #158 — the surface: one template modification, four phrases, no options
+// =========================================================================
+$tmXml = @simplexml_load_file("$root/_data/template_modifications.xml");
+check('_data/template_modifications.xml could be read', $tmXml !== false);
+
+$mods = [];
+if ($tmXml !== false) {
+    foreach ($tmXml->modification as $mod) {
+        $mods[(string) $mod['modification_key']] = $mod;
+    }
+}
+$resyncMod = $mods['cav7DiscordSyncPatchResyncButton'] ?? null;
+
+check(
+    'the button is added by one enabled public modification of the vendor\'s associated-account template',
+    $resyncMod !== null
+        && (string) $resyncMod['type'] === 'public'
+        && (string) $resyncMod['template'] === 'connected_account_associated_nfDiscord'
+        && (string) $resyncMod['enabled'] === '1',
+    'that template renders exactly when a Discord account is linked, which is when the button should be offered and never otherwise'
+);
+check(
+    'the addon modifies no other template',
+    count($mods) === 1,
+    'the button is the whole surface; a second modification would be a change of design'
+);
+check(
+    'the modification is anchored at the end of the template rather than inside the vendor markup',
+    $resyncMod !== null
+        && (string) $resyncMod['action'] === 'preg_replace'
+        && trim((string) $resyncMod->find) === '/\z/',
+    'an anchor inside the joinable-servers block would take the button away whenever that list is empty'
+);
+
+$modReplace = $resyncMod !== null ? (string) $resyncMod->replace : '';
+check(
+    'the button is a form posting to the resync action, not a link to it',
+    str_contains($modReplace, '<xf:form')
+        && str_contains($modReplace, 'account/connected-accounts/discord-resync'),
+    'a link would let prefetchers and link-preview bots queue a resync on a member\'s behalf'
+);
+check(
+    'a pending sync is noted beside the button, off the vendor\'s own pending indicator',
+    str_contains($modReplace, '$syncingServers')
+        && str_contains($modReplace, 'cav7_discord_resync_pending'),
+    'the member has to be able to see that the first press registered without pressing again'
+);
+check(
+    'the modification ships its _output export',
+    is_file("$root/_output/template_modifications/public/cav7DiscordSyncPatchResyncButton.json")
+);
+
+$phrasesXml = @simplexml_load_file("$root/_data/phrases.xml");
+check('_data/phrases.xml could be read', $phrasesXml !== false);
+$phraseTitles = [];
+if ($phrasesXml !== false) {
+    foreach ($phrasesXml->phrase as $phrase) {
+        $phraseTitles[] = (string) $phrase['title'];
+    }
+}
+foreach ([
+    'cav7_discord_resync',
+    'cav7_discord_resync_queued',
+    'cav7_discord_resync_pending',
+    'cav7_discord_resync_unavailable',
+] as $title) {
+    check(
+        "the phrase '$title' ships in both _data and _output",
+        in_array($title, $phraseTitles, true) && is_file("$root/_output/phrases/$title.txt")
+    );
+}
+check(
+    'those four phrases are the whole set',
+    count($phraseTitles) === 4,
+    'the button label, the queued message, the pending note and the unavailable message'
+);
+
+// The action reaches its own name through the account route's nested path segments,
+// so there is nothing to register. An entry here would be a second way in.
+$routesXml = @simplexml_load_file("$root/_data/routes.xml");
+check(
+    'the addon registers no route of its own',
+    $routesXml !== false && count($routesXml->children()) === 0,
+    'XenForo resolves account/connected-accounts/discord-resync to the action name on its own'
+);
+$optionsXml = @simplexml_load_file("$root/_data/options.xml");
+check(
+    'the addon still has no options',
+    $optionsXml !== false && count($optionsXml->children()) === 0,
+    'the cooldown is a constant on purpose; an option would give the addon install state to unwind'
 );
 
 // =========================================================================

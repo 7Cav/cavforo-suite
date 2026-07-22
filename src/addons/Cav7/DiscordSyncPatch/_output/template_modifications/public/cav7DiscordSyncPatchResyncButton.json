@@ -1,0 +1,9 @@
+{
+    "template": "connected_account_associated_nfDiscord",
+    "description": "Adds a button that queues a resync of the member's own Discord roles",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "preg_replace",
+    "find": "/\\z/",
+    "replace": "\n<xf:form action=\"{{ link('account/connected-accounts/discord-resync') }}\" class=\"u-inputSpacer\">\n\t<xf:button type=\"submit\" icon=\"refresh\">{{ phrase('cav7_discord_resync') }}</xf:button>\n\t<xf:if is=\"$syncingServers is not empty\">\n\t\t<span class=\"u-muted\">{{ phrase('cav7_discord_resync_pending') }}</span>\n\t</xf:if>\n</xf:form>"
+}

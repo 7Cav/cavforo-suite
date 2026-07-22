@@ -1,0 +1,26 @@
+{
+    "cav7_discord_resync.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "aa2ce801c632d48dd6fc507ffff71117"
+    },
+    "cav7_discord_resync_pending.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "9727828713e8e268cc5abb6563f1fbf5"
+    },
+    "cav7_discord_resync_queued.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "22243acc5cda863ae60217a4ac47d84a"
+    },
+    "cav7_discord_resync_unavailable.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "328d6b684bd23d5ccb47a6a83f7ffa83"
+    }
+}
