@@ -4,6 +4,6 @@
     "execution_order": 10,
     "enabled": true,
     "action": "preg_replace",
-    "find": "#\\{\\{\\s*date\\s*\\(\\s*\\$award\\.award_date\\s*(?:,[^()]*)?\\)\\s*\\}\\}#",
+    "find": "#\\{\\{\\s*date\\s*\\(\\s*\\$award\\.award_date\\s*(?:,[^{}()]*)?\\)\\s*\\}\\}#",
     "replace": "{$award.getAwardDate()}"
 }
