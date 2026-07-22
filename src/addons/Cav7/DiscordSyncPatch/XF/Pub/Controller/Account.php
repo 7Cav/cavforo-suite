@@ -105,6 +105,23 @@ class Account extends XFCP_Account
      */
     protected const RESYNC_FLOOD_ACTION = 'cav7_discord_resync';
 
+    /**
+     * How long a queued row still counts as work in flight. Matched to the vendor's
+     * own abandonment threshold rather than chosen: Repository\Queue::run() archives
+     * any entry with queue_date < \XF::$time - 86400 without a Discord round trip, so
+     * past this age a row would be thrown away on sight rather than run.
+     *
+     * The bound is what stops one swallowed job enqueue becoming a permanent lockout.
+     * Queue::queueMessage() inserts the row and then calls enqueueJob(), whose
+     * enqueueLater() sits inside an empty catch — the vendor's comment names a
+     * deadlock on xf_job. The insert survives, the job does not, and nothing re-drives
+     * it: none of NF/Discord's three cron entries reads xf_nf_discord_queue, and
+     * run()'s own age-out only runs inside the job that was never enqueued. Unbounded,
+     * the pending guard below would then refuse this member every press, forever, with
+     * nothing written anywhere to say why.
+     */
+    protected const RESYNC_PENDING_MAX_AGE_SECONDS = 86400;
+
     public function actionConnectedAccountDiscordResync(): AbstractReply
     {
         $this->assertPostOnly();
@@ -114,7 +131,8 @@ class Account extends XFCP_Account
 
         // The first precondition, ahead of both guards. The template only offers the
         // button to a linked member, but that is markup, not a guard: the endpoint
-        // takes a post from anyone. What queueing without a link leaves behind is in
+        // takes a post from any member with a CSRF token, linked or not. What queueing
+        // without a link leaves behind is in
         // the docblock; ask first, and ask before the cooldown, so an unlinked member
         // does not spend one on it either.
         if (empty($visitor->ConnectedAccounts['nfDiscord'])) {
@@ -153,8 +171,23 @@ class Account extends XFCP_Account
         // leaves a spent cooldown and a fresh error-log row each time. And the phrase
         // carries the diagnosis to staff on the member's behalf. This is a standing
         // fault staff can see in the admin panel, not an event a log has to preserve.
+        // array_filter() drops the guild-id-less rows, because the map is not the same
+        // thing as the set of guilds a sync can reach. updateServerCache() applies
+        // isActive() and stops; it does not apply the vendor's own hasGuildId(), which
+        // Finder\Server defines as where('guild_id', '!=', '') for exactly this case.
+        // Such a row is reachable and not exotic: active defaults to 1, and the
+        // vendor's own upgrade step inserts 'guild_id' => $options['guild_id'] ?? ''
+        // through a raw db()->insert with 'ignore', bypassing the entity's
+        // required => true. Left in, it is the worst outcome this action has, because
+        // every layer reports success: Api::factory('', false) skips the null
+        // bail-out, a row queues with the right user_id, the pending lookup finds it,
+        // the member is told the resync is queued — and on drain
+        // SyncUser::dispatch() reads the empty guild id and returns TRUE, so
+        // Queue::run() archives it as a success with no error log and no fail count.
+        // The pending guard clears when the row archives, so it repeats forever while
+        // no role ever moves and nothing anywhere says so.
         $serverRepo = $this->repository(\NF\Discord\Repository\Server::class);
-        $serverMap = $serverRepo->getServerMap();
+        $serverMap = array_filter($serverRepo->getServerMap());
         if (!$serverMap) {
             return $this->error(\XF::phrase('cav7_discord_resync_no_servers'));
         }
@@ -198,17 +231,33 @@ class Account extends XFCP_Account
             // it is more than a guess, and the log says so rather than sending staff
             // off after one. The member is being sent to staff, so this row is what
             // staff have to go on: it names them, and it carries the map.
+            //
+            // It reports the map this action read, and says so, rather than claiming
+            // the fan-out ran over it. queueSyncJobsForUser() takes no map: it calls
+            // getServerMap() again itself, so the two are independent reads of a table
+            // any concurrent request can rewrite through Entity\Server::_postSave() or
+            // _postDelete(). This branch is the one where they most plausibly
+            // disagreed, so asserting they matched would rule out the first thing
+            // staff should check.
+            //
+            // Forced, because the default drops it. XF\Error::logException() returns
+            // without writing when hasPendingUpgrade() is true, which covers any row
+            // in xf_addon carrying is_processing = 1 — set for the length of every
+            // add-on install, upgrade, uninstall and rebuild, with the forum still
+            // serving members throughout. An NF/Discord upgrade is both the likeliest
+            // moment for this branch to fire and a window where the flag is set, and
+            // dropping the row there sends the member to staff with nothing to show.
             \XF::logError(sprintf(
-                'Cav7/DiscordSyncPatch: Discord resync for user %d queued nothing. The server map held %d guild(s) [%s] and the fan-out ran over them. Cause unknown, please investigate.',
+                'Cav7/DiscordSyncPatch: Discord resync for user %d queued nothing. The server map read before the fan-out held %d syncable guild(s) [%s]; the fan-out re-reads it and may have seen another. Cause unknown, please investigate.',
                 $visitor->user_id,
                 count($serverMap),
                 implode(', ', $serverMap)
-            ));
+            ), true);
 
             // The press bought the member nothing, so it costs them nothing. There is
             // no volume argument against that here, but not because nothing unbounded
-            // is written: \XF::logError() sits five lines up, XF\Error
-            // ::logException() inserts per call with no dedupe, and a
+            // is written: the forced \XF::logError() call above inserts through
+            // XF\Error::logException() per call with no dedupe, and a
             // general:bypassFloodCheck holder has no flood entry to spend in the
             // first place, so the cooldown was never bounding them. The defence is
             // that this branch is near-unreachable: the three standing faults return
@@ -240,9 +289,13 @@ class Account extends XFCP_Account
         return (bool) \XF::db()->fetchOne('
             SELECT queue_id
             FROM xf_nf_discord_queue
-            WHERE class_name = ? AND user_id = ?
+            WHERE class_name = ? AND user_id = ? AND queue_date > ?
             LIMIT 1
-        ', [\NF\Discord\ApiMessage\SyncUser::class, $userId]);
+        ', [
+            \NF\Discord\ApiMessage\SyncUser::class,
+            $userId,
+            \XF::$time - self::RESYNC_PENDING_MAX_AGE_SECONDS,
+        ]);
     }
 
     /**

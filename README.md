@@ -20,7 +20,7 @@ Addons sit at `src/addons/Cav7/<AddonId>/`, mirroring a XenForo install's tree, 
 | `Cav7/AvatarByRole` | Forces avatars to match 7Cav rank |
 | `Cav7/MilpacTooltip` | Milpac (rank/billet/status) on the member hovercard |
 | `Cav7/EnlistmentReminder` | Reminds the processing team about enlistment applications stalled in the queue |
-| `Cav7/DiscordSyncPatch` | Makes forum user groups authoritative for the Discord roles they grant |
+| `Cav7/DiscordSyncPatch` | Makes forum user groups authoritative for the Discord roles they grant, and lets members resync their own |
 | `Cav7/CalendarPatch` | Behaviour fixes for NF/Calendar, kept out of the vendor addon |
 | `Cav7/EnlistmentDefaults` | Prefills the add-milpac form; gives each new milpac its Presidential Unit Citations and first service record |
 | `Cav7/MilpacMention` | Alerts a member when their milpac link is posted, as an `@`-mention would |
