@@ -11,6 +11,12 @@
         "version_string": "1.0.0",
         "hash": "9a49b29ac83157dc515c9ee6ccca1cae"
     },
+    "cav7_discord_resync_no_servers.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "a045b3dd4cfed578cd5fc7b2cdfac464"
+    },
     "cav7_discord_resync_pending.txt": {
         "global_cache": false,
         "version_id": 1000070,

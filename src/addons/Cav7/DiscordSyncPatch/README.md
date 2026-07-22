@@ -59,16 +59,19 @@ a fresh link, and a fresh link re-adds a member to a guild they have left where 
 guild joins members automatically. A resync syncs roles and leaves joining alone. A
 member who left a Discord server still has to go back to it themselves.
 
-A member with no Discord account linked is turned away first, and told why.
+Two things are checked before a press costs anything. A member with no Discord
+account linked is turned away and told so. So is everyone, if the forum has no
+Discord servers configured at all. That second refusal names its own cause, because
+a resync cannot work for anybody until staff set a server up, and this way the
+member can say exactly that when they report it.
 
 Then two guards. A press made while a sync is already pending for that member is
 refused, with a note that one is on its way. Past that, a member may queue at most
 one resync every five minutes; that limit is XenForo's own flood check, which does
-not apply to anyone holding `general:bypassFloodCheck`. If nothing was queued, the
-member is told so rather than left waiting on a sync that will never run, and the
-failure goes to the server error log for staff. The cooldown comes back when the
-failure looks transient. It stays spent when the integration has no Discord servers
-configured, because a retry a moment later would fail the same way.
+not apply to anyone holding `general:bypassFloodCheck`. If nothing was queued even
+so, the member is told rather than left waiting on a sync that will never run, and
+the cooldown is handed straight back. That failure goes to the server error log,
+because by then there is no explanation left to offer and staff need to know.
 
 The button syncs whether or not anything is actually wrong. Why it does not check
 first, and what the two guards are there to protect, is in
@@ -100,11 +103,13 @@ Disable the addon. Everything it adds is a class extension, a template
 modification or a phrase, so the integration is back to stock behavior on the next
 message and the button is gone from the next page render.
 
-There is one thing it writes that the vendor would not: a flood-check row under its
-own `cav7_discord_resync` key, one per member who has used the button. It is not
-worth unwinding, because XenForo's daily cleanup prunes flood-check rows a day after
-they were last touched, so they age out on their own. Nothing else it writes is
-anything the vendor would not have written itself.
+Two things it writes have no vendor equivalent, and neither needs unwinding. One is
+a flood-check row under its own `cav7_discord_resync` key, one per member who has
+used the button; XenForo's hourly cleanup prunes flood-check rows a day after they
+were last touched, so they age out on their own. The other is a server error-log row
+prefixed `Cav7/DiscordSyncPatch:`, written only when a press queued nothing that
+nothing accounts for; those age out with the rest of the log, on the
+`errorLogLength` option.
 
 ## Requirements
 
@@ -113,9 +118,9 @@ anything the vendor would not have written itself.
 
 ## Assumptions about code it does not own
 
-Both halves depend on things nobody promised would stay true. Mostly that is
-NF/Discord: how it queues a per-user sync, what it stores about one, and what it
-reads back. The resync action also leans on XenForo core — how the router builds an
+The sync fix and the resync button both depend on things nobody promised would stay
+true. Mostly that is NF/Discord: how it queues a per-user sync, what it stores about
+one, and what it reads back. The resync action also leans on XenForo core — how the router builds an
 action name out of a route's action prefix, how the flood check treats the bypass
 permission, and how wide `xf_flood_check.flood_action` is — so a core upgrade can
 break it as readily as a vendor one. Each is checked at the seam where it would
@@ -133,11 +138,13 @@ stack to run: both class-extension registrations, the method overrides, the resy
 action and its two guards, and the template modification and phrases that put the
 button on the page.
 
-Two things only a dev-stack run can check. Whether the template modification still
-lands, because the vendor template is not in this repo; and the Discord role change
-a resync produces, because a local stack has no bot token to drain the queue with.
-The queue row landing is the observable outcome, and it is the one the action
-itself checks.
+One check exists only on a dev-stack run: whether the template modification still
+lands, because the vendor template is not in this repo for CI to match it against.
+
+And one thing is not observable locally at all. The Discord role change a resync
+produces cannot be seen on a dev stack, because that stack has no bot token to drain
+the queue with. The queue row landing is the outcome that can be observed, and it is
+the one the action itself checks.
 
 ## Addon info
 

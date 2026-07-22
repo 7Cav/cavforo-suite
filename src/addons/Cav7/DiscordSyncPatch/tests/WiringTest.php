@@ -359,6 +359,18 @@ $pendingCalls = substr_count($resyncBody, 'hasPendingDiscordSync(');
 $firstPendingPos = strpos($resyncBody, 'hasPendingDiscordSync(');
 $lastPendingPos = strrpos($resyncBody, 'hasPendingDiscordSync(');
 
+// Both redirects go to $connectedAccountsLink, which pins them to each other and to
+// nothing else. What that variable is built from is the whole point: the member is
+// being sent back to the page the button is on, to read the message and see the
+// pending note. Any other route lands them somewhere with no Discord anything on it.
+check(
+    'both redirects land the member back on the page the button is on',
+    (bool) preg_match(
+        '/\$connectedAccountsLink\s*=\s*\$this->buildLink\(\s*\'account\/connected-accounts\'\s*\)\s*;/',
+        $resyncBody
+    ),
+    'the queued message and the already-pending note are only useful next to the button and the pending indicator; sent to account/preferences instead, the member reads a confirmation about Discord on a page that mentions none'
+);
 check(
     'the resync action asserts a POST before it queues anything',
     $assertPostPos !== false && $queuePos !== false && $assertPostPos < $queuePos,
@@ -369,12 +381,19 @@ check(
 // assignment written with different spacing would be invisible to a substring count
 // while pointing the queueing call at another member.
 preg_match_all('/\$visitor\s*=(?!=)/', $resyncBody, $visitorAssignments);
+// Rooted through the repository class the call is made on, not just the method
+// name: queueSyncJobsForUser() lives on Repository\Sync and getServerMap() on
+// Repository\Server, and the two are fetched two lines apart here, so swapping them
+// is an easy edit and a fatal call to an undefined method on whichever branch runs.
 check(
     'the resync queues the vendor\'s per-user sync for the visitor, and for nobody it was handed',
     (bool) preg_match('/\$visitor\s*=\s*\\\\XF::visitor\(\)\s*;/', $resyncBody)
-        && (bool) preg_match('/queueSyncJobsForUser\(\s*\$visitor\s*\)/', $resyncBody)
+        && (bool) preg_match(
+            '~\$syncRepo\s*=\s*\$this->repository\(\s*\\\\NF\\\\Discord\\\\Repository\\\\Sync::class\s*\)\s*;\s*\$syncRepo->queueSyncJobsForUser\(\s*\$visitor\s*\)\s*;~s',
+            $resyncBody
+        )
         && count($visitorAssignments[0]) === 1,
-    'one press has to cover every guild the forum syncs, and it may never target another member — which holds only while $visitor is the session visitor and stays that way'
+    'one press has to cover every guild the forum syncs, and it may never target another member — which holds only while $visitor is the session visitor and stays that way. Naming Repository\\Server here instead reaches a class with no queueSyncJobsForUser() on it, so every press fatals'
 );
 
 // --- the precondition: a member with no Discord account linked ---
@@ -390,6 +409,31 @@ check(
             $resyncBody
         ),
     'without a link the vendor still queues one row per guild — setupFromUser() returns a Noop before it records a user id and the repository queues the original message anyway — and each row carries a null user_id no lookup here can see, so both guards go blind and every press releases the cooldown'
+);
+
+// --- the precondition: no Discord servers configured on the forum at all ---
+// The fan-out iterates the server map, so an empty map queues nothing however many
+// times it is pressed. Answered here rather than after the queueing call, because
+// the answer costs one cached read and the alternative spends a cooldown and appends
+// an xf_error_log row per press for a standing fault staff can see in the admin
+// panel. Rooted as one pattern: the repository class, the lookup on it, the negated
+// test, and the return that ends the action, in that order.
+$serverMapPos = strpos($resyncBody, 'getServerMap(');
+check(
+    'an empty server map ends the action up front, before the cooldown is spent',
+    $serverMapPos !== false && $floodPos !== false && $queuePos !== false
+        && $serverMapPos < $floodPos && $serverMapPos < $queuePos
+        && (bool) preg_match(
+            '~\$serverRepo\s*=\s*\$this->repository\(\s*\\\\NF\\\\Discord\\\\Repository\\\\Server::class\s*\)\s*;\s*if\s*\(\s*!\s*\$serverRepo->getServerMap\(\)\s*\)\s*\{\s*return\s+\$this->error\(\s*\\\\XF::phrase\(\'cav7_discord_resync_no_servers\'\)\s*\)\s*;\s*\}~s',
+            $resyncBody
+        ),
+    'getServerMap() is what the vendor fan-out iterates, so an empty one is the one failure this action can name; asking after the fact instead spends the member\'s cooldown and appends an unbounded xf_error_log row per press, because assertNotFlooding() writes nothing at all for a general:bypassFloodCheck holder and there is then no flood entry to withhold'
+);
+check(
+    'the server map is read once, and only as the precondition',
+    substr_count($resyncBody, 'getServerMap(') === 1
+        && substr_count($resyncBody, '\NF\Discord\Repository\Server::class') === 1,
+    'a second read after the queueing call is the shape this branch was restructured out of'
 );
 
 // --- first guard: nothing is queued while a sync is already pending ---
@@ -428,7 +472,7 @@ check(
         '~FROM\s+xf_nf_discord_queue\s+WHERE\s+class_name\s*=\s*\?\s+AND\s+user_id\s*=\s*\?\s+LIMIT\s+1\s*\'\s*,\s*\[\s*\\\\NF\\\\Discord\\\\ApiMessage\\\\SyncUser::class\s*,\s*\$userId\s*\]~',
         $pendingBody
     ),
-    'OR in place of AND lets any member\'s queued sync satisfy the guard, so nobody can ever resync; the binds swapped round match nothing, so the guard goes permanently blind and every success reports failure. The vendor stores the ROOT class name for an extended message — Queue::queueMessage() resolves it before the insert — and the connected-account renderer builds its pending indicator from exactly this lookup; xf_nf_discord_queue_archive holds messages that have already run, so pointing at it would blind both guards at once'
+    'OR in place of AND lets any member\'s queued sync satisfy the guard, so nobody can ever resync; the binds swapped round match nothing, so the guard goes permanently blind and every success reports failure. The vendor stores the ROOT class name for an extended message — Queue::queueMessage() resolves it before the insert — and the connected-account renderer builds its pending indicator from the same predicate; xf_nf_discord_queue_archive holds messages that have already run, so pointing at it would blind both guards at once'
 );
 
 // --- second guard: one resync per member per five minutes ---
@@ -442,6 +486,11 @@ check(
     (bool) preg_match('/assertNotFlooding\(\s*self::RESYNC_FLOOD_ACTION\s*,\s*self::RESYNC_COOLDOWN_SECONDS\s*\)/', $resyncBody),
     'XenForo\'s own rules then exempt anyone holding general:bypassFloodCheck, which is why the pending check exists independently'
 );
+check(
+    'the cooldown is checked before the queueing call, not after it',
+    $floodPos !== false && $queuePos !== false && $floodPos < $queuePos,
+    'the check refuses by throwing, so behind the queueing call it throws having already fanned the whole thing out: the member is refused for work that was just queued, and the cooldown stops bounding queue volume at all — the one job ADR-0005 gives it'
+);
 preg_match('/const\s+RESYNC_FLOOD_ACTION\s*=\s*\'([^\']*)\'/', $accountCode, $floodKeyMatch);
 check(
     'the flood key fits xf_flood_check.flood_action',
@@ -454,37 +503,45 @@ check(
     'the vendor\'s just-associated session flag is cleared once the queueing is done',
     (bool) preg_match('/\\\\XF::session\(\)->remove\(\s*\'nfDiscordJustAssociated\'\s*\)\s*;/', $resyncBody)
         && strpos($resyncBody, 'nfDiscordJustAssociated') > $queuePos,
-    'the vendor sets it whenever it queues for the visitor themselves, which a resync always is, and its connected-account renderer reads it as a fresh link: left set, every joinable server claims a join is pending and loses its Join link'
+    'the vendor sets it whenever it queues for the visitor themselves, which a resync always is, and its connected-account renderer reads it as a fresh link: left set, every joinable server claims a join is pending and loses its Join link. The renderer consumes the flag on read, so that costs exactly one render — and the one render it costs is the connected-accounts page this action redirects the member straight to, which is the worst one available to get wrong'
 );
 check(
-    'no row after queueing is the failure case: it is logged, and the member is told plainly',
+    'no row after queueing is the failure case: it is logged, the cooldown is handed straight back, and the member is told plainly',
     (bool) preg_match(
-        '/if\s*\(\s*!\s*\$this->hasPendingDiscordSync\(\s*\$visitor->user_id\s*\)\s*\)\s*\{.*?\\\\XF::logError\(.*?releaseResyncCooldown\(\s*\$visitor->user_id\s*\)\s*;.*?return\s+\$this->error\(\s*\\\\XF::phrase\(\'cav7_discord_resync_unavailable\'\)\s*\)\s*;/s',
-        $resyncBody
-    ),
-    'drop the ! and every success reports failure while every failure reports success; a member who is told to go to staff needs staff to have something to read'
-);
-check(
-    'the failure log carries the member and the size of the server map',
-    (bool) preg_match('/getServerMap\(\)/', $resyncBody)
-        && (bool) preg_match('/\\\\XF::logError\(.*?\$visitor->user_id.*?\)\s*;/s', $resyncBody),
-    'an empty server map is the fault this branch was written for, and the count is what separates it from the drain race that also lands here, so both belong in what staff read'
-);
-// The cooldown goes back only for the failure the release was written for. An empty
-// server map is an operator fault that a retry five seconds later hits identically,
-// and XF\Error::logException inserts a row per call with no dedupe, so releasing
-// there lets one member append xf_error_log rows as fast as they can press —
-// exactly the volume ADR-0005 says the guards are the only thing bounding. A
-// non-empty map means the messages drained between queueing and the check, where an
-// immediate retry is worth something, so the cooldown is handed back for that alone.
-check(
-    'the cooldown is handed back only when the server map is non-empty',
-    (bool) preg_match(
-        '/if\s*\(\s*\$serverCount\s*>\s*0\s*\)\s*\{\s*\$this->releaseResyncCooldown\(\s*\$visitor->user_id\s*\)\s*;\s*\}/s',
+        '/if\s*\(\s*!\s*\$this->hasPendingDiscordSync\(\s*\$visitor->user_id\s*\)\s*\)\s*\{.*?\\\\XF::logError\(.*?\$this->releaseResyncCooldown\(\s*\$visitor->user_id\s*\)\s*;\s*return\s+\$this->error\(\s*\\\\XF::phrase\(\'cav7_discord_resync_unavailable\'\)\s*\)\s*;\s*\}/s',
         $resyncBody
     )
         && substr_count($resyncBody, 'releaseResyncCooldown(') === 1,
-    'releasing unconditionally removes every bound on this branch: the pending guard cannot bind there because no row landed, which is the branch\'s premise, so a member holding down the button writes one error-log row per press'
+    'drop the ! and every success reports failure while every failure reports success; a member who is told to go to staff needs staff to have something to read, and a press that queued nothing must not cost them five minutes'
+);
+// With the empty server map answered up front, this branch has exactly one cause
+// left, and it is one nobody has an explanation for: the map held servers, the
+// fan-out ran, and no row is there. The log has to say that rather than offer a
+// theory, and it has to name the member, because the phrase the member is shown
+// sends them to staff and this row is the only thing staff get to read. Anchored
+// inside the logError( argument list — an unrooted pattern is satisfied by the
+// $visitor->user_id in releaseResyncCooldown() two lines further down, which leaves
+// a log row naming nobody free to pass.
+preg_match('/\\\\XF::logError\(\s*sprintf\(\s*\'([^\']*)\'\s*,\s*([^)]*)\)\s*\)\s*;/s', $resyncBody, $logCall);
+check(
+    'the failure log names the member it is about',
+    isset($logCall[2]) && trim($logCall[2]) === '$visitor->user_id',
+    'staff are the member\'s next step, so a row that does not say who it is about strands them: it is the only record of a press the member was told to report'
+);
+check(
+    'the failure log says the cause is unknown rather than explaining it away',
+    isset($logCall[1])
+        && str_contains($logCall[1], 'Cav7/DiscordSyncPatch:')
+        && (bool) preg_match('/\bunknown\b/i', $logCall[1])
+        && !preg_match('/\bno action needed\b|\bmost likely\b/i', $logCall[1]),
+    'a row leaves xf_nf_discord_queue only through Repository\\Queue::archiveQueueEntry(), which runs after a completed Discord round trip, and the window here is one \\XF::session()->remove() call — so "drained in between" is not a cause anyone has evidence for, and a log row that says so talks staff out of looking'
+);
+$logPos = strpos($resyncBody, '\XF::logError(');
+check(
+    'the log is written on the unexplained branch alone',
+    substr_count($resyncBody, '\XF::logError(') === 1
+        && $logPos !== false && $lastPendingPos !== false && $logPos > $lastPendingPos,
+    'the empty server map returns before this point and writes nothing; a log call anywhere a member can reach without a fault is an unbounded xf_error_log write, because XF\\Error::logException inserts every call with no dedupe'
 );
 $queuedPhrasePos = strpos($resyncBody, 'cav7_discord_resync_queued');
 check(
@@ -545,9 +602,12 @@ $modReplace = $resyncMod !== null ? (string) $resyncMod->replace : '';
 // connected_account_associated_nfDiscord has two callers, not one. The member's own
 // account/connected-accounts page is the intended one. The other is the ADMIN
 // template user_extra, which loops the viewed member's associated providers and
-// calls {$provider.renderAssociated($user)|raw} — and
-// XF\ConnectedAccount\Provider\AbstractProvider::renderAssociated() renders this
-// same public template with the VIEWED user bound to $user. Ungated, an admin
+// calls {$provider.renderAssociated($user)|raw} — and for this provider that lands
+// in NF\Discord\ConnectedAccount\Provider\Discord::renderAssociated(), which
+// overrides the abstract one and renders this same public template with the VIEWED
+// user bound to $user. That override is also where the two other vendor facts these
+// checks lean on live: it is where $syncingServers is built, and where
+// nfDiscordJustAssociated is read and unset. Ungated, an admin
 // looking at a Discord-linked member is shown "Resync my Discord roles"; the link
 // builds a public URL, the admin's own CSRF token is valid there and assertPostOnly()
 // passes, so pressing it resyncs the ADMIN and not the member on screen. An admin
@@ -568,11 +628,47 @@ check(
         && str_contains($modReplace, 'account/connected-accounts/discord-resync'),
     'a link would let prefetchers and link-preview bots queue a resync on a member\'s behalf'
 );
+// XF\Template\Templater::form() defaults an absent method to post, so the form is
+// only a POST for as long as nothing says otherwise. Written as method="get" it
+// still renders, still carries the button, and every press comes back as the
+// refusal from assertPostOnly() — a control that is present, gated and inert.
+preg_match('~<xf:form\b[^>]*>~', $modReplace, $formTag);
+check(
+    'the form posts',
+    isset($formTag[0])
+        && (!preg_match('~\bmethod\s*=~i', $formTag[0])
+            || (bool) preg_match('~\bmethod\s*=\s*"post"~i', $formTag[0])),
+    'the action asserts POST, so a GET form is refused on every press; the default is post, which makes this a pin on nothing having overridden it'
+);
+// XF\Template\Templater::button() falls back to type="button" when the attribute is
+// absent or empty, and a type="button" inside a form submits nothing. The mutation
+// leaves a button that is present, correctly gated and correctly labelled, and does
+// nothing at all when pressed — which no other check here would notice.
+check(
+    'the button submits the form it sits in',
+    (bool) preg_match('~<xf:button\b[^>]*\btype="submit"~', $modReplace),
+    'the templater defaults an absent or empty type to "button", which renders a control that looks right and submits nothing'
+);
+// The label is pinned to the button element, not to the modification as a whole.
+// Loose, any phrase key this addon ships satisfies the phrase-reference check below
+// — including cav7_discord_resync_queued, which would have the button reading "Your
+// Discord resync is queued" to a member who has not pressed it yet.
+check(
+    'the button is labelled with the button phrase',
+    (bool) preg_match('~<xf:button\b[^>]*>.*?phrase\(\s*\'cav7_discord_resync\'\s*\).*?</xf:button>~s', $modReplace),
+    'every other phrase this addon ships reports on something that already happened, so any of them in the label describes a press nobody has made'
+);
+// Polarity, as one rooted pattern over the whole condition. Flipped to "is empty",
+// the note reads "A Discord sync is already queued for your account" exactly when
+// none is, and disappears the moment one is — so the page and the endpoint tell the
+// member opposite things.
 check(
     'a pending sync is noted beside the button, off the vendor\'s own pending indicator',
-    str_contains($modReplace, '$syncingServers')
-        && str_contains($modReplace, 'cav7_discord_resync_pending'),
-    'the member has to be able to see that the first press registered without pressing again'
+    (bool) preg_match(
+        '~<xf:if is="\$syncingServers is not empty">\s*<span[^>]*>\{\{\s*phrase\(\s*\'cav7_discord_resync_pending\'\s*\)\s*\}\}</span>~',
+        $modReplace
+    ),
+    'the member has to be able to see that the first press registered without pressing again — and the endpoint refuses a press on exactly this condition, so a negated note contradicts the refusal the member gets'
 );
 $modOutFile = "$root/_output/template_modifications/public/cav7DiscordSyncPatchResyncButton.json";
 check(
@@ -608,6 +704,7 @@ if ($phrasesXml !== false) {
 foreach ([
     'cav7_discord_resync',
     'cav7_discord_resync_not_linked',
+    'cav7_discord_resync_no_servers',
     'cav7_discord_resync_queued',
     'cav7_discord_resync_pending',
     'cav7_discord_resync_unavailable',
@@ -621,9 +718,21 @@ foreach ([
     );
 }
 check(
-    'those five phrases are the whole set',
-    ($phrasesXml !== false ? count($phrasesXml->phrase) : -1) === 5,
-    'the button label, the queued message, the pending note, the unavailable message and the refusal for a member with no account linked'
+    'those six phrases are the whole set',
+    ($phrasesXml !== false ? count($phrasesXml->phrase) : -1) === 6,
+    'the button label, the queued message, the pending note, the unavailable message, and the two refusals that name their own cause — no account linked, and no Discord server configured on the forum'
+);
+// The two refusals a member can hit have to tell them apart, because they lead to
+// different next steps: one is the member's own account, the other is a forum-wide
+// setting only staff can change. Same words for both and the member takes the wrong
+// one to staff.
+check(
+    'the no-servers refusal says it is the forum that is unconfigured, and does not repeat the unavailable wording',
+    ($phraseText['cav7_discord_resync_no_servers'] ?? '') !== ''
+        && (bool) preg_match('/discord server/i', $phraseText['cav7_discord_resync_no_servers'] ?? '')
+        && (bool) preg_match('/\bstaff\b/i', $phraseText['cav7_discord_resync_no_servers'] ?? '')
+        && ($phraseText['cav7_discord_resync_no_servers'] ?? '') !== ($phraseText['cav7_discord_resync_unavailable'] ?? ''),
+    'this is the only place the diagnosis is recorded now that the branch logs nothing, so the member has to carry it to staff themselves'
 );
 // A phrase key the addon does not ship renders as the raw key, so the button would
 // read "cav7_discord_resync" to every member. Nothing else here connects the
