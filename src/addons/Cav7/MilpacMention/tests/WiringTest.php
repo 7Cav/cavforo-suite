@@ -112,7 +112,7 @@ if (is_array($addon)) {
         'version_id is a positive integer (the single source the data items are pinned to)',
         is_int($versionId) && $versionId > 0
     );
-    check('version_string is 1.0.0', ($addon['version_string'] ?? '') === '1.0.0');
+    check('version_string is 1.1.0', ($addon['version_string'] ?? '') === '1.1.0');
     check(
         'requires XF 2.3.0+ (2030070)',
         (int) ($addon['require']['XF'][0] ?? 0) === 2030070
