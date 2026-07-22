@@ -136,7 +136,7 @@ check(
     is_dir("$root/tests/fixtures")
         && is_array($fixtureFiles)
         && $fixtureFiles !== [],
-    'tests/fixtures/ is the NF/Rosters markup that must not reach an installed board'
+    'tests/fixtures/ is the NF/Rosters markup that must not reach a board installed from a release zip'
 );
 
 if ($failures > 0) {
