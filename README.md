@@ -21,6 +21,10 @@ Addons sit at `src/addons/Cav7/<AddonId>/`, mirroring a XenForo install's tree, 
 | `Cav7/MilpacTooltip` | Milpac (rank/billet/status) on the member hovercard |
 | `Cav7/EnlistmentReminder` | Reminds the processing team about enlistment applications stalled in the queue |
 | `Cav7/DiscordSyncPatch` | Makes forum user groups authoritative for the Discord roles they grant |
+| `Cav7/CalendarPatch` | Behaviour fixes for NF/Calendar, kept out of the vendor addon |
+| `Cav7/EnlistmentDefaults` | Prefills the add-milpac form, then applies the standing unit citations and first service record |
+| `Cav7/MilpacMention` | Alerts a member when their milpac link is posted, as an `@`-mention would |
+| `Cav7/RosterPatch` | Behaviour fixes for NF/Rosters, kept out of the vendor addon |
 
 The vendor prefix is `Cav7`, not `7Cav`, because a PHP namespace cannot start with a digit. The GitHub org is `7Cav`; the code vendor is `Cav7`.
 
