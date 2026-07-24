@@ -15,6 +15,10 @@ hashes.json
 CLAUDE.md
 .remember/
 
+# Browser-automation output. Snapshots of the dev stack, which runs on a
+# mirror of production, so these capture real member data.
+.playwright-mcp/
+
 # Editor and OS
 .DS_Store
 .idea/
