@@ -556,7 +556,8 @@ check(
     'the active check passes a version floor read from addon.json, not a duplicated literal',
     (bool) preg_match("/isAddOnActive\(\s*'SV\/MultiPrefix'\s*,\s*\\\$this->multiPrefixFloor\(\)\s*\)/", $worker)
         && (bool) preg_match("/require.*?SV\/MultiPrefix/s", methodBody($worker, 'multiPrefixFloor'))
-        && !(bool) preg_match('/\b' . preg_quote((string) $multiPrefixFloorLiteral, '/') . '\b/', $worker),
+        && is_int($multiPrefixFloorLiteral)
+        && !str_contains($worker, (string) $multiPrefixFloorLiteral),
     'hard-coding the floor here is how it drifts from the declared requirement'
 );
 
