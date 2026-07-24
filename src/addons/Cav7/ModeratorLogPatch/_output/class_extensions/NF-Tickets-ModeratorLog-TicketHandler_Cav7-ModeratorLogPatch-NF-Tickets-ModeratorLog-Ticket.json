@@ -1,0 +1,6 @@
+{
+    "from_class": "NF\\Tickets\\ModeratorLog\\TicketHandler",
+    "to_class": "Cav7\\ModeratorLogPatch\\NF\\Tickets\\ModeratorLog\\Ticket",
+    "execute_order": 10,
+    "active": true
+}

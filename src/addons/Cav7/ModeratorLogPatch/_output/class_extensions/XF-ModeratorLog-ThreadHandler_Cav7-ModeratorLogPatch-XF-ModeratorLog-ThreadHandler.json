@@ -1,0 +1,6 @@
+{
+    "from_class": "XF\\ModeratorLog\\ThreadHandler",
+    "to_class": "Cav7\\ModeratorLogPatch\\XF\\ModeratorLog\\ThreadHandler",
+    "execute_order": 10,
+    "active": true
+}

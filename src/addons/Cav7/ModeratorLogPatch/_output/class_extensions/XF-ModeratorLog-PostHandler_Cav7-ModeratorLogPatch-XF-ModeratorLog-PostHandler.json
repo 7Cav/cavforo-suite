@@ -1,0 +1,6 @@
+{
+    "from_class": "XF\\ModeratorLog\\PostHandler",
+    "to_class": "Cav7\\ModeratorLogPatch\\XF\\ModeratorLog\\PostHandler",
+    "execute_order": 10,
+    "active": true
+}

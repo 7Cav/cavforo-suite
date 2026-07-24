@@ -1,0 +1,6 @@
+{
+    "from_class": "XF\\ModeratorLog\\ProfilePostHandler",
+    "to_class": "Cav7\\ModeratorLogPatch\\XF\\ModeratorLog\\ProfilePostHandler",
+    "execute_order": 10,
+    "active": true
+}
