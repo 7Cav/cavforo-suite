@@ -80,13 +80,21 @@ check(
     'a thread with no processing status is reminded past the deadline',
     ReminderDecision::shouldRemind($now, $deadline, $tenDaysOld, false, false) === true
 );
-// The #186 regression in one line: the reminder that landed on thread 100131
-// fired because the clerk who had marked it In Progress left the seat. The
-// status prefix is a fact about the thread, so no roster change can withdraw it.
+// Acceptance criterion 4, and the #186 regression in one line: the reminder that
+// landed on thread 100131 fired because the clerk who had marked it In Progress
+// left the seat. Reply authorship cannot be recomputed away once it is not an
+// input at all, so the pin is the signature itself. A behavioural check cannot
+// express this: the parameter it would have to vary no longer exists, which is
+// exactly the point. The scanner's matching fact array is pinned in
+// ScanWiringTest.
+$shouldRemindParams = array_map(
+    fn (\ReflectionParameter $p) => $p->getName(),
+    (new \ReflectionMethod(ReminderDecision::class, 'shouldRemind'))->getParameters()
+);
 check(
-    'suppression survives whoever replied and whether they still hold a seat',
-    ReminderDecision::shouldRemind($now, $deadline, $tenDaysOld, true, false) === false,
-    'reply authorship is no longer an input, so it cannot be recomputed away'
+    'shouldRemind takes exactly the five current facts, with nothing about who replied',
+    $shouldRemindParams === ['now', 'deadlineSeconds', 'opTimestamp', 'inProcessing', 'alreadyReminded'],
+    'got: ' . implode(', ', $shouldRemindParams)
 );
 
 // --- the already-reminded guard -------------------------------------------
@@ -134,6 +142,40 @@ check(
     ReminderDecision::selectThreadsToRemind($now, $deadline, [
         ['thread_id' => 201, 'op_timestamp' => $tenDaysOld, 'already_reminded' => false],
     ]) === [201]
+);
+
+// --- a non-positive deadline is refused ------------------------------------
+// Zero or negative puts every open application past the deadline at once, i.e.
+// remind the whole queue. The cron entry clamps the option to a one-hour floor,
+// but that clamp is two classes away and this is the seam that decides, so it
+// refuses the value itself rather than trusting the caller.
+foreach ([0, -1, -86400] as $badDeadline) {
+    $refused = false;
+    try {
+        ReminderDecision::shouldRemind($now, $badDeadline, $tenDaysOld, false, false);
+    } catch (\InvalidArgumentException $e) {
+        $refused = true;
+    }
+    check("shouldRemind refuses a deadline of $badDeadline", $refused);
+}
+// The batch entry checks it too, so an empty queue cannot carry a bad deadline
+// past unremarked just because no thread ever reaches shouldRemind.
+$refusedBatch = false;
+try {
+    ReminderDecision::selectThreadsToRemind($now, 0, []);
+} catch (\InvalidArgumentException $e) {
+    $refusedBatch = true;
+}
+check(
+    'selectThreadsToRemind refuses a non-positive deadline even with nothing to scan',
+    $refusedBatch,
+    'an empty batch never calls shouldRemind, so the batch entry has to check for itself'
+);
+// One second is a legal, if silly, deadline: the refusal is about non-positive
+// values, not about sanity, which is the cron entry's clamp.
+check(
+    'a one-second deadline is accepted',
+    ReminderDecision::shouldRemind($now, 1, $now - 2, false, false) === true
 );
 
 if ($failures > 0) {

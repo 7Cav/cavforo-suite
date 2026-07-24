@@ -23,12 +23,19 @@ namespace Cav7\EnlistmentReminder;
  * retroactively when the clerk who made it rotated out of RRD, which is how the
  * bot came to remind on thread 100131 while it was marked In Progress.
  *
- * Three config faults would each turn the scan into a mass remind of every
- * past-deadline application, so each aborts the run with a logged error instead:
- * an in-processing option that parses to nothing, a prefix link table that
- * cannot be read, and a link table that returns no rows at all for a non-empty
- * queue (every valid queue thread carries at least its type prefix there, so
- * zero rows means the table is unpopulated rather than the queue idle).
+ * Four faults would each turn the scan into a mass remind of every past-deadline
+ * application, so each aborts the run with a logged error instead: an
+ * in-processing option that parses to nothing, SV/MultiPrefix inactive (disabled
+ * rather than uninstalled, so its table is still there but nobody maintains it),
+ * a prefix link table that cannot be read, and a link table that returns no rows
+ * at all for a non-empty queue (every valid queue thread carries at least its
+ * type prefix there, so zero rows means the table is unpopulated rather than the
+ * queue idle).
+ *
+ * A fifth fault runs the other way and aborts for the same reason: an enlistment
+ * TYPE prefix configured into the in-processing set. Every valid queue thread
+ * carries one, so it reads the whole queue as handled and the add-on goes
+ * permanently, silently dark.
  *
  * The private alert is routed by enlistment type (issue #144): a thread's primary
  * prefix says whether it is a Standard or a Re-Enlistment, and the pure
@@ -61,11 +68,14 @@ class QueueReminder
 
         $rawStandardPositionIds = (string) \XF::options()->cav7ERStandardClerkPositionIds;
         $rawReenlistPositionIds = (string) \XF::options()->cav7ERReenlistClerkPositionIds;
+        // Named arguments: all four parameters are array and the pairs interleave,
+        // so transposing two of them would type-check, construct, and route
+        // standard enlistments to the re-enlistment clerks with nothing logged.
         $routing = new EnlistmentRouting(
-            PositionIdList::parse((string) \XF::options()->cav7ERStandardPrefixIds),
-            PositionIdList::parse($rawStandardPositionIds),
-            PositionIdList::parse((string) \XF::options()->cav7ERReenlistPrefixIds),
-            PositionIdList::parse($rawReenlistPositionIds)
+            standardPrefixIds: PositionIdList::parse((string) \XF::options()->cav7ERStandardPrefixIds),
+            standardPositionIds: PositionIdList::parse($rawStandardPositionIds),
+            reenlistPrefixIds: PositionIdList::parse((string) \XF::options()->cav7ERReenlistPrefixIds),
+            reenlistPositionIds: PositionIdList::parse($rawReenlistPositionIds)
         );
 
         $rawInProcessingPrefixIds = (string) \XF::options()->cav7ERInProcessingPrefixIds;
@@ -91,6 +101,36 @@ class QueueReminder
                 '[Cav7/EnlistmentReminder] No in-processing prefix parsed from cav7ERInProcessingPrefixIds="%s"; skipping this run so applications already being worked are not reminded.',
                 $rawInProcessingPrefixIds
             ));
+            return;
+        }
+        // The mirror image of the guard above, and the worse of the two. A type
+        // prefix (57/58) configured into the status set makes every prefixed queue
+        // thread read as handled, so nothing is ever reminded and nothing is ever
+        // logged. The option is free text with no validation_class, sitting right
+        // next to the two type-prefix options, so the slip is easy to make and
+        // impossible to notice. Abort rather than warn: the consequence is total
+        // silence, not a widened audience.
+        $typePrefixesInStatusSet = $routing->typePrefixIdsAmong($inProcessingPrefixIds);
+        if ($typePrefixesInStatusSet)
+        {
+            \XF::logError(sprintf(
+                '[Cav7/EnlistmentReminder] Prefix id(s) %s are configured as an in-processing status (cav7ERInProcessingPrefixIds) AND as an enlistment type prefix (cav7ERStandardPrefixIds/cav7ERReenlistPrefixIds); every queue thread would read as handled, so this run is skipped. Remove the type prefix from the in-processing list.',
+                implode(', ', $typePrefixesInStatusSet)
+            ));
+            return;
+        }
+        // SV/MultiPrefix disabled rather than uninstalled. XenForo checks `require`
+        // on install and upgrade only, never at runtime, and does not cascade a
+        // disable to dependents, so an admin who switches the vendor off (to test
+        // something, or after a failed upgrade) leaves this add-on running against
+        // a link table nobody maintains any more. The table and its stale rows are
+        // still there, so both guards below pass and every application picked up
+        // after the disable reads un-actioned and gets the note plus the alert.
+        if (!\XF::isAddOnActive('SV/MultiPrefix', $this->multiPrefixFloor()))
+        {
+            \XF::logError(
+                '[Cav7/EnlistmentReminder] SV/MultiPrefix is not active at the required version, so the thread prefix link table is no longer maintained; skipping this run rather than reading every application picked up since as un-actioned. Re-enable it, or disable this add-on.'
+            );
             return;
         }
 
@@ -284,6 +324,25 @@ class QueueReminder
     }
 
     /**
+     * The SV/MultiPrefix version floor this add-on declares, read back out of its
+     * own addon.json so the number lives in exactly one place. Duplicating the
+     * literal here is how the runtime check and the declared requirement drift
+     * apart, and ScanWiringTest already pins the manifest value's shape.
+     *
+     * Falls back to 0 if the manifest cannot be read, which turns the caller's
+     * check into a plain "is SV/MultiPrefix active at all?". That still catches
+     * the disable this guard exists for, so an unreadable manifest degrades the
+     * check rather than stopping the scan.
+     */
+    protected function multiPrefixFloor(): int
+    {
+        $addOn = \XF::app()->addOnManager()->getById('Cav7/EnlistmentReminder');
+        $json = $addOn ? $addOn->getJson() : [];
+
+        return (int) ($json['require']['SV/MultiPrefix'][0] ?? 0);
+    }
+
+    /**
      * getClerkUserIds() memoized on the position-id list. The union of both sets
      * and the per-type alert sets are the only distinct lists a run resolves (at
      * most three: standard, re-enlistment, and their union for a misconfigured
@@ -379,16 +438,24 @@ class QueueReminder
      * both abort the run — silently reading an unreadable status as "nothing is
      * handled" would remind every past-deadline application in the queue.
      *
-     * @param int[] $threadIds
+     * SV/MultiPrefix disabled but still installed is a third state, and the one
+     * this method cannot see: the table and every row in it stay exactly as they
+     * were, so the read succeeds and looks healthy while the vendor's thread
+     * behaviour has stopped maintaining it. Only the active-add-on check in
+     * remind() catches that one.
+     *
+     * There is deliberately no early return for an empty $threadIds. Answering
+     * "nothing to ask" with [] would be indistinguishable from the table
+     * returning nothing, which is the fault the caller aborts on, and it would
+     * abort reporting "no rows for the 0 queue thread(s) scanned". The caller owns
+     * the emptiness check instead: remind() returns on an empty queue well before
+     * this, so [] here means one thing only, that the table is unpopulated.
+     *
+     * @param int[] $threadIds non-empty; the caller returns on an empty queue first
      * @return array<int,array<string,mixed>>|null rows, or null if unreadable
      */
     protected function fetchThreadPrefixLinks(array $threadIds): ?array
     {
-        if (!$threadIds)
-        {
-            return [];
-        }
-
         $db = \XF::db();
 
         try

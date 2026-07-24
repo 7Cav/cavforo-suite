@@ -48,8 +48,7 @@ $inProcessing = [53, 54, 55];
  * The prefix sets are real ones read off the live queue node: an un-actioned
  * thread carries only its type prefix; a worked one adds a status; an approved
  * one also carries the S1 (66) and RTC (68) modifiers; an In Progress one may
- * carry the "!!!" modifier (110). Thread 906 is the mis-prefixed thread with no
- * links at all.
+ * carry the "!!!" modifier (110).
  *
  * @param array<int,int[]> $prefixesByThread
  * @return array<int,array<string,mixed>>
@@ -66,6 +65,9 @@ function linkRows(array $prefixesByThread): array
     return $rows;
 }
 
+// Thread 906 is absent on purpose: it stands for the mis-prefixed thread that has
+// no link rows at all, and a thread with no rows can only be represented by not
+// being in the fixture.
 $rows = linkRows([
     901 => [57],              // standard enlistment, no status — un-actioned
     902 => [58],              // re-enlistment, no status — un-actioned
@@ -87,8 +89,13 @@ check(
     'a thread carrying only the Re-Enlistment type prefix is not in processing',
     !isset($statuses[902])
 );
+// Documentation, not coverage: a thread with no rows cannot be in the fixture, so
+// there is no mutation of this seam that makes 906 appear and this check cannot
+// fail. It is here to state the shape of the answer. The real coverage for a
+// mis-prefixed thread is on the scanner side, where the absent thread still gets a
+// fact built for it and the type routing skips it (see ScanWiringTest).
 check(
-    'a thread with no link rows at all is not in processing',
+    'a thread with no link rows at all is absent from the result, so it reads as not in processing',
     !isset($statuses[906]),
     'the mis-prefixed thread must stay remindable, and be skipped later by the type routing'
 );
@@ -131,12 +138,35 @@ check(
     'got: ' . implode(', ', array_keys($inProgressOnly))
 );
 
-// --- an empty configured set suppresses nothing ----------------------------
-// The caller aborts the run before this point on a blank option, so nothing is
-// mass-reminded; the seam itself stays honest and claims no thread is handled.
+// --- an empty configured set is REFUSED, not answered -----------------------
+// Returning [] would read to every caller as "no thread is being worked", i.e.
+// remind every past-deadline application, which is the regression #186 exists to
+// fix. QueueReminder's own guard is the friendly path and aborts first; this is
+// the backstop for the next caller, and a throw out of cron aborts the run and
+// lands in the error log, which is what that guard chooses anyway.
+$refusedEmptySet = false;
+try {
+    ProcessingStatus::inProcessingThreadIds($rows, []);
+} catch (\InvalidArgumentException $e) {
+    $refusedEmptySet = true;
+}
 check(
-    'an empty configured set marks no thread as in processing',
-    ProcessingStatus::inProcessingThreadIds($rows, []) === []
+    'an empty configured set is refused rather than answered with "nothing is handled"',
+    $refusedEmptySet,
+    'answering [] here would remind the whole queue if any caller ever skipped its own guard'
+);
+// A set of nothing but junk normalises to empty, so it is the same refusal — the
+// blank-option case an admin actually produces.
+$refusedJunkSet = false;
+try {
+    ProcessingStatus::inProcessingThreadIds($rows, ['', 'abc', '0']);
+} catch (\InvalidArgumentException $e) {
+    $refusedJunkSet = true;
+}
+check(
+    'a configured set of nothing but junk is refused the same way',
+    $refusedJunkSet,
+    'the emptiness that matters is post-normalize, not the raw array'
 );
 check(
     'no link rows at all marks no thread as in processing',
@@ -161,6 +191,25 @@ check(
         [0, 54]
     ) === [],
     'prefix_id 0 is "no prefix"; treating it as a status would suppress every unprefixed thread'
+);
+// The thread id gets the same treatment as the prefix id. A row with a real status
+// but a missing or zero thread_id would otherwise put key 0 into a map the seam
+// declares as thread_id => true, and a caller reading array_keys() would see a
+// thread that does not exist.
+check(
+    'a row with a matching status but no usable thread id is dropped, not keyed as 0',
+    ProcessingStatus::inProcessingThreadIds(
+        [['thread_id' => 0, 'prefix_id' => 54], ['prefix_id' => 55]],
+        $inProcessing
+    ) === [],
+    'the result is declared thread_id => true, so a 0 key contradicts the seam\'s own hygiene rule'
+);
+check(
+    'a usable row alongside an unusable one still lands',
+    array_keys(ProcessingStatus::inProcessingThreadIds(
+        [['thread_id' => 0, 'prefix_id' => 54], ['thread_id' => 930, 'prefix_id' => 54]],
+        $inProcessing
+    )) === [930]
 );
 
 if ($failures > 0) {

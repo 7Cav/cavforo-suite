@@ -37,10 +37,11 @@ final class ReminderDecision
      * Whether one queue thread should be reminded now.
      *
      * @param int  $now             current unix time (\XF::$time)
-     * @param int  $deadlineSeconds reminder deadline as a span in seconds
+     * @param int  $deadlineSeconds reminder deadline as a span in seconds, positive
      * @param int  $opTimestamp     the OP's post_date
      * @param bool $inProcessing    whether the thread carries an in-processing prefix
      * @param bool $alreadyReminded whether the marker table already holds this thread
+     * @throws \InvalidArgumentException on a non-positive deadline
      */
     public static function shouldRemind(
         int $now,
@@ -49,6 +50,8 @@ final class ReminderDecision
         bool $inProcessing,
         bool $alreadyReminded
     ): bool {
+        self::assertPositiveDeadline($deadlineSeconds);
+
         if ($alreadyReminded) {
             return false;
         }
@@ -90,12 +93,17 @@ final class ReminderDecision
      *
      * @param array<int,array<string,mixed>> $threads
      * @return int[] thread ids to remind
+     * @throws \InvalidArgumentException on a non-positive deadline
      */
     public static function selectThreadsToRemind(
         int $now,
         int $deadlineSeconds,
         array $threads
     ): array {
+        // Checked here too, not just per thread, so an empty batch cannot slip a
+        // bad deadline past unremarked.
+        self::assertPositiveDeadline($deadlineSeconds);
+
         $toRemind = [];
         foreach ($threads as $thread) {
             $remind = self::shouldRemind(
@@ -111,5 +119,25 @@ final class ReminderDecision
         }
 
         return $toRemind;
+    }
+
+    /**
+     * A deadline of zero or less puts every open application past it at once, so
+     * the whole queue is reminded in one run. The cron entry clamps the configured
+     * option to a one-hour floor, but that clamp is two classes away and this seam
+     * is the one that decides; refusing the value here makes it independently safe
+     * for the next caller, in the same spirit as ProcessingStatus refusing an
+     * empty status set.
+     *
+     * @throws \InvalidArgumentException
+     */
+    private static function assertPositiveDeadline(int $deadlineSeconds): void
+    {
+        if ($deadlineSeconds <= 0) {
+            throw new \InvalidArgumentException(sprintf(
+                'The reminder deadline must be a positive span in seconds; got %d, which would put every open application past the deadline at once.',
+                $deadlineSeconds
+            ));
+        }
     }
 }

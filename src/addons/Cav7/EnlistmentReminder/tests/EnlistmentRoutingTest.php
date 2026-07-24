@@ -15,6 +15,9 @@
  *    so the caller skips it rather than mass-alerting;
  *  - a prefix listed under both type sets fail-safes to the union of both, and is
  *    reported as an overlap so the caller can log the misconfig;
+ *  - which of a given set of prefix ids are configured type prefixes, so the
+ *    caller can refuse to run when a type prefix has been listed as an
+ *    in-processing status (issue #186);
  *  - the union of both position lists is merged and de-duplicated, so the
  *    caller's "is any seat held at all" guard sees every configured seat;
  *  - id robustness: the string ids the DB hands back and the ints the option
@@ -116,6 +119,49 @@ check(
     'a prefix in only one set of an overlap config routes to that set alone',
     $stillStandard['type'] === EnlistmentRouting::TYPE_STANDARD
         && $stillStandard['position_ids'] === [579, 580, 751, 1012]
+);
+
+// --- the type prefix / status prefix collision (issue #186) -----------------
+// cav7ERInProcessingPrefixIds is free text sitting next to the two type-prefix
+// options, and a type prefix listed there is the add-on's worst config fault:
+// every valid queue thread carries its type prefix in the same link table the
+// status is read from, so one entry reads the whole queue as handled and the
+// reminder goes permanently, silently dark. This is what the caller asks before
+// it decides anything, so it can abort instead.
+check(
+    'the shipped default status set collides with neither type prefix',
+    $routing->typePrefixIdsAmong([53, 54, 55]) === [],
+    'got: ' . implode(',', $routing->typePrefixIdsAmong([53, 54, 55]))
+);
+check(
+    'a Standard type prefix in the status set is reported',
+    $routing->typePrefixIdsAmong([53, 54, 55, 57]) === [57]
+);
+check(
+    'a Re-Enlist type prefix in the status set is reported',
+    $routing->typePrefixIdsAmong([58]) === [58]
+);
+check(
+    'both type prefixes in the status set are both reported',
+    $routing->typePrefixIdsAmong([57, 58]) === [57, 58],
+    'got: ' . implode(',', $routing->typePrefixIdsAmong([57, 58]))
+);
+// String ids from a hand-typed option must collide just the same, or the check
+// would pass on exactly the input an admin produces.
+check(
+    'a string type prefix id in the status set is still reported',
+    $routing->typePrefixIdsAmong(['53', '57']) === [57]
+);
+// Nothing configured as a type prefix means nothing can collide; the empty status
+// set is the other guard's business, not this one's.
+$noTypePrefixes = new EnlistmentRouting([], $standardPositionIds, [], $reenlistPositionIds);
+check(
+    'a config with no type prefixes reports no collision',
+    $noTypePrefixes->typePrefixIdsAmong([53, 54, 55, 57, 58]) === []
+);
+check(
+    'an empty status set collides with nothing',
+    $routing->typePrefixIdsAmong([]) === []
 );
 
 // --- the union of both clerk sets -------------------------------------------

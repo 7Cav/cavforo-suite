@@ -130,4 +130,29 @@ final class EnlistmentRouting
     {
         return array_values(array_intersect($this->standardPrefixIds, $this->reenlistPrefixIds));
     }
+
+    /**
+     * Which of the given prefix ids are configured as an enlistment TYPE prefix,
+     * under either type. Empty in a healthy config.
+     *
+     * The caller asks this of the in-processing status set
+     * (cav7ERInProcessingPrefixIds), because a type prefix listed there is the
+     * add-on's worst config fault: every valid queue thread carries its type
+     * prefix in the same link table the status is read from, so one entry reads
+     * the entire queue as handled and the reminder goes permanently, silently
+     * dark. The option is free text and sits next to the two type-prefix options
+     * it must never contain, so the collision is a slip away. Unlike the
+     * both-types overlap above, which fail-safes to the union and only warrants a
+     * warning, the caller aborts the run on a non-empty answer here.
+     *
+     * @param int[]|string[] $prefixIds
+     * @return int[] the subset that is a configured type prefix
+     */
+    public function typePrefixIdsAmong(array $prefixIds): array
+    {
+        return array_values(array_intersect(
+            PositionIdList::normalize($prefixIds),
+            array_merge($this->standardPrefixIds, $this->reenlistPrefixIds)
+        ));
+    }
 }

@@ -236,6 +236,12 @@ check(
 // reads the node, bot user, and the four per-type prefix/clerk-position options).
 $worker = (string) file_get_contents("$root/QueueReminder.php");
 $runtime = $scanSrc . $worker;
+// Read once here; the version bump and the SV/MultiPrefix require pair are checked
+// further down, and the #186 vendor-active guard needs the declared floor to prove
+// the worker does not carry a second copy of it.
+$addonJson = (string) file_get_contents("$root/addon.json");
+$addonManifest = json_decode($addonJson, true);
+$multiPrefixFloorLiteral = $addonManifest['require']['SV/MultiPrefix'][0] ?? null;
 foreach ($expectedOptions as $id) {
     check(
         "$id is read at runtime via \\XF::options()",
@@ -451,6 +457,24 @@ check(
         && (bool) preg_match('/return null;/', $prefixLinkBody),
     'an unreadable link table must be distinguishable from a genuinely empty one'
 );
+// ...and [] must mean one thing only. An early `if (!$threadIds) return [];` for
+// "nothing to ask" is indistinguishable from the table returning nothing, which is
+// the fault the caller aborts on — it would abort reporting "no rows for the 0
+// queue thread(s) scanned". remind() returns on an empty queue before it gets
+// here, so the caller keeps owning the emptiness check.
+check(
+    'the prefix-link read does not answer an empty request with an empty result',
+    $prefixLinkBody !== ''
+        && !(bool) preg_match('/!\$threadIds\s*\)\s*\{?\s*return\s*\[\];/s', $prefixLinkBody),
+    'two different questions must not share the [] answer the caller reads as a table fault'
+);
+$emptyQueueReturnAt = strpos($worker, 'if (!$threads)');
+$prefixLinkReadAt   = strpos($worker, '$this->fetchThreadPrefixLinks(');
+check(
+    'the empty-queue return comes before the prefix-link read, so the read is never asked about nothing',
+    $emptyQueueReturnAt !== false && $prefixLinkReadAt !== false && $emptyQueueReturnAt < $prefixLinkReadAt,
+    'the helper has no empty-input branch, so the caller has to hold that end up'
+);
 check(
     'remind() aborts on an unreadable prefix link table (logError + early return)',
     abortsWithLoggedError($worker, 'if ($prefixLinks === null)'),
@@ -483,6 +507,58 @@ check(
     'the in-processing guard runs before the remind loop',
     $guardAt !== false && $decisionAt !== false && $guardAt < $decisionAt,
     'a guard downstream of the decision cannot stop a mass remind'
+);
+
+// The blank-option guard's mirror image, and the worse fault of the two: an
+// enlistment TYPE prefix (57/58) configured into the status set. Every valid queue
+// thread carries one, so one entry reads the whole queue as handled and the add-on
+// goes permanently, silently dark. The option is free text with no
+// validation_class and sits immediately next to the two type-prefix options it
+// must never contain, so prose in the help text is not a defence. The pure rule is
+// EnlistmentRouting::typePrefixIdsAmong, exercised in EnlistmentRoutingTest.
+check(
+    'remind() aborts when a type prefix is configured as an in-processing status',
+    abortsWithLoggedError($worker, 'if ($typePrefixesInStatusSet)')
+        && (bool) preg_match('/\$typePrefixesInStatusSet\s*=\s*\$routing->typePrefixIdsAmong\(\s*\$inProcessingPrefixIds\s*\)/', $worker),
+    'a 57 or 58 in the status set silences the add-on with nothing in the log to say why'
+);
+// The abort names both options an admin has to compare, since the collision spans
+// two of them and neither is wrong on its own.
+check(
+    'the type-prefix collision abort names the status option and the type options',
+    (bool) preg_match(
+        '/cav7ERInProcessingPrefixIds.*?cav7ERStandardPrefixIds.*?cav7ERReenlistPrefixIds/s',
+        ifBlock($worker, 'if ($typePrefixesInStatusSet)')
+    ),
+    'the admin has to know which two lists to compare'
+);
+$typeCollisionGuardAt = strpos($worker, 'if ($typePrefixesInStatusSet)');
+check(
+    'the type-prefix collision guard runs before the remind decision',
+    $typeCollisionGuardAt !== false && $decisionAt !== false && $typeCollisionGuardAt < $decisionAt,
+    'a guard downstream of the decision cannot stop the silencing it exists to catch'
+);
+
+// SV/MultiPrefix DISABLED rather than uninstalled is the state neither link-table
+// guard can see. XenForo checks `require` on install and upgrade only, never at
+// runtime, and does not cascade a disable to dependents, so the table and all its
+// stale rows stay in place while the vendor stops maintaining them: the read
+// succeeds, both guards pass, and every application picked up since the disable
+// reads un-actioned and gets the note plus the clerk alert.
+check(
+    'remind() aborts when SV/MultiPrefix is not active (disabled, not just uninstalled)',
+    abortsWithLoggedError($worker, "if (!\\XF::isAddOnActive('SV/MultiPrefix'"),
+    'a disabled vendor add-on leaves a stale table that reads as "nothing is handled"'
+);
+// The floor is checked, not just activeness, and it is not a second copy of the
+// number: it comes back out of the manifest that declares it, so the runtime check
+// and addon.json cannot drift apart.
+check(
+    'the active check passes a version floor read from addon.json, not a duplicated literal',
+    (bool) preg_match("/isAddOnActive\(\s*'SV\/MultiPrefix'\s*,\s*\\\$this->multiPrefixFloor\(\)\s*\)/", $worker)
+        && (bool) preg_match("/require.*?SV\/MultiPrefix/s", methodBody($worker, 'multiPrefixFloor'))
+        && !(bool) preg_match('/\b' . preg_quote((string) $multiPrefixFloorLiteral, '/') . '\b/', $worker),
+    'hard-coding the floor here is how it drifts from the declared requirement'
 );
 
 // --- the decision routes through the pure units ----------------------------
@@ -551,6 +627,24 @@ check(
         $worker
     ),
     'the decision reads one boolean per thread, and it must be the configured-set membership'
+);
+// Acceptance criterion 4: reply authorship no longer influences the decision. The
+// name-based checks above ("fetchReplyAuthorIds is gone") are walked past by any
+// renamed helper, so pin the fact array itself: exactly the four keys
+// ReminderDecision documents, no fifth one carrying who replied back in. The
+// matching parameter list on shouldRemind is pinned in ReminderDecisionTest.
+$factsLiteral = '';
+if (preg_match('/\$facts\[\]\s*=\s*\[(.*?)\n            \];/s', $worker, $factsMatch)) {
+    $factsLiteral = $factsMatch[1];
+}
+preg_match_all("/'([a-z_]+)'\s*=>/", $factsLiteral, $factKeyMatches);
+$factKeys = $factKeyMatches[1] ?? [];
+sort($factKeys);
+check(
+    'the fact array handed to the decision carries exactly the four documented keys',
+    $factsLiteral !== ''
+        && $factKeys === ['already_reminded', 'in_processing', 'op_timestamp', 'thread_id'],
+    'got: ' . implode(', ', $factKeys)
 );
 
 // --- the bot posts the note the SteamChecker way, note included ------------
@@ -984,7 +1078,6 @@ check(
         && (bool) preg_match("/delete\(\s*'xf_option'\s*,.*?cav7ERClerkPositionIds/s", $setup),
     'without the removal an admin upgrading keeps a dead option nothing reads'
 );
-$addonJson = (string) file_get_contents("$root/addon.json");
 preg_match('/"version_id"\s*:\s*(\d+)/', $addonJson, $versionMatch);
 $versionId = (int) ($versionMatch[1] ?? 0);
 check(
@@ -1009,8 +1102,7 @@ check(
 // floor written in the AABBCCDE range is met by every SV release in existence and
 // gates nothing — an install missing the table would sail through the check and
 // fail at the first scan instead.
-$addonManifest = json_decode($addonJson, true);
-$multiPrefixFloor = $addonManifest['require']['SV/MultiPrefix'][0] ?? null;
+$multiPrefixFloor = $multiPrefixFloorLiteral;
 check(
     'addon.json requires SV/MultiPrefix',
     $multiPrefixFloor !== null,
