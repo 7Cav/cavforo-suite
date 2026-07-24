@@ -22,6 +22,7 @@
 
 namespace Cav7\EnlistmentReminder\Tests;
 
+require __DIR__ . '/../PositionIdList.php';
 require __DIR__ . '/../ProcessingStatus.php';
 
 use Cav7\EnlistmentReminder\ProcessingStatus;

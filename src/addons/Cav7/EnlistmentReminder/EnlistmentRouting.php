@@ -24,9 +24,9 @@ namespace Cav7\EnlistmentReminder;
  *     prefix in NEITHER is unrecognized — not a valid intake thread — and the
  *     caller skips it rather than mass-alerting.
  *
- * Ids are normalised to positive ints on the way in, so the string prefix id XF
- * hands back from the DB and the ints PositionIdList parses compare as the same
- * id (mirroring ReminderDecision's int/string robustness).
+ * Ids are normalised on the way in through PositionIdList::normalize, so the
+ * string prefix id XF hands back from the DB and the ints PositionIdList parses
+ * compare as the same id (mirroring ReminderDecision's int/string robustness).
  */
 final class EnlistmentRouting
 {
@@ -72,23 +72,10 @@ final class EnlistmentRouting
         array $reenlistPrefixIds,
         array $reenlistPositionIds
     ) {
-        $this->standardPrefixIds   = self::normalize($standardPrefixIds);
-        $this->standardPositionIds = self::normalize($standardPositionIds);
-        $this->reenlistPrefixIds   = self::normalize($reenlistPrefixIds);
-        $this->reenlistPositionIds = self::normalize($reenlistPositionIds);
-    }
-
-    /**
-     * Positive int ids, de-duplicated with first-seen order preserved. array_filter
-     * drops the 0 intval yields for a blank or non-numeric id, so a stray token
-     * never becomes a phantom seat, matching PositionIdList::parse.
-     *
-     * @param int[]|string[] $ids
-     * @return int[]
-     */
-    private static function normalize(array $ids): array
-    {
-        return array_values(array_unique(array_filter(array_map('intval', $ids))));
+        $this->standardPrefixIds   = PositionIdList::normalize($standardPrefixIds);
+        $this->standardPositionIds = PositionIdList::normalize($standardPositionIds);
+        $this->reenlistPrefixIds   = PositionIdList::normalize($reenlistPrefixIds);
+        $this->reenlistPositionIds = PositionIdList::normalize($reenlistPositionIds);
     }
 
     /**

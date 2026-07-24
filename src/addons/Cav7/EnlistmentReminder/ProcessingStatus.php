@@ -40,10 +40,10 @@ final class ProcessingStatus
      * all. Both are remindable as far as this rule is concerned; the type
      * routing is what later skips a thread whose prefix marks no enlistment.
      *
-     * Ids are normalised to int on both sides, so the strings the DB hands back
-     * and the ints PositionIdList parses compare as the same id, and a 0 — the
-     * "no prefix" sentinel — can never match even if a junk 0 reaches the
-     * configured set.
+     * Ids are normalised to int on both sides through PositionIdList::normalize,
+     * so the strings the DB hands back and the ints PositionIdList parses compare
+     * as the same id, and a 0 — the "no prefix" sentinel — can never match even if
+     * a junk 0 reaches the configured set.
      *
      * @param array<int,array<string,mixed>> $prefixLinkRows rows of ['thread_id' => .., 'prefix_id' => ..]
      * @param int[]|string[]                 $inProcessingPrefixIds the configured status set
@@ -51,7 +51,7 @@ final class ProcessingStatus
      */
     public static function inProcessingThreadIds(array $prefixLinkRows, array $inProcessingPrefixIds): array
     {
-        $statusIds = array_values(array_unique(array_filter(array_map('intval', $inProcessingPrefixIds))));
+        $statusIds = PositionIdList::normalize($inProcessingPrefixIds);
         if (!$statusIds)
         {
             return [];

@@ -1,11 +1,12 @@
 <?php
 
 /**
- * Behavioural unit test for PositionIdList::parse — the parse that turns the
- * per-type clerk-position and prefix options (cav7ERStandard/ReenlistClerkPositionIds
- * and cav7ERStandard/ReenlistPrefixIds since issue #144) into their id sets. Pure
- * PHP, no XenForo, so every branch runs for real here rather than being pinned by
- * shape. If it mis-parses, the whole reminder mis-fires: drop every id and
+ * Behavioural unit test for PositionIdList — the parse that turns the per-type
+ * clerk-position and prefix options (cav7ERStandard/ReenlistClerkPositionIds and
+ * cav7ERStandard/ReenlistPrefixIds since issue #144) into their id sets, and the
+ * normalize the other seams share for ids that arrive already split. Pure PHP, no
+ * XenForo, so every branch runs for real here rather than being pinned by shape. If
+ * it mis-shapes an id set, the whole reminder mis-fires: drop every id and
  * QueueReminder aborts the run; keep a 0 or a junk token and the seat or prefix
  * match resolves the wrong ids.
  *
@@ -59,6 +60,51 @@ check("space-separated '579 580' parses to [579,580]", PositionIdList::parse('57
 
 // Duplicates collapse, first-seen order preserved.
 check("'580,579,580' de-dups to [580,579]", PositionIdList::parse('580,579,580') === [580, 579]);
+
+// --- normalize(): the same id-list shaping applied to an already-split array ---
+// parse() ends in it, EnlistmentRouting shapes its four constructor lists with it,
+// and ProcessingStatus shapes the configured status set with it, so the id an
+// option parsed to and the id the DB hands back as a string compare as the same
+// id. One home for that rule, exercised here.
+
+// Strings and ints normalise to the same ints — the DB hands prefix ids back as
+// strings, PositionIdList parses them to ints, and both must match.
+check(
+    "normalize(['57', 58]) yields [57, 58]",
+    PositionIdList::normalize(['57', 58]) === [57, 58]
+);
+
+// A 0 — the "no prefix" sentinel — and junk tokens drop out, so neither can ever
+// match a real id.
+check(
+    'normalize drops a 0 and a junk token',
+    PositionIdList::normalize([53, 0, 'abc', '54']) === [53, 54]
+);
+check('normalize([]) yields []', PositionIdList::normalize([]) === []);
+check(
+    'normalize of nothing but junk yields []',
+    PositionIdList::normalize(['', 'abc', 0, '0']) === []
+);
+
+// Duplicates collapse and first-seen order survives, including across the
+// string/int boundary, and the result is a list (re-indexed from 0) so it can be
+// json-encoded or compared as one.
+check(
+    'normalize de-dups across the string/int boundary, first-seen order kept',
+    PositionIdList::normalize(['55', 53, '53', 55, 54]) === [55, 53, 54]
+);
+check(
+    'normalize re-indexes to a list after dropping a middle entry',
+    array_keys(PositionIdList::normalize([53, 'abc', 54])) === [0, 1]
+);
+
+// A negative token survives as an inert id: no prefix or position id is ever
+// negative, so it matches nothing, and dropping it here is not this seam's job.
+// Pinned so a later positivity filter is a deliberate change, not a silent one.
+check(
+    'normalize keeps a negative token as an inert id',
+    PositionIdList::normalize(['-3', 53]) === [-3, 53]
+);
 
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";

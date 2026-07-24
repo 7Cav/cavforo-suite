@@ -28,6 +28,7 @@
 
 namespace Cav7\EnlistmentReminder\Tests;
 
+require __DIR__ . '/../PositionIdList.php';
 require __DIR__ . '/../EnlistmentRouting.php';
 
 use Cav7\EnlistmentReminder\EnlistmentRouting;

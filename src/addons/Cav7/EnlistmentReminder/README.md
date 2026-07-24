@@ -23,9 +23,7 @@ domain terms are in [CONTEXT.md](CONTEXT.md).
 
 - Whether an application has been picked up is read from its status prefixes,
   which SV/MultiPrefix stores in its own thread-prefix link table. Membership in
-  the configured in-processing set is the test. The table also holds each
-  thread's enlistment type prefix, so "has any prefix" would read the whole queue
-  as handled.
+  the configured in-processing set is the test.
 - A processing clerk is any member seated in one of the configured clerk
   positions, held as a primary or a secondary roster seat. Clerk seats decide who
   is alerted, not whether a thread is un-actioned: they are re-read on every
@@ -80,11 +78,12 @@ All options live under **Admin CP → Options → Enlistment Reminder**:
 | In-processing prefix IDs | Thread prefix IDs that mean a clerk has taken the application on (default 53, 54, 55 for Hold, Approved, In Progress) |
 | Reminder deadline (hours) | How long an application may sit with no processing status before it is reminded (default 24, minimum 1) |
 
-Do not put the enlistment type prefixes (57, 58) in the in-processing list. Every
-application in the queue carries one, so listing them stops the reminder firing
-at all, and nothing in the log would say why. The add-on aborts a run and logs an
-error if the in-processing list is empty or its prefix table cannot be read,
-rather than treating every application as un-actioned.
+Do not put the enlistment type prefixes (57, 58) in the in-processing list: they
+are not processing statuses, and listing them stops the reminder firing at all
+with nothing in the log to say why. **Processing status** in
+[CONTEXT.md](CONTEXT.md) is where that distinction is defined. The add-on aborts a
+run and logs an error if the in-processing list is empty or its prefix table
+cannot be read, rather than treating every application as un-actioned.
 
 ## License
 

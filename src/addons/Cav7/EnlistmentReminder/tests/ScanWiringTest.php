@@ -917,6 +917,20 @@ check(
     is_int($multiPrefixFloor) && $multiPrefixFloor >= 1000000000,
     'SV version ids are build timestamps; a floor below 1000000000 is cleared by every SV release and enforces nothing. Got: ' . var_export($multiPrefixFloor, true)
 );
+// The second element of a require pair is admin-facing: XenForo prints it
+// verbatim in the ACP's unmet-dependency message, so it has to read as the
+// version an admin should go and install, like every other label in the suite
+// ('XenForo 2.3.0+'). Why the floor is a timestamp belongs in the comment above,
+// not in a string the ACP shows.
+$multiPrefixLabel = $addonManifest['require']['SV/MultiPrefix'][1] ?? '';
+check(
+    'the SV/MultiPrefix require label is a short version string, not developer rationale',
+    is_string($multiPrefixLabel)
+        && $multiPrefixLabel !== ''
+        && strlen($multiPrefixLabel) <= 60
+        && !str_contains($multiPrefixLabel, '('),
+    'an admin reads this label as the requirement itself. Got: ' . var_export($multiPrefixLabel, true)
+);
 
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";

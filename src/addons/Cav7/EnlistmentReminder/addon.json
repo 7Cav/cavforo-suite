@@ -24,7 +24,7 @@
         ],
         "SV/MultiPrefix": [
             1775899552,
-            "Multi Prefix 2.17.2+ (SV numbers releases by timestamp, not XenForo's AABBCCDE scheme, so the floor is the version_id of the 2.17.2 this was built and verified against)"
+            "Multi Prefix 2.17.2+"
         ]
     },
     "icon": ""

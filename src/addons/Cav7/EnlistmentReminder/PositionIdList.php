@@ -4,8 +4,10 @@ namespace Cav7\EnlistmentReminder;
 
 /**
  * A comma/whitespace option string parsed to a list of positive, unique ids — the
- * add-on's shared id-list parser. Since issue #144 split the clerk set by type and
- * issue #186 keyed the handled signal off a status prefix, it backs five options:
+ * add-on's shared id-list parser, and — through normalize — the one home for that
+ * shaping when the ids arrive already split, as they do in EnlistmentRouting and
+ * ProcessingStatus. Since issue #144 split the clerk set by type and issue #186
+ * keyed the handled signal off a status prefix, it backs five options:
  * the standard and re-enlistment clerk-position lists
  * (cav7ERStandardClerkPositionIds, cav7ERReenlistClerkPositionIds), their type
  * prefix lists (cav7ERStandardPrefixIds, cav7ERReenlistPrefixIds) fed straight into
@@ -39,10 +41,31 @@ final class PositionIdList
             return [];
         }
 
-        // array_filter drops 0 and the empty segments intval yields for a trailing
-        // comma or non-numeric junk, so '579,' and 'abc' parse to [579] and [].
-        $ids = array_filter(array_map('intval', preg_split('/[\s,]+/', $raw)));
+        return self::normalize(preg_split('/[\s,]+/', $raw));
+    }
 
-        return array_values(array_unique($ids));
+    /**
+     * The same id-list shaping applied to an array of raw ids that arrived already
+     * split — a config array, or prefix ids XenForo handed back from the database as
+     * strings. Ints, de-duplicated with first-seen order preserved, re-indexed as a
+     * list.
+     *
+     * This is where the add-on's id sets get their comparable shape, so an id an
+     * option parsed and the same id read off a table match under `in_array`'s strict
+     * compare rather than silently missing each other. EnlistmentRouting shapes its
+     * four constructor lists with it and ProcessingStatus its configured status set;
+     * parse() ends in it too, so the option string and the array take one path.
+     *
+     * array_filter drops the 0 intval yields for a blank segment, a trailing comma
+     * or non-numeric junk, so no stray token becomes a phantom seat and the 0 that
+     * means "no prefix" can never match. A negative token survives as an inert id;
+     * no real prefix or position id is negative, so it matches nothing.
+     *
+     * @param array<int|string|null> $ids
+     * @return int[]
+     */
+    public static function normalize(array $ids): array
+    {
+        return array_values(array_unique(array_filter(array_map('intval', $ids))));
     }
 }
