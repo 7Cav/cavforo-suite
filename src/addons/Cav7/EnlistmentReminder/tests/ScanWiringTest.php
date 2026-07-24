@@ -108,6 +108,59 @@ function branchToContinue(string $src, string $startMarker): string
     return substr($src, $start, $end - $start);
 }
 
+/**
+ * One `if (...) { ... }` block, from its start marker to the `}` that closes it,
+ * found by counting braces rather than by matching up to some later token.
+ *
+ * This is what makes the abort-guard pins below real. Written as
+ * `/if \(!\$x\).*?logError\(.*?return;/s`, a guard pin passes on a body with its
+ * `return;` deleted, because the `/s` and the lazy `.*?` let the match run on to
+ * any later bare `return;` in the file — alertClerks has one, several hundred
+ * lines down. Slicing the block first bounds the search to the guard's own body,
+ * so a deleted `return;` fails the pin instead of borrowing one from a stranger.
+ *
+ * Brace counting is naive about braces inside strings; none of the guards it is
+ * used on has any, and a stray one would only ever end the slice early, which
+ * fails the pin rather than passing it falsely.
+ */
+function ifBlock(string $src, string $startMarker): string
+{
+    $start = strpos($src, $startMarker);
+    if ($start === false) {
+        return '';
+    }
+    $open = strpos($src, '{', $start);
+    if ($open === false) {
+        return '';
+    }
+
+    $depth = 0;
+    for ($i = $open, $len = strlen($src); $i < $len; $i++) {
+        if ($src[$i] === '{') {
+            $depth++;
+        } elseif ($src[$i] === '}') {
+            $depth--;
+            if ($depth === 0) {
+                return substr($src, $start, $i - $start + 1);
+            }
+        }
+    }
+    return '';
+}
+
+/**
+ * True when the given `if` block both logs an error and returns — the shape every
+ * abort guard in remind() has to keep. Scoped to the block by ifBlock(), so the
+ * `return;` has to be the guard's own.
+ */
+function abortsWithLoggedError(string $src, string $startMarker): bool
+{
+    $block = ifBlock($src, $startMarker);
+    return $block !== ''
+        && str_contains($block, 'logError(')
+        && (bool) preg_match('/\breturn;/', $block);
+}
+
 // --- the hourly cron entry is registered ----------------------------------
 $cronXml = @simplexml_load_file("$root/_data/cron.xml");
 check('_data/cron.xml could be read', $cronXml !== false);
@@ -214,8 +267,21 @@ if ($optXml !== false) {
         $defaultByOption[(string) $option['option_id']] = (string) $option->default_value;
     }
 }
+// A dev-mode install imports from _output, not _data, and
+// check-data-consistency.php compares options by id and count rather than by
+// content — so an _output default that has drifted from its _data twin reaches a
+// dev stack unchallenged. A drifted cav7ERInProcessingPrefixIds is the worst of
+// them: slip 57 in on the _output side and the add-on installs permanently silent.
 foreach ($defaults as $id => $want) {
     check("the $id default is $want", ($defaultByOption[$id] ?? null) === $want);
+
+    $outputFile = "$root/_output/options/$id.json";
+    $outputJson = is_file($outputFile) ? json_decode((string) file_get_contents($outputFile), true) : null;
+    check(
+        "the _output copy of the $id default matches _data",
+        is_array($outputJson) && ($outputJson['default_value'] ?? null) === $want,
+        'dev mode installs from _output; got: ' . var_export($outputJson['default_value'] ?? null, true)
+    );
 }
 // The union of the two default position sets is exactly the old single default,
 // so clerk coverage does not change when the alert audience splits by type.
@@ -317,7 +383,7 @@ check(
 // abort with one line says the same thing without the noise.
 check(
     'remind() aborts when no clerk resolves (logError + early return on the empty clerk set)',
-    (bool) preg_match('/if\s*\(\s*!\$clerkUserIds\s*\).*?logError\(.*?return;/s', $worker),
+    abortsWithLoggedError($worker, 'if (!$clerkUserIds)'),
     'a run with nobody to alert should say so once, not once per thread per hour'
 );
 
@@ -387,7 +453,7 @@ check(
 );
 check(
     'remind() aborts on an unreadable prefix link table (logError + early return)',
-    (bool) preg_match('/if\s*\(\s*\$prefixLinks\s*===\s*null\s*\)\s*\{.*?logError\(.*?return;/s', $worker),
+    abortsWithLoggedError($worker, 'if ($prefixLinks === null)'),
     'without the abort, an unreadable table reads as "nothing is in processing" and reminds the whole queue'
 );
 // An empty result is the same failure wearing different clothes: every valid
@@ -396,7 +462,7 @@ check(
 // processing. Abort rather than mass-remind, matching the empty-clerk guard.
 check(
     'remind() aborts when a non-empty queue yields no prefix links at all',
-    (bool) preg_match('/if\s*\(\s*!\$prefixLinks\s*\)\s*\{.*?logError\(.*?return;/s', $worker),
+    abortsWithLoggedError($worker, 'if (!$prefixLinks)'),
     'every valid queue thread carries a type prefix here, so no rows at all means the table is unpopulated'
 );
 
@@ -405,7 +471,7 @@ check(
 // including the ones a clerk is actively working. Abort with a signal instead.
 check(
     'remind() aborts when the in-processing option parses to nothing (logError + early return)',
-    (bool) preg_match('/if\s*\(\s*!\$inProcessingPrefixIds\s*\)\s*\{.*?logError\(.*?return;/s', $worker)
+    abortsWithLoggedError($worker, 'if (!$inProcessingPrefixIds)')
         && str_contains($worker, 'cav7ERInProcessingPrefixIds'),
     'a blank or garbage option would otherwise remind every past-deadline thread in the queue'
 );
@@ -435,13 +501,48 @@ check(
 // "this thread has a row in the link table" would suppress every reminder
 // forever and never log a thing, because every valid queue thread carries its
 // type prefix there.
+// The call must be what PRODUCES $inProcessing, not merely something the file
+// contains. A worker that called the seam and threw the result away, then built
+// its own thread-keyed map from the same rows, satisfies a pin that only looks
+// for the call text — and that map is precisely "does this thread have any linked
+// prefix", the regression the seam exists to prevent.
 check(
-    'the in-processing fact is derived by ProcessingStatus against the configured set',
+    'the in-processing map is ASSIGNED from ProcessingStatus against the configured set',
     (bool) preg_match(
-        '/ProcessingStatus::inProcessingThreadIds\(\s*\$prefixLinks\s*,\s*\$inProcessingPrefixIds\s*\)/',
+        '/\$inProcessing\s*=\s*ProcessingStatus::inProcessingThreadIds\(\s*\$prefixLinks\s*,\s*\$inProcessingPrefixIds\s*\)\s*;/',
         $worker
     ),
     'testing mere presence in the link table would silently disable the add-on'
+);
+// And the raw rows must have no second consumer. $prefixLinks is the unfiltered
+// link table — every valid queue thread has rows in it — so any other use that
+// keys by thread is the trap wearing a different name. Four uses, all named.
+$remindBody = methodBody($worker, 'remind');
+$allowedPrefixLinkUses = [
+    '/\$prefixLinks\s*=\s*\$this->fetchThreadPrefixLinks\(/',
+    '/if\s*\(\s*\$prefixLinks\s*===\s*null\s*\)/',
+    '/if\s*\(\s*!\$prefixLinks\s*\)/',
+    '/ProcessingStatus::inProcessingThreadIds\(\s*\$prefixLinks\s*,/',
+];
+$prefixLinkUses = [];
+$unexpectedPrefixLinkUses = [];
+foreach (explode("\n", $remindBody) as $line) {
+    if (!str_contains($line, '$prefixLinks')) {
+        continue;
+    }
+    $prefixLinkUses[] = trim($line);
+    foreach ($allowedPrefixLinkUses as $allowed) {
+        if (preg_match($allowed, $line)) {
+            continue 2;
+        }
+    }
+    $unexpectedPrefixLinkUses[] = trim($line);
+}
+check(
+    'the raw prefix-link rows are touched only by their two guards and the ProcessingStatus call',
+    count($prefixLinkUses) === 4 && $unexpectedPrefixLinkUses === [],
+    'unexpected: ' . implode(' | ', $unexpectedPrefixLinkUses)
+        . ' (all ' . count($prefixLinkUses) . ' use(s): ' . implode(' | ', $prefixLinkUses) . ')'
 );
 check(
     'the in_processing fact handed to the decision is that map, not a bare link-table hit',
@@ -797,7 +898,7 @@ check(
 );
 check(
     'the empty-clerk guard names the new per-type options, not cav7ERClerkPositionIds',
-    (bool) preg_match('/if\s*\(\s*!\$clerkUserIds\s*\).*?logError\(.*?return;/s', $worker)
+    abortsWithLoggedError($worker, 'if (!$clerkUserIds)')
         && str_contains($worker, 'cav7ERStandardClerkPositionIds')
         && str_contains($worker, 'cav7ERReenlistClerkPositionIds')
         && !str_contains($worker, 'cav7ERClerkPositionIds'),
