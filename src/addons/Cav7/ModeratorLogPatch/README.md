@@ -85,10 +85,13 @@ their own content, is still not logged.** That is the one case an
 authorship rule cannot see and a permission rule could. ADR-0001 records why we
 took the trade.
 
-One consequence of the action list being exact: deleting an attachment from your
-own content logs `attachment_deleted` on a profile post comment, because that is
-not in the author-reachable set and the comment handler has no rule of its own
-for it. XenForo's post and profile-post handlers do, so those two stay quiet.
+One consequence of the action list being exact: `attachment_deleted` is not in
+it, so removing an attachment from your own profile post or from a comment on one
+now logs. Posts do not, because XenForo's post handler withholds that action for
+its author and this addon defers to it. That asymmetry is XenForo's, not ours,
+and it is also the clearest thing to look at if you want to see the deferral
+working: the same action, the same actor, one handler that has a rule and two
+that do not.
 
 ## Verifying an install
 
