@@ -192,12 +192,11 @@ check(
 );
 
 // ADR 0003 at the suite level: the committed rows are ordered by a byte comparison
-// of from_class, then to_class, which is the order our own exports emit. Nothing
-// else in the repo checks it: ADR 0003 says `tools/validate-addon.php` enforces it,
-// and that script has no class-extension logic at all (issue #152). Worth checking
-// because a re-export producing a diff on rows a change had nothing to do with is
-// what trained people to revert those hunks by hand, which is how the drift the ADR
-// describes happened in the first place.
+// of from_class, then to_class, which is the order our own exports emit. Pinned here
+// so this addon's own file cannot drift out of it, whatever else in the repo does or
+// does not check the rule. Worth pinning because a re-export producing a diff on rows
+// a change had nothing to do with is what trained people to revert those hunks by
+// hand, which is how the drift the ADR describes happened in the first place.
 //
 // Keyed on the pair rather than on from_class alone. from_class is unique in this
 // addon's file today, so a from_class sort would pass on rows the rule considers
@@ -357,16 +356,17 @@ check(
 // Deferral, pinned as one pattern: only a withheld decision short-circuits, and
 // everything else goes to the handler underneath. `return true` in place of the
 // delegation is the single most damaging edit available here — it would silently
-// undo the authorship rules XenForo's thread, post and profile-post handlers and
-// both ticket handlers already apply, and start logging every member retitling
-// their own thread.
+// undo the authorship rules seven of the eight registered handlers already apply
+// (XenForo's thread, post and both profile-post handlers, both ticket handlers, and
+// the calendar handler; only XenForo's user handler has none), and start logging
+// every member retitling their own thread.
 check(
     'a withheld decision returns false, and every other case delegates to the handler underneath',
     (bool) preg_match(
         '/if\s*\(\s*\$withheld\s*\)\s*\{\s*return\s+false\s*;\s*\}\s*return\s*\(bool\)\s*parent::isLoggable\(\s*\$content\s*,\s*\$action\s*,\s*\$actor\s*\)\s*;/s',
         $loggableBody
     ),
-    'returning true instead of delegating discards the rules five other handlers already apply, and the entries it then writes look correct'
+    'returning true instead of delegating discards the rules seven of the eight handlers underneath already apply, and the entries it then writes look correct'
 );
 check(
     'the per-action check has exactly one delegation and no second return path',

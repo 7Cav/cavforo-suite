@@ -43,12 +43,13 @@ without authority over somebody else's content, so it always logs. A member who
 holds a moderator record skips the rule entirely.
 
 Every other case is handed to the handler underneath rather than answered here.
-That is deliberate. XenForo's thread, post and profile-post handlers and both
-ticket handlers all override this check with rules of their own, and returning an
-answer instead of delegating would silently discard every one of them — including
-any that arrives in a version or an addon this one has not seen. It is also why
-record holders cannot regress: for them the override steps aside, so their entries
-are byte for byte what XenForo wrote before.
+That is deliberate. Seven of the eight registered handlers override this check
+with rules of their own — XenForo's thread, post and both profile-post handlers,
+both ticket handlers, and the calendar handler; only XenForo's user handler does
+not. Returning an answer instead of delegating would silently discard every one
+of them, including any that arrives in a version or an addon this one has not
+seen. It is also why record holders cannot regress: for them the override steps
+aside, so their entries are byte for byte what XenForo wrote before.
 
 Entries themselves are unchanged. The acting member, their IP, the timestamp,
 the content and the URL are all filled in by the same core method that filled
@@ -85,18 +86,9 @@ took the trade.
 **Two actions are withheld from their author here rather than by the handler
 underneath.** Removing an attachment from your own content and resetting your own
 poll are both reachable with own-content permissions, and the handlers that log
-them do not all say so — XenForo's post handler withholds the attachment for its
-author while its profile-post handlers do not, and no handler has a rule about a
-poll reset at all.
-[ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md) has the evidence
-for each.
-
-**There is nothing to watch the deferral do on this install today.** Every rule
-in the handlers underneath that withholds an action from its author is about a
-name the list already carries, so for an author this addon's rule answers first,
-and for anybody else that rule and this one both log. The deferral is there for
-the rule this addon cannot see: one that arrives with a later XenForo version, or
-in a handler somebody else ships.
+them do not all withhold them.
+[ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md) has the evidence for
+each.
 
 ## Verifying an install
 

@@ -52,10 +52,11 @@ trait AuthorshipLogging
      *
      * Withholding is the only answer this override produces on its own; every other
      * case is handed straight to the handler underneath. That matters beyond
-     * tidiness: XenForo's own thread, post and profile-post handlers and both
-     * vendor ticket handlers already override this method with rules of their own,
-     * and returning true instead of delegating would silently undo every one of
-     * them.
+     * tidiness: seven of the eight registered handlers already override this method
+     * with rules of their own — XenForo's thread, post and both profile-post
+     * handlers, both vendor ticket handlers, and NF/Calendar's event handler; only
+     * XenForo's user handler does not — and returning true instead of delegating
+     * would silently undo every one of them.
      *
      * @param Entity $content
      * @param string $action

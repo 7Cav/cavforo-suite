@@ -347,8 +347,15 @@ class VerifyCoverage extends Command
                 'the entry has to name the action that was taken, not just that something happened'
             );
 
+            // The actor's IP is the one part of an entry this run cannot check.
+            // `setupLogEntityActor()` fills `ip_address` from
+            // `\XF::app()->request()->getIp()`, which reads `REMOTE_ADDR`; there is no
+            // such server variable under the CLI, so the method skips the assignment
+            // and the column keeps its empty default no matter how correct the entry
+            // is. Asserting it here would fail every green run, so it is not selected
+            // — check it from a browser action if you need it.
             $row = $app->db()->fetchRow(
-                'SELECT user_id, ip_address, log_date FROM xf_moderator_log
+                'SELECT user_id, log_date FROM xf_moderator_log
                     WHERE content_type = ? AND content_id = ? ORDER BY moderator_log_id LIMIT 1',
                 ['thread', $threadId]
             );

@@ -35,9 +35,10 @@ class AuthorshipRule
      * and a custom-field change as `custom_fields_edit` (the field is
      * `custom_fields`).
      *
-     * `attachment_deleted` and `poll_reset` were added after the first eight were
-     * settled; docs/adr/0004-two-more-author-reachable-actions.md records the
-     * evidence for each.
+     * `attachment_deleted` and `poll_reset` were added after the first ten were
+     * settled, bringing the list to twelve;
+     * docs/adr/0004-two-more-author-reachable-actions.md records the evidence for
+     * each.
      *
      * @var list<string>
      */
