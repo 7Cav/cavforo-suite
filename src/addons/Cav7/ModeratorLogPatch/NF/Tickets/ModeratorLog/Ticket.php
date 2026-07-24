@@ -15,6 +15,10 @@ use Cav7\ModeratorLogPatch\AuthorshipLogging;
  * The handler underneath has an authorship rule of its own, covering a narrower set
  * of actions than this addon does. Deferring is what keeps it: `status` and
  * `priority` reach it withheld, and everything it already withheld stays withheld.
+ *
+ * The class extension that reaches this file is registered against
+ * `NF\Tickets\ModeratorLog\TicketHandler`, a name with no file behind it. See
+ * docs/adr/0003-register-the-name-xenforo-resolves-to.md.
  */
 class Ticket extends XFCP_Ticket
 {
