@@ -72,6 +72,14 @@ function outputTemplateItems(string $root): array
  * catch check to the owning method this way keeps a catch in a later method from
  * satisfying it, and stops the following method's docblock prose (which may talk
  * about the same failure) from bleeding into the search.
+ *
+ * The four-space indent in the terminator pattern is load-bearing and is the one
+ * place in this file where an exact indent is deliberate: a method-level docblock
+ * sits at four spaces, while the `/** @var ... *\/` annotations INSIDE a body sit
+ * at eight or more. Loosening it to `\s+` would cut postReminderNote's and
+ * alertClerks's bodies off at their first annotation. Anything built on top of
+ * this (see the whole-line allowlists below) trims before anchoring instead, so
+ * re-indenting the worker only matters here.
  */
 function methodBody(string $src, string $name): string
 {
