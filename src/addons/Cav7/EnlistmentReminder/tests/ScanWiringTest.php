@@ -116,13 +116,23 @@ function branchToContinue(string $src, string $startMarker): string
  * This is what makes the abort-guard pins below real. Written as
  * `/if \(!\$x\).*?logError\(.*?return;/s`, a guard pin passes on a body with its
  * `return;` deleted, because the `/s` and the lazy `.*?` let the match run on to
- * any later bare `return;` in the file — alertClerks has one, several hundred
- * lines down. Slicing the block first bounds the search to the guard's own body,
- * so a deleted `return;` fails the pin instead of borrowing one from a stranger.
+ * any later bare `return;` in the file — `if (!$threads) { return; }` sits about
+ * fifty lines below the guards, and alertClerks has another. Slicing the block
+ * first bounds the search to the guard's own body, so a deleted `return;` fails
+ * the pin instead of borrowing one from a stranger.
  *
- * Brace counting is naive about braces inside strings; none of the guards it is
- * used on has any, and a stray one would only ever end the slice early, which
- * fails the pin rather than passing it falsely.
+ * Brace counting is naive about braces inside strings, and the two directions are
+ * NOT equally safe. A stray CLOSING brace ends the slice early, which fails the
+ * pin rather than passing it falsely. A stray OPENING brace does the opposite:
+ * depth never returns to 0 at the guard's own `}`, so the slice runs on through
+ * the rest of the enclosing method and can borrow exactly the `logError(` and
+ * `return;` this helper exists to exclude. A BALANCED pair inside a string (a
+ * `{option}` placeholder) is harmless either way; a lone one is not.
+ *
+ * The `rtrim` guard below is the cheap defence: a slice that reaches the end of
+ * its input is the tell that counting lost the block, because every guard this is
+ * used on has code after it. Callers pass a single method body (see methodBody),
+ * so "end of input" means the enclosing method's own closing brace.
  */
 function ifBlock(string $src, string $startMarker): string
 {
@@ -142,7 +152,9 @@ function ifBlock(string $src, string $startMarker): string
         } elseif ($src[$i] === '}') {
             $depth--;
             if ($depth === 0) {
-                return substr($src, $start, $i - $start + 1);
+                return rtrim(substr($src, $i + 1)) === ''
+                    ? ''
+                    : substr($src, $start, $i - $start + 1);
             }
         }
     }
@@ -153,6 +165,10 @@ function ifBlock(string $src, string $startMarker): string
  * True when the given `if` block both logs an error and returns — the shape every
  * abort guard in remind() has to keep. Scoped to the block by ifBlock(), so the
  * `return;` has to be the guard's own.
+ *
+ * Callers pass remind()'s body, never the whole file, so a guard lifted into some
+ * other method — an uncalled private helper, or one declared above remind() —
+ * cannot satisfy this: its text is not in the body under test.
  */
 function abortsWithLoggedError(string $src, string $startMarker): bool
 {
@@ -160,6 +176,99 @@ function abortsWithLoggedError(string $src, string $startMarker): bool
     return $block !== ''
         && str_contains($block, 'logError(')
         && (bool) preg_match('/\breturn;/', $block);
+}
+
+/**
+ * Every line of $methodBody that uses the variable $variable, trimmed, in source
+ * order. "Uses" means the bare name: `$inProcessingPrefixIds` is not a use of
+ * `$inProcessing`, so the lookahead stops the longer name from inflating a count
+ * the pins below read as an exact number.
+ *
+ * @return string[]
+ */
+function variableUseLines(string $methodBody, string $variable): array
+{
+    $pattern = '/' . preg_quote($variable, '/') . '(?![A-Za-z0-9_])/';
+    $lines = [];
+    foreach (explode("\n", $methodBody) as $line) {
+        if (preg_match($pattern, $line)) {
+            $lines[] = trim($line);
+        }
+    }
+    return $lines;
+}
+
+/**
+ * The use lines no allowed pattern accounts for. Each pattern is matched against
+ * the WHOLE trimmed line, anchored at both ends, which is what makes this a
+ * use-counting pin rather than a substring hunt:
+ *
+ *   - a second statement appended to an allowed line (a suppression map rebuilt
+ *     on the same line as the assignment that is allowed there) leaves the line
+ *     unmatched, so it surfaces as unexpected instead of hiding behind the
+ *     allowed prefix;
+ *   - anything appended INSIDE an allowed expression (`&& $threadId < 0` on the
+ *     in_processing fact) fails the end anchor for the same reason.
+ *
+ * Trimming first is deliberate: the anchors then say nothing about indentation,
+ * so re-indenting the worker cannot break a pin.
+ *
+ * @param string[] $useLines
+ * @param string[] $allowedWholeLine
+ * @return string[]
+ */
+function unexpectedUseLines(array $useLines, array $allowedWholeLine): array
+{
+    $unexpected = [];
+    foreach ($useLines as $line) {
+        foreach ($allowedWholeLine as $allowed) {
+            if (preg_match($allowed, $line)) {
+                continue 2;
+            }
+        }
+        $unexpected[] = $line;
+    }
+    return $unexpected;
+}
+
+/**
+ * Where $marker sits inside $methodBody, or null if it is not there at all.
+ *
+ * Every ordering pin below runs through this, for two reasons. Offsets taken over
+ * the WHOLE FILE are satisfied by text in any method that happens to be declared
+ * earlier, so a guard lifted out of remind() into a private helper above it still
+ * reads as "before the decision" — the ordering pin passes while the guard no
+ * longer runs. And a marker that has moved or been renamed has to fail LOUDLY:
+ * null is reported by name below rather than compared as an integer.
+ */
+function markerOffset(string $methodBody, string $marker): ?int
+{
+    $at = strpos($methodBody, $marker);
+    return $at === false ? null : $at;
+}
+
+/**
+ * Assert that $beforeMarker appears before $afterMarker within one method body,
+ * failing with the marker it could not find rather than an empty mismatch.
+ */
+function checkOrderedWithin(string $methodBody, string $label, string $beforeMarker, string $afterMarker, string $why): void
+{
+    $beforeAt = markerOffset($methodBody, $beforeMarker);
+    $afterAt  = markerOffset($methodBody, $afterMarker);
+
+    if ($beforeAt === null || $afterAt === null) {
+        $missing = [];
+        if ($beforeAt === null) {
+            $missing[] = $beforeMarker;
+        }
+        if ($afterAt === null) {
+            $missing[] = $afterMarker;
+        }
+        check($label, false, 'not found in remind(): ' . implode(' | ', $missing));
+        return;
+    }
+
+    check($label, $beforeAt < $afterAt, $why);
 }
 
 // --- the hourly cron entry is registered ----------------------------------
@@ -235,9 +344,18 @@ check(
 // Every option is read at runtime, across the cron entry and the worker together.
 $worker = (string) file_get_contents("$root/QueueReminder.php");
 $runtime = $scanSrc . $worker;
+// remind()'s own body, read once. Every abort-guard pin and every ordering pin
+// below is scoped to it rather than to the whole file: a guard moved into another
+// method — even an uncalled private one declared above remind() — must fail its
+// pins, and whole-file offsets cannot tell that apart from a guard that still runs.
+$remindBody = methodBody($worker, 'remind');
+check(
+    "remind()'s body could be sliced, so the guard pins below have something to bind to",
+    $remindBody !== '',
+    'methodBody could not find "function remind" in QueueReminder.php'
+);
 // Read once here; the version bump and the SV/MultiPrefix require pair are checked
-// further down, and the #186 vendor-active guard needs the declared floor to prove
-// the worker does not carry a second copy of it.
+// further down.
 $addonJson = (string) file_get_contents("$root/addon.json");
 $addonManifest = json_decode($addonJson, true);
 $multiPrefixFloorLiteral = $addonManifest['require']['SV/MultiPrefix'][0] ?? null;
@@ -256,6 +374,7 @@ foreach ($expectedOptions as $id) {
 $defaults = [
     'cav7ERDeadlineHours'            => '24',
     'cav7ERQueueNodeId'              => '325',
+    'cav7ERBotUserId'                => '598',
     'cav7ERStandardPrefixIds'        => '57',
     'cav7ERStandardClerkPositionIds' => '579,580,751,1012',
     'cav7ERReenlistPrefixIds'        => '58',
@@ -288,6 +407,60 @@ foreach ($defaults as $id => $want) {
         'dev mode installs from _output; got: ' . var_export($outputJson['default_value'] ?? null, true)
     );
 }
+// The default_value loop above covers one field. Everything else in an _output item
+// is equally hand-editable and equally unchallenged by check-data-consistency, and
+// `data_type` matters as much as the default does: flip the new option from `string`
+// to `positive_integer` and `53,54,55` no longer survives an ACP save at all.
+// Rather than enumerate fields, lean on the index xf-dev:export already writes —
+// each item's md5 is recorded in its type's _metadata.json — so one loop catches
+// every hand-edit to every item of every type.
+foreach (['options', 'option_groups', 'cron_entries', 'class_extensions', 'phrases'] as $type) {
+    $metadataFile = "$root/_output/$type/_metadata.json";
+    $metadata = is_file($metadataFile) ? json_decode((string) file_get_contents($metadataFile), true) : null;
+    check(
+        "_output/$type/_metadata.json reads as the item index",
+        is_array($metadata) && $metadata !== [],
+        'without the index there is nothing to compare the item files against'
+    );
+    if (!is_array($metadata)) {
+        continue;
+    }
+
+    $drifted = [];
+    foreach (outputItems($root, $type) as $itemFile) {
+        $name = basename($itemFile);
+        $recorded = $metadata[$name]['hash'] ?? null;
+        $actual = md5((string) file_get_contents($itemFile));
+        if ($recorded !== $actual) {
+            $drifted[] = $name . ' (recorded ' . var_export($recorded, true) . ', actual ' . $actual . ')';
+        }
+    }
+    check(
+        "every _output/$type item matches the md5 recorded for it in _metadata.json",
+        $drifted === [],
+        'hand-edited without re-exporting: ' . implode(' | ', $drifted)
+    );
+}
+// Templates nest one level deeper and are indexed by their style-relative path
+// ("public/alert_thread_enlistment_reminder.html") in one _metadata.json at the
+// templates root, so they need their own pass rather than the flat loop above.
+$templateMetadata = is_file("$root/_output/templates/_metadata.json")
+    ? json_decode((string) file_get_contents("$root/_output/templates/_metadata.json"), true)
+    : null;
+$driftedTemplates = [];
+foreach (outputTemplateItems($root) as $itemFile) {
+    $key = basename(dirname($itemFile)) . '/' . basename($itemFile);
+    $recorded = is_array($templateMetadata) ? ($templateMetadata[$key]['hash'] ?? null) : null;
+    $actual = md5((string) file_get_contents($itemFile));
+    if ($recorded !== $actual) {
+        $driftedTemplates[] = $key . ' (recorded ' . var_export($recorded, true) . ', actual ' . $actual . ')';
+    }
+}
+check(
+    'every _output template matches the md5 recorded for it in _metadata.json',
+    is_array($templateMetadata) && $templateMetadata !== [] && $driftedTemplates === [],
+    'hand-edited without re-exporting: ' . implode(' | ', $driftedTemplates)
+);
 // The union of the two default position sets is exactly the old single default,
 // so clerk coverage does not change when the alert audience splits by type.
 $standardSeats = array_map('intval', explode(',', $defaults['cav7ERStandardClerkPositionIds']));
@@ -380,6 +553,23 @@ check(
     'dropping the secondary arm would miss every holder who carries the seat as a secondary duty'
 );
 
+// The two oldest config guards. Neither can mass-remind on its own — an
+// unconfigured node scans nothing and an unconfigured bot posts nothing — but both
+// are abort guards in the same family, and deleting either `return;` left the
+// suite green until now: the run carried on to query xf_thread for node 0 and,
+// with a bot the entity manager cannot find, logged a "not found" line per thread
+// per hour instead of one line per run. Same shape, same pin.
+check(
+    'remind() aborts when the queue node id is not configured (logError + early return)',
+    abortsWithLoggedError($remindBody, 'if (!$nodeId)'),
+    'without the return the run scans node 0 and reports nothing useful'
+);
+check(
+    'remind() aborts when the bot user id is not configured (logError + early return)',
+    abortsWithLoggedError($remindBody, 'if (!$botUserId)'),
+    'without the return every remindable thread logs "bot user not found" once an hour'
+);
+
 // An empty resolved clerk set must abort the run with a logged signal, symmetric
 // with the node/bot guards. If both position options are blank or garbage, or
 // the roster drifts so nothing resolves, getClerkUserIds returns [] and no
@@ -388,7 +578,7 @@ check(
 // abort with one line says the same thing without the noise.
 check(
     'remind() aborts when no clerk resolves (logError + early return on the empty clerk set)',
-    abortsWithLoggedError($worker, 'if (!$clerkUserIds)'),
+    abortsWithLoggedError($remindBody, 'if (!$clerkUserIds)'),
     'a run with nobody to alert should say so once, not once per thread per hour'
 );
 
@@ -434,21 +624,54 @@ check(
         && !(bool) preg_match('/position\s*>\s*0/', $worker),
     'who replied no longer enters the decision, so the query that gathered it must go'
 );
+// Acceptance criterion 9: the docs have to describe the same rule the code
+// implements. They read correctly today, but nothing would catch a regression that
+// re-documented a clerk's reply as the handled signal — and the docs are what the
+// next reader (and the next agent) works from. Same grep as the worker gets, over
+// the two prose homes.
+$docsPhrasing = [];
+foreach (['README.md', 'CONTEXT.md'] as $docFile) {
+    $doc = @file_get_contents("$root/$docFile");
+    check("$docFile reads", is_string($doc) && $doc !== '');
+    if (!is_string($doc)) {
+        continue;
+    }
+    // Deliberately narrow: the docs DO discuss reply authorship, to say it does not
+    // count. What must never come back is prose making a reply the signal.
+    foreach ([
+        '/repl(y|ied|ies)[^.]{0,80}\bmeans\b/i',
+        '/repl(y|ied|ies)[^.]{0,80}(counts as|marks it|is the signal|suppress)/i',
+        '/(picked up|handled|actioned)[^.]{0,60}\bby\b[^.]{0,40}\brepl/i',
+    ] as $banned) {
+        if (preg_match($banned, $doc, $bannedMatch)) {
+            $docsPhrasing[] = "$docFile: " . trim($bannedMatch[0]);
+        }
+    }
+}
+check(
+    'no doc makes a clerk reply the handled signal (acceptance criterion 9)',
+    $docsPhrasing === [],
+    'the handled signal is the processing status prefix; found: ' . implode(' | ', $docsPhrasing)
+);
 
 // The status comes from SV/MultiPrefix's own link table, scoped to the threads
 // this scan is about. The vendor stores EVERY prefix a thread carries there.
+// Both halves anchor to fetchThreadPrefixLinks's own body: over the whole file the
+// `thread_id IN` clause is satisfied by fetchAlreadyReminded's, forty-odd lines
+// later, so deleting this query's WHERE clause outright — the unscoped whole-board
+// read this pin's own message warns about — used to pass.
+$prefixLinkBody = methodBody($worker, 'fetchThreadPrefixLinks');
 check(
     'the worker reads prefix links from the SV/MultiPrefix link table, scoped to the scanned threads',
-    (bool) preg_match('/FROM xf_sv_thread_prefix_link\b/', $worker)
-        && (bool) preg_match('/FROM xf_sv_thread_prefix_link\b.*?thread_id IN/s', $worker),
+    (bool) preg_match('/FROM xf_sv_thread_prefix_link\b/', $prefixLinkBody)
+        && (bool) preg_match('/FROM xf_sv_thread_prefix_link\b.*?thread_id IN/s', $prefixLinkBody),
     'an unscoped read would pull the whole board\'s prefix links'
 );
 
-// A missing or unreadable link table (SV/MultiPrefix uninstalled, the table
-// renamed, permissions revoked) must abort the run with a logged error. Without
-// the guard, a thrown query would either kill the cron or, if swallowed into an
-// empty result, read the whole queue as un-actioned and remind all of it at once.
-$prefixLinkBody = methodBody($worker, 'fetchThreadPrefixLinks');
+// A missing or unreadable link table (renamed, permissions revoked, or dropped
+// under an add-on that is still active) must abort the run with a logged error.
+// Without the guard, a thrown query would either kill the cron or, if swallowed
+// into an empty result, read the whole queue as un-actioned and remind all of it.
 check(
     'the prefix-link read is its own helper that reports failure rather than returning nothing',
     $prefixLinkBody !== ''
@@ -460,23 +683,29 @@ check(
 // "nothing to ask" is indistinguishable from the table returning nothing, which is
 // the fault the caller aborts on — it would abort reporting "no rows for the 0
 // queue thread(s) scanned". remind() returns on an empty queue before it gets
-// here, so the caller keeps owning the emptiness check.
+// here, so the caller keeps owning the emptiness check, and the precondition is
+// asserted in code with a throw rather than left to a comment.
 check(
     'the prefix-link read does not answer an empty request with an empty result',
     $prefixLinkBody !== ''
         && !(bool) preg_match('/!\$threadIds\s*\)\s*\{?\s*return\s*\[\];/s', $prefixLinkBody),
     'two different questions must not share the [] answer the caller reads as a table fault'
 );
-$emptyQueueReturnAt = strpos($worker, 'if (!$threads)');
-$prefixLinkReadAt   = strpos($worker, '$this->fetchThreadPrefixLinks(');
 check(
+    'the prefix-link read asserts its non-empty precondition with a throw',
+    $prefixLinkBody !== '' && (bool) preg_match('/if\s*\(\s*!\$threadIds\s*\)[^}]*?throw new/s', $prefixLinkBody),
+    'an empty $threadIds would build WHERE thread_id IN (), a syntax error the broad catch reports to the admin as an unreadable table'
+);
+checkOrderedWithin(
+    $remindBody,
     'the empty-queue return comes before the prefix-link read, so the read is never asked about nothing',
-    $emptyQueueReturnAt !== false && $prefixLinkReadAt !== false && $emptyQueueReturnAt < $prefixLinkReadAt,
-    'the helper has no empty-input branch, so the caller has to hold that end up'
+    'if (!$threads)',
+    '$this->fetchThreadPrefixLinks(',
+    'the helper throws on an empty request, so the caller has to hold that end up'
 );
 check(
     'remind() aborts on an unreadable prefix link table (logError + early return)',
-    abortsWithLoggedError($worker, 'if ($prefixLinks === null)'),
+    abortsWithLoggedError($remindBody, 'if ($prefixLinks === null)'),
     'without the abort, an unreadable table reads as "nothing is in processing" and reminds the whole queue'
 );
 // An empty result is the same failure wearing different clothes: every valid
@@ -485,40 +714,65 @@ check(
 // processing. Abort rather than mass-remind, matching the empty-clerk guard.
 check(
     'remind() aborts when a non-empty queue yields no prefix links at all',
-    abortsWithLoggedError($worker, 'if (!$prefixLinks)'),
+    abortsWithLoggedError($remindBody, 'if (!$prefixLinks)'),
     'every valid queue thread carries a type prefix here, so no rows at all means the table is unpopulated'
 );
 
-// A blank or unparseable in-processing option resolves to no statuses, so
-// nothing could ever suppress and every past-deadline thread would be reminded,
-// including the ones a clerk is actively working. Abort with a signal instead.
+// The option is a free-text list, so it has to go through the shared parser: an
+// `explode(',', ...)` here would keep the blank segment a trailing comma leaves and
+// the 0 that junk casts to, and PositionIdList's array_filter is the only thing
+// making "a 0 can never match a prefix" true.
+check(
+    'the in-processing option is parsed by PositionIdList, not split by hand',
+    (bool) preg_match(
+        '/\$inProcessingPrefixIds\s*=\s*PositionIdList::parse\(\s*\$rawInProcessingPrefixIds\s*\);/',
+        $remindBody
+    )
+        && !str_contains($remindBody, 'explode('),
+    'a hand-rolled split lets a junk token become a phantom status id'
+);
+// The ACP help text is the admin's only warning about the 57/58 collision before a
+// run happens, and the abort only fires after the mistake is saved. It has to name
+// the ids, not gesture at "the type prefixes".
+$inProcessingExplain = '';
+if ($phraseXml !== false) {
+    foreach ($phraseXml->phrase as $phrase) {
+        if ((string) $phrase['title'] === 'option_explain.cav7ERInProcessingPrefixIds') {
+            $inProcessingExplain = (string) $phrase;
+        }
+    }
+}
+check(
+    'the in-processing option help text names the two type prefix ids it must never contain',
+    $inProcessingExplain !== ''
+        && (bool) preg_match('/\b57\b/', $inProcessingExplain)
+        && (bool) preg_match('/\b58\b/', $inProcessingExplain),
+    'this text is the only pre-runtime warning an admin gets; got: ' . $inProcessingExplain
+);
+
+// A blank or unparseable in-processing option resolves to no statuses, so nothing
+// could ever suppress. ProcessingStatus refuses that input outright, so deleting
+// this guard aborts the run at its throw rather than mass-reminding; what this
+// guard adds is the admin-facing message naming the option, and a stop before any
+// DB work. The pairing is stated from the seam's side in ProcessingStatus's own
+// docblock.
 check(
     'remind() aborts when the in-processing option parses to nothing (logError + early return)',
-    abortsWithLoggedError($worker, 'if (!$inProcessingPrefixIds)')
-        && str_contains($worker, 'cav7ERInProcessingPrefixIds'),
-    'a blank or garbage option would otherwise remind every past-deadline thread in the queue'
-);
-// The abort must come before any reminder is posted; a guard that ran after the
-// loop would be decorative.
-$guardAt    = strpos($worker, 'if (!$inProcessingPrefixIds)');
-$decisionAt = strpos($worker, 'selectThreadsToRemind');
-check(
-    'the in-processing guard runs before the remind loop',
-    $guardAt !== false && $decisionAt !== false && $guardAt < $decisionAt,
-    'a guard downstream of the decision cannot stop a mass remind'
+    abortsWithLoggedError($remindBody, 'if (!$inProcessingPrefixIds)')
+        && str_contains($remindBody, 'cav7ERInProcessingPrefixIds'),
+    'a blank or garbage option must be reported by name, before any query runs'
 );
 
 // The blank-option guard's mirror image, and the worse fault of the two: an
 // enlistment TYPE prefix (57/58) configured into the status set. Every valid queue
 // thread carries one, so one entry reads the whole queue as handled and the add-on
 // goes permanently, silently dark. The option is free text with no
-// validation_class and sits immediately next to the two type-prefix options it
-// must never contain, so prose in the help text is not a defence. The pure rule is
+// validation_class, so prose in the help text is not a defence. The pure rule is
 // EnlistmentRouting::typePrefixIdsAmong, exercised in EnlistmentRoutingTest.
 check(
     'remind() aborts when a type prefix is configured as an in-processing status',
-    abortsWithLoggedError($worker, 'if ($typePrefixesInStatusSet)')
-        && (bool) preg_match('/\$typePrefixesInStatusSet\s*=\s*\$routing->typePrefixIdsAmong\(\s*\$inProcessingPrefixIds\s*\)/', $worker),
+    abortsWithLoggedError($remindBody, 'if ($typePrefixesInStatusSet)')
+        && (bool) preg_match('/\$typePrefixesInStatusSet\s*=\s*\$routing->typePrefixIdsAmong\(\s*\$inProcessingPrefixIds\s*\)/', $remindBody),
     'a 57 or 58 in the status set silences the add-on with nothing in the log to say why'
 );
 // The abort names both options an admin has to compare, since the collision spans
@@ -527,15 +781,41 @@ check(
     'the type-prefix collision abort names the status option and the type options',
     (bool) preg_match(
         '/cav7ERInProcessingPrefixIds.*?cav7ERStandardPrefixIds.*?cav7ERReenlistPrefixIds/s',
-        ifBlock($worker, 'if ($typePrefixesInStatusSet)')
+        ifBlock($remindBody, 'if ($typePrefixesInStatusSet)')
     ),
     'the admin has to know which two lists to compare'
 );
-$typeCollisionGuardAt = strpos($worker, 'if ($typePrefixesInStatusSet)');
+// That collision guard intersects the status set with the two type-prefix sets, so
+// it is only as good as those sets being populated: with cav7ERStandardPrefixIds
+// blank the intersection is empty whatever is in the status set, and a 57 typed
+// into the status option then suppresses the whole queue with nothing logged. Guard
+// each type-prefix option for emptiness so the collision guard's precondition is
+// established rather than assumed. Single-fault case matters too: a blank
+// type-prefix option routes every thread to unrecognized and the per-thread log
+// line blames the thread's own prefix when the real fault is a blank textbox.
 check(
-    'the type-prefix collision guard runs before the remind decision',
-    $typeCollisionGuardAt !== false && $decisionAt !== false && $typeCollisionGuardAt < $decisionAt,
-    'a guard downstream of the decision cannot stop the silencing it exists to catch'
+    'remind() aborts when the standard type-prefix option parses to nothing',
+    abortsWithLoggedError($remindBody, 'if (!$standardPrefixIds)')
+        && str_contains(ifBlock($remindBody, 'if (!$standardPrefixIds)'), 'cav7ERStandardPrefixIds'),
+    'a blank type-prefix set makes the collision guard inert and routes every thread to unrecognized'
+);
+check(
+    'remind() aborts when the re-enlistment type-prefix option parses to nothing',
+    abortsWithLoggedError($remindBody, 'if (!$reenlistPrefixIds)')
+        && str_contains(ifBlock($remindBody, 'if (!$reenlistPrefixIds)'), 'cav7ERReenlistPrefixIds'),
+    'a blank type-prefix set makes the collision guard inert and routes every thread to unrecognized'
+);
+// ...and each names its OWN option, or an admin fixing one textbox reads the log
+// line for the other.
+$standardEmptyBlock = ifBlock($remindBody, 'if (!$standardPrefixIds)');
+$reenlistEmptyBlock = ifBlock($remindBody, 'if (!$reenlistPrefixIds)');
+check(
+    'each type-prefix emptiness abort names only its own option',
+    $standardEmptyBlock !== ''
+        && $reenlistEmptyBlock !== ''
+        && !str_contains($standardEmptyBlock, 'cav7ERReenlistPrefixIds')
+        && !str_contains($reenlistEmptyBlock, 'cav7ERStandardPrefixIds'),
+    'the abort has to point at the one textbox that is blank'
 );
 
 // SV/MultiPrefix DISABLED rather than uninstalled is the state neither link-table
@@ -546,20 +826,65 @@ check(
 // reads un-actioned and gets the note plus the clerk alert.
 check(
     'remind() aborts when SV/MultiPrefix is not active (disabled, not just uninstalled)',
-    abortsWithLoggedError($worker, "if (!\\XF::isAddOnActive('SV/MultiPrefix'"),
+    abortsWithLoggedError($remindBody, "if (!\\XF::isAddOnActive('SV/MultiPrefix'"),
     'a disabled vendor add-on leaves a stale table that reads as "nothing is handled"'
 );
-// The floor is checked, not just activeness, and it is not a second copy of the
-// number: it comes back out of the manifest that declares it, so the runtime check
-// and addon.json cannot drift apart.
+// Activeness only, with no version floor. The floor belongs in addon.json's
+// `require`, which is where XenForo enforces it (on install and upgrade); checked
+// again here it would also fire on a board running a slightly older but perfectly
+// healthy SV/MultiPrefix whose link table is fine, silencing this add-on over a
+// fault that isn't the one the guard is for. It also carried a DB read per run to
+// fetch the number back out of the manifest.
 check(
-    'the active check passes a version floor read from addon.json, not a duplicated literal',
-    (bool) preg_match("/isAddOnActive\(\s*'SV\/MultiPrefix'\s*,\s*\\\$this->multiPrefixFloor\(\)\s*\)/", $worker)
-        && (bool) preg_match("/require.*?SV\/MultiPrefix/s", methodBody($worker, 'multiPrefixFloor'))
+    'the vendor-active check takes the add-on id alone, with no runtime version floor',
+    (bool) preg_match("/isAddOnActive\(\s*'SV\/MultiPrefix'\s*\)/", $remindBody)
+        && !str_contains($worker, 'multiPrefixFloor')
         && is_int($multiPrefixFloorLiteral)
         && !str_contains($worker, (string) $multiPrefixFloorLiteral),
-    'hard-coding the floor here is how it drifts from the declared requirement'
+    'the install-time floor lives in addon.json; a second runtime copy silences the add-on on a healthy older vendor release'
 );
+
+// The overlap warning only logs, so it belongs ABOVE the aborts: below them, an
+// admin carrying both an overlap and one of the config faults fixes one, waits an
+// hour, and only then hears about the other. One run, both reports.
+// Both the resolve and the branch that logs it, since moving either one alone
+// below the aborts is enough to lose the report.
+foreach (['$routing->overlappingPrefixIds()', 'if ($overlapPrefixIds)'] as $overlapMarker) {
+    checkOrderedWithin(
+        $remindBody,
+        "the overlap warning's `$overlapMarker` comes before the aborts that would end the run",
+        $overlapMarker,
+        'if ($typePrefixesInStatusSet)',
+        'a log-only check placed below an abort is never reached on a board that has both faults'
+    );
+}
+
+// EVERY abort guard has to run before the decision, not merely exist in the file.
+// A guard whose whole `if` block is moved verbatim below the remind loop still
+// logs "skipping this run" — after the entire queue has been reminded. Offsets are
+// taken inside remind()'s own body, so text in a method declared above remind()
+// does not read as "before the decision" either.
+$abortGuardMarkers = [
+    'if (!$nodeId)',
+    'if (!$botUserId)',
+    'if (!$inProcessingPrefixIds)',
+    'if (!$standardPrefixIds)',
+    'if (!$reenlistPrefixIds)',
+    'if ($typePrefixesInStatusSet)',
+    "if (!\\XF::isAddOnActive('SV/MultiPrefix'",
+    'if (!$clerkUserIds)',
+    'if ($prefixLinks === null)',
+    'if (!$prefixLinks)',
+];
+foreach ($abortGuardMarkers as $marker) {
+    checkOrderedWithin(
+        $remindBody,
+        "the abort guard `$marker` runs before the remind decision",
+        $marker,
+        'selectThreadsToRemind',
+        'a guard downstream of the decision reminds the whole queue and then logs "skipping this run"'
+    );
+}
 
 // --- the decision routes through the pure units ----------------------------
 check(
@@ -592,49 +917,51 @@ check(
 );
 // And the raw rows must have no second consumer. $prefixLinks is the unfiltered
 // link table — every valid queue thread has rows in it — so any other use that
-// keys by thread is the trap wearing a different name. Four uses, all named.
-$remindBody = methodBody($worker, 'remind');
-$allowedPrefixLinkUses = [
-    '/\$prefixLinks\s*=\s*\$this->fetchThreadPrefixLinks\(/',
-    '/if\s*\(\s*\$prefixLinks\s*===\s*null\s*\)/',
-    '/if\s*\(\s*!\$prefixLinks\s*\)/',
-    '/ProcessingStatus::inProcessingThreadIds\(\s*\$prefixLinks\s*,/',
-];
-$prefixLinkUses = [];
-$unexpectedPrefixLinkUses = [];
-foreach (explode("\n", $remindBody) as $line) {
-    if (!str_contains($line, '$prefixLinks')) {
-        continue;
-    }
-    $prefixLinkUses[] = trim($line);
-    foreach ($allowedPrefixLinkUses as $allowed) {
-        if (preg_match($allowed, $line)) {
-            continue 2;
-        }
-    }
-    $unexpectedPrefixLinkUses[] = trim($line);
-}
+// keys by thread is the trap wearing a different name. Four uses, all named, each
+// pattern matched against a WHOLE line (see unexpectedUseLines) so a second
+// statement sharing an allowed line cannot ride along invisibly.
+$seamCallLine = '/^\$inProcessing\s*=\s*ProcessingStatus::inProcessingThreadIds\(\s*\$prefixLinks\s*,\s*\$inProcessingPrefixIds\s*\);$/';
+$prefixLinkUses = variableUseLines($remindBody, '$prefixLinks');
+$unexpectedPrefixLinkUses = unexpectedUseLines($prefixLinkUses, [
+    '/^\$prefixLinks\s*=\s*\$this->fetchThreadPrefixLinks\(\s*\$threadIds\s*\);$/',
+    '/^if\s*\(\s*\$prefixLinks\s*===\s*null\s*\)$/',
+    '/^if\s*\(\s*!\$prefixLinks\s*\)$/',
+    $seamCallLine,
+]);
 check(
     'the raw prefix-link rows are touched only by their two guards and the ProcessingStatus call',
     count($prefixLinkUses) === 4 && $unexpectedPrefixLinkUses === [],
     'unexpected: ' . implode(' | ', $unexpectedPrefixLinkUses)
         . ' (all ' . count($prefixLinkUses) . ' use(s): ' . implode(' | ', $prefixLinkUses) . ')'
 );
+// The same technique on the map itself, because fencing the raw rows is only half
+// the fence. A rebuild of $inProcessing from $prefixByThread never touches
+// $prefixLinks at all, so the four-uses count above stays at 4 while every prefixed
+// queue thread reads as handled — the whole queue goes permanently, silently dark,
+// exactly what #186 fixes. Two uses only: the seam assignment, and the isset in the
+// fact array. Anything else — a reassignment, a rebuild loop, a `&& $threadId < 0`
+// bolted onto the fact — is an unexpected line here.
+$inProcessingUses = variableUseLines($remindBody, '$inProcessing');
+$unexpectedInProcessingUses = unexpectedUseLines($inProcessingUses, [
+    $seamCallLine,
+    '/^[\'"]in_processing[\'"]\s*=>\s*isset\(\s*\$inProcessing\[\s*\$threadId\s*\]\s*\),$/',
+]);
 check(
-    'the in_processing fact handed to the decision is that map, not a bare link-table hit',
-    (bool) preg_match(
-        '/[\'"]in_processing[\'"]\s*=>\s*isset\(\$inProcessing\[[^\]]+\]\)/',
-        $worker
-    ),
-    'the decision reads one boolean per thread, and it must be the configured-set membership'
+    'the in-processing map is assigned once from the seam and read once as the fact, and nothing else',
+    count($inProcessingUses) === 2 && $unexpectedInProcessingUses === [],
+    'unexpected: ' . implode(' | ', $unexpectedInProcessingUses)
+        . ' (all ' . count($inProcessingUses) . ' use(s): ' . implode(' | ', $inProcessingUses) . ')'
 );
 // Acceptance criterion 4: reply authorship no longer influences the decision. The
 // name-based checks above ("fetchReplyAuthorIds is gone") are walked past by any
 // renamed helper, so pin the fact array itself: exactly the four keys
 // ReminderDecision documents, no fifth one carrying who replied back in. The
 // matching parameter list on shouldRemind is pinned in ReminderDecisionTest.
+// The closing bracket is matched as `\n\s*];` rather than a literal twelve-space
+// indent, so re-indenting remind() cannot silently empty $factsLiteral and pass
+// this on a comparison of nothing. It fails by name when the marker is not there.
 $factsLiteral = '';
-if (preg_match('/\$facts\[\]\s*=\s*\[(.*?)\n            \];/s', $worker, $factsMatch)) {
+if (preg_match('/\$facts\[\]\s*=\s*\[(.*?)\n\s*\];/s', $remindBody, $factsMatch)) {
     $factsLiteral = $factsMatch[1];
 }
 preg_match_all("/'([a-z_]+)'\s*=>/", $factsLiteral, $factKeyMatches);
@@ -644,7 +971,9 @@ check(
     'the fact array handed to the decision carries exactly the four documented keys',
     $factsLiteral !== ''
         && $factKeys === ['already_reminded', 'in_processing', 'op_timestamp', 'thread_id'],
-    'got: ' . implode(', ', $factKeys)
+    $factsLiteral === ''
+        ? 'the `$facts[] = [ ... ];` literal was not found in remind()'
+        : 'got: ' . implode(', ', $factKeys)
 );
 
 // --- the bot posts the note the SteamChecker way, note included ------------
@@ -994,7 +1323,7 @@ check(
 );
 check(
     'the empty-clerk guard names the new per-type options, not cav7ERClerkPositionIds',
-    abortsWithLoggedError($worker, 'if (!$clerkUserIds)')
+    abortsWithLoggedError($remindBody, 'if (!$clerkUserIds)')
         && str_contains($worker, 'cav7ERStandardClerkPositionIds')
         && str_contains($worker, 'cav7ERReenlistClerkPositionIds')
         && !str_contains($worker, 'cav7ERClerkPositionIds'),
@@ -1098,12 +1427,13 @@ check(
 );
 
 // --- the SV/MultiPrefix floor is stated in SV's own numbering ---------------
-// The status prefixes are read out of SV/MultiPrefix's link table, so the
-// dependency has to be declared with a floor XenForo can actually enforce. SV
-// numbers its releases by build timestamp, not XenForo's AABBCCDE scheme, so a
-// floor written in the AABBCCDE range is met by every SV release in existence and
-// gates nothing — an install missing the table would sail through the check and
-// fail at the first scan instead.
+// The status prefixes are read out of SV/MultiPrefix's link table, and the manifest
+// is the only place the floor lives: XenForo enforces `require` on install and
+// upgrade, and the runtime guard checks activeness alone (see above). So the floor
+// has to be written in a numbering XenForo can compare. SV numbers its releases by
+// build timestamp, not XenForo's AABBCCDE scheme, so a floor written in the AABBCCDE
+// range is met by every SV release in existence and gates nothing — an install
+// missing the table would sail through and fail at the first scan instead.
 $multiPrefixFloor = $multiPrefixFloorLiteral;
 check(
     'addon.json requires SV/MultiPrefix',
