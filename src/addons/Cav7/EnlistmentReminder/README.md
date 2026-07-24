@@ -86,12 +86,19 @@ is defined.
 Rather than treat every application as un-actioned and remind the whole queue,
 the add-on aborts the run and logs an error when any of these is true:
 
-- the in-processing list is empty, or parses to nothing
-- the in-processing list contains an enlistment type prefix
-- SV/MultiPrefix is not active, or is below the required version (disabling it
-  leaves its prefix table in place but nobody maintaining it, which is the one an
-  admin is most likely to hit)
+- SV/MultiPrefix is not active (disabling it leaves its prefix table in place but
+  nobody maintaining it, which is the one an admin is most likely to hit)
 - its prefix table cannot be read, or returns nothing at all for a non-empty queue
+- the in-processing list is empty, or parses to nothing
+
+Two more aborts run the other way, and stop the add-on going silent rather than
+loud:
+
+- the in-processing list contains an enlistment type prefix. Every application in
+  the queue carries one, so the whole queue would read as handled and nothing
+  would ever be reminded or logged.
+- either type-prefix list is empty. That leaves the check above with nothing to
+  compare against, so the same silencing gets through unnoticed.
 
 ## License
 

@@ -46,15 +46,18 @@ final class PositionIdList
 
     /**
      * The same id-list shaping applied to an array of raw ids that arrived already
-     * split — a config array, or prefix ids XenForo handed back from the database as
-     * strings. Ints, de-duplicated with first-seen order preserved, re-indexed as a
-     * list.
+     * split — a config array whose entries may be ints or hand-typed strings. Ints,
+     * de-duplicated with first-seen order preserved, re-indexed as a list.
      *
-     * This is where the add-on's id sets get their comparable shape, so an id an
-     * option parsed and the same id read off a table match under `in_array`'s strict
-     * compare rather than silently missing each other. EnlistmentRouting shapes its
-     * four constructor lists with it and ProcessingStatus its configured status set;
-     * parse() ends in it too, so the option string and the array take one path.
+     * This is the CONFIGURED side of every id comparison the add-on makes, and only
+     * that side. It is what lets an id set arrive as `['53', '54']` or `[53, 54]` and
+     * compare the same under `in_array`'s strict test. The row side is cast at each
+     * read site instead — a plain `(int)` on the column — so no caller should read
+     * this as normalising database values on their behalf; dropping those casts on
+     * that strength would break the compare. ProcessingStatus's docblock spells the
+     * division out. EnlistmentRouting shapes its four constructor lists here and
+     * ProcessingStatus its configured status set; parse() ends here too, so an option
+     * string and an option array take one path.
      *
      * array_filter drops the 0 intval yields for a blank segment, a trailing comma
      * or non-numeric junk, so no stray token becomes a phantom seat and the 0 that

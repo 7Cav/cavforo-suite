@@ -10,10 +10,9 @@ namespace Cav7\EnlistmentReminder;
  *
  * RRD works the queue through a status prefix state machine supplied by the
  * SV/MultiPrefix add-on, which stores every prefix a thread carries in its own
- * thread-prefix link table. The statuses are In Progress, Hold and Approved, on
- * top of the un-actioned "no status" a thread starts with. CONTEXT.md's
- * "Processing status" term is the one home for the workflow's shape; nothing here
- * depends on it, because membership in a set is order-blind.
+ * thread-prefix link table. CONTEXT.md's "Processing status" term is the one home
+ * for which statuses those are and what order they run in; nothing here depends on
+ * either, because membership in a set is order-blind.
  *
  * The trap this seam exists to close: that link table also holds each thread's
  * TYPE prefix — Enlistment (57) or Re-Enlistment (58) — and every valid queue

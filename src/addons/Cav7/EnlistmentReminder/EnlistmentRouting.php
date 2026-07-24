@@ -12,7 +12,8 @@ namespace Cav7\EnlistmentReminder;
  * The clerk seats split by enlistment type into two overlapping responsibility
  * sets (see CONTEXT.md's Processing Clerk term): a thread's _primary_ prefix is
  * either Standard (57 by default) or Re-Enlistment (58). Built from the four
- * parsed config lists, this exposes two things:
+ * parsed config lists, it answers the routing question and reports the two config
+ * faults that live in those same four lists:
  *
  *   - allClerkPositionIds(): the union of both clerk-position lists. Two uses. The
  *     caller resolves it once to decide whether ANY seat is held at all, and
@@ -24,11 +25,18 @@ namespace Cav7\EnlistmentReminder;
  *     fail-safes to the union so no responsible clerk is silently dropped; a
  *     prefix in NEITHER is unrecognized — not a valid intake thread — and the
  *     caller skips it rather than mass-alerting.
+ *   - overlappingPrefixIds(): the prefixes listed under both types, so the caller
+ *     can warn about the ambiguity route() just fail-safed around. Log only.
+ *   - typePrefixIdsAmong(): whether a given set of prefix ids — in practice the
+ *     configured in-processing status set — contains a type prefix. This is the
+ *     one the caller ABORTS the run on, so a reader stopping at this header should
+ *     not conclude there is no collision check.
  *
- * Ids are normalised on the way in through PositionIdList::normalize, so the
- * string prefix id XF hands back from the DB and the ints PositionIdList parses
- * compare as the same id. ProcessingStatus does the same with its configured
- * status set, for the same reason and through the same call.
+ * Ids are normalised on the way in through PositionIdList::normalize, so a config
+ * list of hand-typed strings and one of ints resolve to the same set. The row side
+ * is not this class's business: route() takes an int and the caller casts at the
+ * read. ProcessingStatus normalises its configured status set for the same reason
+ * and through the same call.
  */
 final class EnlistmentRouting
 {
@@ -142,8 +150,8 @@ final class EnlistmentRouting
      * add-on's worst config fault: every valid queue thread carries its type
      * prefix in the same link table the status is read from, so one entry reads
      * the entire queue as handled and the reminder goes permanently, silently
-     * dark. The option is free text and sits next to the two type-prefix options
-     * it must never contain, so the collision is a slip away. Unlike the
+     * dark. The option is free text with no validation_class, so the collision is
+     * a slip away and nothing in the ACP stops it. Unlike the
      * both-types overlap above, which fail-safes to the union and only warrants a
      * warning, the caller aborts the run on a non-empty answer here.
      *

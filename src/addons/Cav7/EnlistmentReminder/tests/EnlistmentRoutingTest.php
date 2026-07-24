@@ -122,8 +122,8 @@ check(
 );
 
 // --- the type prefix / status prefix collision (issue #186) -----------------
-// cav7ERInProcessingPrefixIds is free text sitting next to the two type-prefix
-// options, and a type prefix listed there is the add-on's worst config fault:
+// cav7ERInProcessingPrefixIds is free text with no validation_class, and a type
+// prefix listed there is the add-on's worst config fault:
 // every valid queue thread carries its type prefix in the same link table the
 // status is read from, so one entry reads the whole queue as handled and the
 // reminder goes permanently, silently dark. This is what the caller asks before
@@ -173,9 +173,11 @@ check(
     'got: ' . implode(',', $routing->allClerkPositionIds())
 );
 
-// --- id robustness: string ids from the DB still match ---------------------
-// The option parser hands back ints; a raw DB prefix column arrives as a string.
-// Constructing from string ids and routing an int (and vice versa) must agree.
+// --- id robustness: string ids from a hand-typed option still match ---------
+// The option parser hands back ints, but a config array can arrive as strings, so
+// the constructor normalises its four lists. route() takes `int $prefixId`, so the
+// reverse — routing a string id — is a type error rather than a case to cover; the
+// asymmetry is the point of normalising on the way in.
 $stringIdRouting = new EnlistmentRouting(['57'], ['579', '580'], ['58'], ['579', '960']);
 check(
     'a string-configured Standard prefix routes an int prefix id',

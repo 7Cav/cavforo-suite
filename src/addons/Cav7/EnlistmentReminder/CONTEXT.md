@@ -65,6 +65,11 @@ decorations that ride with a status (S1 66 and RTC 68 alongside Approved, "!!!"
 110 alongside In Progress). A processing status is the only signal that an
 application has been picked up. It is a fact about the thread, so unlike the
 authorship of a reply it cannot be withdrawn later by a roster change.
+The subset of those prefixes the reminder treats as "picked up" is the
+_in-processing set_, configured in `cav7ERInProcessingPrefixIds` and defaulting to
+all three. A thread carrying any member of that set is **handled**: the reminder
+suppresses it, and "handled" is the name the code and these docs use for that one
+fact. Its complement is an **Un-actioned enlistment**.
 _Avoid_: "does the thread have a prefix" as a stand-in — every valid queue thread
 carries its type prefix in that same table, so the loose test reads the entire
 queue as handled and silences the reminder with nothing in the log. Also _avoid_
