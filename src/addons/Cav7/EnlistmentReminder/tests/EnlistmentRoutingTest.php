@@ -15,8 +15,8 @@
  *    so the caller skips it rather than mass-alerting;
  *  - a prefix listed under both type sets fail-safes to the union of both, and is
  *    reported as an overlap so the caller can log the misconfig;
- *  - the pickup union equals both position lists merged and de-duplicated, so
- *    pickup coverage is unchanged by the split;
+ *  - the union of both position lists is merged and de-duplicated, so the
+ *    caller's "is any seat held at all" guard sees every configured seat;
  *  - id robustness: the string ids the DB hands back and the ints the option
  *    parser yields compare as the same id.
  *
@@ -48,7 +48,7 @@ function check(string $label, bool $ok, string $detail = ''): void
 // The configured defaults: 57 is Standard, 58 is Re-Enlistment. Standard is
 // worked by Enlistment (580), Processing Clerk IT (751), Senior (1012) and Lead
 // (579); Re-Enlistment by Re-Enlistment (960), Senior (1012) and Lead (579).
-// Senior and Lead sit in both, so their union is the five whose reply is a pickup.
+// Senior and Lead sit in both, so the union of the two sets is five seats.
 $standardPrefixIds   = [57];
 $standardPositionIds = [579, 580, 751, 1012];
 $reenlistPrefixIds   = [58];
@@ -117,13 +117,13 @@ check(
         && $stillStandard['position_ids'] === [579, 580, 751, 1012]
 );
 
-// --- the pickup union -------------------------------------------------------
-// Senior (1012) and Lead (579) are in both lists, so the union de-dups them: the
-// five seats whose reply counts as a pickup, unchanged by the split.
+// --- the union of both clerk sets -------------------------------------------
+// Senior (1012) and Lead (579) are in both lists, so the union de-dups them down
+// to the five distinct seats RRD staffs the queue with.
 check(
-    'the pickup union equals both position lists merged and de-duplicated',
-    $routing->pickupPositionIds() === [579, 580, 751, 1012, 960],
-    'got: ' . implode(',', $routing->pickupPositionIds())
+    'the union equals both position lists merged and de-duplicated',
+    $routing->allClerkPositionIds() === [579, 580, 751, 1012, 960],
+    'got: ' . implode(',', $routing->allClerkPositionIds())
 );
 
 // --- id robustness: string ids from the DB still match ---------------------
@@ -135,8 +135,8 @@ check(
     $stringIdRouting->route(57) === ['type' => EnlistmentRouting::TYPE_STANDARD, 'position_ids' => [579, 580]]
 );
 check(
-    'the pickup union of string-configured positions is a de-duplicated int list',
-    $stringIdRouting->pickupPositionIds() === [579, 580, 960]
+    'the union of string-configured positions is a de-duplicated int list',
+    $stringIdRouting->allClerkPositionIds() === [579, 580, 960]
 );
 
 // --- a recognized type whose clerk set is empty ----------------------------
@@ -169,7 +169,7 @@ $emptyRouting = new EnlistmentRouting([], [], [], []);
 check(
     'an empty config routes every prefix to unrecognized',
     $emptyRouting->route(57)['type'] === EnlistmentRouting::TYPE_UNRECOGNIZED
-        && $emptyRouting->pickupPositionIds() === []
+        && $emptyRouting->allClerkPositionIds() === []
 );
 
 if ($failures > 0) {

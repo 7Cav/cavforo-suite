@@ -10,20 +10,34 @@ namespace Cav7\EnlistmentReminder;
  * The scan is scoped to the configured queue node only (node 325 by default),
  * so the Completed (326) and Denied (327) child forums are never touched — they
  * are different nodes and never appear in the query. Open and visible threads
- * only; sticky status is ignored. A clerk reply is the only "handled" signal, so
- * a recruiter reply, an applicant reply, or the bot's own note never suppress a
- * reminder (none of them is a seated clerk).
+ * only; sticky status is ignored, because a thread is pinned only once it is
+ * Approved and that is long after the reminder would have been due.
+ *
+ * The "handled" signal is the thread's processing status prefix (issue #186).
+ * RRD works the queue through a prefix state machine — (no status), In Progress,
+ * Hold, Approved — supplied by SV/MultiPrefix, which records every prefix a
+ * thread carries in xf_sv_thread_prefix_link. Membership in the configured
+ * in-processing set is what suppresses a reminder, and ProcessingStatus is the
+ * pure seam that decides it. Who replied plays no part: clerk seats are resolved
+ * fresh every scan, so a reply-authorship rule could withdraw a pickup
+ * retroactively when the clerk who made it rotated out of RRD, which is how the
+ * bot came to remind on thread 100131 while it was marked In Progress.
+ *
+ * Three config faults would each turn the scan into a mass remind of every
+ * past-deadline application, so each aborts the run with a logged error instead:
+ * an in-processing option that parses to nothing, a prefix link table that
+ * cannot be read, and a link table that returns no rows at all for a non-empty
+ * queue (every valid queue thread carries at least its type prefix there, so
+ * zero rows means the table is unpopulated rather than the queue idle).
  *
  * The private alert is routed by enlistment type (issue #144): a thread's primary
  * prefix says whether it is a Standard or a Re-Enlistment, and the pure
- * EnlistmentRouting seam maps that to the clerk positions that own the type. Only
- * the alert audience narrows — pickup still resolves the union of both sets, so a
- * reply from any of the five seats clears the reminder as before. A thread whose
- * prefix marks no known type is not a valid enlistment: it is skipped, with one
- * log breadcrumb if it would otherwise have been reminded. A recognized thread
- * whose type resolves to no seated clerk (a blank or drifted per-type option) is
- * skipped the same way — logged and left unmarked so it retries — rather than
- * noted-and-marked with no one alerted.
+ * EnlistmentRouting seam maps that to the clerk positions that own the type. A
+ * thread whose prefix marks no known type is not a valid enlistment: it is
+ * skipped, with one log breadcrumb if it would otherwise have been reminded. A
+ * recognized thread whose type resolves to no seated clerk (a blank or drifted
+ * per-type option) is skipped the same way — logged and left unmarked so it
+ * retries — rather than noted-and-marked with no one alerted.
  */
 class QueueReminder
 {
@@ -54,6 +68,9 @@ class QueueReminder
             PositionIdList::parse($rawReenlistPositionIds)
         );
 
+        $rawInProcessingPrefixIds = (string) \XF::options()->cav7ERInProcessingPrefixIds;
+        $inProcessingPrefixIds = PositionIdList::parse($rawInProcessingPrefixIds);
+
         if (!$nodeId)
         {
             \XF::logError('[Cav7/EnlistmentReminder] Queue node id is not configured; nothing to scan.');
@@ -62,6 +79,18 @@ class QueueReminder
         if (!$botUserId)
         {
             \XF::logError('[Cav7/EnlistmentReminder] Bot user id is not configured; cannot post reminders.');
+            return;
+        }
+        if (!$inProcessingPrefixIds)
+        {
+            // With no status prefix configured, nothing can ever read as handled,
+            // so every past-deadline application — including the ones a clerk is
+            // working right now — would be reminded. Abort with a signal rather
+            // than mass-remind on a blank or unparseable option (issue #186).
+            \XF::logError(sprintf(
+                '[Cav7/EnlistmentReminder] No in-processing prefix parsed from cav7ERInProcessingPrefixIds="%s"; skipping this run so applications already being worked are not reminded.',
+                $rawInProcessingPrefixIds
+            ));
             return;
         }
 
@@ -92,25 +121,49 @@ class QueueReminder
             $prefixByThread[(int) $thread['thread_id']] = (int) $thread['prefix_id'];
         }
 
-        // Pickup and the mass-remind guard resolve the UNION of both clerk sets —
-        // the same coverage the single clerk-position option gave before the split,
-        // so any of the five seats replying still clears the reminder (issue #144:
-        // only the alert audience narrows, never the pickup).
-        $clerkUserIds = $this->resolveClerkUserIds($routing->pickupPositionIds());
+        // Resolved once over the UNION of both clerk sets, purely to answer "is any
+        // seat held at all?". The per-type audience is resolved per thread below.
+        $clerkUserIds = $this->resolveClerkUserIds($routing->allClerkPositionIds());
         if (!$clerkUserIds)
         {
-            // Symmetric with the node/bot guards above: with no configured position
-            // resolving to a seated holder, no reply can count as a clerk pickup, so
-            // every past-deadline thread — including applications a clerk is actively
-            // processing — would be reminded. Abort with a signal rather than
-            // mass-remind on a blank or drifted clerk-position option.
+            // Symmetric with the node/bot guards above. With no configured position
+            // resolving to a seated holder, no thread has anyone to alert, so every
+            // remindable thread would fall through the per-type empty-audience skip
+            // and log the same complaint once an hour. Say it once and stop.
             \XF::logError(sprintf(
-                '[Cav7/EnlistmentReminder] No clerk resolved from the configured positions (cav7ERStandardClerkPositionIds="%s", cav7ERReenlistClerkPositionIds="%s"); skipping this run so live clerk-handled applications are not reminded.',
+                '[Cav7/EnlistmentReminder] No clerk resolved from the configured positions (cav7ERStandardClerkPositionIds="%s", cav7ERReenlistClerkPositionIds="%s"); skipping this run, as no reminder could reach anyone.',
                 $rawStandardPositionIds, $rawReenlistPositionIds
             ));
             return;
         }
-        $replyAuthorIds = $this->fetchReplyAuthorIds($threadIds);
+
+        // The handled signal (issue #186). SV/MultiPrefix records every prefix a
+        // thread carries, so this read must be turned into set membership by
+        // ProcessingStatus and never treated as "has a row, so it is handled" —
+        // every valid queue thread has rows here for its type prefix alone.
+        $prefixLinks = $this->fetchThreadPrefixLinks($threadIds);
+        if ($prefixLinks === null)
+        {
+            \XF::logError(
+                '[Cav7/EnlistmentReminder] Could not read the thread prefix link table (xf_sv_thread_prefix_link); skipping this run rather than reading every application as un-actioned. Check that SV/MultiPrefix is installed and the table is readable.'
+            );
+            return;
+        }
+        if (!$prefixLinks)
+        {
+            // Distinct from the read failure: the query worked and returned nothing.
+            // Every valid queue thread carries at least its Enlistment or
+            // Re-Enlistment type prefix in this table, so zero rows across a
+            // non-empty queue means the table is unpopulated, not that the queue is
+            // idle. Aborting keeps an unpopulated table from reminding all of it.
+            \XF::logError(sprintf(
+                '[Cav7/EnlistmentReminder] The thread prefix link table returned no rows for the %d queue thread(s) scanned; skipping this run. Every valid queue thread carries a type prefix there, so an empty result means the table is not populated.',
+                count($threadIds)
+            ));
+            return;
+        }
+        $inProcessing = ProcessingStatus::inProcessingThreadIds($prefixLinks, $inProcessingPrefixIds);
+
         $alreadyReminded = $this->fetchAlreadyReminded($threadIds);
         // Issue #82: the note's presence is the fallback "already reminded" signal
         // for when the marker WRITE fails persistently while its READ still works.
@@ -139,7 +192,9 @@ class QueueReminder
             $facts[] = [
                 'thread_id'        => $threadId,
                 'op_timestamp'     => (int) $thread['post_date'],
-                'reply_author_ids' => $replyAuthorIds[$threadId] ?? [],
+                // Carries one of the configured status prefixes, so a clerk has
+                // taken it on and it is not un-actioned (issue #186).
+                'in_processing'    => isset($inProcessing[$threadId]),
                 // Reminded when the marker has it OR the bot has already left its
                 // note (issue #82). The note gates the whole reminder — note and
                 // clerk alert both — so a broken marker write cannot re-post to the
@@ -151,7 +206,6 @@ class QueueReminder
         $toRemind = ReminderDecision::selectThreadsToRemind(
             \XF::$time,
             $deadlineHours * 3600,
-            $clerkUserIds,
             $facts
         );
 
@@ -307,14 +361,27 @@ class QueueReminder
     }
 
     /**
-     * Distinct visible-reply author ids per thread, keyed by thread id. Only
-     * posts after the OP (position > 0) and only visible ones count, so a deleted
-     * clerk reply is not mistaken for a live pickup.
+     * Every prefix link SV/MultiPrefix holds for the scanned threads, as raw
+     * (thread_id, prefix_id) rows for ProcessingStatus to turn into the handled
+     * signal. Scoped to the threads this run is about, so the read stays
+     * proportional to the queue rather than the board.
+     *
+     * The rows are handed on unfiltered on purpose. Filtering to the configured
+     * status ids in SQL would make an empty result ambiguous — no thread is being
+     * worked, or the table is not populated — and those need different answers
+     * from the caller. Reading everything keeps that distinction visible and puts
+     * the set membership in the pure seam where it can be tested.
+     *
+     * Returns null when the table cannot be read at all: SV/MultiPrefix
+     * uninstalled and its table dropped, a rename, revoked permissions. That is a
+     * different thing from an empty table and the caller treats it as one, but
+     * both abort the run — silently reading an unreadable status as "nothing is
+     * handled" would remind every past-deadline application in the queue.
      *
      * @param int[] $threadIds
-     * @return array<int,int[]> thread_id => [user_id, ...]
+     * @return array<int,array<string,mixed>>|null rows, or null if unreadable
      */
-    protected function fetchReplyAuthorIds(array $threadIds): array
+    protected function fetchThreadPrefixLinks(array $threadIds): ?array
     {
         if (!$threadIds)
         {
@@ -322,22 +389,20 @@ class QueueReminder
         }
 
         $db = \XF::db();
-        $rows = $db->fetchAll(
-            'SELECT DISTINCT thread_id, user_id
-                FROM xf_post
-                WHERE thread_id IN (' . $db->quote($threadIds) . ')
-                    AND position > 0
-                    AND message_state = ?',
-            ['visible']
-        );
 
-        $byThread = [];
-        foreach ($rows as $row)
+        try
         {
-            $byThread[(int) $row['thread_id']][] = (int) $row['user_id'];
+            return $db->fetchAll(
+                'SELECT thread_id, prefix_id
+                    FROM xf_sv_thread_prefix_link
+                    WHERE thread_id IN (' . $db->quote($threadIds) . ')'
+            );
         }
-
-        return $byThread;
+        catch (\Throwable $e)
+        {
+            \XF::logException($e, false, '[Cav7/EnlistmentReminder] thread prefix link read failed; the run is skipped: ');
+            return null;
+        }
     }
 
     /**
@@ -386,8 +451,8 @@ class QueueReminder
      * phrase as the message. The author gate stops a member quoting or copy-pasting
      * the note from faking the signal; the phrase gate stops the same S6 bot's
      * SteamChecker VAC reply in the same thread from counting. Only visible posts
-     * count, mirroring fetchReplyAuthorIds, so a soft-deleted note does not suppress
-     * a fresh reminder. Do not "simplify" this away as a redundant re-read of the
+     * count, so a soft-deleted note does not suppress a fresh reminder. Do not
+     * "simplify" this away as a redundant re-read of the
      * marker table: it is the marker table's own write failure that it exists to
      * survive, and a ScanWiringTest assertion pins it for that reason.
      *

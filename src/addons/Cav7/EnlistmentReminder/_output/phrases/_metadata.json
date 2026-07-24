@@ -35,6 +35,12 @@
         "version_string": "1.0.0",
         "hash": "2e8696a60428ddb364adeee75549d310"
     },
+    "option.cav7ERInProcessingPrefixIds.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "3408484bda43535a2566bd9d3cf06fa7"
+    },
     "option.cav7ERQueueNodeId.txt": {
         "global_cache": false,
         "version_id": 1000070,
@@ -73,9 +79,15 @@
     },
     "option_explain.cav7ERDeadlineHours.txt": {
         "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "a65140450a06b73dffa7ad24dedbd091"
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "18d90de29eca67c70e8cc5be1e801b6d"
+    },
+    "option_explain.cav7ERInProcessingPrefixIds.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "b3cd3ebc82ac6d2f5dfbb6b208118aa1"
     },
     "option_explain.cav7ERQueueNodeId.txt": {
         "global_cache": false,
@@ -87,7 +99,7 @@
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
-        "hash": "900467cf5d4fcf537b57aa08f9922e44"
+        "hash": "d84f5e4a5afacd075bf4f93d54442315"
     },
     "option_explain.cav7ERReenlistPrefixIds.txt": {
         "global_cache": false,
@@ -99,7 +111,7 @@
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
-        "hash": "9f05fb7c59bae6b7514e5ef1fc520b69"
+        "hash": "e84fe2a9e6f788890dfd22fa138ffee6"
     },
     "option_explain.cav7ERStandardPrefixIds.txt": {
         "global_cache": false,
@@ -115,8 +127,8 @@
     },
     "option_group_description.cav7EnlistmentReminder.txt": {
         "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "6b23201b3b8432dcb6cc258a85f533ca"
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "22b00dc41ac907a75837b6892ce5d3fe"
     }
 }

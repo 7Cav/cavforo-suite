@@ -1,1 +1,1 @@
-How many hours an application may sit in the queue with no clerk reply before it is reminded. The minimum is 1 hour; 0 or lower falls back to the default of 24 so the reminder cannot fire on the whole queue at once.
+How many hours an application may sit in the queue with no processing status on it before it is reminded. The minimum is 1 hour; 0 or lower falls back to the default of 24 so the reminder cannot fire on the whole queue at once.

@@ -14,15 +14,15 @@ namespace Cav7\EnlistmentReminder;
  * either Standard (57 by default) or Re-Enlistment (58). Built from the four
  * parsed config lists, this exposes two things:
  *
- *   - pickupPositionIds(): the union of both clerk-position lists. Pickup is NOT
- *     type-scoped — a reply from any seat clears the reminder — so the pickup
- *     check and the mass-remind guard resolve this union, the same coverage the
- *     single clerk-position option gave before the split.
- *   - route(): for one thread's prefix id, the clerk positions to ALERT. Only the
- *     alert audience narrows. A prefix in one type set routes to that set; a
- *     prefix in BOTH (a config error) fail-safes to the union so no responsible
- *     clerk is silently dropped; a prefix in NEITHER is unrecognized — not a
- *     valid intake thread — and the caller skips it rather than mass-alerting.
+ *   - allClerkPositionIds(): the union of both clerk-position lists. The caller
+ *     resolves it once to decide whether ANY seat is held at all, and aborts the
+ *     run if none is, so an unstaffed board says so once rather than once per
+ *     thread per hour.
+ *   - route(): for one thread's prefix id, the clerk positions to ALERT. A prefix
+ *     in one type set routes to that set; a prefix in BOTH (a config error)
+ *     fail-safes to the union so no responsible clerk is silently dropped; a
+ *     prefix in NEITHER is unrecognized — not a valid intake thread — and the
+ *     caller skips it rather than mass-alerting.
  *
  * Ids are normalised to positive ints on the way in, so the string prefix id XF
  * hands back from the DB and the ints PositionIdList parses compare as the same
@@ -94,12 +94,12 @@ final class EnlistmentRouting
     /**
      * The union of both clerk-position lists, de-duplicated with first-seen order
      * preserved (Senior and Lead sit in both sets, so they collapse to one entry).
-     * This is the set whose reply counts as a pickup and whose emptiness aborts
-     * the run — pickup coverage is unchanged by the type split.
+     * Two uses: it is the fail-safe audience for a prefix listed under both types,
+     * and its emptiness is what aborts a run that could reach nobody at all.
      *
      * @return int[]
      */
-    public function pickupPositionIds(): array
+    public function allClerkPositionIds(): array
     {
         return array_values(array_unique(array_merge($this->standardPositionIds, $this->reenlistPositionIds)));
     }
@@ -119,7 +119,7 @@ final class EnlistmentRouting
 
         if ($inStandard && $inReenlist)
         {
-            return ['type' => self::TYPE_BOTH, 'position_ids' => $this->pickupPositionIds()];
+            return ['type' => self::TYPE_BOTH, 'position_ids' => $this->allClerkPositionIds()];
         }
         if ($inStandard)
         {

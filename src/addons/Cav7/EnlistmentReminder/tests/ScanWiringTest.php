@@ -159,6 +159,8 @@ $expectedOptions = [
     'cav7ERQueueNodeId', 'cav7ERBotUserId', 'cav7ERDeadlineHours',
     'cav7ERStandardPrefixIds', 'cav7ERStandardClerkPositionIds',
     'cav7ERReenlistPrefixIds', 'cav7ERReenlistClerkPositionIds',
+    // Issue #186: the prefixes that mark an application as already being worked.
+    'cav7ERInProcessingPrefixIds',
 ];
 foreach ($expectedOptions as $id) {
     check("option $id is defined", in_array($id, $optionIds, true));
@@ -198,6 +200,11 @@ $defaults = [
     'cav7ERStandardClerkPositionIds' => '579,580,751,1012',
     'cav7ERReenlistPrefixIds'        => '58',
     'cav7ERReenlistClerkPositionIds' => '579,960,1012',
+    // Issue #186: Hold (53), Approved (54) and In Progress (55) are the states
+    // RRD's prefix state machine moves an application through once a clerk has
+    // taken it on. The type prefixes 57/58 must NEVER appear here — every valid
+    // queue thread carries one, so listing them would suppress the whole queue.
+    'cav7ERInProcessingPrefixIds'    => '53,54,55',
 ];
 $defaultByOption = [];
 if ($optXml !== false) {
@@ -218,6 +225,22 @@ check(
     'the union of the two default clerk sets equals the pre-split five seats',
     $union === [579, 580, 751, 960, 1012],
     'got: ' . implode(',', $union)
+);
+
+// Issue #186's trap, pinned against the SHIPPED defaults rather than restated:
+// the in-processing set must not overlap either type-prefix set. Every valid
+// queue thread carries its Enlistment/Re-Enlistment prefix in the same link
+// table, so a type prefix listed as a processing status reads the entire queue
+// as handled and silences the add-on for good, with nothing to see in the log.
+$shippedInProcessing = array_map('intval', explode(',', (string) ($defaultByOption['cav7ERInProcessingPrefixIds'] ?? '')));
+$shippedTypePrefixes = array_map('intval', array_merge(
+    explode(',', (string) ($defaultByOption['cav7ERStandardPrefixIds'] ?? '')),
+    explode(',', (string) ($defaultByOption['cav7ERReenlistPrefixIds'] ?? ''))
+));
+check(
+    'no enlistment type prefix is shipped as an in-processing status',
+    array_intersect($shippedInProcessing, $shippedTypePrefixes) === [],
+    'overlap: ' . implode(',', array_intersect($shippedInProcessing, $shippedTypePrefixes))
 );
 
 // --- the option group renders from the standard phrase pair ----------------
@@ -285,14 +308,15 @@ check(
 );
 
 // An empty resolved clerk set must abort the run with a logged signal, symmetric
-// with the node/bot guards — never silently mass-remind. If cav7ERClerkPositionIds
-// is blank/garbage or the roster drifts so nothing resolves, getClerkUserIds
-// returns [], and with no guard every past-deadline thread (clerk-handled or not)
-// gets a one-shot note.
+// with the node/bot guards. If both position options are blank or garbage, or
+// the roster drifts so nothing resolves, getClerkUserIds returns [] and no
+// thread can reach an audience: every remindable thread would fall through the
+// per-type empty-audience skip and log the same complaint once an hour. One
+// abort with one line says the same thing without the noise.
 check(
     'remind() aborts when no clerk resolves (logError + early return on the empty clerk set)',
     (bool) preg_match('/if\s*\(\s*!\$clerkUserIds\s*\).*?logError\(.*?return;/s', $worker),
-    'without this guard a blank or drifted clerk-position option reminds the whole past-deadline queue'
+    'a run with nobody to alert should say so once, not once per thread per hour'
 );
 
 // --- the scan is scoped to open, visible threads in the one node -----------
@@ -318,23 +342,112 @@ check(
     'the alert audience is chosen from the thread prefix, which must be fetched'
 );
 
-// The reply-author query counts only visible replies, so a soft-deleted clerk
-// reply is not mistaken for a live pickup. Bind the message_state = visible
-// filter on the xf_post reply query, not just the column name.
+// =========================================================================
+// Issue #186 — the handled signal is the thread's processing status prefix,
+// read from SV/MultiPrefix's link table, and no longer a reply from someone who
+// happens to hold a clerk seat right now. Roster state is recomputed every scan,
+// so the old rule could withdraw a pickup retroactively when the clerk who made
+// it rotated out of RRD. The rule itself is exercised in ReminderDecisionTest
+// and ProcessingStatusTest; this pins the vendor-coupled half.
+// =========================================================================
+
+// Reply authorship is out of the decision entirely, helper and all. A lingering
+// fetchReplyAuthorIds would be dead code at best and, wired back into the facts,
+// would reinstate the very bug #186 fixes.
 check(
-    'the reply-author query drops soft-deleted replies (message_state filtered to visible)',
-    (bool) preg_match(
-        '/FROM xf_post\b.*?position\s*>\s*0.*?message_state\s*=\s*\?.*?\[\'visible\'\]/s',
-        $worker
-    ),
-    'without the message_state filter a deleted clerk reply would suppress a live reminder'
+    'the reply-author machinery is gone from the worker',
+    !str_contains($worker, 'fetchReplyAuthorIds')
+        && !str_contains($worker, 'reply_author_ids')
+        && !(bool) preg_match('/position\s*>\s*0/', $worker),
+    'who replied no longer enters the decision, so the query that gathered it must go'
 );
 
-// --- the decision routes through the pure unit -----------------------------
+// The status comes from SV/MultiPrefix's own link table, scoped to the threads
+// this scan is about. The vendor stores EVERY prefix a thread carries there.
+check(
+    'the worker reads prefix links from the SV/MultiPrefix link table, scoped to the scanned threads',
+    (bool) preg_match('/FROM xf_sv_thread_prefix_link\b/', $worker)
+        && (bool) preg_match('/FROM xf_sv_thread_prefix_link\b.*?thread_id IN/s', $worker),
+    'an unscoped read would pull the whole board\'s prefix links'
+);
+
+// A missing or unreadable link table (SV/MultiPrefix uninstalled, the table
+// renamed, permissions revoked) must abort the run with a logged error. Without
+// the guard, a thrown query would either kill the cron or, if swallowed into an
+// empty result, read the whole queue as un-actioned and remind all of it at once.
+$prefixLinkBody = methodBody($worker, 'fetchThreadPrefixLinks');
+check(
+    'the prefix-link read is its own helper that reports failure rather than returning nothing',
+    $prefixLinkBody !== ''
+        && (bool) preg_match('/catch\s*\(.*?logException\(/s', $prefixLinkBody)
+        && (bool) preg_match('/return null;/', $prefixLinkBody),
+    'an unreadable link table must be distinguishable from a genuinely empty one'
+);
+check(
+    'remind() aborts on an unreadable prefix link table (logError + early return)',
+    (bool) preg_match('/if\s*\(\s*\$prefixLinks\s*===\s*null\s*\)\s*\{.*?logError\(.*?return;/s', $worker),
+    'without the abort, an unreadable table reads as "nothing is in processing" and reminds the whole queue'
+);
+// An empty result is the same failure wearing different clothes: every valid
+// queue thread carries at least its type prefix in this table, so zero rows for
+// a non-empty queue means the table is not populated, not that nothing is in
+// processing. Abort rather than mass-remind, matching the empty-clerk guard.
+check(
+    'remind() aborts when a non-empty queue yields no prefix links at all',
+    (bool) preg_match('/if\s*\(\s*!\$prefixLinks\s*\)\s*\{.*?logError\(.*?return;/s', $worker),
+    'every valid queue thread carries a type prefix here, so no rows at all means the table is unpopulated'
+);
+
+// A blank or unparseable in-processing option resolves to no statuses, so
+// nothing could ever suppress and every past-deadline thread would be reminded,
+// including the ones a clerk is actively working. Abort with a signal instead.
+check(
+    'remind() aborts when the in-processing option parses to nothing (logError + early return)',
+    (bool) preg_match('/if\s*\(\s*!\$inProcessingPrefixIds\s*\)\s*\{.*?logError\(.*?return;/s', $worker)
+        && str_contains($worker, 'cav7ERInProcessingPrefixIds'),
+    'a blank or garbage option would otherwise remind every past-deadline thread in the queue'
+);
+// The abort must come before any reminder is posted; a guard that ran after the
+// loop would be decorative.
+$guardAt    = strpos($worker, 'if (!$inProcessingPrefixIds)');
+$decisionAt = strpos($worker, 'selectThreadsToRemind');
+check(
+    'the in-processing guard runs before the remind loop',
+    $guardAt !== false && $decisionAt !== false && $guardAt < $decisionAt,
+    'a guard downstream of the decision cannot stop a mass remind'
+);
+
+// --- the decision routes through the pure units ----------------------------
 check(
     'the worker delegates the decision to ReminderDecision::selectThreadsToRemind',
     str_contains($worker, 'ReminderDecision::selectThreadsToRemind'),
     'the rule is extracted so it can be unit-tested without XenForo'
+);
+check(
+    'the ProcessingStatus seam exists and has a pure test',
+    is_file("$root/ProcessingStatus.php") && is_file("$root/tests/ProcessingStatusTest.php"),
+    'the type-prefix trap must be covered for real in plain PHP, like the other seams'
+);
+// THE TRAP. The in-processing fact must come from membership in the configured
+// set, which is what ProcessingStatus applies. A worker that instead tested
+// "this thread has a row in the link table" would suppress every reminder
+// forever and never log a thing, because every valid queue thread carries its
+// type prefix there.
+check(
+    'the in-processing fact is derived by ProcessingStatus against the configured set',
+    (bool) preg_match(
+        '/ProcessingStatus::inProcessingThreadIds\(\s*\$prefixLinks\s*,\s*\$inProcessingPrefixIds\s*\)/',
+        $worker
+    ),
+    'testing mere presence in the link table would silently disable the add-on'
+);
+check(
+    'the in_processing fact handed to the decision is that map, not a bare link-table hit',
+    (bool) preg_match(
+        '/[\'"]in_processing[\'"]\s*=>\s*isset\(\$inProcessing\[[^\]]+\]\)/',
+        $worker
+    ),
+    'the decision reads one boolean per thread, and it must be the configured-set membership'
 );
 
 // --- the bot posts the note the SteamChecker way, note included ------------
@@ -669,13 +782,13 @@ check(
     'the prefix-to-clerks decision must go through the pure seam'
 );
 
-// Pickup and the mass-remind guard resolve the UNION of both position lists, so a
-// reply from any of the five seats still clears the reminder — unchanged from the
-// single-option behaviour. The guard names the new options, not the retired one.
+// The mass-remind guard resolves the UNION of both position lists, so it aborts
+// only when NEITHER type has a seated holder. The guard names the new options,
+// not the retired one.
 check(
-    'pickup resolves the union of both clerk sets via pickupPositionIds()',
-    (bool) preg_match('/resolveClerkUserIds\(\s*\$routing->pickupPositionIds\(\)\s*\)/', $worker),
-    'pickup coverage must be the union, so any seat replying counts as a pickup'
+    'the empty-clerk guard resolves the union of both clerk sets via allClerkPositionIds()',
+    (bool) preg_match('/resolveClerkUserIds\(\s*\$routing->allClerkPositionIds\(\)\s*\)/', $worker),
+    'aborting on one empty type set would silence the other type, which still has holders'
 );
 check(
     'the empty-clerk guard names the new per-type options, not cav7ERClerkPositionIds',
@@ -765,10 +878,22 @@ check(
         && (bool) preg_match("/delete\(\s*'xf_option'\s*,.*?cav7ERClerkPositionIds/s", $setup),
     'without the removal an admin upgrading keeps a dead option nothing reads'
 );
+$addonJson = (string) file_get_contents("$root/addon.json");
+preg_match('/"version_id"\s*:\s*(\d+)/', $addonJson, $versionMatch);
+$versionId = (int) ($versionMatch[1] ?? 0);
 check(
-    'the addon.json version is bumped so the upgrade step runs',
-    (bool) preg_match('/"version_id"\s*:\s*1010070/', (string) file_get_contents("$root/addon.json")),
-    'the upgrade1010070Step1 step only runs if the installed version crosses 1.1.0'
+    'the addon.json version is at or past 1.1.0 so the upgrade step runs',
+    $versionId >= 1010070,
+    'the upgrade1010070Step1 step only runs if the installed version crosses 1.1.0; got ' . $versionId
+);
+// Issue #186 changes the handled signal and adds an option, so the version must
+// move past 1.1.0 as well. XenForo only re-imports an add-on's data when the
+// version rises, so without the bump cav7ERInProcessingPrefixIds never reaches a
+// live install and the new guard aborts every run.
+check(
+    'the addon.json version is bumped past 1.1.0 for the #186 option',
+    $versionId > 1010070,
+    'a new option only lands on an existing install when the version rises; got ' . $versionId
 );
 
 if ($failures > 0) {
