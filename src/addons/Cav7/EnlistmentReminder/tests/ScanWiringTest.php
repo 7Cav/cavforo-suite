@@ -898,6 +898,26 @@ check(
     'a new option only lands on an existing install when the version rises; got ' . $versionId
 );
 
+// --- the SV/MultiPrefix floor is stated in SV's own numbering ---------------
+// The status prefixes are read out of SV/MultiPrefix's link table, so the
+// dependency has to be declared with a floor XenForo can actually enforce. SV
+// numbers its releases by build timestamp, not XenForo's AABBCCDE scheme, so a
+// floor written in the AABBCCDE range is met by every SV release in existence and
+// gates nothing — an install missing the table would sail through the check and
+// fail at the first scan instead.
+$addonManifest = json_decode($addonJson, true);
+$multiPrefixFloor = $addonManifest['require']['SV/MultiPrefix'][0] ?? null;
+check(
+    'addon.json requires SV/MultiPrefix',
+    $multiPrefixFloor !== null,
+    'the link-table read has no declared dependency at all'
+);
+check(
+    'the SV/MultiPrefix floor is a timestamp version id, not an AABBCCDE one',
+    is_int($multiPrefixFloor) && $multiPrefixFloor >= 1000000000,
+    'SV version ids are build timestamps; a floor below 1000000000 is cleared by every SV release and enforces nothing. Got: ' . var_export($multiPrefixFloor, true)
+);
+
 if ($failures > 0) {
     echo "\n$failures test(s) FAILED\n";
     exit(1);

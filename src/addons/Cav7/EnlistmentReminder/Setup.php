@@ -44,7 +44,7 @@ class Setup extends AbstractSetup
      *
      * No value is migrated from the old option: the two new default position sets
      * union to exactly the old default (579,580,751,960,1012), so a default-config
-     * install keeps the same pickup coverage without carrying a custom value that
+     * install keeps the same clerk coverage without carrying a custom value that
      * a union cannot be un-merged back into two type sets anyway.
      */
     public function upgrade1010070Step1(): void

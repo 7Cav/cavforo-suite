@@ -54,7 +54,7 @@ _Avoid_: conflating clerks with the RRD usergroups (59/60) or the `!vac`
 allowed-role groups — those over-cover; clerk membership is by roster position,
 not usergroup. Also _avoid_ making a clerk's identity part of the un-actioned
 test: seats are re-read on every scan, so a rule that depends on who holds one
-un-does itself when a clerk rotates out (issue #186).
+un-does itself when a clerk rotates out.
 
 **Processing status**:
 The state a clerk has moved an application to, carried as a thread prefix from
