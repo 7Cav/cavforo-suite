@@ -193,7 +193,7 @@ foreach ($expectedOptions as $id) {
 
 // The deadline default 24 and the queue node default 325 are what the issue asks;
 // the four routing defaults are the agreed per-type sets whose position lists
-// union to the pre-split default (579,580,751,960,1012), so pickup coverage is
+// union to the pre-split default (579,580,751,960,1012), so clerk coverage is
 // unchanged and only the alert audience narrows.
 $defaults = [
     'cav7ERDeadlineHours'            => '24',
@@ -218,7 +218,7 @@ foreach ($defaults as $id => $want) {
     check("the $id default is $want", ($defaultByOption[$id] ?? null) === $want);
 }
 // The union of the two default position sets is exactly the old single default,
-// so pickup coverage does not change when the alert audience splits by type.
+// so clerk coverage does not change when the alert audience splits by type.
 $standardSeats = array_map('intval', explode(',', $defaults['cav7ERStandardClerkPositionIds']));
 $reenlistSeats = array_map('intval', explode(',', $defaults['cav7ERReenlistClerkPositionIds']));
 $union = array_values(array_unique(array_merge($standardSeats, $reenlistSeats)));
@@ -597,8 +597,10 @@ check(
 // =========================================================================
 
 // Issue #144: the alert no longer targets the global clerk set. It targets the
-// per-type set the router resolved for this thread's prefix ($alertUserIds),
-// while pickup and the mass-remind guard still resolve the union ($clerkUserIds).
+// per-type set the router resolved for this thread's prefix ($alertUserIds). The
+// union is resolved once per run into $clerkUserIds purely to answer "is any seat
+// held at all?" for the mass-remind guard; it only ever reaches an alert as
+// route()'s fail-safe audience for a prefix listed under both types.
 check(
     'the clerk alert targets the per-type resolved set, not the global clerk set',
     (bool) preg_match('/alertClerks\(\s*\$threadId\s*,\s*\$botUserId\s*,\s*\$alertUserIds\s*\)/', $worker)
@@ -758,9 +760,10 @@ check(
 // =========================================================================
 // Issue #144 — route the un-actioned alert by enlistment type. The pure rule is
 // exercised in EnlistmentRoutingTest; this pins the vendor-coupled wiring: the
-// worker builds the router from the four options, pickup resolves the union, the
-// per-type set is alerted, an unrecognized thread is skipped with one breadcrumb,
-// an overlap config is warned, and the Setup upgrade step retires the old option.
+// worker builds the router from the four options, the mass-remind guard resolves
+// the union, the per-type set is alerted, an unrecognized thread is skipped with
+// one breadcrumb, an overlap config is warned, and the Setup upgrade step retires
+// the old option.
 // =========================================================================
 
 // The pure routing seam exists and is a plain-PHP twin of the other seams.

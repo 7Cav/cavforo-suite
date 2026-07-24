@@ -88,7 +88,7 @@ final class EnlistmentRouting
      */
     public function allClerkPositionIds(): array
     {
-        return array_values(array_unique(array_merge($this->standardPositionIds, $this->reenlistPositionIds)));
+        return PositionIdList::normalize(array_merge($this->standardPositionIds, $this->reenlistPositionIds));
     }
 
     /**
