@@ -13,10 +13,11 @@ A thread moderation action only reached the log when the person taking it held a
 appointment rather than a capability. Everyone else's actions went through
 normally and wrote nothing. No error, no warning, no entry.
 
-On this board that is nearly everyone who moderates. Five members hold a record.
-`stickUnstickThread` is granted to several hundred, and twenty of twenty-five
-admins hold no record at all. In four years seven accounts had ever written an
-entry, against 760 sticky threads and 32 lifetime `stick` entries.
+Holding the record and holding a permission that authorises a moderation action
+are independent, and on this board the two populations barely overlap; the
+[CONTEXT.md](CONTEXT.md) entry for **moderator record** has the shape of the gap.
+So the log was recording a small fraction of the moderation happening on the
+forum, and reading as though the rest had not happened.
 
 Stickies were where it was noticed. Every logged action was affected the same
 way: locks, prefixes, moves, approvals, soft deletes, thread type changes, title
@@ -33,11 +34,13 @@ that run as a guest out of the log.
 
 The per-action check adds one rule in front of the handler's own. For the
 **author-reachable action**s — the ones a member can produce on their own content
-with own-content permissions, listed in
-[ADR-0001](docs/adr/0001-log-by-authorship-not-by-permission.md) — an entry is
-written only when the actor is not the content's author. Everything else is
-unreachable without authority over somebody else's content, so it always logs.
-A member who holds a moderator record skips the rule entirely.
+with own-content permissions, decided in
+[ADR-0001](docs/adr/0001-log-by-authorship-not-by-permission.md) and
+[ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md) and listed in
+`AuthorshipRule::AUTHOR_REACHABLE_ACTIONS` — an entry is written only when the
+actor is not the content's author. Everything else is unreachable without
+authority over somebody else's content, so it always logs. A member who holds a
+moderator record skips the rule entirely.
 
 Every other case is handed to the handler underneath rather than answered here.
 That is deliberate, and it is doing real work: XenForo's thread, post and
@@ -65,17 +68,12 @@ had — the moderator bar, the staff list, and everything else built on
 
 Why the rule keys on authorship rather than on the moderator-grade permission
 behind each action, and what that costs, is in
-[ADR-0001](docs/adr/0001-log-by-authorship-not-by-permission.md). The short
-version: a permission check needs a hand-maintained map of about nineteen
-(content type, action) pairs to permission names across four scopes, several
-owned by third-party addons, and when one of those names changes the entries
-stop appearing and nothing says so. That is the fault this addon exists to
-remove, reintroduced inside the fix.
+[ADR-0001](docs/adr/0001-log-by-authorship-not-by-permission.md).
 
 ## The behaviour change worth knowing about
 
-**Log volume goes up a lot.** Several hundred members can stick a thread today
-and none of them produce entries. Retention is deliberately untouched:
+**Log volume goes up a lot.** Everyone who moderates without a record was
+writing nothing and now writes entries. Retention is deliberately untouched:
 `moderatorLogLength` stays at 0, so nothing prunes. That was raised and left
 alone on purpose, and it is the setting to look at first if the table gets
 uncomfortable.
@@ -85,13 +83,16 @@ their own content, is still not logged.** That is the one case an
 authorship rule cannot see and a permission rule could. ADR-0001 records why we
 took the trade.
 
-One consequence of the action list being exact: `attachment_deleted` is not in
-it, so removing an attachment from your own profile post or from a comment on one
-now logs. Posts do not, because XenForo's post handler withholds that action for
-its author and this addon defers to it. That asymmetry is XenForo's, not ours,
-and it is also the clearest thing to look at if you want to see the deferral
-working: the same action, the same actor, one handler that has a rule and two
-that do not.
+**Two actions are withheld from their author here rather than by the handler
+underneath.** Removing an attachment from your own content and resetting your own
+poll are both reachable with own-content permissions, and the handlers that log
+them do not all say so — XenForo's post handler withholds the attachment for its
+author while its profile-post handlers do not, and no handler has a rule about a
+poll reset at all.
+[ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md) has the evidence
+for each. If you want to watch the deferral itself working, `title` on a thread is
+the place: XenForo's thread handler has its own rule about that one, and it is the
+rule that answers.
 
 ## Verifying an install
 
@@ -107,9 +108,10 @@ php cmd.php cav7-moderator-log-patch:verify <node> <user> <category>
   types that are filed under one. Read-only.
 
 Three phases. It reads the registered handler content types off the install and
-checks each one resolves through this addon. It then asks each resolved
-handler's two gates the questions the rule is made of, which runs the vendor
-handlers' own code without writing anything. Finally it creates a throwaway
+checks each one resolves through this addon. It then asks each resolved handler's
+two gates the questions the rule is made of — every author-reachable action, once
+as the member who wrote the content and once as somebody else — which runs the
+vendor handlers' own code without writing anything. Finally it creates a throwaway
 thread, sticks it, retitles it, unsticks it, checks which of those landed in
 `xf_moderator_log`, and deletes the thread and the rows.
 

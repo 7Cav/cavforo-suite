@@ -17,8 +17,9 @@ use XF\Mvc\Entity\Entity;
  * docs/adr/0002-one-extension-per-registered-handler.md.
  *
  * Both overrides are thin. The decision is in {@see AuthorshipRule}, which the
- * ordinary test run covers because it needs nothing from XenForo. What lives here
- * is reading the actor and the content, and deferring.
+ * ordinary test run covers because it needs nothing from XenForo, and who wrote the
+ * content comes from {@see ContentAuthor}, which the verification command reads it
+ * through as well. What lives here is the actor, and deferring.
  *
  * @method bool isLoggable(Entity $content, string $action, User $actor)
  */
@@ -65,7 +66,7 @@ trait AuthorshipLogging
             (string) $action,
             (int) $actor->user_id,
             (bool) $actor->is_moderator,
-            $this->getContentAuthorUserId($content)
+            ContentAuthor::userId($content)
         );
 
         if ($withheld) {
@@ -73,28 +74,5 @@ trait AuthorshipLogging
         }
 
         return (bool) parent::isLoggable($content, $action, $actor);
-    }
-
-    /**
-     * The content's author, or null when the entity does not carry one.
-     *
-     * Every handler registered today logs content with a `user_id` column, and each
-     * one already reads that column as the author when it fills the log row. Asked
-     * for rather than assumed, because a handler registered by a later addon is
-     * under no obligation to have it, and reading a column an entity does not
-     * declare is a fatal error inside a save.
-     *
-     * Null and 0 both mean "no author", and neither may match an actor: see the
-     * guard in {@see AuthorshipRule::withholdsEntry()}.
-     */
-    protected function getContentAuthorUserId(Entity $content): ?int
-    {
-        if (!$content->isValidColumn('user_id')) {
-            return null;
-        }
-
-        $userId = (int) $content->get('user_id');
-
-        return $userId > 0 ? $userId : null;
     }
 }

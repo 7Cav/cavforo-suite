@@ -1,0 +1,37 @@
+<?php
+
+namespace Cav7\ModeratorLogPatch;
+
+use XF\Mvc\Entity\Entity;
+
+/**
+ * Issue #187 — the one reading of who wrote a piece of content.
+ *
+ * Both the rule on the handler and the verification command need the author, and
+ * both have to agree on what "no author" is: null, never 0. The rule compares the
+ * author against the acting member, so 0 would let "nobody" match an actor with no
+ * id and withhold every entry about guest-written content. Kept in one place because
+ * the two copies of this walk had already drifted on exactly that value.
+ */
+class ContentAuthor
+{
+    /**
+     * The content's author, or null when the entity does not carry one.
+     *
+     * Every handler registered today logs content with a `user_id` column, and each
+     * one already reads that column as the author when it fills the log row. Asked
+     * for rather than assumed, because a handler registered by a later addon is
+     * under no obligation to have it, and reading a column an entity does not
+     * declare is a fatal error inside a save.
+     */
+    public static function userId(Entity $content): ?int
+    {
+        if (!$content->isValidColumn('user_id')) {
+            return null;
+        }
+
+        $userId = (int) $content->get('user_id');
+
+        return $userId > 0 ? $userId : null;
+    }
+}

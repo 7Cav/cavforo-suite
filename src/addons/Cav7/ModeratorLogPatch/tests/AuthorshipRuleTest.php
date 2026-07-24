@@ -70,11 +70,38 @@ check(
     'today\'s behaviour for record holders is preserved by deferring, not by re-deciding'
 );
 
-// The full author-reachable set from ADR 0001, each one withheld from its own
-// author. Asserted item by item rather than as a list comparison, so a name dropped
-// from the constant fails with the action that went missing.
+// Resetting a poll and deleting one are the same button behind the same single
+// permission check: the poll controller asks canDelete() once and then branches on
+// a form field to either the deleter or the resetter. So a thread starter who can
+// delete their own poll can reset it, and the two actions have to answer alike.
+check(
+    'resetting your own poll is not logged, exactly as deleting it is not',
+    AuthorshipRule::withholdsEntry('poll_reset', 41, false, 41) === true
+        && AuthorshipRule::withholdsEntry('poll_delete', 41, false, 41) === true,
+    'both come out of one canDelete() check, which passes the thread author while nobody has voted'
+);
+
+// XenForo's own post handler cases 'edit' and 'attachment_deleted' together and
+// withholds both from the author, so core treats removing your own attachment as
+// author-reachable. The profile-post and profile-post-comment handlers have no such
+// rule, which is why the decision has to be made here rather than deferred.
+check(
+    'removing an attachment from your own content is not logged',
+    AuthorshipRule::withholdsEntry('attachment_deleted', 41, false, 41) === true,
+    'core withholds this for a post author; the profile-post handlers log it unguarded, so tidying your own profile post would be recorded'
+);
+check(
+    'removing an attachment from somebody else\'s content is logged',
+    AuthorshipRule::withholdsEntry('attachment_deleted', 41, false, 77) === false,
+    'reaching another member\'s attachment took a permission over their content'
+);
+
+// The full author-reachable set from ADR 0001 and ADR 0004, each one withheld from
+// its own author. Asserted item by item rather than as a list comparison, so a name
+// dropped from the constant fails with the action that went missing.
 foreach ([
     'edit',
+    'attachment_deleted',
     'title',
     'prefix',
     'custom_fields_edit',
@@ -84,11 +111,12 @@ foreach ([
     'poll_create',
     'poll_edit',
     'poll_delete',
+    'poll_reset',
 ] as $action) {
     check(
         "'$action' is author-reachable, so its author is not logged",
         AuthorshipRule::withholdsEntry($action, 41, false, 41) === true,
-        'ADR 0001 lists this action as one a member can produce on their own content'
+        'the ADRs list this action as one a member can produce on their own content'
     );
 }
 

@@ -3,6 +3,8 @@
 namespace Cav7\ModeratorLogPatch\Cli\Command;
 
 use Cav7\ModeratorLogPatch\AuthorshipLogging;
+use Cav7\ModeratorLogPatch\AuthorshipRule;
+use Cav7\ModeratorLogPatch\ContentAuthor;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -43,18 +45,13 @@ class VerifyCoverage extends Command
     protected const PROBE_PREFIX = '[Cav7/ModeratorLogPatch verify] ';
 
     /**
-     * An action outside the author-reachable set. Whoever wrote the content, this
-     * one is moderation and has to be logged — it is the action the issue was
-     * reported on.
+     * A name outside the author-reachable set, used to ask each handler what it does
+     * with one. Not every content type can produce this particular action; what the
+     * probe establishes is that the rule does not withhold a name from outside the
+     * set, whoever wrote the content, and that the handler underneath then logs it.
+     * `stick` is the name the issue was reported on, which is why it is this one.
      */
     protected const MODERATION_ACTION = 'stick';
-
-    /**
-     * An action inside the author-reachable set, and the one every registered
-     * handler can produce. Logged against somebody else's content, withheld
-     * against your own.
-     */
-    protected const AUTHOR_REACHABLE_ACTION = 'edit';
 
     /**
      * @var int
@@ -189,11 +186,22 @@ class VerifyCoverage extends Command
      * content type without touching a row. Authorship is varied by changing who is
      * asking rather than by editing the content.
      *
+     * Every author-reachable action is asked of every handler, not one of them. One
+     * action proves nothing where the handler underneath happens to have a rule of
+     * its own about that same action: it answers, the check passes, and this addon's
+     * rule was never consulted. The set is read off the rule so it cannot fall behind
+     * it, and covering the whole set means no handler's own rules can cover all of
+     * what is asked.
+     *
      * @param array<string, object> $handlers
      */
     protected function checkRule(array $handlers, int $nodeId, int $categoryId): void
     {
         $this->out->writeln("\n<comment>The rule, per content type</comment>");
+        $this->out->writeln(
+            '  author-reachable actions asked of each handler: '
+            . implode(', ', AuthorshipRule::AUTHOR_REACHABLE_ACTIONS)
+        );
 
         $guest = $this->syntheticUser(0, false);
 
@@ -204,8 +212,8 @@ class VerifyCoverage extends Command
                 continue;
             }
 
-            $authorId = $content->isValidColumn('user_id') ? (int) $content->get('user_id') : 0;
-            if ($authorId < 1) {
+            $authorId = ContentAuthor::userId($content);
+            if ($authorId === null) {
                 // Sample content with no author cannot answer the authorship half.
                 // Reported rather than skipped quietly.
                 $this->check("$type sample content has an author", false, 'every registered handler logs content with an author; this sample has none');
@@ -233,19 +241,47 @@ class VerifyCoverage extends Command
             );
 
             $this->check(
-                sprintf("%s: '%s' is logged, whoever wrote the content", $type, self::MODERATION_ACTION),
+                sprintf(
+                    "%s: '%s', from outside the author-reachable set, is not withheld even from the author",
+                    $type,
+                    self::MODERATION_ACTION
+                ),
                 $handler->isLoggable($content, self::MODERATION_ACTION, $author) === true,
-                'an action outside the author-reachable set cannot be reached without authority over somebody else\'s content'
+                'an action outside the set cannot be reached without authority over somebody else\'s content, so the rule has to hand it to the handler underneath'
+            );
+
+            $notWithheld = [];
+            $notLogged = [];
+            foreach (AuthorshipRule::AUTHOR_REACHABLE_ACTIONS as $action) {
+                if ($handler->isLoggable($content, $action, $author) !== false) {
+                    $notWithheld[] = $action;
+                }
+                if ($handler->isLoggable($content, $action, $stranger) !== true) {
+                    $notLogged[] = $action;
+                }
+            }
+
+            $this->check(
+                sprintf(
+                    '%s: every author-reachable action by the author is withheld (%d asked)',
+                    $type,
+                    count(AuthorshipRule::AUTHOR_REACHABLE_ACTIONS)
+                ),
+                $notWithheld === [],
+                $notWithheld === []
+                    ? ''
+                    : 'a member tidying up their own content is not moderation, and these were still logged: ' . implode(', ', $notWithheld)
             );
             $this->check(
-                sprintf("%s: '%s' by the author is withheld", $type, self::AUTHOR_REACHABLE_ACTION),
-                $handler->isLoggable($content, self::AUTHOR_REACHABLE_ACTION, $author) === false,
-                'a member tidying up their own content is not moderation'
-            );
-            $this->check(
-                sprintf("%s: '%s' by somebody else is logged", $type, self::AUTHOR_REACHABLE_ACTION),
-                $handler->isLoggable($content, self::AUTHOR_REACHABLE_ACTION, $stranger) === true,
-                'reaching another member\'s content took a permission over it, which makes this moderation'
+                sprintf(
+                    '%s: every author-reachable action by somebody else is logged (%d asked)',
+                    $type,
+                    count(AuthorshipRule::AUTHOR_REACHABLE_ACTIONS)
+                ),
+                $notLogged === [],
+                $notLogged === []
+                    ? ''
+                    : 'reaching another member\'s content took a permission over it, which makes this moderation, and these were withheld: ' . implode(', ', $notLogged)
             );
         }
     }

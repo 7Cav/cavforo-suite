@@ -35,10 +35,15 @@ class AuthorshipRule
      * and a custom-field change as `custom_fields_edit` (the field is
      * `custom_fields`).
      *
+     * `attachment_deleted` and `poll_reset` were added after the first eight were
+     * settled; docs/adr/0004-two-more-author-reachable-actions.md records the
+     * evidence for each.
+     *
      * @var list<string>
      */
     public const AUTHOR_REACHABLE_ACTIONS = [
         'edit',
+        'attachment_deleted',
         'title',
         'prefix',
         'custom_fields_edit',
@@ -48,6 +53,7 @@ class AuthorshipRule
         'poll_create',
         'poll_edit',
         'poll_delete',
+        'poll_reset',
     ];
 
     /**

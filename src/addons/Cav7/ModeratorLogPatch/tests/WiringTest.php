@@ -140,6 +140,7 @@ $classExtXml = @simplexml_load_file("$root/_data/class_extensions.xml");
 check('_data/class_extensions.xml could be read', $classExtXml !== false);
 
 $extByFrom = [];
+$committedPairs = [];
 if ($classExtXml !== false) {
     foreach ($classExtXml->extension as $ext) {
         $extByFrom[(string) $ext['from_class']] = [
@@ -147,6 +148,7 @@ if ($classExtXml !== false) {
             'active' => (string) $ext['active'],
             'order' => (string) $ext['execute_order'],
         ];
+        $committedPairs[] = [(string) $ext['from_class'], (string) $ext['to_class']];
     }
 }
 
@@ -190,16 +192,25 @@ check(
 );
 
 // ADR 0003 at the suite level: the committed rows are ordered by a byte comparison
-// of from_class then to_class, which is the order our own exports emit. Checked
-// here as well as in validate-addon.php, because a re-export producing a diff on
-// rows a change had nothing to do with is what trained people to revert those hunks
-// by hand, which is how the drift the ADR describes happened in the first place.
-$fromClasses = array_keys($extByFrom);
-$sortedFromClasses = $fromClasses;
-sort($sortedFromClasses, SORT_STRING);
+// of from_class, then to_class, which is the order our own exports emit. Nothing
+// else in the repo checks it: ADR 0003 says `tools/validate-addon.php` enforces it,
+// and that script has no class-extension logic at all (issue #152). Worth checking
+// because a re-export producing a diff on rows a change had nothing to do with is
+// what trained people to revert those hunks by hand, which is how the drift the ADR
+// describes happened in the first place.
+//
+// Keyed on the pair rather than on from_class alone. from_class is unique in this
+// addon's file today, so a from_class sort would pass on rows the rule considers
+// unordered; the pair is the identity the ADR defines and the one XenForo's own
+// UNIQUE KEY uses.
+$sortedPairs = $committedPairs;
+usort(
+    $sortedPairs,
+    fn (array $a, array $b) => strcmp($a[0], $b[0]) ?: strcmp($a[1], $b[1])
+);
 check(
-    'the committed rows are in canonical order (byte comparison of from_class)',
-    $fromClasses === $sortedFromClasses,
+    'the committed rows are in canonical order (byte comparison of from_class, then to_class)',
+    $committedPairs === $sortedPairs,
     'docs/adr/0003-canonical-class-extension-order.md: re-export rather than hand-sorting, and do not revert the reordering hunks'
 );
 
@@ -325,7 +336,7 @@ check(
 check(
     'it passes the action, the actor\'s id, whether the actor holds a moderator record, and the content\'s author',
     (bool) preg_match(
-        '/AuthorshipRule::withholdsEntry\(\s*\(string\)\s*\$action\s*,\s*\(int\)\s*\$actor->user_id\s*,\s*\(bool\)\s*\$actor->is_moderator\s*,\s*\$this->getContentAuthorUserId\(\s*\$content\s*\)\s*,?\s*\)/s',
+        '/AuthorshipRule::withholdsEntry\(\s*\(string\)\s*\$action\s*,\s*\(int\)\s*\$actor->user_id\s*,\s*\(bool\)\s*\$actor->is_moderator\s*,\s*ContentAuthor::userId\(\s*\$content\s*\)\s*,?\s*\)/s',
         $loggableBody
     ),
     'the four inputs are the whole rule. Drop the moderator-record argument and every existing moderator starts being re-decided by a rule that never applied to them; swap the two ids and self-actions and moderation change places'
@@ -365,7 +376,24 @@ check(
 );
 
 // --- reading the content's author ---
-$authorBody = methodBody($traitCode, 'getContentAuthorUserId');
+// One reader, shared by the rule on the handler and by the verification command.
+// Two copies is how the two ends came to disagree about what "no author" is, and
+// only one of the two answers is safe: see the zero check below.
+$authorSrc = (string) @file_get_contents("$root/ContentAuthor.php");
+$authorCode = stripComments($authorSrc);
+$authorBody = methodBody($authorCode, 'userId');
+check(
+    'the author reader is a static method anything can call, not a method on the trait',
+    (bool) preg_match('/class\s+ContentAuthor\b/', $authorCode)
+        && (bool) preg_match('/public\s+static\s+function\s+userId\(\s*Entity\s+\$content\s*\)\s*:\s*\?int/', $authorCode),
+    'the verification command cannot compose the trait — it is not a log handler — so a reader living on the trait is a reader the command has to copy'
+);
+check(
+    'the trait reads the author through it rather than walking the entity itself',
+    str_contains($traitCode, 'ContentAuthor::userId(')
+        && !str_contains($traitCode, "isValidColumn('user_id')"),
+    'a second walk is a second answer about what "no author" is, and 0 there withholds every entry about guest-written content'
+);
 check(
     'the author is read from the column the handlers themselves treat as the author',
     (bool) preg_match('/\$content->get\(\s*\'user_id\'\s*\)/', $authorBody),
@@ -406,14 +434,16 @@ check(
 // The list is the decision, and it is the one thing in this addon a reader is most
 // likely to "tidy". Pinned here as well as in AuthorshipRuleTest: the unit test
 // asserts each name behaves author-reachably, this asserts the set is exactly the
-// ten ADR 0001 settled on, so an eleventh added without a decision fails the build.
+// twelve the two ADRs settled on, so a thirteenth added without a decision fails the
+// build.
 $ruleCode = stripComments($ruleSrc);
 preg_match('/AUTHOR_REACHABLE_ACTIONS\s*=\s*\[(.*?)\]\s*;/s', $ruleCode, $listMatch);
 preg_match_all('/\'([^\']+)\'/', $listMatch[1] ?? '', $actionNames);
 check(
-    'the author-reachable set is exactly the ten actions ADR 0001 settled on',
+    'the author-reachable set is exactly the twelve actions ADR 0001 and ADR 0004 settled on',
     ($actionNames[1] ?? []) === [
         'edit',
+        'attachment_deleted',
         'title',
         'prefix',
         'custom_fields_edit',
@@ -423,8 +453,9 @@ check(
         'poll_create',
         'poll_edit',
         'poll_delete',
+        'poll_reset',
     ],
-    'adding a name stops an action being logged for the member who wrote the content, and removing one starts logging members tidying up after themselves; either is a change to ADR 0001 and not a tidy-up'
+    'adding a name stops an action being logged for the member who wrote the content, and removing one starts logging members tidying up after themselves; either is a change to the ADRs and not a tidy-up'
 );
 check(
     'the action match is exact, not a prefix or a substring',
@@ -571,6 +602,28 @@ check(
     'this phase reads real content in the scopes the operator named; a write here would edit a member\'s thread to test a predicate'
 );
 $ruleCheckBody = methodBody($verifyCode, 'checkRule');
+// The reason to ask about more than one action. Where the handler underneath has its
+// own rule about the action being probed, that rule answers, the check passes, and
+// this addon's rule was never consulted — the vendor ticket handlers withhold `edit`
+// for its author on their own, so a probe on `edit` alone says nothing about the
+// ticket AC's `status`. Reading the whole set off the rule also stops the probe
+// falling behind a name added to it.
+check(
+    'the rule phase asks about every author-reachable action, not one of them',
+    (bool) preg_match(
+        '/foreach\s*\(\s*AuthorshipRule::AUTHOR_REACHABLE_ACTIONS\s+as\s+\$action\s*\)/',
+        $ruleCheckBody
+    )
+        && str_contains($ruleCheckBody, '$handler->isLoggable($content, $action, $author)')
+        && str_contains($ruleCheckBody, '$handler->isLoggable($content, $action, $stranger)'),
+    'a single action can be answered by a coincident rule on the handler underneath, which passes the check while proving nothing about this addon\'s'
+);
+check(
+    'the rule phase reads the author through the shared reader',
+    str_contains($ruleCheckBody, 'ContentAuthor::userId(')
+        && !str_contains($ruleCheckBody, 'isValidColumn'),
+    'the copy this replaced returned 0 where the reader returns null, which is the difference between "no author" and a member who matches nobody'
+);
 check(
     'the rule phase varies who is asking rather than who wrote the content',
     !preg_match('/setTrusted|->save\(\)|->update\(/', $ruleCheckBody)
