@@ -45,15 +45,6 @@ class VerifyCoverage extends Command
     protected const PROBE_PREFIX = '[Cav7/ModeratorLogPatch verify] ';
 
     /**
-     * A name outside the author-reachable set, used to ask each handler what it does
-     * with one. Not every content type can produce this particular action; what the
-     * probe establishes is that the rule does not withhold a name from outside the
-     * set, whoever wrote the content, and that the handler underneath then logs it.
-     * `stick` is the name the issue was reported on, which is why it is this one.
-     */
-    protected const MODERATION_ACTION = 'stick';
-
-    /**
      * @var int
      */
     protected $failures = 0;
@@ -240,13 +231,18 @@ class VerifyCoverage extends Command
                 'nobody who was logged before may stop being logged'
             );
 
+            // One name from outside the author-reachable set, asked of every handler.
+            // Not every content type can produce a `stick`; what the probe establishes
+            // is that the rule hands a name from outside the set to the handler
+            // underneath whoever wrote the content, and that the handler then logs it.
+            // `stick` is the name the issue was reported on, which is why it is this
+            // one — and the same reason the end-to-end phase below sticks a thread.
             $this->check(
                 sprintf(
-                    "%s: '%s', from outside the author-reachable set, is not withheld even from the author",
-                    $type,
-                    self::MODERATION_ACTION
+                    "%s: 'stick', from outside the author-reachable set, is not withheld even from the author",
+                    $type
                 ),
-                $handler->isLoggable($content, self::MODERATION_ACTION, $author) === true,
+                $handler->isLoggable($content, 'stick', $author) === true,
                 'an action outside the set cannot be reached without authority over somebody else\'s content, so the rule has to hand it to the handler underneath'
             );
 
@@ -393,18 +389,21 @@ class VerifyCoverage extends Command
     }
 
     /**
-     * A content entity of $type to ask the gates about, preferring real content in
-     * the scopes the operator named.
+     * A content entity of $type to ask the gates about, preferring real content and
+     * narrowing to the scopes the operator named where the content type has one.
      *
      * The scope column is discovered from the entity's own structure rather than
      * written down: a content type filed under a node is looked up in the node
-     * given, one filed under a category in the category given. Nothing outside those
-     * two scopes is read, and nothing is written in any case.
+     * given, one filed under a category in the category given. A content type filed
+     * under neither — a post, a profile post or its comments, a member, a ticket
+     * message — has no column to narrow on, so the newest row of that type on the
+     * board is read instead. Everything here is read-only in every case; the scope
+     * arguments bound which content the operator's own board contributes, not
+     * whether anything is touched.
      *
-     * Content types that are filed under neither, and scopes that hold nothing, fall
-     * back to an unsaved entity of the right class. That still runs the real
-     * handler's real code — both gates read the actor and the content's author and
-     * nothing else — it just cannot say the content exists.
+     * Only an empty result falls back to an unsaved entity of the right class. That
+     * still runs the real handler's real code — both gates read the actor and the
+     * content's author and nothing else — it just cannot say the content exists.
      */
     protected function sampleContent(string $type, int $nodeId, int $categoryId): ?Entity
     {

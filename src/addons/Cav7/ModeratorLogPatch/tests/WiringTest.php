@@ -552,10 +552,10 @@ check(
     'a hardcoded list cannot report the one thing worth reporting: a content type nobody registered an extension for'
 );
 check(
-    'the command names no vendor class and no content type of its own',
+    'the command names no vendor class, and keys no lookup table by content type',
     !preg_match('/\bNF\\\\(Tickets|Calendar|Rosters|Discord)\b/', $verifyCode)
         && !preg_match('/[\'"](nf_tickets_\w+|nf_calendar_\w+|thread|post|profile_post)[\'"]\s*=>/', $verifyCode),
-    'naming a vendor class here would make the command fail to load on a forum without that addon, and pin the coverage check to a list it is supposed to discover'
+    'naming a vendor class here would make the command fail to load on a forum without that addon, and a table keyed by content type is the hardcoded list the coverage check is supposed to discover'
 );
 // Coverage is "is the rule anywhere in this handler's chain", not "is the class name
 // ours". Another addon extending the same handler after this one puts its class last

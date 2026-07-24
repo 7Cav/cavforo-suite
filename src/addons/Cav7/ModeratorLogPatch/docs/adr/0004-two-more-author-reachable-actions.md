@@ -34,10 +34,16 @@ that a member removing an attachment from their own profile post, or resetting
 their own poll, writes nothing — which is what the rest of the list already does
 for a member editing their own post.
 
-The asymmetry the earlier README described as XenForo's to keep is gone with it.
-It was still a real illustration of the deferral working; `edit` on a thread,
-where XenForo's thread handler withholds `title` but not `edit`, is the same
-illustration and needs no exception.
+The asymmetry the earlier README described as XenForo's to keep is gone with it,
+and so is any case where a reader can watch the deferral answer. The list is now a
+strict superset of every author-withholding rule in the eight handlers underneath:
+`edit`, `attachment_deleted` and `title` are all in it, and the `prefix_id` and
+`custom_fields` cases beside them are entity field names, which the resolved action
+handed to `isLoggable` never is. For an author our rule therefore answers first
+every time; for anybody else that rule and ours both log. The deferral keeps its
+reason — a rule this addon has not seen, in a later XenForo version or in somebody
+else's handler, stays in force — but it earns it in the future rather than today,
+and the README should not offer an illustration of it working.
 
 ## Considered options
 

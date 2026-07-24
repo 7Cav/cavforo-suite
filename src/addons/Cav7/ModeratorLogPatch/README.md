@@ -38,17 +38,17 @@ with own-content permissions, decided in
 [ADR-0001](docs/adr/0001-log-by-authorship-not-by-permission.md) and
 [ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md) and listed in
 `AuthorshipRule::AUTHOR_REACHABLE_ACTIONS` — an entry is written only when the
-actor is not the content's author. Everything else is unreachable without
-authority over somebody else's content, so it always logs. A member who holds a
-moderator record skips the rule entirely.
+actor is not the content's author. Everything else is taken to be unreachable
+without authority over somebody else's content, so it always logs. A member who
+holds a moderator record skips the rule entirely.
 
 Every other case is handed to the handler underneath rather than answered here.
-That is deliberate, and it is doing real work: XenForo's thread, post and
-profile-post handlers and both ticket handlers already override this check with
-rules of their own, and returning an answer instead of delegating would silently
-undo all of them. It is also why record holders cannot regress. For them the
-override steps aside, so their entries are byte for byte what XenForo wrote
-before.
+That is deliberate. XenForo's thread, post and profile-post handlers and both
+ticket handlers all override this check with rules of their own, and returning an
+answer instead of delegating would silently discard every one of them — including
+any that arrives in a version or an addon this one has not seen. It is also why
+record holders cannot regress: for them the override steps aside, so their entries
+are byte for byte what XenForo wrote before.
 
 Entries themselves are unchanged. The acting member, their IP, the timestamp,
 the content and the URL are all filled in by the same core method that filled
@@ -73,9 +73,8 @@ behind each action, and what that costs, is in
 ## The behaviour change worth knowing about
 
 **Log volume goes up a lot.** Everyone who moderates without a record was
-writing nothing and now writes entries. Retention is deliberately untouched:
-`moderatorLogLength` stays at 0, so nothing prunes. That was raised and left
-alone on purpose, and it is the setting to look at first if the table gets
+writing nothing and now writes entries. This addon touches no retention setting;
+XenForo's `moderatorLogLength` is the one to look at first if the table gets
 uncomfortable.
 
 **A member holding a moderation permission but no moderator record, acting on
@@ -90,9 +89,14 @@ them do not all say so — XenForo's post handler withholds the attachment for i
 author while its profile-post handlers do not, and no handler has a rule about a
 poll reset at all.
 [ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md) has the evidence
-for each. If you want to watch the deferral itself working, `title` on a thread is
-the place: XenForo's thread handler has its own rule about that one, and it is the
-rule that answers.
+for each.
+
+**There is nothing to watch the deferral do on this install today.** Every rule
+in the handlers underneath that withholds an action from its author is about a
+name the list already carries, so for an author this addon's rule answers first,
+and for anybody else that rule and this one both log. The deferral is there for
+the rule this addon cannot see: one that arrives with a later XenForo version, or
+in a handler somebody else ships.
 
 ## Verifying an install
 

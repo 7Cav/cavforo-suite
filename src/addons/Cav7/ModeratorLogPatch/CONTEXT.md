@@ -22,16 +22,19 @@ can moderate, and that ambiguity is precisely what this addon unpicks. Also
 avoid "staff", which is an org role and tracks neither.
 
 **Author-reachable action**:
-A logged action a member can produce on their own content using only
-own-content permissions: resolving their own ticket, changing its priority,
-retitling their own thread, editing their own post, soft-deleting either, and
-changing their own thread's prefix, custom fields or poll. These are the only
-actions where the action name alone does not settle whether moderation
-happened, because the same name covers both a member tidying up after
-themselves and someone acting on a stranger's content. Every other logged
-action — stick, lock, move, approve, hard delete, spam clean, reassign — cannot
-be reached without a permission over other people's content, so it is
-moderation by definition and needs no further test.
+A logged action a member can produce on their own content using only own-content
+permissions. These are the actions where the name alone does not settle whether
+moderation happened, because the same name covers both a member tidying up after
+themselves and someone acting on a stranger's content; everything outside the
+category is treated as moderation on the strength of its name.
+
+Which names qualify is a reading of the code that logs each one, and it lives in
+exactly one place: `AuthorshipRule::AUTHOR_REACHABLE_ACTIONS`. The reasoning for
+the first set is in
+[ADR-0001](docs/adr/0001-log-by-authorship-not-by-permission.md), and
+[ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md) records two names
+that were missing from it — so membership is the part of this definition worth
+checking against the code rather than against prose.
 _Avoid_: "self-edit" for this category. An author-reachable action performed on
 someone else's content is moderation and does log, so the category describes
 which actions are *capable* of being self-actions, not who performed a given
