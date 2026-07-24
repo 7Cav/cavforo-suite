@@ -2,15 +2,17 @@
 
 /**
  * Issue #75 — pins the vendor-coupled wiring of the enlistment reminder so a
- * regression fails CI rather than shipping silently. The decision itself is
- * exercised for real in ReminderDecisionTest (the remind rule) and
- * EnlistmentRoutingTest (the #144 type split); this holds the parts that need a
- * live XenForo + NF/Rosters to run: the hourly cron entry, the options and their
- * runtime reads, the marker table created on install and dropped on uninstall,
- * the deadline clamp, the clerk-seat query, the node-scoped scan, the
- * SteamChecker-style bot post with its first_post_id correction, and — per issue
- * #144 — the per-type alert routing, the prefix-badged alert template, the
- * skip-and-log of an unrecognized thread, and the option-retiring upgrade step.
+ * regression fails CI rather than shipping silently. The rules themselves are
+ * exercised for real in ReminderDecisionTest (the remind rule),
+ * ProcessingStatusTest (the #186 status-prefix read) and EnlistmentRoutingTest
+ * (the #144 type split); this holds the parts that need a live XenForo,
+ * NF/Rosters and SV/MultiPrefix to run: the hourly cron entry, the options and
+ * their runtime reads, the marker table created on install and dropped on
+ * uninstall, the deadline clamp, the clerk-seat query, the node-scoped scan, the
+ * SteamChecker-style bot post with its first_post_id correction, the per-type
+ * alert routing with its prefix-badged template and its two skip-and-log
+ * branches, and — per issue #186 — the prefix link read with the three guards
+ * that stop a config or vendor fault reminding the whole queue at once.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *

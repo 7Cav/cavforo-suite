@@ -21,6 +21,10 @@
         "NF/Rosters": [
             2010000,
             "Rosters and Personnel Status Reports 2.1+"
+        ],
+        "SV/MultiPrefix": [
+            1070000,
+            "Multi Prefix 1.7+ (the release that named the link table xf_sv_thread_prefix_link)"
         ]
     },
     "icon": ""

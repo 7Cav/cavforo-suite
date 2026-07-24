@@ -223,7 +223,7 @@ class QueueReminder
                 // enlistment. No marker is written — a persistent unroutable thread
                 // may re-log hourly, like the add-on's other breadcrumbs.
                 \XF::logError(sprintf(
-                    '[Cav7/EnlistmentReminder] Thread %d is past the deadline with no pickup, but its primary prefix (%d) matches neither enlistment type; skipping the reminder. If this is a real enlistment, check its prefix.',
+                    '[Cav7/EnlistmentReminder] Thread %d is past the deadline with no processing status, but its primary prefix (%d) matches neither enlistment type; skipping the reminder. If this is a real enlistment, check its prefix.',
                     $threadId, $prefixByThread[$threadId] ?? 0
                 ));
                 continue;
@@ -244,10 +244,11 @@ class QueueReminder
                 // filled. Posting the note and marking here would silently drop a
                 // real enlistment's alert for good — the very failure the type
                 // split exists to prevent. A BOTH thread cannot reach this: its
-                // audience is the pickup union, which the guard above already
-                // proved non-empty. No note posts, matching the unrecognized skip.
+                // audience is the union of both sets, which the guard above
+                // already proved non-empty. No note posts, matching the
+                // unrecognized skip.
                 \XF::logError(sprintf(
-                    '[Cav7/EnlistmentReminder] Thread %d (prefix %d) is a recognized %s enlistment past the deadline with no pickup, but its clerk positions resolve to no seated holder; skipping without marking so it retries. Check %s.',
+                    '[Cav7/EnlistmentReminder] Thread %d (prefix %d) is a recognized %s enlistment past the deadline with no processing status, but its clerk positions resolve to no seated holder; skipping without marking so it retries. Check %s.',
                     $threadId,
                     $prefixByThread[$threadId] ?? 0,
                     $route['type'],
@@ -283,10 +284,10 @@ class QueueReminder
     }
 
     /**
-     * getClerkUserIds() memoized on the position-id list. The pickup union and the
-     * per-type alert sets are the only distinct lists a run resolves (at most
-     * three: standard, re-enlistment, and their union for a misconfigured prefix),
-     * so a queue of any size costs at most three seat queries.
+     * getClerkUserIds() memoized on the position-id list. The union of both sets
+     * and the per-type alert sets are the only distinct lists a run resolves (at
+     * most three: standard, re-enlistment, and their union for a misconfigured
+     * prefix), so a queue of any size costs at most three seat queries.
      *
      * @param int[] $positionIds
      * @return int[]
@@ -592,7 +593,7 @@ class QueueReminder
 
     /**
      * Alert the processing clerks who own this thread's enlistment type that it is
-     * past the deadline with no pickup, per ADR-0001. Each alert is a direct
+     * past the deadline with no processing status, per ADR-0001. Each alert is a direct
      * XenForo notification (content type thread, custom action enlistment_reminder)
      * that lands in the clerk's bell and links straight to the application; the
      * core thread alert handler covers viewability and the one-click through, and
@@ -603,8 +604,8 @@ class QueueReminder
      * alert to this add-on so uninstalling clears any that are still outstanding.
      *
      * The audience is the per-type set EnlistmentRouting resolved for the thread's
-     * prefix (issue #144), a subset of the pickup union — primary and secondary
-     * seat holders alike. alert() (not insertAlert) is used so a clerk who muted
+     * prefix (issue #144), a subset of the union both guards resolve — primary and
+     * secondary seat holders alike. alert() (not insertAlert) is used so a clerk who muted
      * the type in their alert preferences is skipped.
      *
      * Best-effort: this runs after the note has posted, so a repository blip must
