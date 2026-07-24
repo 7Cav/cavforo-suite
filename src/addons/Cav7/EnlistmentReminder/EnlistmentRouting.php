@@ -14,10 +14,11 @@ namespace Cav7\EnlistmentReminder;
  * either Standard (57 by default) or Re-Enlistment (58). Built from the four
  * parsed config lists, this exposes two things:
  *
- *   - allClerkPositionIds(): the union of both clerk-position lists. The caller
- *     resolves it once to decide whether ANY seat is held at all, and aborts the
- *     run if none is, so an unstaffed board says so once rather than once per
- *     thread per hour.
+ *   - allClerkPositionIds(): the union of both clerk-position lists. Two uses. The
+ *     caller resolves it once to decide whether ANY seat is held at all, and
+ *     aborts the run if none is, so an unstaffed board says so once rather than
+ *     once per thread per hour; and it is route()'s fail-safe audience for a
+ *     prefix listed under both types.
  *   - route(): for one thread's prefix id, the clerk positions to ALERT. A prefix
  *     in one type set routes to that set; a prefix in BOTH (a config error)
  *     fail-safes to the union so no responsible clerk is silently dropped; a
@@ -26,7 +27,8 @@ namespace Cav7\EnlistmentReminder;
  *
  * Ids are normalised on the way in through PositionIdList::normalize, so the
  * string prefix id XF hands back from the DB and the ints PositionIdList parses
- * compare as the same id (mirroring ReminderDecision's int/string robustness).
+ * compare as the same id. ProcessingStatus does the same with its configured
+ * status set, for the same reason and through the same call.
  */
 final class EnlistmentRouting
 {

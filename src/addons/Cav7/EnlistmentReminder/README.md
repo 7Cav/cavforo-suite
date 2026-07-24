@@ -79,11 +79,19 @@ All options live under **Admin CP → Options → Enlistment Reminder**:
 | Reminder deadline (hours) | How long an application may sit with no processing status before it is reminded (default 24, minimum 1) |
 
 Do not put the enlistment type prefixes (57, 58) in the in-processing list: they
-are not processing statuses, and listing them stops the reminder firing at all
-with nothing in the log to say why. **Processing status** in
-[CONTEXT.md](CONTEXT.md) is where that distinction is defined. The add-on aborts a
-run and logs an error if the in-processing list is empty or its prefix table
-cannot be read, rather than treating every application as un-actioned.
+are not processing statuses, and listing them would stop the reminder firing at
+all. **Processing status** in [CONTEXT.md](CONTEXT.md) is where that distinction
+is defined.
+
+Rather than treat every application as un-actioned and remind the whole queue,
+the add-on aborts the run and logs an error when any of these is true:
+
+- the in-processing list is empty, or parses to nothing
+- the in-processing list contains an enlistment type prefix
+- SV/MultiPrefix is not active, or is below the required version (disabling it
+  leaves its prefix table in place but nobody maintaining it, which is the one an
+  admin is most likely to hit)
+- its prefix table cannot be read, or returns nothing at all for a non-empty queue
 
 ## License
 

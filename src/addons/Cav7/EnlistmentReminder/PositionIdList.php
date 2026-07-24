@@ -3,7 +3,7 @@
 namespace Cav7\EnlistmentReminder;
 
 /**
- * A comma/whitespace option string parsed to a list of positive, unique ids — the
+ * A comma/whitespace option string parsed to a list of unique int ids — the
  * add-on's shared id-list parser, and — through normalize — the one home for that
  * shaping when the ids arrive already split, as they do in EnlistmentRouting and
  * ProcessingStatus. Since issue #144 split the clerk set by type and issue #186
@@ -23,8 +23,8 @@ namespace Cav7\EnlistmentReminder;
 final class PositionIdList
 {
     /**
-     * Parse a comma/whitespace separated option string to positive int position
-     * ids, de-duplicated with first-seen order preserved. A blank or junk-only
+     * Parse a comma/whitespace separated option string to int position ids,
+     * de-duplicated with first-seen order preserved. A blank or junk-only
      * string parses to [], which each caller reads as "nothing configured" for its
      * own option: no clerk seats to alert, no processing status to recognise, or no
      * prefix that routes to a type. The first two abort the run on their own guard

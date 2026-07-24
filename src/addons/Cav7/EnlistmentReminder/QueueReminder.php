@@ -520,9 +520,9 @@ class QueueReminder
      * the note from faking the signal; the phrase gate stops the same S6 bot's
      * SteamChecker VAC reply in the same thread from counting. Only visible posts
      * count, so a soft-deleted note does not suppress a fresh reminder. Do not
-     * "simplify" this away as a redundant re-read of the
-     * marker table: it is the marker table's own write failure that it exists to
-     * survive, and a ScanWiringTest assertion pins it for that reason.
+     * "simplify" this away as a redundant re-read of the marker table: it is the
+     * marker table's own write failure that it exists to survive, and a
+     * ScanWiringTest assertion pins it for that reason.
      *
      * @param int[] $threadIds
      * @return array<int,true>
@@ -660,8 +660,8 @@ class QueueReminder
 
     /**
      * Alert the processing clerks who own this thread's enlistment type that it is
-     * past the deadline with no processing status, per ADR-0001. Each alert is a direct
-     * XenForo notification (content type thread, custom action enlistment_reminder)
+     * past the deadline with no processing status, per ADR-0001. Each alert is a
+     * direct XenForo notification (content type thread, action enlistment_reminder)
      * that lands in the clerk's bell and links straight to the application; the
      * core thread alert handler covers viewability and the one-click through, and
      * the wording is the public:alert_thread_enlistment_reminder template, which
@@ -672,8 +672,8 @@ class QueueReminder
      *
      * The audience is the per-type set EnlistmentRouting resolved for the thread's
      * prefix (issue #144), a subset of the union both guards resolve — primary and
-     * secondary seat holders alike. alert() (not insertAlert) is used so a clerk who muted
-     * the type in their alert preferences is skipped.
+     * secondary seat holders alike. alert() (not insertAlert) is used so a clerk
+     * who muted the type in their alert preferences is skipped.
      *
      * Best-effort: this runs after the note has posted, so a repository blip must
      * be logged, never thrown. If it threw, the caller's catch would skip

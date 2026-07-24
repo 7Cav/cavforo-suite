@@ -1,12 +1,12 @@
 <?php
 
 /**
- * Behavioural unit test for PositionIdList — the parse that turns the per-type
- * clerk-position and prefix options (cav7ERStandard/ReenlistClerkPositionIds and
- * cav7ERStandard/ReenlistPrefixIds since issue #144) into their id sets, and the
- * normalize the other seams share for ids that arrive already split. Pure PHP, no
- * XenForo, so every branch runs for real here rather than being pinned by shape. If
- * it mis-shapes an id set, the whole reminder mis-fires: drop every id and
+ * Behavioural unit test for PositionIdList — the parse that turns the add-on's id
+ * options into their id sets, and the normalize the other seams share for ids that
+ * arrive already split. The class docblock lists which options it backs; keeping a
+ * second copy of that list here is how the two drift apart. Pure PHP, no XenForo,
+ * so every branch runs for real here rather than being pinned by shape. If it
+ * mis-shapes an id set, the whole reminder mis-fires: drop every id and
  * QueueReminder aborts the run; keep a 0 or a junk token and the seat or prefix
  * match resolves the wrong ids.
  *
@@ -41,8 +41,13 @@ check(
     PositionIdList::parse('579,580,751,960,1012') === [579, 580, 751, 960, 1012]
 );
 
-// Empty / whitespace-only parses to [] — the caller reads this as "no clerks",
-// which aborts the run rather than reminding the whole queue.
+// Empty / whitespace-only parses to []. What each caller does with that is its own
+// business: an empty clerk-position set aborts the run because nobody could be
+// ALERTED, not because anything would be mass-reminded (suppression comes from the
+// status prefixes, so without that guard every remindable thread would just fall
+// into the per-type empty-audience skip and post nothing), and an empty status set
+// aborts because nothing could be suppressed. Two different guards, two different
+// reasons.
 check("'' parses to []", PositionIdList::parse('') === []);
 check("whitespace-only '   ' parses to []", PositionIdList::parse('   ') === []);
 

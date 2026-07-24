@@ -11,8 +11,9 @@
  * uninstall, the deadline clamp, the clerk-seat query, the node-scoped scan, the
  * SteamChecker-style bot post with its first_post_id correction, the per-type
  * alert routing with its prefix-badged template and its two skip-and-log
- * branches, and — per issue #186 — the prefix link read with the three guards
- * that stop a config or vendor fault reminding the whole queue at once.
+ * branches, and — per issue #186 — the prefix link read with the guards that stop
+ * a config or vendor fault either reminding the whole queue at once or silencing
+ * it for good.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -198,9 +199,8 @@ $scanSrc = (string) file_get_contents("$root/Cron/ScanQueue.php");
 check('ScanQueue exposes a static run() entry method', (bool) preg_match('/static\s+function\s+run\s*\(/', $scanSrc));
 
 // --- the options exist and are read at runtime ----------------------------
-// Issue #144 replaced the single cav7ERClerkPositionIds with four per-type
-// options (a prefix list and a clerk-position list for each of Standard and
-// Re-Enlistment). All four, plus node/bot/deadline, must be defined and read.
+// $expectedOptions below is the list; every id in it must be defined in
+// _data/options.xml and read somewhere at runtime, or it is dead config.
 $optXml = @simplexml_load_file("$root/_data/options.xml");
 check('_data/options.xml could be read', $optXml !== false);
 
@@ -232,8 +232,7 @@ check(
     count(outputItems($root, 'options')) === ($optXml !== false ? count($optXml->option) : -1)
 );
 
-// Every option is read at runtime (the cron entry reads the deadline; the worker
-// reads the node, bot user, and the four per-type prefix/clerk-position options).
+// Every option is read at runtime, across the cron entry and the worker together.
 $worker = (string) file_get_contents("$root/QueueReminder.php");
 $runtime = $scanSrc . $worker;
 // Read once here; the version bump and the SV/MultiPrefix require pair are checked
@@ -253,7 +252,7 @@ foreach ($expectedOptions as $id) {
 // The deadline default 24 and the queue node default 325 are what the issue asks;
 // the four routing defaults are the agreed per-type sets whose position lists
 // union to the pre-split default (579,580,751,960,1012), so clerk coverage is
-// unchanged and only the alert audience narrows.
+// unchanged.
 $defaults = [
     'cav7ERDeadlineHours'            => '24',
     'cav7ERQueueNodeId'              => '325',
@@ -742,7 +741,9 @@ check(
 // visible only. The author gate defeats a member quoting or copy-pasting the
 // note; the phrase gate defeats the same S6 bot's SteamChecker VAC reply in the
 // same thread. Anchor to fetchAlreadyNoted's own body so the multi-clause regex
-// can't be satisfied by fetchReplyAuthorIds's separate xf_post query.
+// can't be satisfied by another xf_post query elsewhere in the worker:
+// postReminderNote runs its own SELECT post_id FROM xf_post for the first_post_id
+// correction, and a clause-by-clause match is happy to straddle the two.
 $fetchNotedBody = methodBody($worker, 'fetchAlreadyNoted');
 check(
     'a note-presence backstop lives in its own helper (fetchAlreadyNoted)',
@@ -794,7 +795,7 @@ check(
 // Issue #144: the alert no longer targets the global clerk set. It targets the
 // per-type set the router resolved for this thread's prefix ($alertUserIds). The
 // union is resolved once per run into $clerkUserIds purely to answer "is any seat
-// held at all?" for the mass-remind guard; it only ever reaches an alert as
+// held at all?" for the empty-clerk guard; it only ever reaches an alert as
 // route()'s fail-safe audience for a prefix listed under both types.
 check(
     'the clerk alert targets the per-type resolved set, not the global clerk set',
@@ -955,7 +956,7 @@ check(
 // =========================================================================
 // Issue #144 — route the un-actioned alert by enlistment type. The pure rule is
 // exercised in EnlistmentRoutingTest; this pins the vendor-coupled wiring: the
-// worker builds the router from the four options, the mass-remind guard resolves
+// worker builds the router from the four options, the empty-clerk guard resolves
 // the union, the per-type set is alerted, an unrecognized thread is skipped with
 // one breadcrumb, an overlap config is warned, and the Setup upgrade step retires
 // the old option.
@@ -982,7 +983,7 @@ check(
     'the prefix-to-clerks decision must go through the pure seam'
 );
 
-// The mass-remind guard resolves the UNION of both position lists, so it aborts
+// The empty-clerk guard resolves the UNION of both position lists, so it aborts
 // only when NEITHER type has a seated holder. The guard names the new options,
 // not the retired one.
 check(
