@@ -15,13 +15,15 @@
  * For options, phrases and option_groups the item ids are compared exactly on
  * top of that count, since the _output filename is the id — the count is what
  * catches a duplicated record, which comparing ids alone cannot see.
- * class_extensions is matched row by row on the
- * (from_class, to_class) pair instead of counted, so an addon may register
- * several extensions against one from_class (see
- * docs/adr/0003-canonical-class-extension-order.md for why that pair is the
- * identity); a row present on only one side, or a flipped active, fails even
- * when the file count is unchanged. Other types are count-checked only; the
- * report says which is which, so nothing is skipped silently.
+ * class_extensions is matched row by row on the (from_class, to_class) pair
+ * instead of counted: xf_class_extension carries a UNIQUE KEY over exactly
+ * those two columns, so one from_class may hold several extensions and the pair
+ * is what identifies a row. A row present on only one side, or a disagreeing
+ * execute_order or active, fails even when the file count is unchanged.
+ * (docs/adr/0003-canonical-class-extension-order.md is background on why the
+ * order within a from_class is written down, not the authority for the key.)
+ * Other types are count-checked only; the report says which is which, so
+ * nothing is skipped silently.
  *
  * This is a structural heuristic, not a re-implementation of xf-addon:export. It
  * catches the realistic mistakes (forgot to export, hand-edited one side); the
@@ -94,14 +96,16 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
     $countData = count($records);
 
     // class_extensions: content-checked, not just counted. A row's identity is
-    // the (from_class, to_class) pair — XenForo groups extension rows by both
-    // columns and builds the _output filename from both — so an addon may
-    // register several extensions against one from_class and they stay distinct
-    // here (issue #150). Each _output item is matched to its _data <extension>
-    // on that pair; the remaining content, active, is then compared. _data
-    // stores active as the string "1"; _output as the JSON bool true, so
-    // normalise active before comparing (CalendarPatch's
-    // JoinerServiceSetupWiringTest pins the same comparison for its extension).
+    // the (from_class, to_class) pair — xf_class_extension's UNIQUE KEY covers
+    // exactly those two columns, and XenForo builds the _output filename from
+    // both — so an addon may register several extensions against one from_class
+    // and they stay distinct here (issue #150). Each _output item is matched to
+    // its _data <extension> on that pair, then the two columns that are left,
+    // execute_order and active, are compared; between them the four cover every
+    // field either side exports. _data spells both as XML strings ("1", "20")
+    // where _output has a JSON bool and a JSON int, so normalise before
+    // comparing (CalendarPatch's JoinerServiceSetupWiringTest pins the same
+    // comparison for its extension).
     if ($type === 'class_extensions') {
         $pairKey = static fn (string $from, string $to): string => "$from\0$to";
         $describePair = static fn (string $from, string $to): string
@@ -154,6 +158,21 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
             if ($outActive !== $dataActive) {
                 $mismatches[] = "$itemName: active _output=" . ($outActive ? 'true' : 'false')
                     . ' vs _data=' . ($dataActive ? 'true' : 'false');
+            }
+
+            // execute_order decides which extension wraps which when several
+            // share a from_class, so a drift here changes what runs first
+            // without changing any count or any pair. An absent value is a
+            // mismatch in its own right rather than a silent 0: a real export
+            // always writes the column, and 0 is a legitimate order.
+            $outOrder = $decoded['execute_order'] ?? null;
+            $dataOrder = $record['execute_order'];
+            if ($outOrder === null || $dataOrder === null) {
+                $mismatches[] = "$itemName: execute_order missing from "
+                    . ($outOrder === null ? '_output' : '_data');
+            } elseif ((int) $outOrder !== (int) $dataOrder) {
+                $mismatches[] = "$itemName: execute_order _output=" . (int) $outOrder
+                    . ' vs _data=' . (int) $dataOrder;
             }
         }
 

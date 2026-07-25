@@ -7,13 +7,13 @@
  * temp dir, runs the real tool against them, asserts on its exit code and
  * output, then cleans up. Exits non-zero on any failure.
  *
- * The gap this guards: the tool count-checks class_extensions but never read
- * inside an _output item, so a corrupted to_class / from_class, or a flipped
- * active, in an _output/class_extensions/*.json passed as long as the file count
- * was unchanged. RED proof (before the fix): the corrupted fixtures below make
- * the tool exit 0. After the fix they exit non-zero and name the offending item,
- * while a correct fixture still exits 0 and the _data string "1" compares equal
- * to the _output bool true.
+ * The gap this guards: the tool used to count class_extensions without ever
+ * reading inside an _output item, so a corrupted to_class / from_class, or a
+ * flipped active, in an _output/class_extensions/*.json passed as long as the
+ * file count was unchanged. RED proof (before the fix): the corrupted fixtures
+ * below make the tool exit 0. After the fix they exit non-zero and name the
+ * offending item, while a correct fixture still exits 0 and the _data string "1"
+ * compares equal to the _output bool true.
  *
  * Cases 5 to 9 guard issue #150. The tool used to key its _data lookup on
  * from_class alone, so two extensions registered against one from_class (which
@@ -29,6 +29,15 @@
  * item, and on an exact-id type (phrases) a duplicated _data record slipped
  * through, since array_diff collapses duplicates and the count was the only
  * thing counting them.
+ *
+ * class_extensions is not count-checked at all any more — pair matching answers
+ * the count question itself — and that trade only holds while a pair appears at
+ * most once per side. Cases 14 and 15 pin the two guards that keep it honest:
+ * without them a repeated pair on either side hides a row that went missing on
+ * the other, and the tool reports "content matches" on genuinely duplicated
+ * data. Cases 16 and 17 cover execute_order, which decides which extension wraps
+ * which when several share a from_class; case 18 pins the $dataFileFor mapping
+ * for types whose _data file is not named after their _output directory.
  *
  * Run:
  *   php tools/tests/check-data-consistency-test.php
@@ -111,7 +120,10 @@ function makeTypeFixture(
     mkdir("$dir/_data", 0777, true);
     mkdir("$dir/_output/$type", 0777, true);
 
-    $xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<$type>\n";
+    // The real _data files name their root element after the file, not after the
+    // _output directory, so cron_entries items sit under a <cron> root.
+    $root = $dataBase ?? $type;
+    $xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<$root>\n";
     foreach ($dataRecords as $attrs) {
         $xml .= "  <$recordTag";
         foreach ($attrs as $attr => $value) {
@@ -119,8 +131,8 @@ function makeTypeFixture(
         }
         $xml .= "/>\n";
     }
-    $xml .= "</$type>\n";
-    file_put_contents("$dir/_data/" . ($dataBase ?? $type) . '.xml', $xml);
+    $xml .= "</$root>\n";
+    file_put_contents("$dir/_data/$root.xml", $xml);
 
     foreach ($outputFiles as $relative => $contents) {
         $target = "$dir/_output/$type/$relative";
@@ -457,6 +469,130 @@ try {
     [$code, $out] = runTool($tool, $phrasesOk);
     check('an exact-id type passes when the ids agree', $code === 0, "exit=$code\n$out");
     check('the passing exact-id type is reported as ids match', str_contains($out, 'ids match'), $out);
+
+    // --- 14. the same pair twice in _data -------------------------------------
+    // class_extensions buys its way out of the generic count guard by keying
+    // both sides on the pair, and that only works while a pair appears once per
+    // side. Two _data records for one pair against a single _output item is the
+    // shape that would otherwise read as a clean one-to-one match while a row
+    // went missing.
+    $dataPairDup = makeFixture(
+        $base,
+        'data-pair-dup',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => '1'],
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => '1'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $dataPairDup);
+    check('a pair repeated in _data fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the repeated _data pair is named',
+        str_contains($out, "_data has more than one <extension> for from_class '$fromA' to_class '$toA'"),
+        $out
+    );
+
+    // --- 15. the same pair in two _output files -------------------------------
+    // The mirror of case 14: two files claiming one _data record.
+    $outputPairDup = makeFixture(
+        $base,
+        'output-pair-dup',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => '1'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10, 'active' => true],
+            "copy-of-$fileA" => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $outputPairDup);
+    check('a pair repeated across two _output items fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the doubly-claimed pair is named',
+        str_contains($out, "from_class '$fromA' to_class '$toA' is claimed by more than one _output item"),
+        $out
+    );
+
+    // --- 16. execute_order drifted between the two sides ----------------------
+    // execute_order decides which extension wraps which when several share a
+    // from_class, so swapping it between two rows changes what runs first while
+    // every pair still matches and every count still agrees.
+    $orderSwap = makeFixture(
+        $base,
+        'execute-order-swap',
+        [
+            ['from_class' => $dupFrom, 'to_class' => $dupToOne, 'execute_order' => '10', 'active' => '1'],
+            ['from_class' => $dupFrom, 'to_class' => $dupToTwo, 'execute_order' => '20', 'active' => '1'],
+        ],
+        [
+            $dupFileOne => ['from_class' => $dupFrom, 'to_class' => $dupToOne, 'execute_order' => 20, 'active' => true],
+            $dupFileTwo => ['from_class' => $dupFrom, 'to_class' => $dupToTwo, 'execute_order' => 10, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $orderSwap);
+    check('a swapped execute_order fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the swapped execute_order names both sides of the disagreement',
+        str_contains($out, "$dupFileOne: execute_order _output=20 vs _data=10")
+            && str_contains($out, "$dupFileTwo: execute_order _output=10 vs _data=20"),
+        $out
+    );
+
+    // --- 17. execute_order missing from an _output item -----------------------
+    // A real export always writes execute_order; a hand-edited file that drops
+    // it must not read as the 0 that _data happens to hold.
+    $orderMissing = makeFixture(
+        $base,
+        'execute-order-missing',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => '0', 'active' => '1'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $orderMissing);
+    check('an _output item with no execute_order fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the missing execute_order says which side dropped it',
+        str_contains($out, "$fileA: execute_order missing from _output"),
+        $out
+    );
+
+    // --- 18. a type whose _data file is not named after its _output dir --------
+    // cron_entries is the sole entry in the tool's $dataFileFor map: items live
+    // in _output/cron_entries/ while the records are in _data/cron.xml. Lose the
+    // mapping and the tool looks for a _data/cron_entries.xml that never exists.
+    $cronOk = makeTypeFixture(
+        $base,
+        'cron-ok',
+        'cron_entries',
+        'entry',
+        [
+            [
+                'entry_id' => 'cav7Fixture',
+                'cron_class' => 'Cav7\\Fixture\\Cron\\Run',
+                'cron_method' => 'run',
+                'active' => '1',
+            ],
+        ],
+        ['cav7Fixture.json' => "{}\n"],
+        'cron'
+    );
+    [$code, $out] = runTool($tool, $cronOk);
+    check(
+        'a type whose _data file is named differently is matched to that file',
+        $code === 0,
+        "exit=$code\n$out"
+    );
+    check(
+        'the differently-named type is count-checked like any other',
+        str_contains($out, 'cron_entries: 1 item(s), counts match'),
+        $out
+    );
 } finally {
     rmrf($base);
 }
