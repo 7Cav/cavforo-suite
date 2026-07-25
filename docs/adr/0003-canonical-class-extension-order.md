@@ -14,7 +14,7 @@ Nothing caught either one. The consistency check compares class-extension conten
 
 ## Decision
 
-The committed `_data/class_extensions.xml` rows are kept in one canonical order, defined as a byte comparison of `from_class`, then `to_class`. `tools/validate-addon.php` enforces it and fails on a file that is out of order.
+The committed `_data/class_extensions.xml` rows are kept in one canonical order, defined as a case-folded comparison of `from_class`, then `to_class` — `strcmp(strtoupper($a), strtoupper($b))` in PHP. That models the `utf8mb4_general_ci` ordering the exporter's `ORDER BY` runs under. `tools/validate-addon.php` enforces it and fails on a file that is out of order.
 
 No tooling rewrites what the export produces. The canonical order is the order our exports already emit, so the fix is to reconcile the committed files to it once, by re-exporting, and to stop hand-editing them afterwards.
 
@@ -24,7 +24,9 @@ A normalisation step that re-sorts rows after every export was the obvious alter
 
 ## Consequences
 
-- A byte comparison is not a general model of `general_ci`. The two disagree whenever an underscore competes with a letter at the same position, so `a_b` sorts before `ab` in PHP and after it in the database. Phrase titles, option ids, and template names all have that shape, so this rule is limited to class extensions and must not be generalised to the other `_data` types. No class name in the repo contains an underscore today; one that did would need this revisited.
+- The rule case-folds because `general_ci` is case-insensitive, and that is where a byte comparison would part company with it. `XenAddons\` folds to `XENADDONS\` and sorts ahead of `XF\` (`E` 0x45 < `F` 0x46), while raw bytes put `XF\` first (`F` 0x46 < `e` 0x65). The same goes for `DBTech\eCommerce` against `DBTech\Shop`, and for any `s9e\` or `xenMade\` namespace. This is not hypothetical: five vendor add-ons on the dev stack are ordered that way today, and a byte comparison reproduces the database for 38 of 43 add-ons against 43 of 43 for the case-folded rule. No Cav7 add-on currently extends such a namespace — every one of them extends only `XF`, `NF` or `XFES`, all uppercase — so a byte comparison would have passed on today's data by luck and then rejected legitimate export output the first time an add-on extended `XenAddons\` or `XenConcept\` alongside `XF\`.
+- Even case-folded, this is not a general model of `general_ci`, so the rule is limited to class extensions and must not be generalised to the other `_data` types. The two still disagree whenever an underscore competes with a letter at the same position: `a_b` sorts before `ab` in PHP and after it in the database. Phrase titles, option ids, and template names all have that shape. No class name in the repo contains an underscore today; one that did would need this revisited.
+- `strtoupper` is the fold because it is ASCII-only and locale-independent as of PHP 8.2, and every class name in the repo is ASCII. A non-ASCII class name would need a real collation model instead.
 - `execute_order` is not part of the rule. The schema's `UNIQUE KEY (from_class, to_class)` makes the pair unique, so the exporter's third sort key is never reached as a tiebreaker. This is the same identity XenForo uses when it imports and when it names the `_output` file.
 - If the database collation ever changes, for example a production migration to `utf8mb4_0900_ai_ci`, exports will flip order and the check will start failing on legitimate output. The response then is one reconciliation commit and a change to this rule, not a normaliser.
 - `_output/extension_hint.php` is generated from the same rows and is not checked separately. Anything that reorders it reorders the XML too, and the check catches that first.
