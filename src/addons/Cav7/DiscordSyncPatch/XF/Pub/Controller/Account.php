@@ -3,6 +3,7 @@
 namespace Cav7\DiscordSyncPatch\XF\Pub\Controller;
 
 use XF\Mvc\Reply\AbstractReply;
+use XF\Service\FloodCheckService;
 
 /**
  * Issue #158 — a member-facing button that queues a resync of that member's own
@@ -29,23 +30,17 @@ use XF\Mvc\Reply\AbstractReply;
  * controller, which XenForo chains with this extension.
  *
  * A resync runs blind, with no divergence check first, and what the two limits in
- * front of it are for is recorded in ADR-0005. The cooldown is XenForo's own flood
- * check, which does not apply to anyone holding general:bypassFloodCheck. The
- * pending check does apply to them, but it lapses the moment the queue drains, so
- * what it bounds is duplicate work in flight rather than how often anyone can press.
- * Nothing here rate-limits a bypass holder.
+ * front of it are for is recorded in ADR-0005. The cooldown runs XenForo's flood
+ * check against this member and this action alone, called as the service rather than
+ * through the controller's assertNotFlooding() helper so that it binds every member;
+ * ADR-0007 has that decision. The pending check bounds something else — duplicate
+ * work in flight — and lapses the moment the queue drains, so the two are not
+ * refinements of each other.
  *
- * The pending check is check-then-act, and only one of its two kinds of caller makes
- * that safe. For an ordinary member the cooldown behind it is atomic — checkFlooding()
- * decides on the row count of an UPDATE and then an INSERT IGNORE — so a second press
- * cannot get past it while the first is still in flight. A bypass holder never
- * reaches that: assertNotFlooding() returns before it touches the database at all,
- * which leaves the plain SELECT below as the only bound, and a plain SELECT
- * serialises nothing. Two genuinely concurrent posts from one bypass holder can
- * therefore both fan out. Presses made one after another are refused as intended. No
- * lock is taken for it: the cost is one duplicate fan-out for someone who
- * double-submits, which the queue absorbs, and ADR-0005 already puts that class of
- * waste inside what the guards accept.
+ * The pending check is check-then-act, and the cooldown behind it is what makes that
+ * safe: checkFlooding() decides on the row count of an UPDATE and then an INSERT
+ * IGNORE, so a second press cannot get past it while the first is still in flight. No
+ * lock is taken beyond it.
  *
  * Assumptions this makes about vendor internals:
  *
@@ -157,11 +152,9 @@ class Account extends XFCP_Account
         // findServersForList()->isActive(), so a server row that exists with a guild
         // id and active = 0 arrives here too. The phrase says active for that reason.
         // Asking after the fact instead would spend the member's cooldown on a fault
-        // no retry can clear, and would append an xf_error_log row per press with
-        // nothing bounding how many: XF\Error::logException() inserts every call with
-        // no dedupe, and assertNotFlooding() returns before FloodCheckService
-        // ::checkFlooding() writes anything for a general:bypassFloodCheck holder, so
-        // for those members there is no flood entry to withhold in the first place.
+        // no retry can clear, and would append an xf_error_log row per press that only
+        // the cooldown bounds — XF\Error::logException() inserts every call with no
+        // dedupe of its own.
         // Asking here is not free: getServerMap() falls through to updateServerCache()
         // whenever the map is empty, which is exactly this case, so every press pays
         // a Finder query over the server list plus a rewrite of the nfDiscordServers
@@ -204,7 +197,20 @@ class Account extends XFCP_Account
         // Second guard. It refuses by throwing, so nothing past this line runs on a
         // refusal, and it refuses with the time remaining — the answer a member who
         // pressed twice wants, which is when rather than just no.
-        $this->assertNotFlooding(self::RESYNC_FLOOD_ACTION, self::RESYNC_COOLDOWN_SECONDS);
+        //
+        // Called as the service, not through assertNotFlooding(), which is these same
+        // lines behind an early return for anyone holding general:bypassFloodCheck.
+        // Skipping that permission is deliberate and is the whole of ADR-0007: on this
+        // forum it is not the staff exemption ADR-0005 took it for, and the helper
+        // left the cooldown binding almost nobody who can press this button.
+        $timeRemaining = $this->service(FloodCheckService::class)->checkFlooding(
+            self::RESYNC_FLOOD_ACTION,
+            $visitor->user_id,
+            self::RESYNC_COOLDOWN_SECONDS
+        );
+        if ($timeRemaining) {
+            throw $this->exception($this->responseFlooding($timeRemaining));
+        }
 
         $syncRepo = $this->repository(\NF\Discord\Repository\Sync::class);
         $syncRepo->queueSyncJobsForUser($visitor);
@@ -254,15 +260,18 @@ class Account extends XFCP_Account
                 implode(', ', $serverMap)
             ), true);
 
-            // The press bought the member nothing, so it costs them nothing. There is
-            // no volume argument against that here, but not because nothing unbounded
-            // is written: the forced \XF::logError() call above inserts through
-            // XF\Error::logException() per call with no dedupe, and a
-            // general:bypassFloodCheck holder has no flood entry to spend in the
-            // first place, so the cooldown was never bounding them. The defence is
-            // that this branch is near-unreachable: the three standing faults return
-            // above it, and what is left is a case nothing accounts for, which is why
-            // the line above it logs rather than explains.
+            // The press bought the member nothing, so it costs them nothing.
+            //
+            // That is a deliberate trade rather than a free one, and it did not change
+            // when the cooldown started binding everyone (ADR-0007). Handing the
+            // cooldown back removes the only thing bounding the forced \XF::logError()
+            // above, which inserts through XF\Error::logException() per call with no
+            // dedupe: a member who keeps pressing through this branch keeps passing
+            // the cooldown, because each press deletes the row the last one wrote, and
+            // appends a row every time. The defence is that the branch is
+            // near-unreachable — the three standing faults return above it, and what
+            // is left is a case nothing accounts for, which is why the line above it
+            // logs rather than explains — not that anything here bounds the repeat.
             $this->releaseResyncCooldown($visitor->user_id);
 
             return $this->error(\XF::phrase('cav7_discord_resync_unavailable'));
@@ -299,17 +308,13 @@ class Account extends XFCP_Account
     }
 
     /**
-     * Clears this member's flood entry for this action, where there is one to clear.
-     * A member who got past the cooldown check holds exactly one row for this action
-     * afterwards, whether the check refreshed an old row or inserted a new one; a
-     * member holding general:bypassFloodCheck writes none on this request, because
-     * the check returns before it writes anything. So on the request that calls it
-     * this either removes exactly what the check wrote or removes nothing. It is not
-     * quite "nothing else can be there": a row written by a press made before the
-     * member gained the permission survives up to a day and this clears that too,
-     * which costs nobody anything, since the row it clears is a cooldown on this
-     * action alone. Scoped to that one action, so nothing else the member is waiting
-     * on is handed back with it.
+     * Clears this member's flood entry for this action. Any member who got past the
+     * cooldown check holds exactly one row for this action afterwards, whether the
+     * check refreshed an old row or inserted a new one, so on the request that calls
+     * this it removes exactly what the check wrote and nothing else. That is now true
+     * of every member: before ADR-0007 the check wrote nothing at all for a
+     * general:bypassFloodCheck holder, and this was a no-op for them. Scoped to that
+     * one action, so nothing else the member is waiting on is handed back with it.
      */
     protected function releaseResyncCooldown(int $userId): void
     {

@@ -354,7 +354,7 @@ check(
 $resyncBody = methodBody($accountCode, 'actionConnectedAccountDiscordResync');
 $assertPostPos = strpos($resyncBody, 'assertPostOnly()');
 $queuePos = strpos($resyncBody, 'queueSyncJobsForUser(');
-$floodPos = strpos($resyncBody, 'assertNotFlooding(');
+$floodPos = strpos($resyncBody, 'checkFlooding(');
 $linkGuardPos = strpos($resyncBody, 'ConnectedAccounts[\'nfDiscord\']');
 $pendingCalls = substr_count($resyncBody, 'hasPendingDiscordSync(');
 $firstPendingPos = strpos($resyncBody, 'hasPendingDiscordSync(');
@@ -466,7 +466,7 @@ check(
             '~\$serverRepo\s*=\s*\$this->repository\(\s*\\\\NF\\\\Discord\\\\Repository\\\\Server::class\s*\)\s*;\s*\$serverMap\s*=\s*array_filter\(\s*\$serverRepo->getServerMap\(\)\s*\)\s*;\s*if\s*\(\s*!\s*\$serverMap\s*\)\s*\{\s*return\s+\$this->error\(\s*\\\\XF::phrase\(\'cav7_discord_resync_no_servers\'\)\s*\)\s*;\s*\}~s',
             $resyncBody
         ),
-    'getServerMap() is what the vendor fan-out iterates, so a map with nothing syncable in it is a failure this action can name. Below the pending guard, a stale row left by a switched-off server answers first and the member is told a sync is already queued when none can run. Below the cooldown, the press spends the member five minutes and appends an unbounded xf_error_log row, because assertNotFlooding() writes nothing at all for a general:bypassFloodCheck holder and there is then no flood entry to withhold'
+    'getServerMap() is what the vendor fan-out iterates, so a map with nothing syncable in it is a failure this action can name. Below the pending guard, a stale row left by a switched-off server answers first and the member is told a sync is already queued when none can run. Below the cooldown, the press spends the member five minutes on a fault no retry can clear, and appends an xf_error_log row through XF\\Error::logException(), which dedupes nothing'
 );
 // The map is not the same thing as the set of guilds a sync can reach.
 // updateServerCache() applies isActive() and stops there — it does not apply the
@@ -606,9 +606,24 @@ check(
     'the addon gains no options, so that reverting it stays a single toggle'
 );
 check(
-    'the cooldown runs through XenForo\'s flood check, keyed to this action and limited to that constant',
-    (bool) preg_match('/assertNotFlooding\(\s*self::RESYNC_FLOOD_ACTION\s*,\s*self::RESYNC_COOLDOWN_SECONDS\s*\)/', $resyncBody),
-    'XenForo\'s own rules then exempt anyone holding general:bypassFloodCheck, which is why the pending check exists independently'
+    'the cooldown runs through XenForo\'s flood-check service, keyed to this action, this member and that constant',
+    (bool) preg_match(
+        '/checkFlooding\(\s*self::RESYNC_FLOOD_ACTION\s*,\s*\$visitor->user_id\s*,\s*self::RESYNC_COOLDOWN_SECONDS\s*,?\s*\)/',
+        $resyncBody
+    ),
+    'the service is called for the storage and the atomicity — an UPDATE decided on its row count, then an INSERT IGNORE — and keying it to this action alone keeps it off everything else the member is waiting on'
+);
+// assertNotFlooding() is the check above behind an early return for anyone holding
+// general:bypassFloodCheck. Swapping back to it reads as a tidy-up, silently unbinds
+// the cooldown for the members ADR-0007 is about, and leaves every other pin here
+// green — so the absence is pinned rather than left to review.
+//
+// A source pin proves nothing about behaviour. What presses the button twice as a
+// permission holder is tools/discord-resync-cooldown-check.php, and CI cannot run it.
+check(
+    'the cooldown does not go through assertNotFlooding(), which exempts the bypass permission',
+    !str_contains($resyncBody, 'assertNotFlooding('),
+    'the helper returns before the flood check writes anything for a general:bypassFloodCheck holder; ADR-0007 has who holds it here and why that made the cooldown bind almost nobody'
 );
 check(
     'the cooldown is checked before the queueing call, not after it',

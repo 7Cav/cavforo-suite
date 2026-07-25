@@ -125,3 +125,27 @@ while `_data/` still holds records. Both need only `php`.
 php tools/validate-addon.php src/addons/Cav7/SteamChecker
 php tools/check-data-consistency.php src/addons/Cav7/SteamChecker
 ```
+
+### `discord-resync-cooldown-check.sh`
+
+The odd one out here: every other script in this directory runs with only `php`,
+and this one needs a live XenForo dev stack with NF/Discord and
+`Cav7/DiscordSyncPatch` installed. CI does not run it. It is here rather than in
+the addon's `tests/` because `run-tests.sh` runs everything in there with bare
+`php`, and this cannot.
+
+It presses the resync button twice inside the cooldown window and checks the
+second press is refused — once as a member holding XenForo's
+`general:bypassFloodCheck` permission and once as a member without it. On this
+forum that permission reaches almost every member who can see the button, so the
+holder is the case that matters; see the addon's ADR-0007.
+
+It builds its own user group, members and Discord credentials, lets XenForo build
+the permission cache from the group rather than editing the cache, and removes all
+of it afterwards. It refuses to start if a previous run left its dummy
+credentials behind. Point it at your stack with `XENFORO_DEV_STACK` if it is not
+at `~/srv/xenforo-dev`.
+
+```
+tools/discord-resync-cooldown-check.sh
+```
