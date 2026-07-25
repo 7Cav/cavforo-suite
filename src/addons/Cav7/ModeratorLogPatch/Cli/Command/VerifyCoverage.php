@@ -325,7 +325,8 @@ class VerifyCoverage extends Command
             // actor is the subject" where it says "the actor is the author". It is
             // inert — no action logged against a member is in the author-reachable
             // set — but the probe below cannot say which of the two it proved, so it
-            // says neither. See docs/adr/0006.
+            // says neither. See
+            // docs/adr/0006-two-cases-the-authorship-axis-cannot-express.md.
             if ($content->structure()->primaryKey === 'user_id') {
                 $this->out->writeln(
                     "  <comment>NOTE</comment> $type: the content is a member, so \"the author\" here is the member being moderated, not somebody who wrote something. The authorship probe below is inert for this type."

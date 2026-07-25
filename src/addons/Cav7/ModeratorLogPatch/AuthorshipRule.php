@@ -61,7 +61,9 @@ final class AuthorshipRule
      * The ADRs record the evidence per name:
      * docs/adr/0001-log-by-authorship-not-by-permission.md for the first set,
      * docs/adr/0004-two-more-author-reachable-actions.md for `attachment_deleted`
-     * and `poll_reset`, and docs/adr/0005 for `unapprove`.
+     * and `poll_reset`, and
+     * docs/adr/0005-unapprove-is-author-reachable-through-the-spam-check.md for
+     * `unapprove`.
      *
      * @var list<string>
      */
