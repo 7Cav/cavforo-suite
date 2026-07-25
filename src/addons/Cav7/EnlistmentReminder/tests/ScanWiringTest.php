@@ -725,10 +725,13 @@ check(
 // others — its own class docblock names the handled signal ("the processing-status
 // prefixes (cav7ERInProcessingPrefixIds) that decide whether a thread reads as
 // handled"), which is exactly the clause a well-meaning reword could turn back into a
-// clerk's reply. THREE of the add-on's PHP files sit outside that list, not one, and
-// each is out for the same reason rather than by oversight: Setup.php discusses the
-// marker table and the retired #144 option, Cron/ScanQueue.php the deadline clamp, and
-// XF/Alert/ThreadHandler.php the alert opt-out registration. None of the three says
+// clerk's reply. THREE of the add-on's non-test source files sit outside that list,
+// not one — count the five test scripts and the generated _output/option_hint.php and
+// nine PHP files are outside it, which is why the qualifier matters if you run the
+// audit — and each of the three is out for the same reason rather than by oversight:
+// Setup.php discusses the marker table and the retired #144 option, Cron/ScanQueue.php
+// the deadline clamp, and XF/Alert/ThreadHandler.php the alert opt-out
+// registration. None of the three says
 // anything about what makes a thread read as handled, so none carries a clause these
 // arms could bite. The list is closed only while that stays true — a file added later
 // has to be held against that test, not assumed excluded because the list looks

@@ -157,10 +157,17 @@ class QueueReminder
         //
         // The node and bot aborts lead, and they sit this low deliberately. Placed at
         // the top, where an option-reading guard naturally wants to go, either one
-        // swallows all three warnings above on exactly the board that needs them most:
-        // one whose config was never filled in. Neither can mass-remind on its own — an
-        // unconfigured node scans nothing and an unconfigured bot posts nothing — so
-        // neither has to run early to be safe, nothing in the preamble reads $nodeId or
+        // swallows the warning above on a PARTIALLY configured board: a blank queue
+        // node id together with an overlap, or with one blank type list. Not on a board
+        // whose config was never filled in, which is worth being exact about — with
+        // both type lists blank NO warning fires at all (the overlap intersects two
+        // empty lists, and each blank-list warning requires the OTHER list to be
+        // populated), so a top-placed guard would swallow nothing there and the
+        // both-blank abort below is that board's path anyway. The same arithmetic caps
+        // the payoff at one warning per run: no two of the three can ever fire
+        // together. Neither guard can mass-remind on its own — an unconfigured node
+        // scans nothing and an unconfigured bot posts nothing — so neither has to run
+        // early to be safe, nothing in the preamble reads $nodeId or
         // $botUserId, and no warning depends on either having been validated. The order
         // is therefore free to put the reporting first. ScanWiringTest holds it by
         // comparing each log-only check against the EARLIEST of all the aborts, not
