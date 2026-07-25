@@ -435,7 +435,7 @@ check(
 );
 
 // =========================================================================
-// the pure unit stays pure — it is only covered by the ordinary test run while
+// the pure units stay pure — each is only covered by the ordinary test run while
 // it needs nothing from XenForo
 // =========================================================================
 // Read off the comment-stripped source: a docblock quoting the vendor line the
@@ -446,6 +446,7 @@ $ruleCode = stripComments($ruleSrc);
 foreach ([
     'AuthorshipRule' => $ruleCode,
     'CategoryOverrides' => stripComments((string) @file_get_contents("$root/CategoryOverrides.php")),
+    'ContentScope' => stripComments((string) @file_get_contents("$root/ContentScope.php")),
     'HandlerCoverage' => stripComments((string) @file_get_contents("$root/HandlerCoverage.php")),
 ] as $pureClass => $pureCode) {
     check(
@@ -459,7 +460,7 @@ foreach ([
 }
 // None of them is registered as an extendable class, and all of them are
 // static-only, which is the suite's own shape for a pure helper.
-foreach (['AuthorshipRule', 'CategoryOverrides', 'ContentAuthor', 'HandlerCoverage'] as $pureClass) {
+foreach (['AuthorshipRule', 'CategoryOverrides', 'ContentAuthor', 'ContentScope', 'HandlerCoverage'] as $pureClass) {
     check(
         "$pureClass is final",
         (bool) preg_match(

@@ -227,7 +227,12 @@ function member(int $userId, bool $holdsModeratorRecord = false): User
     return $user;
 }
 
-/** Content with an author. Pass null for guest-written content, or omit for no column. */
+/**
+ * Content with an author. Pass 0 for guest-written content, which carries the column
+ * with nobody in it, and null for a content type that declares no `user_id` column at
+ * all. The rule treats those two the same way and the reader has to tell them apart,
+ * which is why both are reachable from here.
+ */
 function content(?int $authorId): Entity
 {
     $entity = new Entity();

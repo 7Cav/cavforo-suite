@@ -198,7 +198,10 @@ the verification command is for.
   methods it overrides, so a stub entity, a stub member and a spy handler are
   enough to assert what the source text cannot: that a withheld decision never
   reaches the handler underneath, and that a handler answering "no" is still
-  obeyed. It covers `ContentAuthor` and `HandlerCoverage` the same way.
+  obeyed. It covers `ContentAuthor`, `ContentScope` and `HandlerCoverage` the same
+  way, including both directions a user gate can be discarded from: one declared
+  underneath the class carrying the rule, and one declared above it by an addon
+  that extends the same handler later.
 - `tests/CategoryOverridesTest.php` covers the `--category-id` options: how the
   pairs are read, which keys the command refuses, and which id a content type is
   actually looked up in. The command itself can only be run by hand against a
