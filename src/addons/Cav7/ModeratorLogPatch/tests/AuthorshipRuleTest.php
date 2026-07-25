@@ -88,8 +88,8 @@ check(
 
 // The spam check runs during the member's own save and sends their content back to
 // the approval queue, which the handlers resolve to `unapprove`. So a member can
-// produce it on their own content with no permission over anybody else's, and until
-// ADR 0005 the log recorded them as having unapproved their own post.
+// produce it on their own content with no permission over anybody else's, and before
+// this rule the log recorded them as having unapproved their own post.
 check(
     'tripping the spam filter on your own content is not logged as unapproving it',
     AuthorshipRule::withholdsEntry('unapprove', 41, false, 41) === true,
@@ -116,8 +116,8 @@ check(
     'reaching another member\'s attachment took a permission over their content'
 );
 
-// The full author-reachable set from ADR 0001, ADR 0004 and ADR 0005, each one
-// withheld from its own author. Asserted item by item rather than as a list comparison, so a name
+// The full author-reachable set, each one withheld from its own author.
+// Asserted item by item rather than as a list comparison, so a name
 // dropped from the constant fails with the action that went missing.
 foreach ([
     'edit',
@@ -137,7 +137,7 @@ foreach ([
     check(
         "'$action' is author-reachable, so its author is not logged",
         AuthorshipRule::withholdsEntry($action, 41, false, 41) === true,
-        'the ADRs list this action as one a member can produce on their own content'
+        'this action is one a member can produce on their own content'
     );
 }
 
@@ -145,8 +145,7 @@ foreach ([
 // without authority over another member's content, so the actor being the author is
 // beside the point and every one of them logs. `approve` is here on purpose and not
 // beside `unapprove`: every path that puts content back to visible needs authority
-// over it, so the pair is asymmetric because the spam check is. ADR 0005 records the
-// check.
+// over it, so the pair is asymmetric because the spam check is.
 foreach ([
     'stick',
     'unstick',

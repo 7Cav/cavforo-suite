@@ -58,12 +58,8 @@ final class AuthorshipRule
      * start logging self-actions; `poll_reset` is the one the list is load-bearing
      * for.
      *
-     * The ADRs record the evidence per name:
-     * docs/adr/0001-log-by-authorship-not-by-permission.md for the first set,
-     * docs/adr/0004-two-more-author-reachable-actions.md for `attachment_deleted`
-     * and `poll_reset`, and
-     * docs/adr/0005-unapprove-is-author-reachable-through-the-spam-check.md for
-     * `unapprove`.
+     * docs/adr/0001-log-by-authorship-not-by-permission.md records why the axis is
+     * authorship rather than a permission check.
      *
      * @var list<string>
      */

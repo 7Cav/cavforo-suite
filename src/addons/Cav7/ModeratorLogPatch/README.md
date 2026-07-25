@@ -84,28 +84,20 @@ took the trade.
 
 **Most of the list is withheld from its author here rather than by the handler
 underneath.** Only a few of the names have an author rule of their own in any of
-the eight registered handlers, and the list is a strict superset of those few.
-Which names they are is in
-[ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md), which holds the
-reading, so this file does not repeat it. A rule existing somewhere is also not a
-rule everywhere: XenForo withholds `attachment_deleted` from a post's author and
-not from a profile post's, which is the asymmetry ADR-0004 removes. Every other
-name in the list is this addon's decision and nobody else's, which is why each one
-is an ADR rather than a line in a switch: ADR-0004 for `attachment_deleted` and
-`poll_reset`, and
-[ADR-0005](docs/adr/0005-unapprove-is-author-reachable-through-the-spam-check.md)
-for `unapprove`.
+the eight registered handlers, and the list is a strict superset of those few. A
+rule existing somewhere is also not a rule everywhere: XenForo withholds
+`attachment_deleted` from a post's author and not from a profile post's, and the
+list removes that asymmetry. Every other name in it is this addon's decision and
+nobody else's.
 
 **A member who trips the spam filter on their own edit is no longer recorded as
 having unapproved their own post.** The spam check runs during the member's own
 save and sends the content back to the queue, which resolves to `unapprove`.
-ADR-0005 has the path.
 
-**Two cases the rule's authorship axis cannot express** are recorded in
-[ADR-0006](docs/adr/0006-two-cases-the-authorship-axis-cannot-express.md): a
-member clearing somebody else's post off their own profile, which now writes an
-entry where nothing was written before, and the member content type, where
-"the author" means the member being moderated.
+**Two cases the rule's authorship axis cannot express**: a member clearing
+somebody else's post off their own profile, which now writes an entry where
+nothing was written before, and the member content type, where "the author" means
+the member being moderated.
 
 ## Verifying an install
 
@@ -152,9 +144,9 @@ moderator actions view, then deletes the thread and the rows.
 Run it after any XenForo or vendor upgrade. The failure this catches writes
 nothing anywhere: a class extension whose `from_class` no longer resolves to the
 handler it names is active, valid, exported, and inert, and the entries simply
-stop appearing again.
-[ADR-0003](docs/adr/0003-register-the-name-xenforo-resolves-to.md) covers the
-one place that is already true.
+stop appearing again. The two ticket handlers are already such a case: their
+extensions are registered against a name with no file behind it, so only the
+install can confirm the name still resolves.
 
 ## Requirements
 
@@ -174,9 +166,9 @@ written.
 Every seam is somebody else's. Both overridden methods, the abstract handler
 they live on, the resolved action names the rule keys on, and the aliasing that
 decides which class an extension lands on all belong to XenForo or to a vendor
-addon. `docs/adr/0002-one-extension-per-registered-handler.md` and
-`docs/adr/0003-register-the-name-xenforo-resolves-to.md` name the two that
-already bit.
+addon. Two of them have already bitten: the shared abstract handler is never
+resolved through the extension system, and the ticket handlers' registered names
+have no files behind them.
 
 `tests/WiringTest.php` runs with no XenForo and no vendor code on the include
 path, so it pins **this addon's side** of each seam. An edit here that stops
