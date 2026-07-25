@@ -4,10 +4,10 @@
  * Issue #187 — runs the code that sits in the real call path.
  *
  * `AuthorshipLogging` is the only part of this addon XenForo actually calls, and
- * until this file existed nothing executed it: `WiringTest` matches its source text,
- * which holds the shape of the method still but says nothing about what it answers.
+ * until this file existed nothing executed it — the suite only matched its source
+ * text, which holds the shape of the method but says nothing about what it answers.
  * A one-line insertion above the `if ($withheld)` was enough to start logging every
- * member editing their own post again while both test runs stayed green. The same
+ * member editing their own post again while the test run stayed green. The same
  * was true of `ContentAuthor::userId()`, which nothing ran at all, and of
  * `HandlerCoverage`, the predicate every line the verification command prints rests
  * on.
@@ -408,7 +408,7 @@ check(
 // named after XenForo's abstract handler. That makes this check the behavioural form
 // of "the entitled classes are read off the chain rather than named": a predicate that
 // hardcoded the vendor name would not find SpyHandler entitled, and would report the
-// healthy chain as discarding a gate. `WiringTest` keeps the source-text pin.
+// healthy chain as discarding a gate.
 check(
     'the healthy chain has no discarded user gate',
     HandlerCoverage::discardedUserGates(new PatchedHandler()) === [],

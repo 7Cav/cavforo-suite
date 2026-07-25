@@ -92,9 +92,10 @@ class QueueReminder
         // threads are skipped as unrecognized. The second turns the standard seats into
         // [57], so the no-seat skip sends an admin to cav7ERStandardClerkPositionIds —
         // also correct. Either way the admin edits a healthy textbox and the fault
-        // stays exactly where it is. ScanWiringTest pins each of the four bindings to
-        // the variable that belongs to it, and that pin — not the argument names, and
-        // not the log — is what closes this half.
+        // stays exactly where it is. The named arguments below are what keep each list
+        // with the option it belongs to; because the log names the wrong cause, a
+        // transposition here shows up only as threads routing to the wrong clerks on a
+        // configured board, so check it there rather than expecting CI to catch it.
         $routing = new EnlistmentRouting(
             standardPrefixIds: $standardPrefixIds,
             standardPositionIds: PositionIdList::parse($rawStandardPositionIds),
@@ -169,10 +170,9 @@ class QueueReminder
         // scans nothing and an unconfigured bot posts nothing — so neither has to run
         // early to be safe, nothing in the preamble reads $nodeId or
         // $botUserId, and no warning depends on either having been validated. The order
-        // is therefore free to put the reporting first. ScanWiringTest holds it by
-        // comparing each log-only check against the EARLIEST of all the aborts, not
-        // against whichever one leads, so moving any single guard up into the preamble
-        // fails the pins.
+        // is therefore free to put the reporting first. Keep every log-only check ahead
+        // of the earliest abort rather than ahead of whichever one happens to lead, so
+        // that reordering the aborts later cannot silently swallow a warning.
         if (!$nodeId)
         {
             \XF::logError('[Cav7/EnlistmentReminder] Queue node id is not configured; nothing to scan.');
@@ -637,8 +637,7 @@ class QueueReminder
      * SteamChecker VAC reply in the same thread from counting. Only visible posts
      * count, so a soft-deleted note does not suppress a fresh reminder. Do not
      * "simplify" this away as a redundant re-read of the marker table: it is the
-     * marker table's own write failure that it exists to survive, and a
-     * ScanWiringTest assertion pins it for that reason.
+     * marker table's own write failure that it exists to survive.
      *
      * @param int[] $threadIds
      * @return array<int,true>

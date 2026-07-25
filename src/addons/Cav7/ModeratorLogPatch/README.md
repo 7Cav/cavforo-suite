@@ -170,12 +170,11 @@ addon. Two of them have already bitten: the shared abstract handler is never
 resolved through the extension system, and the ticket handlers' registered names
 have no files behind them.
 
-`tests/WiringTest.php` runs with no XenForo and no vendor code on the include
-path, so it pins **this addon's side** of each seam. An edit here that stops
-matching the assumption fails the build. It cannot see the other side: rename a
-handler, add a real `TicketHandler.php`, change the aliasable-namespace list, or
-resolve a handler in a different order, and the suite stays green. That is what
-the verification command is for.
+Neither side of those seams is visible to a test that runs without XenForo and
+without the vendor code on the include path. Rename a handler, add a real
+`TicketHandler.php`, change the aliasable-namespace list, or resolve a handler in
+a different order, and CI notices none of it. That is what the verification
+command is for.
 
 ## Tests
 
@@ -198,9 +197,11 @@ the verification command is for.
   pairs are read, which keys the command refuses, and which id a content type is
   actually looked up in. The command itself can only be run by hand against a
   live forum, so the reading and the resolution live in a unit that cannot.
-- `tests/WiringTest.php` pins what CI cannot execute: the eight class-extension
-  registrations and their `_output` copies, both overrides and the shape of each,
-  the eight subclasses that compose the trait, and the verification command.
+The class-extension registrations and their `_output` copies are validated
+repo-wide by `tools/check-data-consistency.php` and `tools/validate-addon.php`.
+Everything else about the seams — that the registrations land on real classes,
+and that the subclasses still compose the trait — is checked on a dev stack by
+the verification command below, because CI cannot execute it.
 
 ### Re-run on a dev stack after a XenForo, NF/Tickets or NF/Calendar upgrade
 

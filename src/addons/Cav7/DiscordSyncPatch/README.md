@@ -177,22 +177,21 @@ This addon has one per-user sync call, the resync action in
 `XF/Pub/Controller/Account.php`, and it checks the link ahead of every other
 precondition for this reason.
 
-Be clear about what the test suite does with them. `tests/WiringTest.php` runs with
-no XenForo and no vendor on the include path, and reads only files inside this addon,
-so it pins **this addon's side** of each seam: an edit here that stops matching the
-assumption fails the build. It cannot observe the other side. Rename
+Be clear about what the test suite can do with them: nothing. A run with no XenForo
+and no vendor on the include path cannot observe either side of these seams. Rename
 `queueSyncJobsForUser()`, drop `getDiscordConfiguration()`, edit the vendor template,
-or narrow `xf_flood_check.flood_action`, and the suite stays green. Those are found
-on a dev stack, which is why the list below exists.
+or narrow `xf_flood_check.flood_action`, and CI stays green. Those are found on a dev
+stack, which is why the list below exists.
 
 ## Tests
 
 `tools/run-tests.sh DiscordSyncPatch`. The role-set decision lives in `RoleClaim`,
 a plain unit with no XenForo dependency, and is exercised for real in
-`tests/RoleClaimTest.php`. `tests/WiringTest.php` pins the parts that need a live
-stack to run: both class-extension registrations, the method overrides, the resync
-action with its three preconditions and two guards, and the template modification and
-phrases that put the button on the page.
+`tests/RoleClaimTest.php`. That is the whole of what CI covers here. The parts that
+need a live stack — both class-extension registrations, the method overrides, the
+resync action with its three preconditions and two guards, and the template
+modification and phrases that put the button on the page — are checked on a dev
+stack using the list below.
 
 ### Re-run these on a dev stack after an NF/Discord or XenForo upgrade
 

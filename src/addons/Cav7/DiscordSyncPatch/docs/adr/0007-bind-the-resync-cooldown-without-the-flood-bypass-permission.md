@@ -4,6 +4,11 @@
 - **Date:** 2026-07-25
 - **Issues:** #167
 - **Amends:** [ADR-0005](0005-honour-a-resync-request-without-checking-divergence.md)
+- **Note (2026-07-25):** the `tests/WiringTest.php` named below was deleted as a
+  source-text change detector. Do not reinstate it or write another like it; see
+  ["What belongs in CI, and what does not"](../../../../../../CONTRIBUTING.md). The
+  hazard this consequence describes is real — the answer to it is
+  `tools/discord-resync-cooldown-check.php` on a dev stack, as the entry itself says.
 
 ## Context
 
@@ -81,11 +86,12 @@ the bypass was wrong, and only the sentence quoted above depended on it.
   that release is now a real release rather than a no-op for most members. What it
   un-bounds is unchanged and is argued at the call site.
 - A future edit that "tidies" the direct service call back into `assertNotFlooding()`
-  would silently restore the original defect, and every other pin in
-  `tests/WiringTest.php` would stay green. That file pins the absence of
-  `assertNotFlooding()` for this reason. The pin is a source check and proves nothing
-  about behaviour; `tools/discord-resync-cooldown-check.php` is what presses the
-  button twice as a permission holder against a live stack, and CI cannot run it.
+  would silently restore the original defect. `tests/WiringTest.php` matched the
+  source for the absence of `assertNotFlooding()` for this reason; that file has since
+  been removed (see the note above), because — as this entry already said when it was
+  written — the check proved nothing about behaviour.
+  `tools/discord-resync-cooldown-check.php` is what presses the button twice as a
+  permission holder against a live stack, and CI cannot run it. That is the guard.
 - This addon now depends on `FloodCheckService::checkFlooding()`'s signature and its
   atomicity, where before it depended on `assertNotFlooding()`'s. Both are core, and
   the swap is recorded with the other core assumptions in the README.

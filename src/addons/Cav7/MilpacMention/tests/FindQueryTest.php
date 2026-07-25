@@ -4,8 +4,8 @@
  * Issue #88 — the pure logic behind the $name completer's find endpoint
  * (spec §4.3, §4.2, §4.5). The live query (username LIKE + isValidUser(true) +
  * the inner join to NF\Rosters:RosterUser) lives in
- * MilpacResolver::findMilpacOwningUsers and is pinned structurally by
- * FindWiringTest; this holds the parts that run in plain PHP:
+ * MilpacResolver::findMilpacOwningUsers, which needs XenForo and is checked on the
+ * dev stack; this holds the parts that run in plain PHP:
  *
  *   isFindQueryLongEnough()  the q-length >= 2 guard, mirroring
  *                            XF\Pub\Controller\MemberController::actionFind
@@ -224,8 +224,8 @@ check(
 // therefore re-reads the RAW roster rows for the shown members
 // (fetchColumns('user_id','relation_id'), ordered) and routes them through this reducer,
 // which is where the data error is finally logged. That live query needs XenForo, so it
-// is pinned structurally in FindWiringTest; here the reducer is exercised for real with
-// the raw rows the query returns. The logger is injected so the data-error message is
+// is checked on the dev stack; here the reducer is exercised for real with the raw rows
+// the query returns. The logger is injected so the data-error message is
 // observable without a XenForo runtime; production passes \XF::logError.
 // =========================================================================
 

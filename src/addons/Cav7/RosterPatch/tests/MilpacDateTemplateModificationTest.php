@@ -5,9 +5,9 @@
  * tests/fixtures/ — the vendor's own nf_rosters_user_view and the edited copy
  * the 7Cav style carries.
  *
- * MilpacDateWiringTest pins the shape of the modification records; this asks
- * what those records do to markup: after XenForo applies them, does the date
- * cell go through the UTC getter? RosterPatch's README ("The date cells are
+ * Rather than describing the shape of the modification records, this asks what
+ * those records do to markup: after XenForo applies them, does the date cell go
+ * through the UTC getter? RosterPatch's README ("The date cells are
  * matched by pattern") is where that question and its history live.
  *
  * What this pins is the patterns, against markup taken from NF/Rosters 2.1.5.
@@ -353,7 +353,7 @@ $dateCells = [
 $mods = loadModifications($root);
 
 // Nothing below can mean anything if a modification failed to load, so say so
-// once here rather than once per fixture. Their shape is MilpacDateWiringTest's.
+// once here rather than once per fixture.
 //
 // The replacement is pinned here too, once, against the table's own literal.
 // Every expectation below is built by putting that literal into the markup, so

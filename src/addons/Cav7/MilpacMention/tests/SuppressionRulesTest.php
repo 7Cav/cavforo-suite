@@ -118,8 +118,8 @@ check(
  * with the rules that were already there. This is the decision each notifier
  * extension makes — gate on the place FIRST, and only then let the self-link,
  * dedup and cap rules pick from the milpac set — written once here so the
- * composition is exercised rather than described. SuppressionWiringTest pins that
- * the notifiers really are wired in this order.
+ * composition is exercised rather than described. That the notifiers really are
+ * wired in this order is confirmed on the dev stack, not in CI.
  *
  * @param array<int|string> $denied the surface's deny-list
  */

@@ -4,8 +4,8 @@
  * Issue #144 — the pure routing behind the enlistment-type alert split, isolated
  * from XenForo so every branch of "which clerks own this thread's type?" runs for
  * real in plain PHP. The queue query, the seat resolution, the alert send and the
- * skip-and-log are XenForo-coupled and pinned by ScanWiringTest instead; this
- * file exercises the rule itself.
+ * skip-and-log are XenForo-coupled: they are verified on the dev stack, not in CI.
+ * This file exercises the rule itself.
  *
  * Rules under test (Cav7\EnlistmentReminder\EnlistmentRouting):
  *

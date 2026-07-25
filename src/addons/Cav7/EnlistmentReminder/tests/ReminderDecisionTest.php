@@ -5,8 +5,8 @@
  * enlistment-queue reminder, isolated from XenForo so every branch of "is this
  * application un-actioned and not yet reminded?" is covered without booting the
  * framework. The queue query, the prefix-link read, the clerk-seat resolution,
- * the bot post and the marker write are XenForo-coupled and pinned by
- * ScanWiringTest instead; this file exercises the rule itself.
+ * the bot post and the marker write are XenForo-coupled: they are verified on the
+ * dev stack, not in CI. This file exercises the rule itself.
  *
  * Rules under test (Cav7\EnlistmentReminder\ReminderDecision):
  *
@@ -85,8 +85,7 @@ check(
 // left the seat. Reply authorship cannot be recomputed away once it is not an
 // input at all, so the pin is the signature itself. A behavioural check cannot
 // express this: the parameter it would have to vary no longer exists, which is
-// exactly the point. The scanner's matching fact array is pinned in
-// ScanWiringTest.
+// exactly the point.
 $shouldRemindParams = array_map(
     fn (\ReflectionParameter $p) => $p->getName(),
     (new \ReflectionMethod(ReminderDecision::class, 'shouldRemind'))->getParameters()

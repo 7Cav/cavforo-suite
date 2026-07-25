@@ -3,6 +3,9 @@
 - **Status:** Accepted
 - **Date:** 2026-07-21
 - **Issues:** design decision for #157
+- **Note (2026-07-25):** the `tests/WiringTest.php` named below was deleted as a
+  source-text change detector. Do not reinstate it or write another like it; see
+  ["What belongs in CI, and what does not"](../../../../../../CONTRIBUTING.md).
 
 ## Context
 
@@ -46,5 +49,8 @@ Scheduled reconciliation has exactly one owner: the sweep.
   covers.
 - Reverting is disabling the addon, which returns the vendor cron to its own still
   dormant, still option-gated behaviour.
-- `tests/WiringTest.php` pins the extension registration and that `syncUsers()` is
-  overridden to a no-op, so losing the veto fails the build.
+- `tests/WiringTest.php` pinned the extension registration and that `syncUsers()` is
+  overridden to a no-op. That file has since been removed (see the note above): it
+  matched source text, so it would have stayed green on a veto that no longer took
+  effect. Losing the veto shows up as the vendor cron reconciling again, which is a
+  dev-stack check.
