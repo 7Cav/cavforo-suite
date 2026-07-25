@@ -83,12 +83,28 @@ their own content, is still not logged.** That is the one case an
 authorship rule cannot see and a permission rule could. ADR-0001 records why we
 took the trade.
 
-**Two actions are withheld from their author here rather than by the handler
-underneath.** Removing an attachment from your own content and resetting your own
-poll are both reachable with own-content permissions, and the handlers that log
-them do not all withhold them.
-[ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md) has the evidence for
-each.
+**Most of the list is withheld from its author here rather than by the handler
+underneath.** Across the eight registered handlers only two action names are
+withheld from the author by a handler at all: `edit`, by XenForo's post and both
+profile-post handlers, by the ticket-message handler and by the calendar handler,
+and `title`, by XenForo's thread handler and the ticket handler. XenForo's member
+handler withholds nothing. Every other name in the list is this addon's decision
+and nobody else's, which is why each one is an ADR rather than a line in a
+switch: [ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md) for
+`attachment_deleted` and `poll_reset`, and
+[ADR-0005](docs/adr/0005-unapprove-is-author-reachable-through-the-spam-check.md)
+for `unapprove`.
+
+**A member who trips the spam filter on their own edit is no longer recorded as
+having unapproved their own post.** The spam check runs during the member's own
+save and sends the content back to the queue, which resolves to `unapprove`.
+ADR-0005 has the path.
+
+**Two cases the rule's authorship axis cannot express** are recorded in
+[ADR-0006](docs/adr/0006-two-cases-the-authorship-axis-cannot-express.md): a
+member clearing somebody else's post off their own profile, which now writes an
+entry where nothing was written before, and the member content type, where
+"the author" means the member being moderated.
 
 ## Verifying an install
 
@@ -102,14 +118,25 @@ php cmd.php cav7-moderator-log-patch:verify <node> <user> <category>
   record holder proves nothing.
 - `category` — a category the run reads sample content from, for the content
   types that are filed under one. Read-only.
+- `--category-id <content_type>=<id>` — optional, repeatable. The two content
+  types filed under a category use unrelated id spaces (`ticket_category_id` and
+  `category_id`), so one number is right for both only by coincidence. Give one
+  per type when it is not.
 
-Three phases. It reads the registered handler content types off the install and
-checks each one resolves through this addon. It then asks each resolved handler's
-two gates the questions the rule is made of — every author-reachable action, once
-as the member who wrote the content and once as somebody else — which runs the
-vendor handlers' own code without writing anything. Finally it creates a throwaway
-thread, sticks it, retitles it, unsticks it, checks which of those landed in
-`xf_moderator_log`, and deletes the thread and the rows.
+Three phases. It reads the registered handler content types off the install,
+checks each one resolves through this addon, and reports anything else in the
+handler's class chain that declares the user gate this addon replaces. It then asks
+each resolved handler's two gates the questions the rule is made of — every
+author-reachable action, as the member who wrote the content, as somebody else, and
+as a member who both wrote it and holds a moderator record — and asks the same
+handler built without the extension, so the run can show which answers this addon
+changed and that a record holder's are unchanged. That phase writes nothing. It
+also says, per content type, whether the sample it read was real content in the
+scope you named; a `[board sample]` or `[fabricated sample]` tag on a PASS means
+that line was earned somewhere other than where you pointed it. Finally it creates
+a throwaway thread, sticks it, retitles it, unsticks it, checks which of those
+landed in `xf_moderator_log` and that the entry is reachable from the thread's own
+moderator actions view, then deletes the thread and the rows.
 
 Run it after any XenForo or vendor upgrade. The failure this catches writes
 nothing anywhere: a class extension whose `from_class` no longer resolves to the
@@ -155,6 +182,12 @@ the verification command is for.
   `AuthorshipRule` needs nothing from XenForo, so the whole rule — the ordering,
   the exact action names, the guards against treating "nobody" as an author — is
   covered by a plain test run.
+- `tests/HandlerBehaviourTest.php` runs the code XenForo actually calls.
+  `AuthorshipLogging` needs no XFCP proxy, only a base class declaring the two
+  methods it overrides, so a stub entity, a stub member and a spy handler are
+  enough to assert what the source text cannot: that a withheld decision never
+  reaches the handler underneath, and that a handler answering "no" is still
+  obeyed. It covers `ContentAuthor` and `HandlerCoverage` the same way.
 - `tests/WiringTest.php` pins what CI cannot execute: the eight class-extension
   registrations and their `_output` copies, both overrides and the shape of each,
   the eight subclasses that compose the trait, and the verification command.

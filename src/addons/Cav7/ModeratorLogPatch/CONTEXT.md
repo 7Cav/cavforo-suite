@@ -39,3 +39,15 @@ _Avoid_: "self-edit" for this category. An author-reachable action performed on
 someone else's content is moderation and does log, so the category describes
 which actions are *capable* of being self-actions, not who performed a given
 one.
+
+**Content author**:
+The member a log entry's `content_user_id` names, read from the content entity's
+`user_id` column by `ContentAuthor`. For seven of the eight registered content
+types that is who wrote the thing. For `user` it is not: XenForo's member handler
+logs actions taken *against* a member and fills the column from that member's own
+id, so there "the author" is the subject of the moderation. It decides nothing,
+because no action logged against a member is author-reachable, and
+[ADR-0006](docs/adr/0006-two-cases-the-authorship-axis-cannot-express.md) records
+why it is left that way.
+_Avoid_: treating "author" and "content owner" as interchangeable when the content
+type is a member.

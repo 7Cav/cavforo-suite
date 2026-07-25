@@ -17,8 +17,12 @@ remove.
 
 One class extension per registered handler class, each landing on a subclass that
 does nothing but compose the shared trait. Eight are registered today: five from
-XenForo core, two from the ticket addon, one from the calendar addon, all read off
-the install rather than written down anywhere in the code.
+XenForo core, two from the ticket addon, one from the calendar addon. The eight
+`from_class` names are written down twice, in `_data/class_extensions.xml` and
+again in `_output/class_extensions/`, which is what an addon's data is. Nothing in
+the addon's *code* holds a list of them: `cav7-moderator-log-patch:verify` reads
+the registered content types off the install, which is why it can report one
+nobody registered an extension for.
 
 The behaviour is a trait rather than a shared base class because the chain fixes
 each subclass's parent to the XFCP proxy of the handler it extends. There is no
@@ -28,12 +32,14 @@ parent slot left to put a base class in.
 
 Extending `XF\ModeratorLog\Logger` instead was the other way to cover every
 content type from one registration. It is resolved through the extension system,
-and both gates are consulted from it, so an override there would work today. We
-rejected it because the per-action check is not the logger's to make: it belongs
-to the handler, several handlers already override it with rules of their own, and
-answering it from the logger means reimplementing the dispatch to reach them. The
-gate this addon replaces would move somewhere the next reader would not look for
-it.
+and the user-level gate is consulted from it: `logChanges()`, `logChange()` and
+`log()` each call `isLoggableUser()` on the way in, so an override there would
+work today for that half. The per-action check is not reachable from the logger at
+all. It is called from `AbstractHandler::log()`, so covering it would mean
+reimplementing the dispatch into the handlers, several of which override it with
+rules of their own. We rejected the whole shape on that: the check belongs to the
+handler, and the gate this addon replaces would have moved somewhere the next
+reader would not look for it.
 
 ## Consequences
 

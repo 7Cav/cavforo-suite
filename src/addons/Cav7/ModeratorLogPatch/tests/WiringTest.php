@@ -165,9 +165,13 @@ if ($classExtXml !== false) {
 }
 
 // The eight handlers registered on the target install: five from XenForo core, two
-// from NF/Tickets, one from NF/Calendar. Written down here and nowhere in the
-// addon's code, which reads the list off the install instead — a hardcoded list is
-// how a content type added by a later addon goes uncovered silently.
+// from NF/Tickets, one from NF/Calendar. The from_class names are already written
+// down twice, in _data/class_extensions.xml and again in _output/class_extensions/,
+// which is what an addon's data is; this is the third copy, and its job is to fail
+// when the other two change without a decision. The addon's CODE holds no list:
+// the verification command reads the registered content types off the install,
+// because a hardcoded list is how a content type added by a later addon goes
+// uncovered silently.
 //
 // Two of these from_class names have no file behind them.
 // NF\Tickets\ModeratorLog\TicketHandler and MessageHandler are aliases XenForo's
@@ -222,7 +226,7 @@ usort(
 check(
     'the committed rows are in canonical order (byte comparison of from_class, then to_class)',
     $committedPairs === $sortedPairs,
-    'docs/adr/0003-canonical-class-extension-order.md: re-export rather than hand-sorting, and do not revert the reordering hunks'
+    'the repo-root docs/adr/0003-canonical-class-extension-order.md (not this addon\'s ADR 0003, which is a different document): re-export rather than hand-sorting, and do not revert the reordering hunks'
 );
 
 check(
@@ -434,39 +438,65 @@ check(
 // the pure unit stays pure — it is only covered by the ordinary test run while
 // it needs nothing from XenForo
 // =========================================================================
+// Read off the comment-stripped source: a docblock quoting the vendor line the
+// decision was derived from is documentation, and pinning against the raw text
+// would make it look like a dependency.
 $ruleSrc = (string) @file_get_contents("$root/AuthorshipRule.php");
-check(
-    'AuthorshipRule has no XenForo dependency',
-    $ruleSrc !== ''
-        && !str_contains($ruleSrc, '\XF::')
-        && !preg_match('/\buse\s+XF\\\\/', $ruleSrc)
-        && !str_contains($ruleSrc, 'SV\StandardLib'),
-    'the decision is only covered by the ordinary test run for as long as it runs without a stack'
-);
+$ruleCode = stripComments($ruleSrc);
+foreach ([
+    'AuthorshipRule' => $ruleCode,
+    'HandlerCoverage' => stripComments((string) @file_get_contents("$root/HandlerCoverage.php")),
+] as $pureClass => $pureCode) {
+    check(
+        "$pureClass has no XenForo dependency",
+        $pureCode !== ''
+            && !str_contains($pureCode, '\XF::')
+            && !preg_match('/\buse\s+XF\\\\/', $pureCode)
+            && !str_contains($pureCode, 'SV\StandardLib'),
+        'this is only covered by the ordinary test run for as long as it runs without a stack'
+    );
+}
+// Neither is registered as an extendable class, and both are static-only, which is
+// the suite's own shape for a pure helper.
+foreach (['AuthorshipRule', 'ContentAuthor', 'HandlerCoverage'] as $pureClass) {
+    check(
+        "$pureClass is final",
+        (bool) preg_match(
+            '/final\s+class\s+' . $pureClass . '\b/',
+            stripComments((string) @file_get_contents("$root/$pureClass.php"))
+        ),
+        'a pure static-only helper nobody extends through XenForo has no reason to be open, and the rest of the suite closes them'
+    );
+}
 // The list is the decision, and it is the one thing in this addon a reader is most
 // likely to "tidy". Pinned here as well as in AuthorshipRuleTest: the unit test
 // asserts each name behaves author-reachably, this asserts the set is exactly the
-// twelve the two ADRs settled on, so a thirteenth added without a decision fails the
-// build.
-$ruleCode = stripComments($ruleSrc);
+// names the ADRs settled on, so one added without a decision fails the build. The
+// literal has to be a literal for that to work; nothing else in this file states
+// how many there are, because the constant is the count.
 preg_match('/AUTHOR_REACHABLE_ACTIONS\s*=\s*\[(.*?)\]\s*;/s', $ruleCode, $listMatch);
 preg_match_all('/\'([^\']+)\'/', $listMatch[1] ?? '', $actionNames);
+$expectedActions = [
+    'edit',
+    'attachment_deleted',
+    'title',
+    'prefix',
+    'custom_fields_edit',
+    'delete_soft',
+    'unapprove',
+    'status',
+    'priority',
+    'poll_create',
+    'poll_edit',
+    'poll_delete',
+    'poll_reset',
+];
 check(
-    'the author-reachable set is exactly the twelve actions ADR 0001 and ADR 0004 settled on',
-    ($actionNames[1] ?? []) === [
-        'edit',
-        'attachment_deleted',
-        'title',
-        'prefix',
-        'custom_fields_edit',
-        'delete_soft',
-        'status',
-        'priority',
-        'poll_create',
-        'poll_edit',
-        'poll_delete',
-        'poll_reset',
-    ],
+    sprintf(
+        'the author-reachable set is exactly the %d actions ADR 0001, 0004 and 0005 settled on',
+        count($expectedActions)
+    ),
+    ($actionNames[1] ?? []) === $expectedActions,
     'adding a name stops an action being logged for the member who wrote the content, and removing one starts logging members tidying up after themselves; either is a change to the ADRs and not a tidy-up'
 );
 check(
@@ -489,7 +519,7 @@ check(
     $recordPos !== false && $reachablePos !== false && $comparePos !== false
         && $recordPos < $reachablePos && $recordPos < $comparePos
         && (bool) preg_match('/if\s*\(\s*\$actorHoldsModeratorRecord\s*\)\s*\{\s*return\s+false\s*;\s*\}/s', $withholdsBody),
-    'below the authorship comparison, a record holder editing their own content would be withheld here — which is a behaviour change for the five people who were being logged correctly all along'
+    'below the authorship comparison, a record holder editing their own content would be withheld here — which is a behaviour change for the members who were being logged correctly all along'
 );
 check(
     'the authorship comparison requires both sides to name a member',
@@ -571,13 +601,54 @@ check(
 );
 // Coverage is "is the rule anywhere in this handler's chain", not "is the class name
 // ours". Another addon extending the same handler after this one puts its class last
-// and ours in the middle, which is a working install; a name check would call it a gap.
+// and ours in the middle, which is a working install; a name check would call it a
+// gap. The predicate lives in HandlerCoverage rather than on the command, which is
+// what lets HandlerBehaviourTest run it: it needs no XenForo, and every line the
+// command prints rests on it.
+$coverageCode = stripComments((string) @file_get_contents("$root/HandlerCoverage.php"));
 check(
     'coverage is decided by the trait being in the handler\'s class chain',
-    str_contains($coverageBody, '$this->carriesRule(')
-        && (bool) preg_match('/class_uses\(\s*\$class\s*\)/', methodBody($verifyCode, 'carriesRule'))
-        && (bool) preg_match('/class_parents\(\s*\$handler\s*\)/', methodBody($verifyCode, 'carriesRule')),
+    str_contains($coverageBody, 'HandlerCoverage::carriesRule(')
+        && (bool) preg_match('/class_uses\(/', $coverageCode)
+        && (bool) preg_match('/class_parents\(\s*\$handler\s*\)/', $coverageCode),
     'a check on the resolved class name reports a false gap the moment another addon extends the same handler after this one'
+);
+// class_uses() answers with the traits named in a class body and stops there. A trait
+// composing this addon's would read as a class with no rule on it, which is a
+// coverage gap reported on an install that has none.
+check(
+    'the trait walk follows traits composed through other traits',
+    (bool) preg_match('/function\s+traitsOf/', $coverageCode)
+        && substr_count($coverageCode, 'class_uses(') >= 2,
+    'class_uses() is not transitive, so a single call reports a false gap from the command whose job is saying whether the coverage is real'
+);
+// Nothing detects a vendor handler acquiring a user gate of its own, and this addon
+// replaces the method outright rather than deferring, so it would discard one without
+// a word. CI cannot see this: the vendor is not in the repo. The command is the only
+// place it can be checked, and it passes today and fails the day it matters.
+check(
+    'the coverage phase reports a user gate underneath that this addon would discard',
+    str_contains($coverageBody, 'HandlerCoverage::discardedUserGates(')
+        && (bool) preg_match('/function\s+discardedUserGates/', $coverageCode),
+    'replacing isLoggableUser is right while the abstract handler is its only declaration anywhere, which is an assumption about somebody else\'s code and the same class ADR 0003 records as having already bitten'
+);
+// The two classes entitled to declare the user gate are read off the chain: the one
+// composing our trait, and the root of the hierarchy. Hardcoding XenForo's abstract
+// handler by name would be a fact about one install written into a predicate.
+check(
+    'the entitled user-gate declarers are read off the chain, not named',
+    !str_contains($coverageCode, 'AbstractHandler'),
+    'the root of the parent chain IS the abstract handler, so there is nothing to hardcode'
+);
+// A registered class whose file is missing throws from `new` rather than answering
+// null, and an uncaught throw takes the whole run with it: no remaining content type
+// is asked, neither later phase runs, and no summary is printed. A partial upload is
+// exactly when somebody runs this.
+check(
+    'loading a handler cannot abort the run',
+    (bool) preg_match('/try\s*\{\s*\$handler\s*=\s*\$logger->handler\(/s', $coverageBody)
+        && (bool) preg_match('/catch\s*\(\s*\\\\Throwable/', $coverageBody),
+    'Logger::handler($type, false) answers null only for a content type it does not know; a missing class reaches `new $class` and throws'
 );
 
 // The run creates a thread and has to leave nothing behind. Deleting a thread is
@@ -616,10 +687,10 @@ check(
 $ruleCheckBody = methodBody($verifyCode, 'checkRule');
 // The reason to ask about more than one action. Where the handler underneath has its
 // own rule about the action being probed, that rule answers, the check passes, and
-// this addon's rule was never consulted — the vendor ticket handlers withhold `edit`
-// for its author on their own, so a probe on `edit` alone says nothing about the
-// ticket AC's `status`. Reading the whole set off the rule also stops the probe
-// falling behind a name added to it.
+// this addon's rule was never consulted. The ticket-message handler withholds `edit`
+// from its author on its own, so a probe on `edit` alone would say nothing about
+// `status` and `priority`, which no ticket handler has a rule about. Reading the
+// whole set off the rule also stops the probe falling behind a name added to it.
 check(
     'the rule phase asks about every author-reachable action, not one of them',
     (bool) preg_match(
@@ -633,8 +704,8 @@ check(
 check(
     'the rule phase reads the author through the shared reader',
     str_contains($ruleCheckBody, 'ContentAuthor::userId(')
-        && !str_contains($ruleCheckBody, 'isValidColumn'),
-    'the copy this replaced returned 0 where the reader returns null, which is the difference between "no author" and a member who matches nobody'
+        && !preg_match('/\$content->get\(/', $ruleCheckBody),
+    'the copy this replaced returned 0 where the reader returns null, which is the difference between "no author" and a member who matches nobody. isValidColumn appears here only to tell the reader\'s two null cases apart in the failure message, which is a diagnosis and not a second reading'
 );
 check(
     'the rule phase varies who is asking rather than who wrote the content',
@@ -642,6 +713,83 @@ check(
         && str_contains($ruleCheckBody, '$this->syntheticUser(')
         && substr_count($ruleCheckBody, '$this->syntheticUser(') >= 3,
     'rewriting the content\'s author to test the other branch would edit real content, and leave it edited if a later check throws'
+);
+// The actor rule 1 exists for: a member who holds a moderator record AND wrote the
+// content. Without it nothing asks the question the acceptance criterion is about,
+// and the end-to-end phase structurally cannot, because it refuses to run as a
+// record holder.
+check(
+    'the rule phase builds a record-holding author, not only a record-holding stranger',
+    (bool) preg_match('/\$recordHoldingAuthor\s*=\s*\$this->syntheticUser\(\s*\$authorId\s*,\s*true\s*\)/', $ruleCheckBody),
+    'a record holder who is a stranger to the content never reaches rule 1: the authorship comparison is below the record-holder branch, so only an author can prove it steps aside'
+);
+// "No existing moderator can regress" is provable rather than arguable: build the
+// same handler without the extension and compare the answers. Logger::handler() runs
+// the class through XF::extendClass() and then constructs it, so skipping that one
+// call gives the handler as it was.
+$unpatchedBody = methodBody($verifyCode, 'checkAgainstUnpatched');
+check(
+    'the rule phase compares against the same handler built without the extension',
+    str_contains($ruleCheckBody, '$this->checkAgainstUnpatched(')
+        && str_contains($unpatchedBody, "getContentTypeFieldValue(\$type, 'moderator_log_handler_class')")
+        && str_contains($unpatchedBody, 'new $registeredClass($type)'),
+    'without it the command can only argue that this addon is what changed the answer, and it cannot exercise rule 1 against a real handler at all'
+);
+check(
+    'the comparison covers a record-holding author across the whole probed set',
+    (bool) preg_match('/foreach\s*\(\s*\$probed\s+as\s+\$action\s*\)/', $unpatchedBody)
+        && str_contains($unpatchedBody, '$handler->isLoggable($content, $action, $recordHoldingAuthor)')
+        && str_contains($unpatchedBody, '$unpatched->isLoggable($content, $action, $recordHoldingAuthor)'),
+    'a blanket "not withheld" would be wrong: for edit, title and attachment_deleted the handlers underneath legitimately withhold from a record-holding author, which is the behaviour rule 1 preserves. Equality with the unpatched answer is the assertion that holds either way'
+);
+// A fabricated or out-of-scope sample runs the handler's real code but is not the
+// content the operator pointed at. Every PASS for such a type used to be byte
+// identical to one earned against a real row.
+check(
+    'the sample\'s provenance is reported and carried into this type\'s labels',
+    str_contains($sampleBody, "'provenance' => 'scoped'")
+        && str_contains($sampleBody, "'provenance' => 'fabricated'")
+        && str_contains($ruleCheckBody, "\$sample['provenance']")
+        && (bool) preg_match('/\$label\s*=\s*\$type\s*\.\s*\(/', $ruleCheckBody),
+    'a run that quietly substituted an unsaved entity printed the same PASS lines as one against real content, and neither the exit code nor the output said which had happened'
+);
+// The category argument was taken on trust while node was validated as a forum. It
+// cannot be validated the same way — there is no one category entity, and the two
+// content types filed under a category use unrelated id spaces — so what is checked
+// is that a type with content on the board has content in the category given.
+check(
+    'a category id that matches no content of a category-filed type is a failure',
+    str_contains($ruleCheckBody, '$wrongCategoryScopes')
+        && str_contains($configureBody, "'category-id'"),
+    'ticket_category_id and category_id are different id spaces, so one number is right for both only by coincidence, and a mistyped id used to produce an all-PASS run against fabricated content'
+);
+// The scope column is discovered from the entity's own structure. Tested by name
+// rather than by walking the column list, so a vendor entity carrying both is not
+// narrowed by whichever column it declared first.
+check(
+    'the scope column is chosen by asking for node_id before any category column',
+    (bool) preg_match('/if\s*\(\s*\$entity->isValidColumn\(\s*\'node_id\'\s*\)\s*\)/', $sampleBody),
+    'a foreach over structure()->columns lets a vendor\'s declaration order decide which scope narrows the lookup'
+);
+// The ACP list is a plain finder over the table, so the actor and date row covers it.
+// The thread's own "Moderator actions" view is not: the repository selects on the
+// discussion columns, which are filled separately, and a 0 there is an entry visible
+// in the ACP and nowhere else. The acceptance criterion names both views.
+$endToEndBody = methodBody($verifyCode, 'checkEndToEnd');
+check(
+    'the end-to-end phase checks the columns the thread\'s moderator actions view reads',
+    str_contains($endToEndBody, 'discussion_content_type')
+        && str_contains($endToEndBody, 'discussion_content_id'),
+    'ModeratorLogRepository::findLogsForDiscussion filters on those two columns and on nothing the ACP list reads'
+);
+// $out is dereferenced by every protected helper and is set only once execute() runs.
+// Typed, an unset read is an Error naming the property instead of a null deref
+// somewhere downstream.
+check(
+    'the command\'s state is typed',
+    (bool) preg_match('/protected\s+OutputInterface\s+\$out\s*;/', $verifyCode)
+        && (bool) preg_match('/protected\s+int\s+\$failures\s*=\s*0\s*;/', $verifyCode),
+    'the codebase types its parameters and returns, and these two are the only untyped state in the addon'
 );
 
 if ($failures > 0) {

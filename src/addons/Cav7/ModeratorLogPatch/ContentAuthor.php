@@ -12,8 +12,16 @@ use XF\Mvc\Entity\Entity;
  * author against the acting member, so 0 would let "nobody" match an actor with no
  * id and withhold every entry about guest-written content. Kept in one place because
  * the two copies of this walk had already drifted on exactly that value.
+ *
+ * One registered content type reads "author" as something else. XenForo's member
+ * handler logs actions taken against a member and fills `content_user_id` from that
+ * member's own id, so for `user` this returns the subject of the moderation rather
+ * than somebody who wrote something, and the rule above reads "the actor is the
+ * subject" where it says "the actor is the author". It is inert: no action logged
+ * against a member is author-reachable. See
+ * docs/adr/0006-two-cases-the-authorship-axis-cannot-express.md.
  */
-class ContentAuthor
+final class ContentAuthor
 {
     /**
      * The content's author, or null when the entity does not carry one.

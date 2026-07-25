@@ -60,10 +60,11 @@ check(
     'an author-reachable action performed on content the actor did not write is moderation'
 );
 
-// Rule 1, and the promise that nothing regresses. For a member who holds a
-// moderator record the rule never withholds, whatever the action or the authorship,
-// so what they log is decided entirely by the handler underneath — which is what
-// XenForo logged for them before this addon existed.
+// Rule 1 (the three branches are numbered in AuthorshipRule's class docblock), and
+// the promise that nothing regresses. For a member who holds a moderator record the
+// rule never withholds, whatever the action or the authorship, so what they log is
+// decided entirely by the handler underneath — which is what XenForo logged for them
+// before this addon existed.
 check(
     'a moderator-record holder acting on their own content is never withheld here',
     AuthorshipRule::withholdsEntry('edit', 41, true, 41) === false,
@@ -73,12 +74,31 @@ check(
 // Resetting a poll and deleting one are the same button behind the same single
 // permission check: the poll controller asks canDelete() once and then branches on
 // a form field to either the deleter or the resetter. So a thread starter who can
-// delete their own poll can reset it, and the two actions have to answer alike.
+// delete their own poll can reset it. XenForo then treats the two differently — the
+// deleter service skips its own log call for the author and the resetter service
+// has no such guard — which is why poll_reset is the name this list is load-bearing
+// for and poll_delete is belt-and-braces. Here they answer alike, which is the
+// point: the rule does not inherit the vendor's inconsistency.
 check(
     'resetting your own poll is not logged, exactly as deleting it is not',
     AuthorshipRule::withholdsEntry('poll_reset', 41, false, 41) === true
         && AuthorshipRule::withholdsEntry('poll_delete', 41, false, 41) === true,
     'both come out of one canDelete() check, which passes the thread author while nobody has voted'
+);
+
+// The spam check runs during the member's own save and sends their content back to
+// the approval queue, which the handlers resolve to `unapprove`. So a member can
+// produce it on their own content with no permission over anybody else's, and until
+// ADR 0005 the log recorded them as having unapproved their own post.
+check(
+    'tripping the spam filter on your own content is not logged as unapproving it',
+    AuthorshipRule::withholdsEntry('unapprove', 41, false, 41) === true,
+    'the same save resolves the message change to `edit` and withholds it, so the entry appeared alone: an action the member never took'
+);
+check(
+    'somebody else unapproving your content is still logged',
+    AuthorshipRule::withholdsEntry('unapprove', 41, false, 77) === false,
+    'sending another member\'s content back to the queue is moderation, and adding the name to the list must not touch that'
 );
 
 // XenForo's own post handler cases 'edit' and 'attachment_deleted' together and
@@ -96,8 +116,8 @@ check(
     'reaching another member\'s attachment took a permission over their content'
 );
 
-// The full author-reachable set from ADR 0001 and ADR 0004, each one withheld from
-// its own author. Asserted item by item rather than as a list comparison, so a name
+// The full author-reachable set from ADR 0001, ADR 0004 and ADR 0005, each one
+// withheld from its own author. Asserted item by item rather than as a list comparison, so a name
 // dropped from the constant fails with the action that went missing.
 foreach ([
     'edit',
@@ -106,6 +126,7 @@ foreach ([
     'prefix',
     'custom_fields_edit',
     'delete_soft',
+    'unapprove',
     'status',
     'priority',
     'poll_create',
@@ -122,7 +143,10 @@ foreach ([
 
 // The other side of the same list. These are the actions that cannot be reached
 // without authority over another member's content, so the actor being the author is
-// beside the point and every one of them logs.
+// beside the point and every one of them logs. `approve` is here on purpose and not
+// beside `unapprove`: every path that puts content back to visible needs authority
+// over it, so the pair is asymmetric because the spam check is. ADR 0005 records the
+// check.
 foreach ([
     'stick',
     'unstick',
@@ -132,7 +156,6 @@ foreach ([
     'discussion_type',
     'index_state',
     'approve',
-    'unapprove',
     'undelete',
     'delete_hard',
     'spam_clean',
@@ -140,7 +163,7 @@ foreach ([
     'rejected',
     'warning_given',
     'reassign',
-    'merge',
+    'merge_target',
     'feature',
 ] as $action) {
     check(

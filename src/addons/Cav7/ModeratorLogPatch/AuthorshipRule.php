@@ -14,31 +14,54 @@ use function in_array;
  * record, XenForo's entire existing behaviour — in force. See
  * docs/adr/0001-log-by-authorship-not-by-permission.md.
  *
+ * Three branches, numbered here because the tests and the verification command cite
+ * them by number and this is the only place the numbers are defined:
+ *
+ * 1. A member who holds a **moderator record** is never withheld. The handler
+ *    underneath decides, exactly as it did before this addon, so no existing
+ *    moderator can regress.
+ * 2. An **author-reachable action** is withheld when the actor is the content's
+ *    author, and only then.
+ * 3. Anything outside the author-reachable set is never withheld: reaching it took
+ *    authority over somebody else's content, so it is moderation whoever wrote the
+ *    content.
+ *
  * Pure: no XenForo, no database, no I/O. The trait that sits on each handler reads
- * the actor and the content and calls this; every decision lives here.
+ * the actor and the content and calls this; every decision about which actions
+ * lives here. Whether the actor is a member at all is decided separately, in the
+ * trait's user-level gate.
  */
-class AuthorshipRule
+final class AuthorshipRule
 {
     /**
      * The **author-reachable action**s: the logged actions a member can produce on
      * their own content holding only own-content permissions. For these, and only
      * these, the action name alone does not say whether moderation happened.
      *
-     * Every other logged action — stick, unstick, lock, unlock, move, discussion
-     * type and search indexing changes, approve, unapprove, undelete, hard delete,
-     * spam clean, user approve and reject, warnings, reassign, merge, feature —
-     * needs authority over somebody else's content before it can be reached, so it
-     * is moderation whoever wrote the content.
+     * Everything outside the list is a logged action that needs authority over
+     * somebody else's content before it can be reached at all, which is most of
+     * what XenForo and the vendor handlers log: state and visibility changes,
+     * moves and merges, approvals and rejections, warnings, features, reply bans,
+     * assignment. No list of those names is kept, here or anywhere. Membership of
+     * this one is the decision; the complement is whatever is left, and writing it
+     * down would only be a second list to keep in step.
      *
      * These are the resolved action names XenForo writes to the log, not entity
      * field names: a prefix change is logged as `prefix` (the field is `prefix_id`)
      * and a custom-field change as `custom_fields_edit` (the field is
      * `custom_fields`).
      *
-     * `attachment_deleted` and `poll_reset` were added after the first ten were
-     * settled, bringing the list to twelve;
-     * docs/adr/0004-two-more-author-reachable-actions.md records the evidence for
-     * each.
+     * Three of the four poll names cannot in fact be produced by an author today:
+     * the creator, editor and deleter services each guard their own log call with
+     * `$content->User->user_id != \XF::visitor()->user_id`, and only the resetter
+     * does not. They are kept anyway, so that a service losing its guard cannot
+     * start logging self-actions; `poll_reset` is the one the list is load-bearing
+     * for.
+     *
+     * The ADRs record the evidence per name:
+     * docs/adr/0001-log-by-authorship-not-by-permission.md for the first set,
+     * docs/adr/0004-two-more-author-reachable-actions.md for `attachment_deleted`
+     * and `poll_reset`, and docs/adr/0005 for `unapprove`.
      *
      * @var list<string>
      */
@@ -49,6 +72,7 @@ class AuthorshipRule
         'prefix',
         'custom_fields_edit',
         'delete_soft',
+        'unapprove',
         'status',
         'priority',
         'poll_create',

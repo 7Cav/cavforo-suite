@@ -18,17 +18,15 @@ use XF\Mvc\Entity\Entity;
  *
  * Both overrides are thin. The decision is in {@see AuthorshipRule}, which the
  * ordinary test run covers because it needs nothing from XenForo, and who wrote the
- * content comes from {@see ContentAuthor}, which the verification command reads it
+ * content comes from {@see ContentAuthor}, which the verification command reads
  * through as well. What lives here is the actor, and deferring.
- *
- * @method bool isLoggable(Entity $content, string $action, User $actor)
  */
 trait AuthorshipLogging
 {
     /**
      * The user-level gate, relaxed from "holds a moderator record" to "is logged
-     * in". This is the gate the issue is about: the handler's own answer is
-     * consulted once, before all three of the logger's entry points, and a false
+     * in". This is the gate the issue is about: each of the logger's three entry
+     * points consults it once, on the way in and before anything else, and a false
      * throws the entry away with no exception and no warning.
      *
      * Not deferred, because the parent's answer is the thing being replaced —

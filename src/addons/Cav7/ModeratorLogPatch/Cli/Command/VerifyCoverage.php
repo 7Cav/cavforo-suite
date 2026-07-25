@@ -2,20 +2,19 @@
 
 namespace Cav7\ModeratorLogPatch\Cli\Command;
 
-use Cav7\ModeratorLogPatch\AuthorshipLogging;
 use Cav7\ModeratorLogPatch\AuthorshipRule;
 use Cav7\ModeratorLogPatch\ContentAuthor;
+use Cav7\ModeratorLogPatch\HandlerCoverage;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use XF\Entity\Forum;
 use XF\Entity\Thread;
 use XF\Entity\User;
 use XF\Mvc\Entity\Entity;
 use XF\Service\Thread\CreatorService;
-
-use function in_array;
 
 /**
  * Issue #187 — checks that this addon is actually in force on the install it is
@@ -28,10 +27,12 @@ use function in_array;
  * addon exists to remove, and one no unit test can see. This command is the check
  * that can see it.
  *
- * It hardcodes no content types: the list comes off the install, from the
- * `moderator_log_handler_class` content-type field. It names no third-party class
- * and no forum, member or category of ours either — the three it exercises are
- * arguments.
+ * The coverage and rule phases hardcode no content types: the list comes off the
+ * install, from the `moderator_log_handler_class` content-type field, and they name
+ * no third-party class and no forum, member or category of ours either. The
+ * end-to-end phase is the exception and is written as one: it moderates a thread,
+ * because a thread is what the issue was reported on, so `thread` and XenForo's own
+ * thread classes appear there by name.
  *
  * Run:
  *   php cmd.php cav7-moderator-log-patch:verify <node> <user> <category>
@@ -45,14 +46,35 @@ class VerifyCoverage extends Command
     protected const PROBE_PREFIX = '[Cav7/ModeratorLogPatch verify] ';
 
     /**
-     * @var int
+     * One name from outside the author-reachable set, asked of every handler.
+     * `stick` is the name the issue was reported on, which is why it is this one,
+     * and the same reason the end-to-end phase below sticks a thread.
      */
-    protected $failures = 0;
+    protected const OUTSIDE_SET_PROBE = 'stick';
+
+    protected int $failures = 0;
+
+    protected OutputInterface $out;
+
+    /** Node id the operator named, for the content types filed under a node. */
+    protected int $nodeId = 0;
+
+    /** Category id the operator named, for the content types filed under a category. */
+    protected int $categoryId = 0;
 
     /**
-     * @var OutputInterface
+     * Per content type category ids, overriding the argument.
+     *
+     * @var array<string, int>
      */
-    protected $out;
+    protected array $categoryByType = [];
+
+    /**
+     * Content types whose rule-phase sample was not real board content, and why.
+     *
+     * @var array<string, string>
+     */
+    protected array $sampleNotes = [];
 
     protected function configure(): void
     {
@@ -75,6 +97,17 @@ class VerifyCoverage extends Command
                 'category',
                 InputArgument::REQUIRED,
                 'Category id to read sample content from, for the content types that are filed under one. Read-only.'
+            )
+            // Two content types filed under a category are filed under two different
+            // id spaces: NF/Tickets keys on ticket_category_id and NF/Calendar on
+            // category_id, and nothing relates the two. One number is right for both
+            // only by coincidence, so the argument stays for the common case and this
+            // is how an operator names the rest.
+            ->addOption(
+                'category-id',
+                null,
+                InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
+                'Category id for one content type, as <content_type>=<id>, overriding the category argument for it. Repeatable.'
             );
     }
 
@@ -107,9 +140,29 @@ class VerifyCoverage extends Command
             return 1;
         }
 
+        $this->nodeId = (int) $input->getArgument('node');
+        $this->categoryId = (int) $input->getArgument('category');
+
+        foreach ((array) $input->getOption('category-id') as $pair) {
+            if (!preg_match('/^([a-z0-9_]+)=(\d+)$/i', (string) $pair, $match)) {
+                $output->writeln(
+                    "<error>--category-id expects <content_type>=<id>, got '$pair'.</error>"
+                );
+                return 1;
+            }
+            $this->categoryByType[$match[1]] = (int) $match[2];
+        }
+
         $handlers = $this->checkCoverage();
-        $this->checkRule($handlers, (int) $input->getArgument('node'), (int) $input->getArgument('category'));
+        $this->checkRule($handlers);
         $this->checkEndToEnd($forum, $actor);
+
+        if ($this->sampleNotes) {
+            $output->writeln("\n<comment>Content types whose sample was not real content in the scope given</comment>");
+            foreach ($this->sampleNotes as $type => $note) {
+                $output->writeln("  $type: $note");
+            }
+        }
 
         if ($this->failures > 0) {
             $output->writeln("\n<error>{$this->failures} check(s) failed.</error>");
@@ -145,9 +198,21 @@ class VerifyCoverage extends Command
         $handlers = [];
 
         foreach ($types as $type) {
-            $handler = $logger->handler($type, false);
+            // A registered class whose file is missing throws from `new` rather than
+            // answering null, and an uncaught throw here takes the rest of the run
+            // with it: the remaining content types are never asked, neither later
+            // phase runs, and no summary is printed. A partial upload or a botched
+            // vendor upgrade is exactly when somebody runs this.
+            $handler = null;
+            $loadError = 'the registered handler class could not be loaded';
+            try {
+                $handler = $logger->handler($type, false);
+            } catch (\Throwable $e) {
+                $loadError = \get_class($e) . ': ' . $e->getMessage();
+            }
+
             if (!$handler) {
-                $this->check("$type resolves to a handler", false, 'the registered handler class could not be loaded');
+                $this->check("$type resolves to a handler", false, $loadError);
                 continue;
             }
 
@@ -155,8 +220,22 @@ class VerifyCoverage extends Command
 
             $this->check(
                 sprintf('%s resolves through this addon (%s)', $type, \get_class($handler)),
-                $this->carriesRule($handler),
+                HandlerCoverage::carriesRule($handler),
                 'the class extension for this handler is missing, inactive, or registered against a name XenForo resolves differently'
+            );
+
+            // The user gate is replaced outright rather than deferred to, which is
+            // right while the abstract handler is its only declaration anywhere in
+            // the install. That is an assumption about somebody else's code, and NF
+            // ships updates to both addons. If one adds a gate of its own, this
+            // addon throws it away with no error, and every other check here still
+            // passes.
+            $discarded = HandlerCoverage::discardedUserGates($handler);
+            $this->check(
+                sprintf('%s: no user gate underneath is being discarded', $type),
+                $discarded === [],
+                'these classes declare ' . HandlerCoverage::USER_GATE . '() and this addon replaces it without deferring, so their rule about who may write to the log is gone: '
+                    . implode(', ', $discarded)
             );
         }
 
@@ -184,9 +263,14 @@ class VerifyCoverage extends Command
      * it, and covering the whole set means no handler's own rules can cover all of
      * what is asked.
      *
+     * The handler underneath is built a second time without the extension and asked
+     * the same questions, which is the only way this phase can show that the answers
+     * changed because of this addon, and the only way it can exercise the promise
+     * that a member holding a moderator record is answered exactly as before.
+     *
      * @param array<string, object> $handlers
      */
-    protected function checkRule(array $handlers, int $nodeId, int $categoryId): void
+    protected function checkRule(array $handlers): void
     {
         $this->out->writeln("\n<comment>The rule, per content type</comment>");
         $this->out->writeln(
@@ -194,39 +278,82 @@ class VerifyCoverage extends Command
             . implode(', ', AuthorshipRule::AUTHOR_REACHABLE_ACTIONS)
         );
 
+        $app = \XF::app();
         $guest = $this->syntheticUser(0, false);
+        $wrongCategoryScopes = [];
 
         foreach ($handlers as $type => $handler) {
-            $content = $this->sampleContent($type, $nodeId, $categoryId);
-            if (!$content) {
+            $sample = $this->sampleContent($type);
+            if (!$sample) {
                 $this->check("$type has content to ask about", false, 'no entity of this content type could be built or found');
                 continue;
             }
 
+            $content = $sample['entity'];
+
+            // A fabricated or board-wide sample still runs the handler's real code,
+            // but it is not the content the operator asked about. Said out loud, and
+            // carried into every label for this type, because a PASS earned against
+            // an unsaved entity used to be byte-identical to one earned against a
+            // real row.
+            if ($sample['provenance'] !== 'scoped') {
+                $this->sampleNotes[$type] = $sample['note'];
+                if ($sample['provenance'] === 'board' && $sample['scope'] === 'category') {
+                    $wrongCategoryScopes[] = $type;
+                }
+            }
+            $label = $type . ($sample['provenance'] === 'scoped' ? '' : " [{$sample['provenance']} sample]");
+
             $authorId = ContentAuthor::userId($content);
             if ($authorId === null) {
                 // Sample content with no author cannot answer the authorship half.
-                // Reported rather than skipped quietly.
-                $this->check("$type sample content has an author", false, 'every registered handler logs content with an author; this sample has none');
+                // Reported rather than skipped quietly, and the two ways of having
+                // no author are told apart, because the reader is a diagnosis.
+                $this->check(
+                    "$label sample content has a member author",
+                    false,
+                    $content->isValidColumn('user_id')
+                        ? 'this sample is guest-written (user_id 0), so there is no member to compare the actor against'
+                        : 'this content type carries no user_id column, so there is nothing here the rule can read as an author'
+                );
                 continue;
+            }
+
+            // For one registered content type the "author" is not an author. The
+            // member handler logs actions taken against a member, and fills
+            // content_user_id from that member's own id, so the rule reads "the
+            // actor is the subject" where it says "the actor is the author". It is
+            // inert — no action logged against a member is in the author-reachable
+            // set — but the probe below cannot say which of the two it proved, so it
+            // says neither. See docs/adr/0006.
+            if ($content->structure()->primaryKey === 'user_id') {
+                $this->out->writeln(
+                    "  <comment>NOTE</comment> $type: the content is a member, so \"the author\" here is the member being moderated, not somebody who wrote something. The authorship probe below is inert for this type."
+                );
             }
 
             $author = $this->syntheticUser($authorId, false);
             $stranger = $this->syntheticUser($authorId + 1, false);
             $recordHolder = $this->syntheticUser($authorId + 1, true);
+            // The fifth actor, and the only one that asks the question rule 1 exists
+            // to answer: a member who holds a moderator record acting on content
+            // they wrote. Without it nothing here exercises rule 1 against a real
+            // handler, and the end-to-end phase structurally cannot, because it
+            // refuses to run as a record holder.
+            $recordHoldingAuthor = $this->syntheticUser($authorId, true);
 
             $this->check(
-                "$type: a guest writes nothing",
+                "$label: a guest writes nothing",
                 $handler->isLoggableUser($guest) === false,
                 'the cron runner and the system actors run as a guest; opening the gate to them would log automated work as moderation'
             );
             $this->check(
-                "$type: a member with no moderator record passes the user gate",
+                "$label: a member with no moderator record passes the user gate",
                 $handler->isLoggableUser($author) === true,
                 'this is the gate the addon opens; failing here means the extension is not in force for this content type'
             );
             $this->check(
-                "$type: a member with a moderator record still passes the user gate",
+                "$label: a member with a moderator record still passes the user gate",
                 $handler->isLoggableUser($recordHolder) === true,
                 'nobody who was logged before may stop being logged'
             );
@@ -235,14 +362,13 @@ class VerifyCoverage extends Command
             // Not every content type can produce a `stick`; what the probe establishes
             // is that the rule hands a name from outside the set to the handler
             // underneath whoever wrote the content, and that the handler then logs it.
-            // `stick` is the name the issue was reported on, which is why it is this
-            // one — and the same reason the end-to-end phase below sticks a thread.
             $this->check(
                 sprintf(
-                    "%s: 'stick', from outside the author-reachable set, is not withheld even from the author",
-                    $type
+                    "%s: '%s', from outside the author-reachable set, is not withheld even from the author",
+                    $label,
+                    self::OUTSIDE_SET_PROBE
                 ),
-                $handler->isLoggable($content, 'stick', $author) === true,
+                $handler->isLoggable($content, self::OUTSIDE_SET_PROBE, $author) === true,
                 'an action outside the set cannot be reached without authority over somebody else\'s content, so the rule has to hand it to the handler underneath'
             );
 
@@ -260,7 +386,7 @@ class VerifyCoverage extends Command
             $this->check(
                 sprintf(
                     '%s: every author-reachable action by the author is withheld (%d asked)',
-                    $type,
+                    $label,
                     count(AuthorshipRule::AUTHOR_REACHABLE_ACTIONS)
                 ),
                 $notWithheld === [],
@@ -268,18 +394,112 @@ class VerifyCoverage extends Command
                     ? ''
                     : 'a member tidying up their own content is not moderation, and these were still logged: ' . implode(', ', $notWithheld)
             );
+            // The addon's contract for a stranger is deferral, not a yes, so a
+            // handler that withholds an action from everybody is answering correctly
+            // and lands here. The type list is read off the install by design, so a
+            // ninth handler with such a rule is a red run that is not a gap; read the
+            // handler before reading this as one.
             $this->check(
                 sprintf(
                     '%s: every author-reachable action by somebody else is logged (%d asked)',
-                    $type,
+                    $label,
                     count(AuthorshipRule::AUTHOR_REACHABLE_ACTIONS)
                 ),
                 $notLogged === [],
                 $notLogged === []
                     ? ''
-                    : 'reaching another member\'s content took a permission over it, which makes this moderation, and these were withheld: ' . implode(', ', $notLogged)
+                    : 'reaching another member\'s content took a permission over it, which makes this moderation, and these were withheld — unless the handler underneath withholds one of them from everybody, which is a correct deferral and not a gap: ' . implode(', ', $notLogged)
             );
+
+            $this->checkAgainstUnpatched($label, $type, $handler, $content, $author, $recordHoldingAuthor);
         }
+
+        // The node argument is validated as a forum before any phase runs. The
+        // category argument was taken on trust, and it cannot be validated the same
+        // way: there is no one category entity, and the two content types filed
+        // under a category use unrelated id spaces. What can be said is that a
+        // content type with content on the board and none in the category given
+        // means the number is wrong for that type, which is the mistyped-id case and
+        // used to produce an all-PASS run against fabricated content.
+        $this->check(
+            'the category id given matches content of every content type filed under a category',
+            $wrongCategoryScopes === [],
+            'these types have content on the board but none in category ' . $this->categoryId
+                . ', so the rule phase did not read the content you named: ' . implode(', ', $wrongCategoryScopes)
+                . '. Name one per type with --category-id <content_type>=<id>'
+        );
+    }
+
+    /**
+     * The same handler built without the extension, asked the same questions.
+     *
+     * `Logger::handler()` runs the registered class through `XF::extendClass()` and
+     * then constructs it; skipping that one call gives the handler as it was before
+     * this addon existed. The class name comes off the content-type field, so
+     * nothing here names a vendor class.
+     *
+     * Two things only this comparison can show. That the extension is what opened
+     * the user gate for a member with no moderator record, rather than the handler
+     * having answered that way all along. And that a member who does hold a record
+     * is answered identically by both, which is the acceptance criterion rule 1
+     * exists for and the one nothing else in this command exercises: the end-to-end
+     * phase refuses to run as a record holder, and every other actor here holds none.
+     */
+    protected function checkAgainstUnpatched(
+        string $label,
+        string $type,
+        object $handler,
+        Entity $content,
+        User $author,
+        User $recordHoldingAuthor
+    ): void
+    {
+        $registeredClass = (string) \XF::app()->getContentTypeFieldValue($type, 'moderator_log_handler_class');
+
+        $unpatched = null;
+        $why = "the content-type field names '$registeredClass', which does not exist";
+        try {
+            if ($registeredClass !== '' && class_exists($registeredClass)) {
+                $unpatched = new $registeredClass($type);
+            }
+        } catch (\Throwable $e) {
+            $why = \get_class($e) . ': ' . $e->getMessage();
+        }
+
+        $this->check(
+            "$label: the handler underneath can be built without the extension",
+            $unpatched !== null,
+            'without it this run cannot show that this addon is what changed the answer, nor exercise the promise that a moderator-record holder is unaffected: ' . $why
+        );
+        if (!$unpatched) {
+            return;
+        }
+
+        $this->check(
+            "$label: the extension is what opened the user gate",
+            $unpatched->isLoggableUser($author) === false && $handler->isLoggableUser($author) === true,
+            'unpatched, this handler has to refuse a member who holds no moderator record. If it already accepted them then the gate above was never this addon\'s to open, and nothing here has tested it'
+        );
+
+        $probed = array_merge(AuthorshipRule::AUTHOR_REACHABLE_ACTIONS, [self::OUTSIDE_SET_PROBE]);
+        $changed = [];
+        foreach ($probed as $action) {
+            $patchedSays = $handler->isLoggable($content, $action, $recordHoldingAuthor);
+            $unpatchedSays = (bool) $unpatched->isLoggable($content, $action, $recordHoldingAuthor);
+            if ($patchedSays !== $unpatchedSays) {
+                $changed[] = $action;
+            }
+        }
+
+        $this->check(
+            sprintf(
+                '%s: a member who holds a moderator record is answered exactly as the unpatched handler answers them (%d actions, on their own content)',
+                $label,
+                count($probed)
+            ),
+            $changed === [],
+            'rule 1 steps aside for a record holder so the handler underneath decides, exactly as it did before this addon. These answers differ, so somebody who was being logged correctly has changed: ' . implode(', ', $changed)
+        );
     }
 
     /**
@@ -355,7 +575,8 @@ class VerifyCoverage extends Command
             // is. Asserting it here would fail every green run, so it is not selected
             // — check it from a browser action if you need it.
             $row = $app->db()->fetchRow(
-                'SELECT user_id, log_date FROM xf_moderator_log
+                'SELECT user_id, log_date, discussion_content_type, discussion_content_id
+                    FROM xf_moderator_log
                     WHERE content_type = ? AND content_id = ? ORDER BY moderator_log_id LIMIT 1',
                 ['thread', $threadId]
             );
@@ -363,6 +584,17 @@ class VerifyCoverage extends Command
                 'the entry names the member who acted and when',
                 $row && (int) $row['user_id'] === (int) $actor->user_id && (int) $row['log_date'] > 0,
                 'an entry that does not say who did it is not an audit trail'
+            );
+            // The ACP list is a plain finder over the table, so the row above covers
+            // it. The thread's own "Moderator actions" view is not: the repository
+            // selects on the discussion columns instead, and a 0 or an empty string
+            // there is an entry that shows in the ACP and nowhere else.
+            $this->check(
+                'the entry is reachable from the thread\'s moderator actions view',
+                $row
+                    && (string) $row['discussion_content_type'] === 'thread'
+                    && (int) $row['discussion_content_id'] === $threadId,
+                'the thread view is found through discussion_content_type and discussion_content_id, which are filled separately from the content columns the ACP list reads'
             );
         } finally {
             if ($threadId) {
@@ -372,47 +604,27 @@ class VerifyCoverage extends Command
     }
 
     /**
-     * Whether this addon's rule is anywhere in $handler's class chain.
-     *
-     * Asked of the trait rather than of the class name. The name only tells you
-     * which extension XenForo put last, and another addon extending the same
-     * handler after this one is a working install; the trait is the thing that has
-     * to be there.
-     */
-    protected function carriesRule(object $handler): bool
-    {
-        $chain = array_merge(
-            [\get_class($handler)],
-            array_values(class_parents($handler) ?: [])
-        );
-
-        foreach ($chain as $class) {
-            if (in_array(AuthorshipLogging::class, class_uses($class) ?: [], true)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * A content entity of $type to ask the gates about, preferring real content and
-     * narrowing to the scopes the operator named where the content type has one.
+     * A content entity of $type to ask the gates about, and where it came from.
      *
      * The scope column is discovered from the entity's own structure rather than
      * written down: a content type filed under a node is looked up in the node
-     * given, one filed under a category in the category given. A content type filed
-     * under neither — a post, a profile post or its comments, a member, a ticket
-     * message — has no column to narrow on, so the newest row of that type on the
-     * board is read instead. Everything here is read-only in every case; the scope
-     * arguments bound which content the operator's own board contributes, not
+     * given, one filed under a category in the category for that type. A content
+     * type filed under neither — a post, a profile post or its comments, a member, a
+     * ticket message — has no column to narrow on, so the newest row of that type on
+     * the board is read instead. Everything here is read-only in every case; the
+     * scope arguments bound which content the operator's own board contributes, not
      * whether anything is touched.
      *
-     * Only an empty result falls back to an unsaved entity of the right class. That
-     * still runs the real handler's real code — both gates read the actor and the
-     * content's author and nothing else — it just cannot say the content exists.
+     * Three provenances, and the caller reports which. `scoped` is real content in
+     * the scope named. `board` is real content of the right type from outside it,
+     * which is what an id from the wrong space produces. `fabricated` is an unsaved
+     * entity, used only when the board has no content of the type at all: it still
+     * runs the real handler's real code, because both gates read the actor and the
+     * content's author and nothing else, but it cannot say the content exists.
+     *
+     * @return array{entity: Entity, provenance: string, scope: string, note: string}|null
      */
-    protected function sampleContent(string $type, int $nodeId, int $categoryId): ?Entity
+    protected function sampleContent(string $type): ?array
     {
         $app = \XF::app();
 
@@ -422,46 +634,75 @@ class VerifyCoverage extends Command
         }
 
         $entity = $app->em()->create($entityClass);
-        $columns = $entity->structure()->columns;
 
+        // Tested by name rather than by walking the column list in declaration
+        // order: a vendor entity carrying both would otherwise be narrowed by
+        // whichever column it happened to declare first.
+        $scope = 'board';
         $scopeColumn = null;
         $scopeValue = null;
-        foreach ($columns as $name => $definition) {
-            if ($name === 'node_id') {
-                $scopeColumn = $name;
-                $scopeValue = $nodeId;
-                break;
+        if ($entity->isValidColumn('node_id')) {
+            $scope = 'node';
+            $scopeColumn = 'node_id';
+            $scopeValue = $this->nodeId;
+        } else {
+            foreach (array_keys($entity->structure()->columns) as $name) {
+                if ($name === 'category_id' || substr($name, -12) === '_category_id') {
+                    $scope = 'category';
+                    $scopeColumn = $name;
+                    $scopeValue = $this->categoryByType[$type] ?? $this->categoryId;
+                    break;
+                }
             }
-            if (substr($name, -12) === '_category_id' || $name === 'category_id') {
-                $scopeColumn = $name;
-                $scopeValue = $categoryId;
-                break;
+        }
+
+        $primaryKey = $entity->structure()->primaryKey;
+
+        if ($scopeColumn !== null) {
+            $finder = $app->finder($entityClass)->where($scopeColumn, $scopeValue);
+            if (\is_string($primaryKey)) {
+                $finder->order($primaryKey, 'DESC');
+            }
+            $found = $finder->fetchOne();
+            if ($found) {
+                return [
+                    'entity' => $found,
+                    'provenance' => 'scoped',
+                    'scope' => $scope,
+                    'note' => "$scopeColumn $scopeValue",
+                ];
             }
         }
 
         $finder = $app->finder($entityClass);
-        if ($scopeColumn !== null) {
-            $finder->where($scopeColumn, $scopeValue);
-        }
-
-        $primaryKey = $entity->structure()->primaryKey;
         if (\is_string($primaryKey)) {
             $finder->order($primaryKey, 'DESC');
         }
-
         $found = $finder->fetchOne();
         if ($found) {
-            return $found;
+            return [
+                'entity' => $found,
+                'provenance' => $scopeColumn === null ? 'scoped' : 'board',
+                'scope' => $scope,
+                'note' => $scopeColumn === null
+                    ? 'newest on the board; this content type is filed under neither a node nor a category'
+                    : "nothing with $scopeColumn $scopeValue, so the newest of this type anywhere on the board was read instead",
+            ];
         }
 
-        // Nothing in scope. An unsaved entity still carries the content type's real
-        // class, so the handler's own override runs; give it an author so the
-        // authorship half has something to compare.
+        // Nothing of this type anywhere. An unsaved entity still carries the content
+        // type's real class, so the handler's own override runs; give it an author so
+        // the authorship half has something to compare.
         if ($entity->isValidColumn('user_id')) {
             $entity->setTrusted('user_id', 1);
         }
 
-        return $entity;
+        return [
+            'entity' => $entity,
+            'provenance' => 'fabricated',
+            'scope' => $scope,
+            'note' => 'the board holds no content of this type, so the checks below ran against an unsaved entity: they exercise the handler\'s code, not this board\'s content',
+        ];
     }
 
     /**
@@ -496,8 +737,12 @@ class VerifyCoverage extends Command
     /**
      * Removes the throwaway thread and every log entry about it.
      *
-     * The log rows go last on purpose: deleting a thread is itself a logged action,
-     * so clearing them first leaves the `delete_hard` entry this run caused behind.
+     * The log rows go last on purpose, and the invariant is that no entry about this
+     * thread outlives the run whether or not the delete writes one. Under the CLI it
+     * does not: the delete runs outside `XF::asVisitor()`, so the actor is the CLI
+     * guest and this addon's own user gate refuses `user_id` 0. Ordered defensively
+     * anyway, because a hard delete is a logged action and anything that gives the
+     * delete a real actor would leave its `delete_hard` entry behind.
      */
     protected function removeProbeThread(int $threadId): void
     {
