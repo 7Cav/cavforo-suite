@@ -32,15 +32,14 @@
  * Other types are count-checked only; the report says which is which, so
  * nothing is skipped silently.
  *
- * That walk runs from _output, which can only see a type that has been exported
- * at least once, since _output/<type>/ appears only when the type holds a record.
- * A second pass runs from _data to cover the rest: any _data file holding records
+ * That walk runs from _output, which only ever reaches a type that has been
+ * exported at least once (see docs/addon-format.md on what each tree holds). A
+ * second pass runs from _data to cover the rest: any _data file holding records
  * that no _output directory claimed was never exported, and fails. It is what
  * catches a type going from zero records to its first with xf-addon:export run
  * and xf-dev:export not, and an addon that lost its whole _output tree while
- * _data still holds records. An empty _data file is the normal state of an
- * unused type and is not a finding, so an addon with no records to miss still
- * skips.
+ * _data still holds records. An empty _data file is not a finding, so an addon
+ * with no records to miss still skips.
  *
  * This is a structural heuristic, not a re-implementation of xf-addon:export. It
  * catches the realistic mistakes (forgot to export, hand-edited one side); the
@@ -102,11 +101,23 @@ $collectItems = static function (string $root): array {
 $errors = [];
 $report = [];
 
+// Open a _data file, recording the same failure whichever pass asked for it.
+// Returns false once the error is recorded, so callers only skip.
+$loadDataDoc = static function (string $xmlFile, string $dataBase, array &$errors) {
+    $doc = @simplexml_load_file($xmlFile);
+    if ($doc === false) {
+        $errors[] = "_data/$dataBase.xml is not readable as XML";
+    }
+    return $doc;
+};
+
 // Every _data basename some _output type dir claimed, filled in by the walk
 // below and read by the _data-side pass after it.
 $dataFilesSeen = [];
 
-foreach ($hasOutputTree ? glob("$outRoot/*", GLOB_ONLYDIR) : [] as $typeDir) {
+$typeDirs = $hasOutputTree ? glob("$outRoot/*", GLOB_ONLYDIR) : [];
+
+foreach ($typeDirs as $typeDir) {
     $type = basename($typeDir);
     $items = $collectItems($typeDir);
     $countOutput = count($items);
@@ -118,9 +129,8 @@ foreach ($hasOutputTree ? glob("$outRoot/*", GLOB_ONLYDIR) : [] as $typeDir) {
         $errors[] = "_output/$type/ has $countOutput item(s) but _data/$dataBase.xml is missing";
         continue;
     }
-    $doc = @simplexml_load_file($xmlFile);
+    $doc = $loadDataDoc($xmlFile, $dataBase, $errors);
     if ($doc === false) {
-        $errors[] = "_data/$dataBase.xml is not readable as XML";
         continue;
     }
     $records = $doc->children();
@@ -336,29 +346,22 @@ foreach ($hasOutputTree ? glob("$outRoot/*", GLOB_ONLYDIR) : [] as $typeDir) {
     $report[] = "  $type: $countOutput item(s), ids match";
 }
 
-// The walk above only ever reaches a type that has been exported at least once,
-// because _output/<type>/ appears only once that type holds a record. So it is
-// blind to the first-record case: a type going from zero records to its first
-// with xf-addon:export run and xf-dev:export not. Reconcile from the other side.
-//
-// This is a set difference over the same forward mapping, deliberately not an
-// inversion of it. Inverting means guessing a directory name from a file name,
-// and a wrong guess reports a type as never exported while its directory sits
-// right there — a failure over nothing. Here only directory names that really
-// exist are ever resolved, so there is nothing to guess: whatever the walk did
-// not claim was not exported. $outputDirFor below names the absent directory in
-// the message and decides nothing, so an incomplete map costs a wrong suggestion
-// rather than a wrong verdict.
+// The second pass described at the top of this file. It is a set difference over
+// the forward mapping rather than an inversion of it: whatever the walk above did
+// not claim, nothing exported. Inverting the map would mean deciding the verdict
+// from a guessed directory name. $outputDirFor only phrases the message, so a row
+// missing from the map costs a wrong suggestion rather than a wrong verdict.
 $outputDirFor = array_flip($dataFileFor);
 
-foreach (is_dir($dataRoot) ? glob("$dataRoot/*.xml") : [] as $xmlFile) {
+$dataFiles = is_dir($dataRoot) ? glob("$dataRoot/*.xml") : [];
+
+foreach ($dataFiles as $xmlFile) {
     $dataBase = basename($xmlFile, '.xml');
     if (isset($dataFilesSeen[$dataBase])) {
         continue;
     }
-    $doc = @simplexml_load_file($xmlFile);
+    $doc = $loadDataDoc($xmlFile, $dataBase, $errors);
     if ($doc === false) {
-        $errors[] = "_data/$dataBase.xml is not readable as XML";
         continue;
     }
     // _data carries a file for every type whether or not it holds rows, so an
@@ -367,7 +370,18 @@ foreach (is_dir($dataRoot) ? glob("$dataRoot/*.xml") : [] as $xmlFile) {
     if ($countData === 0) {
         continue;
     }
+    // The directory this file's records belong in. It is normally absent, which
+    // is the whole finding — but a _data file XenForo never writes (a stale
+    // hand-made one, or one named after the _output directory rather than after
+    // its own container tag) resolves to a directory that does exist, and saying
+    // it is missing would be a lie. Name the file as the anomaly instead.
     $type = $outputDirFor[$dataBase] ?? $dataBase;
+    if ($hasOutputTree && is_dir("$outRoot/$type")) {
+        $errors[] = "$dataBase: _data has $countData record(s) but no _output type dir claims"
+            . " _data/$dataBase.xml (_output/$type/ is matched to _data/"
+            . ($dataFileFor[$type] ?? $type) . '.xml)';
+        continue;
+    }
     // xf-dev:export, not xf-addon:export: _output is the side that is missing,
     // and that is the command that writes it.
     $errors[] = "$dataBase: _data has $countData record(s) but _output/$type/ is missing"

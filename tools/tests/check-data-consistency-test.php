@@ -158,17 +158,7 @@ function makeTypeFixture(
 
     // The real _data files name their root element after the file, not after the
     // _output directory, so cron_entries items sit under a <cron> root.
-    $root = $dataBase ?? $type;
-    $xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<$root>\n";
-    foreach ($dataRecords as $attrs) {
-        $xml .= "  <$recordTag";
-        foreach ($attrs as $attr => $value) {
-            $xml .= sprintf(' %s="%s"', $attr, htmlspecialchars((string) $value, ENT_QUOTES));
-        }
-        $xml .= "/>\n";
-    }
-    $xml .= "</$root>\n";
-    file_put_contents("$dir/_data/$root.xml", $xml);
+    writeDataFile($dir, $dataBase ?? $type, $recordTag, $dataRecords);
 
     foreach ($outputFiles as $relative => $contents) {
         $target = "$dir/_output/$type/$relative";
@@ -182,9 +172,10 @@ function makeTypeFixture(
 }
 
 /**
- * Write a _data/<dataBase>.xml into an existing fixture without creating any
- * _output/ counterpart. This is the shape the _output-driven walk cannot see: a
- * type that holds records on the _data side and was never exported.
+ * Write a _data/<dataBase>.xml, creating _data/ if it is not there yet and
+ * touching no _output/ counterpart. Called directly to build the shape the
+ * _output-driven walk cannot see — a type holding records on the _data side that
+ * was never exported — and by makeTypeFixture for the _data half of a pair.
  *
  * $records: list of attribute maps, one per record element. An empty list writes
  *           the self-closed empty file XenForo exports for a type with no rows.
@@ -1082,6 +1073,73 @@ try {
             $out,
             'admin_permission: _data has 1 record(s) but _output/admin_permissions/ is missing'
         ),
+        $out
+    );
+
+    // --- 37. the cron pairing from the _data side ----------------------------
+    // Case 18 covers cron in the _output direction only. Both non-identity
+    // pairings have to resolve from _data too, or the report names a directory
+    // XenForo never writes and sends the reader looking for the wrong thing.
+    $cronUnexported = makeTypeFixture(
+        $base,
+        'cron-unexported',
+        'routes',
+        'route',
+        [['route_id' => 'fixture', 'route_prefix' => 'fixture']],
+        ['fixture.json' => "{}\n"]
+    );
+    writeDataFile($cronUnexported, 'cron', 'entry', [['entry_id' => 'cav7Fixture']]);
+    [$code, $out] = runTool($tool, $cronUnexported);
+    check('an un-exported cron entry fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the un-exported cron entry names the _output/cron_entries/ directory',
+        str_contains($out, 'cron: _data has 1 record(s) but _output/cron_entries/ is missing'),
+        $out
+    );
+
+    // --- 38. a _data file no _output dir claims, whose dir exists anyway ------
+    // Only a file XenForo never writes gets here: one named after an _output
+    // directory rather than after its own container tag. Reporting it as
+    // "_output/cron_entries/ is missing" would name a directory sitting on disk,
+    // so the file itself is named as the anomaly instead.
+    $strayData = makeTypeFixture(
+        $base,
+        'stray-data-file',
+        'cron_entries',
+        'entry',
+        [['entry_id' => 'cav7Fixture']],
+        ['cav7Fixture.json' => "{}\n"],
+        'cron'
+    );
+    writeDataFile($strayData, 'cron_entries', 'entry', [['entry_id' => 'cav7Stray']]);
+    [$code, $out] = runTool($tool, $strayData);
+    check('a _data file that no _output dir claims fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the stray _data file is not reported as a missing directory that exists',
+        !str_contains($out, '_output/cron_entries/ is missing')
+            && str_contains($out, 'no _output type dir claims _data/cron_entries.xml'),
+        $out
+    );
+
+    // --- 39. an unreadable _data file that no _output dir claims --------------
+    // The _output-driven pass already fails on a _data file it cannot parse. The
+    // _data-side pass reaches files the other one never opens, and records that
+    // cannot be counted cannot be cleared, so it refuses them the same way
+    // rather than passing over them.
+    $unreadable = makeTypeFixture(
+        $base,
+        'unreadable-data-file',
+        'routes',
+        'route',
+        [['route_id' => 'fixture', 'route_prefix' => 'fixture']],
+        ['fixture.json' => "{}\n"]
+    );
+    file_put_contents("$unreadable/_data/options.xml", "<options><option \n");
+    [$code, $out] = runTool($tool, $unreadable);
+    check('an unclaimed _data file that is not valid XML fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the unreadable unclaimed _data file is named',
+        str_contains($out, '_data/options.xml is not readable as XML'),
         $out
     );
 } finally {

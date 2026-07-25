@@ -47,7 +47,7 @@ Shared scripts live in [`tools/`](tools/); [tools/README.md](tools/README.md) ha
 - Build a release zip the canonical way (needs a XenForo install): `tools/build.sh <AddonId>`. It wraps `xf-addon:build-release` (export to `_data/`, then package). Point it at your install with `XF_ROOT` or `XF_CMD`.
 - Package a zip from committed files with no XenForo install: `tools/package-addon.sh <AddonId>`. CI and the release workflow use this, and it produces the same `upload/...` layout the admin panel installs from.
 
-CI runs the tests and a static build check on every push and pull request: lint, `addon.json` and `_data/` validation, an `_output/`-to-`_data/` consistency check, and a packaging dry-run. None of it runs XenForo. It trusts the committed `_data/`, so re-export and commit `_data/` whenever you change XenForo data, or the consistency check will fail.
+CI runs the tests and a static build check on every push and pull request: lint, `addon.json` and `_data/` validation, an `_output/`-and-`_data/` consistency check, and a packaging dry-run. None of it runs XenForo. The consistency check reads both trees against each other, so re-export and commit both whenever you change XenForo data, or it will fail — including when a data type reaches one tree and not the other.
 
 Release tags are per addon and use `<AddonId>-vX.Y.Z` (for example `SteamChecker-v1.1.4`). Pushing one builds that addon's zip and publishes it as a GitHub release. The tag version must match the addon's `addon.json` `version_string`.
 

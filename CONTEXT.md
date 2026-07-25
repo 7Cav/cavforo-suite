@@ -19,16 +19,16 @@ jacket, record (ambiguous with service record)
 
 **data type**:
 One kind of XenForo add-on data — options, phrases, routes, cron entries. A
-data type is named twice, once for each tree, and the two names are not always
-the same string.
+data type is named twice, once for each of the two trees below, and the two
+names are not always the same string.
 _Avoid_: type on its own where it could mean either name
 
 **`_data` tree**:
-An add-on's data as XenForo exports it for release, one XML file per data type.
-Carries a file for every data type whether or not it holds records. This is the
-tree that ships.
+An add-on's data as XenForo exports it for release. This is the tree that
+ships. What it holds:
+[`docs/addon-format.md`](docs/addon-format.md).
 
 **`_output` tree**:
-The same data as XenForo exports it in dev mode, one file per record. A data
-type appears here only once it holds at least one record, so an absent
-directory means either an unused type or one that was never exported.
+The same data as XenForo exports it in development mode. What it holds:
+[`docs/addon-format.md`](docs/addon-format.md).
+_Avoid_: build output (nothing compiles it; it is an export like `_data`)
