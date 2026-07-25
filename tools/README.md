@@ -116,11 +116,10 @@ php tools/package-web-assets.php src/addons/Cav7/MilpacMention build/upload Cav7
 The static checks CI runs in place of an install. `validate-addon.php` checks the
 `addon.json` shape, that every `_data/*.xml` is well-formed, and that
 `_data/class_extensions.xml` holds its rows in the canonical order
-[ADR 0003](../docs/adr/0003-canonical-class-extension-order.md) defines — a
-case-folded comparison of `from_class`, then `to_class`, which is the order our
-exports emit. It names the add-on and the two rows that are out of order relative
-to each other. It does not rewrite anything: a file that fails is reconciled by
-re-exporting it, not by hand.
+[ADR 0004](../docs/adr/0004-class-extension-order-is-case-folded.md) defines. It
+names the add-on and the two rows that are out of order relative to each other,
+and rewrites nothing: a file that fails is reconciled by re-exporting it, not by
+hand.
 `check-data-consistency.php` cross-checks the `_output/` tree and the `_data/`
 bundle against each other and fails on drift, which catches either side not
 being re-exported after a change — including a data type that reached `_data/`

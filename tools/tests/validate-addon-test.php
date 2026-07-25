@@ -2,7 +2,7 @@
 
 /**
  * validate-addon-test.php — pins the canonical class-extension order check in
- * tools/validate-addon.php (issue #152, ADR 0003), with no XenForo and no test
+ * tools/validate-addon.php (issue #152, ADR 0004), with no XenForo and no test
  * framework. Self-contained: builds throwaway fixture addon dirs in the system
  * temp dir, runs the real tool against them, asserts on its exit code and
  * output, then cleans up. Exits non-zero on any failure.
@@ -150,12 +150,9 @@ try {
     check('an addon with no class_extensions.xml passes', $code === 0, $out);
 
     // --- Case 3: canonical order is case-folded, not a byte comparison ----
-    // The export orders rows in SQL over utf8mb4_general_ci columns, which is
-    // case-INsensitive, so a folded lowercase letter can outrank a byte that
-    // would win strcmp. 'XenAddons\' folds to 'XENADDONS\' and sorts ahead of
-    // 'XF\' ('E' 0x45 < 'F' 0x46) though raw bytes put 'XF\' first
-    // ('F' 0x46 < 'e' 0x65). This pair is what the database really emits;
-    // a byte comparison would reject legitimate export output.
+    // Why: docs/adr/0004-class-extension-order-is-case-folded.md. This pair is
+    // the one the database really emits and a byte comparison would reject, so
+    // it is what keeps the rule honest.
     $dir = makeFixture($base, 'CaseFolded', [
         ['XenAddons\\AMS\\Entity\\ArticleItem', 'Cav7\\CaseFolded\\XenAddons\\AMS\\Entity\\ArticleItem'],
         ['XF\\Str\\MentionFormatter', 'Cav7\\CaseFolded\\XF\\Str\\MentionFormatter'],

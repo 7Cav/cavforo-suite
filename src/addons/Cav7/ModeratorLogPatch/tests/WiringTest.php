@@ -205,13 +205,6 @@ check(
     'a ninth registration means a content type was covered without this list, and one of these missing means a content type lost its cover'
 );
 
-// The canonical row order ADR 0003 defines was pinned here while nothing in the
-// repo enforced it. tools/validate-addon.php now checks it for every addon, so
-// this addon's copy of the rule is gone rather than left to disagree with the
-// suite-wide one — as it had begun to: it compared bytes, and the rule is a
-// case-folded comparison, because the exporter's ORDER BY runs under
-// utf8mb4_general_ci. See tools/tests/validate-addon-test.php.
-
 check(
     '_output has one class_extensions file per _data extension',
     count(outputItems($root, 'class_extensions')) === ($classExtXml !== false ? count($classExtXml->extension) : -1)

@@ -7,7 +7,7 @@
  *
  * Checks addon.json against what docs/addon-format.md requires, that every
  * _data/*.xml is well-formed, and that _data/class_extensions.xml holds its rows
- * in the canonical order ADR 0003 defines. Exits non-zero on any problem. This
+ * in the canonical order ADR 0004 defines. Exits non-zero on any problem. This
  * is the part of xf-addon:build-release we can reproduce without the database:
  * the manifest shape and the XML, not the export itself.
  */
@@ -70,15 +70,12 @@ if (is_dir($dataDir)) {
     libxml_use_internal_errors($prev);
 }
 
-// --- _data/class_extensions.xml canonical row order (ADR 0003) ---
-// XenForo exports these rows with ORDER BY from_class, to_class over
-// utf8mb4_general_ci columns, so the canonical order is that collation's, not a
-// byte comparison's. general_ci is case-insensitive, which is where the two
-// part company: 'XenAddons\' folds to 'XENADDONS\' and sorts ahead of 'XF\'
-// ('E' 0x45 < 'F' 0x46), while raw bytes put 'XF\' first ('F' 0x46 < 'e' 0x65).
-// strtoupper models that fold: it is ASCII-only and locale-independent as of
-// PHP 8.2, and every class name is ASCII. execute_order is not a tiebreaker —
-// the schema's UNIQUE KEY (from_class, to_class) makes the pair unique.
+// --- _data/class_extensions.xml canonical row order ---
+// The rule and the evidence for it: docs/adr/0004-class-extension-order-is-
+// case-folded.md. In short, XenForo sorts these rows in SQL over
+// utf8mb4_general_ci columns, and that collation is case-insensitive, so the
+// order is case-folded rather than a byte comparison. execute_order is not a
+// tiebreaker; UNIQUE KEY (from_class, to_class) makes the pair unique.
 if ($classExtensions !== null) {
     $rows = [];
     foreach ($classExtensions->extension as $extension) {
