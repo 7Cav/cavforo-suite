@@ -516,12 +516,16 @@ class VerifyCoverage extends Command
      * this addon existed. The class name comes off the content-type field, so
      * nothing here names a vendor class.
      *
-     * Two things only this comparison can show. That the extension is what opened
+     * Three things only this comparison can show. That the extension is what opened
      * the user gate for a member with no moderator record, rather than the handler
-     * having answered that way all along. And that a member who does hold a record
-     * is answered identically by both, which is the acceptance criterion rule 1
-     * exists for and the one nothing else in this command exercises: the end-to-end
-     * phase refuses to run as a record holder, and every other actor here holds none.
+     * having answered that way all along. That the rule is what withholds an action
+     * from that member, which is the same argument for the per-action half and is not
+     * made by the withheld check on its own: a handler that already withheld every
+     * author-reachable action answers it identically. And that a member who does hold
+     * a record is answered identically by both, which is the acceptance criterion
+     * rule 1 exists for and the one nothing else in this command exercises: the
+     * end-to-end phase refuses to run as a record holder, and every other actor here
+     * holds none.
      */
     protected function checkAgainstUnpatched(
         string $label,
@@ -560,6 +564,31 @@ class VerifyCoverage extends Command
         );
 
         $probed = array_merge(AuthorshipRule::AUTHOR_REACHABLE_ACTIONS, [self::OUTSIDE_SET_PROBE]);
+
+        // The same comparison for the author, which is the attribution argument for
+        // the rule rather than for the gate. Without it, "every author-reachable
+        // action by the author is withheld" above reads the same whether this addon
+        // withheld the action or the handler underneath had been withholding it all
+        // along, and this content type's rule was then never exercised at all.
+        $nowWithheld = [];
+        foreach ($probed as $action) {
+            if ((bool) $unpatched->isLoggable($content, $action, $author) === true
+                && $handler->isLoggable($content, $action, $author) === false
+            ) {
+                $nowWithheld[] = $action;
+            }
+        }
+
+        $this->check(
+            sprintf(
+                '%s: the rule is what withholds at least one action from the author (%d asked)',
+                $label,
+                count($probed)
+            ),
+            $nowWithheld !== [],
+            'unpatched, this handler logged at least one of these for its own author, and this addon has to be what changed that. If the handler underneath already withheld every one of them then the withheld check above passes without this addon\'s rule being consulted once'
+        );
+
         $changed = [];
         foreach ($probed as $action) {
             $patchedSays = $handler->isLoggable($content, $action, $recordHoldingAuthor);
@@ -643,6 +672,25 @@ class VerifyCoverage extends Command
                 'unsticking it writes an unstick entry',
                 $this->actionsLogged('thread', $threadId) === ['stick', 'unstick'],
                 'the entry has to name the action that was taken, not just that something happened'
+            );
+
+            // Each save above changes one field, which is the one shape XenForo's
+            // moderator thread-edit form never sends: it saves the title, the prefix
+            // and the sticky flag together. `Logger::logChanges()` consults
+            // `isLoggableUser` once for the whole save and `isLoggable` per changed
+            // field, so the reported path is a mixed save where one action has to be
+            // withheld and another written, and this is the only place that can be
+            // exercised.
+            \XF::asVisitor($actor, function () use ($thread)
+            {
+                $thread->title = self::PROBE_PREFIX . 'throwaway thread, retitled and stuck at once';
+                $thread->sticky = true;
+                $thread->save();
+            });
+            $this->check(
+                'retitling and sticking in one save writes the stick and withholds the title',
+                $this->actionsLogged('thread', $threadId) === ['stick', 'unstick', 'stick'],
+                'the two gates are consulted at different granularities within one save, so a withheld action taking the whole save down with it, or a logged one dragging the withheld one in, shows up here and nowhere else'
             );
 
             // The actor's IP is the one part of an entry this run cannot check.

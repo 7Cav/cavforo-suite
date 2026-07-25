@@ -712,6 +712,17 @@ check(
         && str_contains($ruleCheckBody, '$handler->isLoggable($content, $action, $stranger)'),
     'a single action can be answered by a coincident rule on the handler underneath, which passes the check while proving nothing about this addon\'s'
 );
+// The scenario the coverage phase guards against reaches this phase's read too: an
+// `entity` field naming a class that no longer loads throws from em()->create(), and
+// a structure carrying a column the schema step never applied throws from the finder.
+// Unguarded, either took every remaining content type, the end-to-end phase and the
+// summary with it, which is the outcome the coverage-phase catch was added to prevent.
+check(
+    'reading a content type\'s sample cannot abort the run either',
+    (bool) preg_match('/try\s*\{\s*\$sample\s*=\s*\$this->sampleContent\(/s', $ruleCheckBody)
+        && (bool) preg_match('/catch\s*\(\s*\\\\Throwable/', $ruleCheckBody),
+    'a partial upload or a botched vendor upgrade is exactly when somebody runs this, and the phases after the throw are the ones that would have said so'
+);
 check(
     'the rule phase reads the author through the shared reader',
     str_contains($ruleCheckBody, 'ContentAuthor::userId(')
@@ -745,6 +756,18 @@ check(
         && str_contains($unpatchedBody, "getContentTypeFieldValue(\$type, 'moderator_log_handler_class')")
         && str_contains($unpatchedBody, 'new $registeredClass($type)'),
     'without it the command can only argue that this addon is what changed the answer, and it cannot exercise rule 1 against a real handler at all'
+);
+// The same comparison for a non-record author, which is the attribution argument for
+// the rule rather than for the gate. "Every author-reachable action by the author is
+// withheld" passes identically whether this addon withheld the action or the handler
+// underneath had been withholding it all along, so on its own it does not say the
+// rule was consulted at all.
+check(
+    'the comparison also shows the rule changed an answer for a non-record author',
+    str_contains($unpatchedBody, '$nowWithheld')
+        && str_contains($unpatchedBody, '$unpatched->isLoggable($content, $action, $author)')
+        && str_contains($unpatchedBody, '$handler->isLoggable($content, $action, $author)'),
+    'without it the run makes its attribution argument for the user gate and not for the per-action rule, and a content type whose handler underneath withholds everything would pass while this addon\'s rule was never asked'
 );
 check(
     'the comparison covers a record-holding author across the whole probed set',
@@ -830,6 +853,19 @@ check(
     str_contains($endToEndBody, 'discussion_content_type')
         && str_contains($endToEndBody, 'discussion_content_id'),
     'ModeratorLogRepository::findLogsForDiscussion filters on those two columns and on nothing the ACP list reads'
+);
+// One save that changes two fields, one of which has to be withheld and one written.
+// XenForo's moderator thread-edit form saves title, prefix and sticky together, and
+// Logger::logChanges() consults the user gate once for the whole save and the
+// per-action check per changed field, so a phase whose every save changes one field
+// never sends the shape the form sends. The acceptance criteria name that form.
+check(
+    'the end-to-end phase makes a save that produces one logged and one withheld action',
+    (bool) preg_match(
+        '/\$thread->title\s*=[^;]+;\s*\$thread->sticky\s*=\s*true\s*;\s*\$thread->save\(\)/s',
+        $endToEndBody
+    ),
+    'each single-field save is answered in isolation, and the reported path is a mixed one: this is the only place a withheld action taking the whole save with it would show'
 );
 // $out is dereferenced by every protected helper and is set only once execute() runs.
 // Typed, an unset read is an Error naming the property instead of a null deref

@@ -143,9 +143,11 @@ it. Expect the `[unscoped sample]` tag on most of the types: neither argument ca
 narrow a content type that is filed under neither a node nor a category, so the
 newest row of it anywhere on the board is all there is to read, and the tag is the
 command saying so rather than a fault. Finally it creates a throwaway thread,
-sticks it, retitles it, unsticks it, checks which of those landed in
-`xf_moderator_log` and that the entry is reachable from the thread's own moderator
-actions view, then deletes the thread and the rows.
+sticks it, retitles it, unsticks it, then retitles and sticks it in one save,
+which is the shape the moderator thread-edit form sends and the only one where an
+action has to be withheld and another written at once. It checks which of those
+landed in `xf_moderator_log` and that the entry is reachable from the thread's own
+moderator actions view, then deletes the thread and the rows.
 
 Run it after any XenForo or vendor upgrade. The failure this catches writes
 nothing anywhere: a class extension whose `from_class` no longer resolves to the
