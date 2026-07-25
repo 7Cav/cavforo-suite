@@ -3,6 +3,9 @@
 - **Status:** Accepted
 - **Date:** 2026-07-21
 - **Issues:** implementation decision while building #148
+- **Note (2026-07-25):** the `tests/WiringTest.php` named below was deleted as a
+  source-text change detector. Do not reinstate it or write another like it; see
+  ["What belongs in CI, and what does not"](../../../../../../CONTRIBUTING.md).
 
 ## Context
 
@@ -37,8 +40,11 @@ addon's convenience.
 - Reverting is per addon, not per half: disabling `Cav7/DiscordSyncPatch` returns
   the integration to stock behavior. A half can still be removed on its own, but
   that is a code change rather than an admin-panel toggle.
-- `tests/WiringTest.php` pins the single registration and both overrides
-  separately, so losing either half fails the build.
+- `tests/WiringTest.php` pinned the single registration and both overrides
+  separately. That file has since been removed (see the note above): it matched
+  source text and so could not tell a working override from a broken one. Losing a
+  half is caught by disabling each on the dev stack, which is how this decision was
+  checked in the first place.
 - If the consistency checker is ever taught to match `_data` extensions on the
   `from_class` and `to_class` pair, splitting the halves into two registrations
   becomes available again. Nothing else about the fix would need to change.

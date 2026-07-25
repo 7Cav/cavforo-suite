@@ -3,6 +3,9 @@
 - **Status:** Accepted
 - **Date:** 2026-07-21
 - **Issues:** #155, absorbed into #157
+- **Note (2026-07-25):** the "wiring pin" referred to below was deleted as a
+  source-text change detector. Do not reinstate it or write another like it; see
+  ["What belongs in CI, and what does not"](../../../../../../CONTRIBUTING.md).
 
 ## Context
 
@@ -52,7 +55,8 @@ drops.
 - The sweep now has two correction paths: the authoritative sync message for
   divergent linked members, and a direct strip for unlinked holders. The direct strip
   is the only place this addon removes Discord roles outside the vendor sync message,
-  so it carries its own pure decision and its own wiring pin.
+  so it carries its own pure decision. (It also carried its own wiring pin, since
+  removed — see the note above.)
 - Unlinked-holder strips cannot be recorded against a member, because there is no
   member. They are written to the addon's integration log with a reason and appear in
   Discord's native audit log.
