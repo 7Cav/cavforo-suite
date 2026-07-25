@@ -54,11 +54,12 @@ use XF\Mvc\Reply\AbstractReply;
  *    iterates nothing and queues nothing while still returning normally, which is
  *    why the map is read up front and why the queue row is checked for afterwards
  *    rather than trusted.
- *  - it does not refuse a member with no linked Discord account either. The
- *    message's setupFromUser() returns a Noop before it ever records a user id, the
- *    repository drops that return and queues the original message anyway, and the
- *    row lands with a null user_id that the lookup below cannot see. So the link is
- *    checked here, ahead of everything else.
+ *  - it does not refuse a member with no linked Discord account either, and what it
+ *    writes for one is unusable. That rule binds every caller rather than this one,
+ *    so it lives in the README's section on assumptions about code it does not own,
+ *    under "Never queue a per-user sync for a member with no linked Discord
+ *    account", with the call-by-call detail. The link is checked below because of
+ *    it, ahead of everything else.
  *  - it does not refuse an integration with no credentials either, and that one
  *    wedges. Api::getDiscordConfiguration() is null on an empty token, client id,
  *    client secret or discord_server_id option, none of which the server rows can
@@ -132,9 +133,9 @@ class Account extends XFCP_Account
         // The first precondition, ahead of both guards. The template only offers the
         // button to a linked member, but that is markup, not a guard: the endpoint
         // takes a post from any member with a CSRF token, linked or not. What queueing
-        // without a link leaves behind is in
-        // the docblock; ask first, and ask before the cooldown, so an unlinked member
-        // does not spend one on it either.
+        // without a link leaves behind is in the README, under the assumptions section;
+        // ask first, and ask before the cooldown, so an unlinked member does not spend
+        // one on it either.
         if (empty($visitor->ConnectedAccounts['nfDiscord'])) {
             return $this->error(\XF::phrase('cav7_discord_resync_not_linked'));
         }

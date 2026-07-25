@@ -142,6 +142,33 @@ permission, and how wide `xf_flood_check.flood_action` is — so a core upgrade 
 break it as readily as a vendor one. They are listed in the docblocks of
 `NF/Discord/ApiMessage/SyncUser.php` and `XF/Pub/Controller/Account.php`.
 
+One of them is a rule a new caller has to know before writing the call, so it is
+stated here rather than in the docblock of an action they have no reason to open.
+
+### Never queue a per-user sync for a member with no linked Discord account
+
+The integration will not refuse one, and establishing the link is the caller's job.
+
+`Repository\Sync::queueSyncJobsForUser()` builds a `SyncUser` message per guild in the
+server map and calls `setupFromUser()` on each. For a member with no `nfDiscord`
+connected account that method returns a separate no-op message, and it returns before
+it records the user id. The repository drops that return value and queues the original
+message, whose user id is still null. The queue table's `user_id` column accepts null,
+so the insert succeeds.
+
+One row therefore lands per guild, each with a null user id. Nothing keyed on the
+member's user id can see them, which is what makes them worse than queueing nothing:
+the resync action's own pending guard reads that column, so it goes blind to work it
+just queued. The rows are not inert either. Each is picked up by the queue runner in
+the ordinary way, fails to resolve a user, records
+`nf_discord_sync_err.xenforo_user_not_found` and is archived. The message reports
+success while doing it, so the row archives with no failure count and nothing in the
+error log. Nobody finds out.
+
+This addon has one per-user sync call, the resync action in
+`XF/Pub/Controller/Account.php`, and it checks the link ahead of every other
+precondition for this reason.
+
 Be clear about what the test suite does with them. `tests/WiringTest.php` runs with
 no XenForo and no vendor on the include path, and reads only files inside this addon,
 so it pins **this addon's side** of each seam: an edit here that stops matching the
