@@ -279,6 +279,53 @@ function checkOrderedWithin(string $methodBody, string $label, string $beforeMar
     check($label, $beforeAt < $afterAt, $why);
 }
 
+/**
+ * Assert that $beforeMarker appears before EVERY marker in $afterMarkers, within one
+ * method body.
+ *
+ * The strong form of checkOrderedWithin, and the only form that can pin "before all
+ * the aborts". Naming one guard as the comparison point pins the ordering against
+ * that guard alone: the pin then reads as a claim about every abort while holding
+ * exactly one, and the moment a different abort moves above the named one the pin
+ * passes on the arrangement it exists to forbid. Taking the minimum offset over the
+ * whole inventory holds all of them and stops the pin depending on which abort
+ * currently comes first.
+ *
+ * Fails loudly rather than quietly comparing against a smaller set: a marker missing
+ * in either role is reported by name, and an empty $afterMarkers is a failure too,
+ * since min() over nothing would otherwise be the bug this helper is here to avoid.
+ *
+ * @param string[] $afterMarkers
+ */
+function checkOrderedBeforeAll(string $methodBody, string $label, string $beforeMarker, array $afterMarkers, string $why): void
+{
+    $beforeAt = markerOffset($methodBody, $beforeMarker);
+    $missing = $beforeAt === null ? [$beforeMarker] : [];
+
+    $offsets = [];
+    foreach ($afterMarkers as $marker) {
+        $at = markerOffset($methodBody, $marker);
+        if ($at === null) {
+            $missing[] = $marker;
+        } else {
+            $offsets[$marker] = $at;
+        }
+    }
+
+    if ($missing) {
+        check($label, false, 'not found in remind(): ' . implode(' | ', $missing));
+        return;
+    }
+    if (!$offsets) {
+        check($label, false, 'no markers to compare against');
+        return;
+    }
+
+    $earliestAt = min($offsets);
+    $earliestMarker = array_search($earliestAt, $offsets, true);
+    check($label, $beforeAt < $earliestAt, "$why (earliest abort in remind(): `$earliestMarker`)");
+}
+
 // --- the hourly cron entry is registered ----------------------------------
 $cronXml = @simplexml_load_file("$root/_data/cron.xml");
 check('_data/cron.xml could be read', $cronXml !== false);
@@ -940,27 +987,46 @@ check(
         && !str_contains($reenlistBlankWarning, 'cav7ERStandardPrefixIds'),
     'the warning has to point at the one textbox that is blank'
 );
+// The full inventory of aborts in remind(): every guard that can end the run before
+// the remind decision. Two pins read it — the log-only checks have to precede ALL of
+// them (here and at the overlap warning below), and each of them has to precede the
+// decision itself (further down). It is hand-kept, which is the thing to remember
+// when adding an abort: a guard left out of this list is held by neither pin.
+$abortGuardMarkers = [
+    'if (!$nodeId)',
+    'if (!$botUserId)',
+    'if (!$inProcessingPrefixIds)',
+    'if (!$standardPrefixIds && !$reenlistPrefixIds)',
+    'if ($typePrefixesInStatusSet)',
+    "if (!\\XF::isAddOnActive('SV/MultiPrefix'",
+    'if (!$clerkUserIds)',
+    'if ($prefixLinks === null)',
+    'if (!$prefixLinks)',
+];
+
 // Log-only, so both warnings belong ABOVE the aborts, for the same reason the
 // overlap warning does: an admin carrying a blank type list AND one of the config
 // faults below hears about both from one run.
 //
-// The marker they are compared against has to be the EARLIEST abort in remind() —
-// `if (!$nodeId)`, which is why the node and bot guards sit below the whole log-only
-// preamble even though neither can mass-remind on its own. Compared against any later
-// abort instead, a log-only check could sit between two aborts and still pass while
-// never running on a board that trips the earlier one: with the node guard above them,
-// an admin holding an unconfigured queue node AND a blank type list returned before
-// any of these three warnings, and the pins stayed green. The order this pins is
-// therefore: every log-only check, then every abort.
+// Compared against EVERY abort, by taking the minimum offset over the inventory
+// above, rather than against one guard named as "the first abort". Named, the pin
+// held that guard alone: with `if (!$nodeId)` as the comparison point, moving the
+// blank-status abort or the bot abort back above these warnings left the whole suite
+// green, and the blank-status arrangement is the exact defect this branch fixed — an
+// admin holding a blank status option AND a blank type list hears about one fault and
+// waits an hour for the next. What the minimum pins is what these comments have
+// always claimed: every log-only check, then every abort. It also stops depending on
+// which abort happens to come first, so reordering the guards among themselves cannot
+// reopen the gap.
 foreach ([
     'if (!$standardPrefixIds && $reenlistPrefixIds)',
     'if (!$reenlistPrefixIds && $standardPrefixIds)',
 ] as $blankWarningMarker) {
-    checkOrderedWithin(
+    checkOrderedBeforeAll(
         $remindBody,
-        "the blank-type-list warning `$blankWarningMarker` comes before the first abort that would end the run",
+        "the blank-type-list warning `$blankWarningMarker` comes before every abort that would end the run",
         $blankWarningMarker,
-        'if (!$nodeId)',
+        $abortGuardMarkers,
         'a log-only check placed below an abort is never reached on a board that has both faults'
     );
 }
@@ -995,14 +1061,14 @@ check(
 // admin carrying both an overlap and one of the config faults fixes one, waits an
 // hour, and only then hears about the other. One run, both reports.
 // Both the resolve and the branch that logs it, since moving either one alone
-// below the aborts is enough to lose the report. Compared against the earliest abort
-// (`if (!$nodeId)`), for the reason given at the blank-type-list warnings above.
+// below the aborts is enough to lose the report. Compared against every abort in the
+// inventory, for the reason given at the blank-type-list warnings above.
 foreach (['$routing->overlappingPrefixIds()', 'if ($overlapPrefixIds)'] as $overlapMarker) {
-    checkOrderedWithin(
+    checkOrderedBeforeAll(
         $remindBody,
-        "the overlap warning's `$overlapMarker` comes before the first abort that would end the run",
+        "the overlap warning's `$overlapMarker` comes before every abort that would end the run",
         $overlapMarker,
-        'if (!$nodeId)',
+        $abortGuardMarkers,
         'a log-only check placed below an abort is never reached on a board that has both faults'
     );
 }
@@ -1011,18 +1077,8 @@ foreach (['$routing->overlappingPrefixIds()', 'if ($overlapPrefixIds)'] as $over
 // A guard whose whole `if` block is moved verbatim below the remind loop still
 // logs "skipping this run" — after the entire queue has been reminded. Offsets are
 // taken inside remind()'s own body, so text in a method declared above remind()
-// does not read as "before the decision" either.
-$abortGuardMarkers = [
-    'if (!$nodeId)',
-    'if (!$botUserId)',
-    'if (!$inProcessingPrefixIds)',
-    'if (!$standardPrefixIds && !$reenlistPrefixIds)',
-    'if ($typePrefixesInStatusSet)',
-    "if (!\\XF::isAddOnActive('SV/MultiPrefix'",
-    'if (!$clerkUserIds)',
-    'if ($prefixLinks === null)',
-    'if (!$prefixLinks)',
-];
+// does not read as "before the decision" either. Same inventory the log-only
+// ordering pins above read.
 foreach ($abortGuardMarkers as $marker) {
     checkOrderedWithin(
         $remindBody,

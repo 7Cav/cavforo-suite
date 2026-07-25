@@ -162,9 +162,10 @@ class QueueReminder
         // unconfigured node scans nothing and an unconfigured bot posts nothing — so
         // neither has to run early to be safe, nothing in the preamble reads $nodeId or
         // $botUserId, and no warning depends on either having been validated. The order
-        // is therefore free to put the reporting first. `if (!$nodeId)` is the first
-        // abort, and the marker ScanWiringTest's ordering pins compare the log-only
-        // checks against.
+        // is therefore free to put the reporting first. ScanWiringTest holds it by
+        // comparing each log-only check against the EARLIEST of all the aborts, not
+        // against whichever one leads, so moving any single guard up into the preamble
+        // fails the pins.
         if (!$nodeId)
         {
             \XF::logError('[Cav7/EnlistmentReminder] Queue node id is not configured; nothing to scan.');
