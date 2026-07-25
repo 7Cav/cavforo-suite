@@ -24,12 +24,25 @@ final class PositionIdList
 {
     /**
      * Parse a comma/whitespace separated option string to int position ids,
-     * de-duplicated with first-seen order preserved. A blank or junk-only
-     * string parses to [], which each caller reads as "nothing configured" for its
-     * own option: no clerk seats to alert, no processing status to recognise, or no
-     * prefix that routes to a type. The first two abort the run on their own guard
-     * in QueueReminder; the last makes EnlistmentRouting read every thread of that
-     * type as unrecognized and skip it.
+     * de-duplicated with first-seen order preserved. A blank or junk-only string
+     * parses to [], which each caller reads as "nothing configured" for its own
+     * option. What that costs is not the same for all five, and the differences are
+     * worth having here, because this is where a reader lands from
+     * `PositionIdList::parse($rawStandardPrefixIds)`:
+     *
+     *   - the processing-status list (cav7ERInProcessingPrefixIds): nothing could
+     *     read as handled, so QueueReminder aborts the run on its own guard, with
+     *     ProcessingStatus refusing the empty set as the backstop behind it.
+     *   - one of the per-type CLERK lists: no abort. That guard is on the UNION of
+     *     both lists, so a single blank falls through it — every thread of the
+     *     affected type then hits the per-thread empty-audience skip, logged and
+     *     left unmarked so it retries, while the other type goes on being reminded.
+     *     Only both lists resolving to no seated holder aborts.
+     *   - one of the per-type PREFIX lists: no abort either. It is warned about by
+     *     name and the run carries on, with every thread of that type routing as
+     *     unrecognized and being skipped. BOTH blank does abort, and before any
+     *     thread is read: nothing could route as an enlistment at all, and the
+     *     type/status collision guard has nothing left to compare against.
      *
      * @return int[]
      */

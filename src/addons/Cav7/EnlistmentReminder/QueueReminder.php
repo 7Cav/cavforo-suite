@@ -77,9 +77,18 @@ class QueueReminder
         $rawReenlistPrefixIds = (string) \XF::options()->cav7ERReenlistPrefixIds;
         $standardPrefixIds = PositionIdList::parse($rawStandardPrefixIds);
         $reenlistPrefixIds = PositionIdList::parse($rawReenlistPrefixIds);
-        // Named arguments: all four parameters are array and the pairs interleave,
-        // so transposing two of them would type-check, construct, and route
+        // Named arguments close the POSITIONAL transposition, which is the easy slip
+        // to make here: all four parameters are array and the pairs interleave, so
+        // swapping two of them by position would type-check, construct, and route
         // standard enlistments to the re-enlistment clerks with nothing logged.
+        //
+        // What they do not close is handing the wrong list to the right name —
+        // `standardPrefixIds: $reenlistPrefixIds` reads perfectly well, and
+        // `standardPositionIds: PositionIdList::parse($rawStandardPrefixIds)` reads
+        // almost as well. Both are silent: the affected type routes unrecognized, or
+        // to no seat, and its threads are skipped hourly with nothing an admin sees.
+        // ScanWiringTest pins each of the four bindings to the variable that belongs
+        // to it, and that pin — not the argument names — is what closes this half.
         $routing = new EnlistmentRouting(
             standardPrefixIds: $standardPrefixIds,
             standardPositionIds: PositionIdList::parse($rawStandardPositionIds),
@@ -98,21 +107,6 @@ class QueueReminder
         if (!$botUserId)
         {
             \XF::logError('[Cav7/EnlistmentReminder] Bot user id is not configured; cannot post reminders.');
-            return;
-        }
-        if (!$inProcessingPrefixIds)
-        {
-            // With no status prefix configured, nothing can ever read as handled.
-            // ProcessingStatus refuses that input outright, so this guard is not
-            // what stands between a blank option and a mass remind — deleting it
-            // reaches that throw, which aborts the run before anything posts. What
-            // it adds is the admin-facing message naming the option, and a stop
-            // before any query runs (issue #186). ProcessingStatus's own docblock
-            // states the same pairing from the seam's side.
-            \XF::logError(sprintf(
-                '[Cav7/EnlistmentReminder] No in-processing prefix parsed from cav7ERInProcessingPrefixIds="%s"; skipping this run so applications already being worked are not reminded.',
-                $rawInProcessingPrefixIds
-            ));
             return;
         }
         // A prefix listed under BOTH type sets is a config error (story 21): a
@@ -148,18 +142,38 @@ class QueueReminder
         if (!$standardPrefixIds && $reenlistPrefixIds)
         {
             \XF::logError(sprintf(
-                '[Cav7/EnlistmentReminder] No prefix parsed from cav7ERStandardPrefixIds="%s"; no thread can route as a standard enlistment, so every one of them is skipped as unrecognized. Re-enlistments are unaffected and this run continues.',
+                '[Cav7/EnlistmentReminder] No prefix parsed from cav7ERStandardPrefixIds="%s"; no thread can route as a standard enlistment, so each one that reaches the routing step is skipped as unrecognized. Do not expect one line per standard application: only threads the decision selects get that far, and one that already reads as handled is skipped earlier with nothing logged. Re-enlistments are unaffected and this run continues.',
                 $rawStandardPrefixIds
             ));
         }
         if (!$reenlistPrefixIds && $standardPrefixIds)
         {
             \XF::logError(sprintf(
-                '[Cav7/EnlistmentReminder] No prefix parsed from cav7ERReenlistPrefixIds="%s"; no thread can route as a re-enlistment, so every one of them is skipped as unrecognized. Standard enlistments are unaffected and this run continues.',
+                '[Cav7/EnlistmentReminder] No prefix parsed from cav7ERReenlistPrefixIds="%s"; no thread can route as a re-enlistment, so each one that reaches the routing step is skipped as unrecognized. Do not expect one line per re-enlistment: only threads the decision selects get that far, and one that already reads as handled is skipped earlier with nothing logged. Standard enlistments are unaffected and this run continues.',
                 $rawReenlistPrefixIds
             ));
         }
-        // BOTH blank is the different case, and the one the collision guard below
+        // The first abort, and the lowest an abort can sit: everything above it only
+        // logs, so an admin holding a blank status option AND a blank type list hears
+        // about both from this one run rather than fixing one, waiting an hour, and
+        // then learning about the other. Everything below it either aborts too or
+        // queries.
+        if (!$inProcessingPrefixIds)
+        {
+            // With no status prefix configured, nothing can ever read as handled.
+            // ProcessingStatus refuses that input outright, so this guard is not
+            // what stands between a blank option and a mass remind — deleting it
+            // reaches that throw, which aborts the run before anything posts. What
+            // it adds is the admin-facing message naming the option, and a stop
+            // before any query runs (issue #186). ProcessingStatus's own docblock
+            // states the same pairing from the seam's side.
+            \XF::logError(sprintf(
+                '[Cav7/EnlistmentReminder] No in-processing prefix parsed from cav7ERInProcessingPrefixIds="%s"; skipping this run so applications already being worked are not reminded.',
+                $rawInProcessingPrefixIds
+            ));
+            return;
+        }
+        // BOTH type lists blank is the different case, and the one the guard below
         // genuinely needs ruled out: with nothing configured as a type prefix its
         // intersection is empty whatever the status set holds, so a 57 typed into
         // cav7ERInProcessingPrefixIds would read every queue thread as handled with

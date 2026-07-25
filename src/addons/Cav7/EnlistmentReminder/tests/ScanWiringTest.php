@@ -673,12 +673,18 @@ check(
 // implements. They read correctly today, but nothing would catch a regression that
 // re-documented a clerk's reply as the handled signal — and the docs are what the
 // next reader (and the next agent) works from. Criterion 9 names the class
-// docblocks alongside the two prose homes, so all six go through the same grep: the
-// worker plus the three pure seams. Those docblocks do narrate the OLD rule, in the
-// past tense ("their reply stopped counting", "a reply-authorship rule could
-// withdraw a pickup"), which is why the patterns below all require a
-// present-tense claim — "means", "counts as", "is the signal" — rather than banning
-// the word "reply" near the word "handled".
+// docblocks alongside the two prose homes, so all seven go through the same grep: the
+// worker plus the four pure seams. PositionIdList belongs in that list as much as the
+// others — its own class docblock names the handled signal ("the processing-status
+// prefixes (cav7ERInProcessingPrefixIds) that decide whether a thread reads as
+// handled"), which is exactly the clause a well-meaning reword could turn back into a
+// clerk's reply. Setup.php is the one file genuinely out of scope: its docblocks only
+// discuss the marker table.
+//
+// Those docblocks do narrate the OLD rule, in the past tense ("their reply stopped
+// counting", "a reply-authorship rule could withdraw a pickup"), which is why the
+// patterns below all require a present-tense claim — "means", "counts as", "marks",
+// "is the signal" — rather than banning the word "reply" near the word "handled".
 $docsPhrasing = [];
 foreach ([
     'README.md',
@@ -687,6 +693,7 @@ foreach ([
     'ProcessingStatus.php',
     'ReminderDecision.php',
     'EnlistmentRouting.php',
+    'PositionIdList.php',
 ] as $docFile) {
     $doc = @file_get_contents("$root/$docFile");
     check("$docFile reads", is_string($doc) && $doc !== '');
@@ -696,10 +703,23 @@ foreach ([
     // Deliberately narrow: docs and docblocks alike DO discuss reply authorship, to
     // say it does not count and to record what the old rule cost. What must never
     // come back is prose asserting, in the present tense, that a reply is the signal.
+    //
+    // Tense is the axis that has to stay narrow; WORD ORDER is not, and the first
+    // three arms alone missed it. "A reply marks the thread as picked up" walked past
+    // `marks it`; "the reminder is suppressed by a clerk reply" and "the handled
+    // signal is a reply from a seated clerk" put the reply last, where only an arm
+    // reading state-then-reply can see it. Hence the verb widening and the two
+    // reversed arms. All five are checked to stay silent on the past-tense narration
+    // the real files carry ("their reply stopped counting", "unlike the authorship of
+    // a reply", "Nothing else counts: not a reply") — which they do because a period
+    // ends every window, and none of those sentences pairs a reply with a
+    // present-tense claim.
     foreach ([
         '/repl(y|ied|ies)[^.]{0,80}\bmeans\b/i',
-        '/repl(y|ied|ies)[^.]{0,80}(counts as|marks it|is the signal|suppress)/i',
+        '/repl(y|ied|ies)[^.]{0,80}(counts as|marks\b|indicates\b|is the signal|suppress)/i',
         '/(picked up|handled|actioned)[^.]{0,60}\bby\b[^.]{0,40}\brepl/i',
+        '/suppress\w*[^.]{0,60}\bby\b[^.]{0,40}\brepl/i',
+        '/\bsignal\b[^.]{0,40}\bis\b[^.]{0,40}\brepl/i',
     ] as $banned) {
         if (preg_match($banned, $doc, $bannedMatch)) {
             $docsPhrasing[] = "$docFile: " . trim($bannedMatch[0]);
@@ -724,6 +744,27 @@ check(
     (bool) preg_match('/FROM xf_sv_thread_prefix_link\b/', $prefixLinkBody)
         && (bool) preg_match('/FROM xf_sv_thread_prefix_link\b.*?thread_id IN/s', $prefixLinkBody),
     'an unscoped read would pull the whole board\'s prefix links'
+);
+// ...and it must stay scoped to the THREADS only. Narrowing the WHERE clause to the
+// configured status ids as well — `AND prefix_id IN (...)` — is the one thing this
+// method's docblock forbids, and it is invisible everywhere else: the option would be
+// read inside the method, so the caller's argument fence never sees a change, and
+// both callers of the result carry on looking healthy.
+//
+// The state it breaks is the one that most needs reminders. With no queue thread
+// carrying a status prefix — nothing being worked, everything past the deadline — a
+// filtered read returns zero rows, the zero-rows abort fires, and the run stops
+// reporting the vendor's table as unpopulated. Silence, behind a log line that blames
+// SV/MultiPrefix. Leaving the rows unfiltered is what keeps "no thread is being
+// worked" and "the table is not populated" distinguishable, which is the whole reason
+// the caller has two branches for them.
+check(
+    'the prefix-link read filters on the scanned threads only, never on the status prefix ids',
+    $prefixLinkBody !== ''
+        && !(bool) preg_match('/prefix_id\s*(?:=|!=|<>|\bNOT\s+IN\b|\bIN\b)/i', $prefixLinkBody)
+        && !str_contains($prefixLinkBody, 'InProcessingPrefixIds')
+        && !str_contains($prefixLinkBody, 'options()'),
+    'a status filter here collapses "nothing is being worked" onto "the table is unpopulated", and the caller aborts the run on the second'
 );
 
 // A missing or unreadable link table (renamed, permissions revoked, or dropped
@@ -896,15 +937,21 @@ check(
 // Log-only, so both warnings belong ABOVE the aborts, for the same reason the
 // overlap warning does: an admin carrying a blank type list AND one of the config
 // faults below hears about both from one run.
+//
+// The marker they are compared against is the FIRST abort in remind(), not any later
+// one. Compared against a later abort, a log-only check could sit between two aborts
+// and still pass while never running on a board that trips the earlier one — which is
+// what the blank-status guard used to do to all three of these before it moved down
+// here.
 foreach ([
     'if (!$standardPrefixIds && $reenlistPrefixIds)',
     'if (!$reenlistPrefixIds && $standardPrefixIds)',
 ] as $blankWarningMarker) {
     checkOrderedWithin(
         $remindBody,
-        "the blank-type-list warning `$blankWarningMarker` comes before the aborts that would end the run",
+        "the blank-type-list warning `$blankWarningMarker` comes before the first abort that would end the run",
         $blankWarningMarker,
-        'if ($typePrefixesInStatusSet)',
+        'if (!$inProcessingPrefixIds)',
         'a log-only check placed below an abort is never reached on a board that has both faults'
     );
 }
@@ -939,13 +986,14 @@ check(
 // admin carrying both an overlap and one of the config faults fixes one, waits an
 // hour, and only then hears about the other. One run, both reports.
 // Both the resolve and the branch that logs it, since moving either one alone
-// below the aborts is enough to lose the report.
+// below the aborts is enough to lose the report. Compared against the first abort,
+// for the reason given at the blank-type-list warnings above.
 foreach (['$routing->overlappingPrefixIds()', 'if ($overlapPrefixIds)'] as $overlapMarker) {
     checkOrderedWithin(
         $remindBody,
-        "the overlap warning's `$overlapMarker` comes before the aborts that would end the run",
+        "the overlap warning's `$overlapMarker` comes before the first abort that would end the run",
         $overlapMarker,
-        'if ($typePrefixesInStatusSet)',
+        'if (!$inProcessingPrefixIds)',
         'a log-only check placed below an abort is never reached on a board that has both faults'
     );
 }
@@ -1044,19 +1092,30 @@ check(
 );
 // The two links between that map and the remind loop — $facts going in, $toRemind
 // coming out — are the rest of the plumbing, and they need the same fence. The
-// decision call is pinned as an ASSIGNMENT with its exact arguments, for the reason
-// the ProcessingStatus call is: a call whose result is thrown away, or one handed
-// the raw $threads rows instead of the built facts, satisfies a pin that only looks
-// for the call text. Raw rows carry no op_timestamp and no in_processing, so a
-// decision fed them reads every thread as past the deadline and un-actioned — the
-// whole queue, noted and alerted, every hour.
+// decision call is pinned as an ASSIGNMENT with its exact arguments, which is what
+// makes it a pin rather than a restatement of the call: it is the only thing standing
+// between the board and a silent mass remind if the `* 3600` were changed or dropped.
+// The option is in HOURS and the seam takes SECONDS, so a bare $deadlineHours makes
+// the deadline 24 seconds. Every open queue thread is then past it, the whole queue is
+// noted and alerted in one run, and nothing errors and nothing is logged — the cron
+// reports a clean run. `* 60`, or a 3600 quietly turned into 360, is the same fault
+// wearing a smaller number.
+//
+// The other mutations the shape of this pin rules out are worth naming for what they
+// are NOT: handing the decision the raw $threads rows instead of the built facts
+// throws rather than mis-decides, because selectThreadsToRemind reads
+// $thread['op_timestamp'] unguarded (only in_processing and already_reminded default
+// with `??`) and XenForo's error handler turns that warning into an ErrorException,
+// outside any try. Same for a call whose result is thrown away: the foreach below
+// then reads an undefined $toRemind. Those fail loudly in the error log, which is the
+// one class of regression this suite does not need to pin.
 check(
-    'the remind list is ASSIGNED from ReminderDecision::selectThreadsToRemind over the built facts',
+    'the remind list is ASSIGNED from ReminderDecision::selectThreadsToRemind over the built facts, with the deadline converted to seconds',
     (bool) preg_match(
         '/\$toRemind\s*=\s*ReminderDecision::selectThreadsToRemind\(\s*\\\\XF::\$time,\s*\$deadlineHours\s*\*\s*3600,\s*\$facts\s*\);/',
         $remindBody
     ),
-    'the facts are what carry the deadline, the status and the marker; handed the raw rows the decision defaults every thread remindable'
+    'the option is in hours and the seam takes seconds: without the * 3600 the deadline is 24 seconds, the whole queue is reminded in one run, and the cron reports success'
 );
 // $facts: initialised, appended once per thread, handed to the decision. Nothing
 // else. A post-loop rewrite of one fact is the sharpest mutation this fences off —
@@ -1464,6 +1523,64 @@ check(
         && (bool) preg_match('/->route\(\s*\$prefixByThread\[/', $worker),
     'the prefix-to-clerks decision must go through the pure seam'
 );
+// ...and the pin above says nothing about WHICH option feeds which parameter. The
+// four arguments are named, which closes the positional transposition — all four
+// parameters are array and the pairs interleave, so swapping two of them by
+// position would type-check and construct. Named arguments do NOT close handing the
+// wrong variable to the right name, and every one of those mutations is silent:
+//
+//   standardPrefixIds: $reenlistPrefixIds     — prefix 57 routes unrecognized with
+//                                               no seats: every standard enlistment
+//                                               skipped, forever
+//   reenlistPrefixIds: $standardPrefixIds     — the mirror image, for re-enlistments
+//   standardPositionIds: parse($rawStandardPrefixIds)
+//                                             — the standard seats become [57], a
+//                                               prefix id used as a position id, so
+//                                               no holder resolves and the
+//                                               empty-audience skip fires hourly
+//   both pairs rotated                        — 57 alerts the re-enlistment clerks
+//                                               and 58 the standard ones: every
+//                                               alert reaches the wrong seats
+//
+// So bind each parameter to its own variable, one check each, inside the
+// construction statement itself.
+$routingConstruction = '';
+if (preg_match('/new EnlistmentRouting\((.*?)\n\s*\);/s', $remindBody, $routingConstructionMatch)) {
+    $routingConstruction = $routingConstructionMatch[1];
+}
+check(
+    "the EnlistmentRouting construction statement could be sliced out of remind()",
+    $routingConstruction !== '',
+    'without the argument list there is nothing for the four binding pins to read'
+);
+foreach ([
+    'standardPrefixIds'   => '$standardPrefixIds',
+    'standardPositionIds' => 'PositionIdList::parse($rawStandardPositionIds)',
+    'reenlistPrefixIds'   => '$reenlistPrefixIds',
+    'reenlistPositionIds' => 'PositionIdList::parse($rawReenlistPositionIds)',
+] as $parameter => $wantArgument) {
+    // The parameter's own line, found by its `name:` label so the check reports the
+    // one binding that drifted rather than the whole statement. Exactly one line may
+    // carry each label: a duplicate named argument is a fatal error in PHP, but a
+    // renamed-away label would otherwise read as zero and pass a looser count test.
+    $bindingLines = [];
+    foreach (explode("\n", $routingConstruction) as $line) {
+        $line = trim($line);
+        if (preg_match('/^' . preg_quote($parameter, '/') . '\s*:/', $line)) {
+            $bindingLines[] = $line;
+        }
+    }
+    check(
+        "the $parameter argument is bound to $wantArgument",
+        count($bindingLines) === 1
+            && (bool) preg_match(
+                '/^' . preg_quote($parameter, '/') . '\s*:\s*' . preg_quote($wantArgument, '/') . '\s*,?$/',
+                $bindingLines[0]
+            ),
+        'handing the wrong list to the right name routes a whole enlistment type to the wrong clerks, or to nobody, with nothing logged; got: '
+            . ($bindingLines === [] ? '(no `' . $parameter . ':` argument at all)' : implode(' | ', $bindingLines))
+    );
+}
 
 // The empty-clerk guard resolves the UNION of both position lists, so it aborts
 // only when NEITHER type has a seated holder. The guard names the new options,

@@ -184,6 +184,17 @@ check(
         [54]
     )[920])
 );
+// The other direction of the same declaration, which nothing above exercised: the
+// seam takes `int[]|string[]` for the CONFIGURED set, and every fixture so far has
+// handed it ints (string row ids against an int configured set). The live caller only
+// ever passes PositionIdList::parse's ints, so this is the declared contract's unused
+// half rather than a reachable fault — but it is declared, and normalize on the
+// configured side is the whole reason it holds.
+check(
+    'a string-typed configured set marks exactly the threads its int twin does',
+    array_keys(ProcessingStatus::inProcessingThreadIds($rows, ['53', '54', '55'])) === [903, 904, 905, 907],
+    'got: ' . implode(', ', array_keys(ProcessingStatus::inProcessingThreadIds($rows, ['53', '54', '55'])))
+);
 check(
     'a zero prefix id never matches, even against a zero in the configured set',
     ProcessingStatus::inProcessingThreadIds(
