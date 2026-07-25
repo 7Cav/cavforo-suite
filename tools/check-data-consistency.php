@@ -19,9 +19,14 @@
  * instead of counted: xf_class_extension carries a UNIQUE KEY over exactly
  * those two columns, so one from_class may hold several extensions and the pair
  * is what identifies a row. A row present on only one side, or a disagreeing
- * execute_order or active, fails even when the file count is unchanged.
- * (docs/adr/0003-canonical-class-extension-order.md is background on why the
- * order within a from_class is written down, not the authority for the key.)
+ * execute_order or active, fails even when the file count is unchanged. An
+ * absent execute_order or active is a mismatch too, named by the side it is
+ * missing from, since 0 and false are both legitimate values.
+ * (docs/adr/0003-canonical-class-extension-order.md rests on the same pair
+ * identity: it fixes the row order of a committed _data file as a byte
+ * comparison of from_class then to_class, and leaves execute_order out of that
+ * rule because the UNIQUE KEY over the pair means the exporter never reaches it
+ * as a tiebreaker.)
  * Other types are count-checked only; the report says which is which, so
  * nothing is skipped silently.
  *
@@ -110,6 +115,20 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
         $pairKey = static fn (string $from, string $to): string => "$from\0$to";
         $describePair = static fn (string $from, string $to): string
             => "from_class '$from' to_class '$to'";
+        // Names every side the field is actually absent from, rather than the
+        // first one asked: a field missing from both sides is a worse export
+        // than one missing from either, and reads as neither if the message
+        // stops at the first.
+        $describeMissing = static function (string $field, bool $noOutput, bool $noData): string {
+            $sides = [];
+            if ($noOutput) {
+                $sides[] = '_output';
+            }
+            if ($noData) {
+                $sides[] = '_data';
+            }
+            return "$field missing from " . implode(' and ', $sides);
+        };
 
         // Pair-keyed both ways, so this branch answers the count question itself
         // and skips the generic count guard below. That only holds while each
@@ -153,9 +172,18 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
             $record = $dataByPair[$key]['record'];
 
             // "1" and true are equal; a genuine true-vs-false difference is not.
-            $outActive = (bool) ($decoded['active'] ?? null);
-            $dataActive = ((string) $record['active'] === '1');
-            if ($outActive !== $dataActive) {
+            // An absent value is a mismatch naming the side rather than a silent
+            // false, for the same reason execute_order treats one as a mismatch
+            // rather than a silent 0: a real export always writes the column,
+            // and false is a legitimate active. Read absence off the key itself,
+            // since casting an absent value lands on false either way and would
+            // make an unexported row compare equal to a disabled one.
+            $outActive = array_key_exists('active', $decoded) ? (bool) $decoded['active'] : null;
+            $dataActive = isset($record['active']) ? ((string) $record['active'] === '1') : null;
+            if ($outActive === null || $dataActive === null) {
+                $mismatches[] = "$itemName: "
+                    . $describeMissing('active', $outActive === null, $dataActive === null);
+            } elseif ($outActive !== $dataActive) {
                 $mismatches[] = "$itemName: active _output=" . ($outActive ? 'true' : 'false')
                     . ' vs _data=' . ($dataActive ? 'true' : 'false');
             }
@@ -166,10 +194,10 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
             // mismatch in its own right rather than a silent 0: a real export
             // always writes the column, and 0 is a legitimate order.
             $outOrder = $decoded['execute_order'] ?? null;
-            $dataOrder = $record['execute_order'];
+            $dataOrder = isset($record['execute_order']) ? $record['execute_order'] : null;
             if ($outOrder === null || $dataOrder === null) {
-                $mismatches[] = "$itemName: execute_order missing from "
-                    . ($outOrder === null ? '_output' : '_data');
+                $mismatches[] = "$itemName: "
+                    . $describeMissing('execute_order', $outOrder === null, $dataOrder === null);
             } elseif ((int) $outOrder !== (int) $dataOrder) {
                 $mismatches[] = "$itemName: execute_order _output=" . (int) $outOrder
                     . ' vs _data=' . (int) $dataOrder;

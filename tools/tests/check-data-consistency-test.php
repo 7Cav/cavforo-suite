@@ -39,6 +39,12 @@
  * which when several share a from_class; case 18 pins the $dataFileFor mapping
  * for types whose _data file is not named after their _output directory.
  *
+ * Cases 19 to 22 pin absence itself, for both content-checked fields. Absent is
+ * not the same as false or 0, and the casts that normalise "1"/true land on the
+ * same falsy value either way, so an unexported row used to compare equal to a
+ * disabled one and the tool called it clean. Each case names the side, or sides,
+ * the field went missing from.
+ *
  * Run:
  *   php tools/tests/check-data-consistency-test.php
  *
@@ -68,7 +74,13 @@ $tool = dirname(__DIR__) . '/check-data-consistency.php';
  * and matching _output/class_extensions/*.json items.
  *
  * $dataExts: list of ['from_class'=>..., 'to_class'=>..., 'active'=>'1'|'0'].
+ *            execute_order and active default to '10' and '1' when the key is
+ *            left out. Passing null for either writes the record without that
+ *            attribute at all, which is the only way to fixture an absent value:
+ *            an empty attribute is a different thing, and the tool has to tell
+ *            absence from a legitimate '0'/'false'.
  * $outputItems: filename => decoded item array (from_class/to_class/active...).
+ *               An absent value here is simply a key the array does not hold.
  */
 function makeFixture(string $base, string $name, array $dataExts, array $outputItems): string
 {
@@ -78,13 +90,20 @@ function makeFixture(string $base, string $name, array $dataExts, array $outputI
 
     $xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<class_extensions>\n";
     foreach ($dataExts as $e) {
-        $xml .= sprintf(
-            "  <extension from_class=\"%s\" to_class=\"%s\" execute_order=\"%s\" active=\"%s\"/>\n",
-            htmlspecialchars($e['from_class'], ENT_QUOTES),
-            htmlspecialchars($e['to_class'], ENT_QUOTES),
-            $e['execute_order'] ?? '10',
-            $e['active']
-        );
+        $attrs = [
+            'from_class' => $e['from_class'],
+            'to_class' => $e['to_class'],
+            'execute_order' => array_key_exists('execute_order', $e) ? $e['execute_order'] : '10',
+            'active' => array_key_exists('active', $e) ? $e['active'] : '1',
+        ];
+        $xml .= '  <extension';
+        foreach ($attrs as $attr => $value) {
+            if ($value === null) {
+                continue;
+            }
+            $xml .= sprintf(' %s="%s"', $attr, htmlspecialchars((string) $value, ENT_QUOTES));
+        }
+        $xml .= "/>\n";
     }
     $xml .= "</class_extensions>\n";
     file_put_contents("$dir/_data/class_extensions.xml", $xml);
@@ -200,16 +219,15 @@ try {
         ]
     );
     [$code, $out] = runTool($tool, $ok);
-    check('correct fixture passes (exit 0)', $code === 0, "exit=$code\n$out");
+    check(
+        'correct fixture passes (exit 0): _data "1" equals _output true and _data "0" equals _output false',
+        $code === 0,
+        "exit=$code\n$out"
+    );
     check(
         'correct fixture is reported as content-checked (report distinguishes)',
         str_contains($out, 'content-checked'),
         $out
-    );
-    check(
-        'normalisation: _data "1" equals _output true and _data "0" equals _output false',
-        $code === 0,
-        "exit=$code\n$out"
     );
 
     // --- 2. corrupted to_class: _output disagrees with _data -------------------
@@ -291,6 +309,11 @@ try {
     );
     [$code, $out] = runTool($tool, $dupOk);
     check('two extensions on one from_class pass when both sides agree', $code === 0, "exit=$code\n$out");
+    check(
+        'both pairs are reported as matched, not passed over',
+        str_contains($out, 'class_extensions: 2 item(s), content matches'),
+        $out
+    );
 
     // --- 6. one of the duplicated rows drifted in _data, no re-export ----------
     // Counts still agree, and the surviving row still shares its from_class with
@@ -591,6 +614,89 @@ try {
     check(
         'the differently-named type is count-checked like any other',
         str_contains($out, 'cron_entries: 1 item(s), counts match'),
+        $out
+    );
+
+    // --- 19. execute_order missing from a _data record ------------------------
+    // The mirror of case 17. Only the _output half was pinned, so the _data arm
+    // of the same guard could be deleted with the suite still green.
+    $dataOrderMissing = makeFixture(
+        $base,
+        'data-execute-order-missing',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => null, 'active' => '1'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 0, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $dataOrderMissing);
+    check('a _data record with no execute_order fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the missing _data execute_order names _data as the side that dropped it',
+        str_contains($out, "$fileA: execute_order missing from _data"),
+        $out
+    );
+
+    // --- 20. active missing from an _output item ------------------------------
+    // false is a legitimate active, exactly as 0 is a legitimate execute_order,
+    // so an absent key must not read as the disabled row _data happens to hold.
+    $outActiveMissing = makeFixture(
+        $base,
+        'output-active-missing',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => '0'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10],
+        ]
+    );
+    [$code, $out] = runTool($tool, $outActiveMissing);
+    check('an _output item with no active fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the missing _output active says which side dropped it',
+        str_contains($out, "$fileA: active missing from _output"),
+        $out
+    );
+
+    // --- 21. active missing from a _data record -------------------------------
+    $dataActiveMissing = makeFixture(
+        $base,
+        'data-active-missing',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => null],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10, 'active' => false],
+        ]
+    );
+    [$code, $out] = runTool($tool, $dataActiveMissing);
+    check('a _data record with no active fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the missing _data active says which side dropped it',
+        str_contains($out, "$fileA: active missing from _data"),
+        $out
+    );
+
+    // --- 22. active missing from both sides -----------------------------------
+    // Absent on both sides is the shape that used to compare equal, and the
+    // report has to name every side that is actually missing the field rather
+    // than the first one the check looked at.
+    $bothActiveMissing = makeFixture(
+        $base,
+        'both-active-missing',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => null],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10],
+        ]
+    );
+    [$code, $out] = runTool($tool, $bothActiveMissing);
+    check('active missing from both sides fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'active missing from both sides names both',
+        str_contains($out, "$fileA: active missing from _output and _data"),
         $out
     );
 } finally {
