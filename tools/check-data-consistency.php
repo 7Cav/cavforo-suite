@@ -11,13 +11,15 @@
  *
  * Each _output/<type>/ directory is matched to its _data/<type>.xml. Item files
  * are counted recursively, since some types (templates) nest under subfolders by
- * style type. For every type the record counts must agree. For options, phrases
+ * style type. For most types the record counts must agree. For options, phrases
  * and option_groups the item ids are also compared exactly, since the _output
- * filename is the id. For class_extensions the item content (from_class,
- * to_class, active) is compared against the matching _data <extension> record,
- * so a corrupted to_class or a flipped active fails even when the file count is
- * unchanged. Other types are count-checked only; the report says which is which,
- * so nothing is skipped silently.
+ * filename is the id. class_extensions is matched row by row on the
+ * (from_class, to_class) pair instead of counted, so an addon may register
+ * several extensions against one from_class (see
+ * docs/adr/0003-canonical-class-extension-order.md for why that pair is the
+ * identity); a row present on only one side, or a flipped active, fails even
+ * when the file count is unchanged. Other types are count-checked only; the
+ * report says which is which, so nothing is skipped silently.
  *
  * This is a structural heuristic, not a re-implementation of xf-addon:export. It
  * catches the realistic mistakes (forgot to export, hand-edited one side); the

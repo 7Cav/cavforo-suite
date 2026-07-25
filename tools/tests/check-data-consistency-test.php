@@ -2,7 +2,7 @@
 
 /**
  * check-data-consistency-test.php — pins the class_extensions content check in
- * tools/check-data-consistency.php (issue #57), with no XenForo and no test
+ * tools/check-data-consistency.php (issues #57 and #150), with no XenForo and no test
  * framework. Self-contained: builds throwaway fixture addon dirs in the system
  * temp dir, runs the real tool against them, asserts on its exit code and
  * output, then cleans up. Exits non-zero on any failure.
@@ -14,6 +14,14 @@
  * the tool exit 0. After the fix they exit non-zero and name the offending item,
  * while a correct fixture still exits 0 and the _data string "1" compares equal
  * to the _output bool true.
+ *
+ * Cases 5 to 9 guard issue #150. The tool used to key its _data lookup on
+ * from_class alone, so two extensions registered against one from_class (which
+ * XenForo allows, and runs in sequence) collapsed to a single record and the
+ * second _output item was compared against the wrong row. RED proof: case 5
+ * exits 1 on valid data before the fix. Matching on the (from_class, to_class)
+ * pair is what makes the rows distinct, and the one-sided cases pin that each
+ * unmatched row is named on whichever side it went missing from.
  *
  * Run:
  *   php tools/tests/check-data-consistency-test.php
@@ -220,6 +228,80 @@ try {
     );
     [$code, $out] = runTool($tool, $dupOk);
     check('two extensions on one from_class pass when both sides agree', $code === 0, "exit=$code\n$out");
+
+    // --- 6. one of the duplicated rows drifted in _data, no re-export ----------
+    // Counts still agree, and the surviving row still shares its from_class with
+    // the drifted one, so nothing but pair matching catches this.
+    $dupDrift = makeFixture(
+        $base,
+        'dup-from-drift',
+        [
+            ['from_class' => $dupFrom, 'to_class' => $dupToOne, 'execute_order' => '10', 'active' => '1'],
+            // Hand-edited in _data while _output still names LoginB.
+            ['from_class' => $dupFrom, 'to_class' => $dupToTwo . 'Drifted', 'execute_order' => '20', 'active' => '1'],
+        ],
+        [
+            $dupFileOne => ['from_class' => $dupFrom, 'to_class' => $dupToOne, 'execute_order' => 10, 'active' => true],
+            $dupFileTwo => ['from_class' => $dupFrom, 'to_class' => $dupToTwo, 'execute_order' => 20, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $dupDrift);
+    check('a drifted _data to_class fails even when the counts agree', $code !== 0, "exit=$code\n$out");
+    check('the drift report names the _output item that lost its record', str_contains($out, $dupFileTwo), $out);
+    check('the drift report names the _data row nothing claimed', str_contains($out, $dupToTwo . 'Drifted'), $out);
+    check('the drift report leaves the intact row out of it', !str_contains($out, $dupFileOne), $out);
+
+    // --- 7. an _output item with no _data record, sharing a from_class ---------
+    $dupExtraOutput = makeFixture(
+        $base,
+        'dup-from-extra-output',
+        [
+            ['from_class' => $dupFrom, 'to_class' => $dupToOne, 'execute_order' => '10', 'active' => '1'],
+        ],
+        [
+            $dupFileOne => ['from_class' => $dupFrom, 'to_class' => $dupToOne, 'execute_order' => 10, 'active' => true],
+            $dupFileTwo => ['from_class' => $dupFrom, 'to_class' => $dupToTwo, 'execute_order' => 20, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $dupExtraOutput);
+    check('an _output item with no _data record fails', $code !== 0, "exit=$code\n$out");
+    check('the extra _output item is named', str_contains($out, $dupFileTwo), $out);
+
+    // --- 8. a _data record with no _output item, sharing a from_class ----------
+    $dupExtraData = makeFixture(
+        $base,
+        'dup-from-extra-data',
+        [
+            ['from_class' => $dupFrom, 'to_class' => $dupToOne, 'execute_order' => '10', 'active' => '1'],
+            ['from_class' => $dupFrom, 'to_class' => $dupToTwo, 'execute_order' => '20', 'active' => '1'],
+        ],
+        [
+            $dupFileOne => ['from_class' => $dupFrom, 'to_class' => $dupToOne, 'execute_order' => 10, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $dupExtraData);
+    check('a _data record with no _output item fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the unclaimed _data row is named, not left to be read off a count',
+        str_contains($out, $dupToTwo) && str_contains($out, 'no matching _output item'),
+        $out
+    );
+
+    // --- 9. the same one-sided cases on a unique from_class -------------------
+    $uniqueExtraData = makeFixture(
+        $base,
+        'unique-extra-data',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => '1'],
+            ['from_class' => $fromB, 'to_class' => $toB, 'active' => '1'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $uniqueExtraData);
+    check('a unique-from_class _data record with no _output item fails', $code !== 0, "exit=$code\n$out");
+    check('that unclaimed unique row is named too', str_contains($out, $toB), $out);
 } finally {
     rmrf($base);
 }
