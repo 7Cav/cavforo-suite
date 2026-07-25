@@ -603,8 +603,9 @@ prerequisite for phase 1 review or release.
 This repo's addons carry **standalone PHP tests** (`tests/*.php`), no XenForo and
 no framework — each is a self-contained script that exits non-zero on failure,
 run by `tools/run-tests.sh MilpacMention` (see `Cav7/EnlistmentReminder/tests/`
-for the shape). Tests pin the vendor-coupled wiring so a regression fails CI
-rather than shipping silently. Cover:
+for the shape). CI covers the behaviour that can run in plain PHP; anything that
+needs a live XenForo is verified on the dev stack before a release, not
+approximated in CI. Cover:
 
 **Pure logic (fully unit-testable, no XF):**
 
@@ -618,8 +619,8 @@ rather than shipping silently. Cover:
   `@`-dedup (milpac set minus `@` set), and the shared-cap ordering (`@` kept,
   milpac dropped first on overflow to N).
 
-**Wiring pins (assert the data items exist and are shaped right — self-contained
-reads of `_output/`, EnlistmentReminder-style):**
+**Install-time wiring (checked on the dev stack; the `_data`/`_output` halves are
+covered repo-wide by `tools/check-data-consistency.php`):**
 
 - Five class-extensions registered against the five notifier classes plus the
   shared `PreparerService`, and the three alert-handler extensions.
@@ -629,8 +630,7 @@ reads of `_output/`, EnlistmentReminder-style):**
   NF/Tickets handlers, and **not** on Report or the comment handler.
 - Every `alert()` call passes `depends_on_addon_id => 'Cav7/MilpacMention'`.
 
-**Behaviour that needs a live XF + NF/Rosters (integration, gated like
-`EnlistmentReminder/tests/ScanWiringTest.php`):**
+**Behaviour that needs a live XF + NF/Rosters (exercised on the dev stack):**
 
 - Gating parity: a member who can't view a report/hidden ticket receives no
   `milpac_mention` for a link inside it.

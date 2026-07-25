@@ -91,9 +91,10 @@ check(
 );
 // Documentation, not coverage: a thread with no rows cannot be in the fixture, so
 // there is no mutation of this seam that makes 906 appear and this check cannot
-// fail. It is here to state the shape of the answer. The real coverage for a
+// fail. It is here to state the shape of the answer. The real behaviour for a
 // mis-prefixed thread is on the scanner side, where the absent thread still gets a
-// fact built for it and the type routing skips it (see ScanWiringTest).
+// fact built for it and the type routing skips it — exercised against a live board
+// rather than in CI.
 check(
     'a thread with no link rows at all is absent from the result, so it reads as not in processing',
     !isset($statuses[906]),

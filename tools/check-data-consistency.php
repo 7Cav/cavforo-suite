@@ -145,8 +145,8 @@ foreach ($typeDirs as $typeDir) {
     // execute_order and active, are compared; between them the four cover every
     // field either side exports. _data spells both as XML strings ("1", "20")
     // where _output has a JSON bool and a JSON int, so normalise before
-    // comparing (CalendarPatch's JoinerServiceSetupWiringTest pins the same
-    // comparison for its extension).
+    // comparing. This is the one place the comparison lives; every add-on gets it
+    // from here rather than restating it in its own tests.
     if ($type === 'class_extensions') {
         $pairKey = static fn (string $from, string $to): string => "$from\0$to";
         $describePair = static fn (string $from, string $to): string

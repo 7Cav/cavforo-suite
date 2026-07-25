@@ -49,6 +49,16 @@ Shared scripts live in [`tools/`](tools/); [tools/README.md](tools/README.md) ha
 
 CI runs the tests and a static build check on every push and pull request: lint, `addon.json` and `_data/` validation, an `_output/`-and-`_data/` consistency check, and a packaging dry-run. None of it runs XenForo. The consistency check reads both trees against each other, so re-export and commit both whenever you change XenForo data, or it will fail — including when a data type reaches one tree and not the other.
 
+### What belongs in CI, and what does not
+
+CI tests the behaviour it can actually execute. A test calls the code with real inputs and asserts on what comes back; if a behaviour-preserving refactor would break it, it is testing the wrong thing and does not belong here.
+
+A seam that needs a live XenForo does not become testable by reading the source as text. Asserting that a file contains a call, a signature, a statement in a given order, or a variable spelled a certain way does not check the behaviour — it fails when the code is tidied and passes when the code is wrong, and it hides the fact that the seam was never covered. Do not add those.
+
+Vendor-coupled behaviour is verified by hand on a dev stack before a release: install the addon, exercise the feature, confirm the vendor has not moved underneath it. That is also the only check that can catch vendor drift, which no test in this repo can see — every one of them compares our code against our own expectations. Several addon READMEs carry the specific list to re-run after a XenForo or vendor upgrade.
+
+Where a structural fact is genuinely worth enforcing and is the same for every addon — `_data`/`_output` agreement, `addon.json` shape, class-extension ordering — it lives in `tools/` and runs against all of them, rather than being restated per addon.
+
 Release tags are per addon and use `<AddonId>-vX.Y.Z` (for example `SteamChecker-v1.1.4`). Pushing one builds that addon's zip and publishes it as a GitHub release. The tag version must match the addon's `addon.json` `version_string`.
 
 ## A note on the vendor name
