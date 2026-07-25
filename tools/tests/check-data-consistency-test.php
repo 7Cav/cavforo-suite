@@ -194,6 +194,32 @@ try {
     [$code, $out] = runTool($tool, $badFrom);
     check('corrupted from_class fails (exit non-zero)', $code !== 0, "exit=$code\n$out");
     check('corrupted from_class names the offending item', str_contains($out, $fileA), $out);
+
+    // --- 5. two extensions on one from_class, both matching (issue #150) --------
+    // XenForo lets an addon register several extensions against the same
+    // from_class and runs them in sequence; the row identity is the
+    // (from_class, to_class) pair, which is also what the _output filename is
+    // built from. Both rows here agree across the two sides, so the check passes.
+    $dupFrom = 'Test\\Vendor\\Controller\\Login';
+    $dupToOne = 'Cav7\\Fixture\\Vendor\\Controller\\LoginA';
+    $dupToTwo = 'Cav7\\Fixture\\Vendor\\Controller\\LoginB';
+    $dupFileOne = 'Test-Vendor-Controller-Login_Cav7-Fixture-Vendor-Controller-LoginA.json';
+    $dupFileTwo = 'Test-Vendor-Controller-Login_Cav7-Fixture-Vendor-Controller-LoginB.json';
+
+    $dupOk = makeFixture(
+        $base,
+        'dup-from-ok',
+        [
+            ['from_class' => $dupFrom, 'to_class' => $dupToOne, 'execute_order' => '10', 'active' => '1'],
+            ['from_class' => $dupFrom, 'to_class' => $dupToTwo, 'execute_order' => '20', 'active' => '1'],
+        ],
+        [
+            $dupFileOne => ['from_class' => $dupFrom, 'to_class' => $dupToOne, 'execute_order' => 10, 'active' => true],
+            $dupFileTwo => ['from_class' => $dupFrom, 'to_class' => $dupToTwo, 'execute_order' => 20, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $dupOk);
+    check('two extensions on one from_class pass when both sides agree', $code === 0, "exit=$code\n$out");
 } finally {
     rmrf($base);
 }

@@ -89,23 +89,38 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
     $records = $doc->children();
     $countData = count($records);
 
-    if ($countOutput !== $countData) {
-        $errors[] = "$type: _output has $countOutput item(s), _data has $countData (run xf-addon:export?)";
-        continue;
-    }
-
-    // class_extensions: content-checked, not just counted. Match each _output
-    // item to its _data <extension> by from_class, then compare from_class,
-    // to_class and active. _data stores active as the string "1"; _output as the
-    // JSON bool true, so normalise active before comparing (CalendarPatch's
+    // class_extensions: content-checked, not just counted. A row's identity is
+    // the (from_class, to_class) pair — XenForo groups extension rows by both
+    // columns and builds the _output filename from both — so an addon may
+    // register several extensions against one from_class and they stay distinct
+    // here (issue #150). Each _output item is matched to its _data <extension>
+    // on that pair; the remaining content, active, is then compared. _data
+    // stores active as the string "1"; _output as the JSON bool true, so
+    // normalise active before comparing (CalendarPatch's
     // JoinerServiceSetupWiringTest pins the same comparison for its extension).
     if ($type === 'class_extensions') {
-        $dataByFrom = [];
+        $pairKey = static fn (string $from, string $to): string => "$from\0$to";
+        $describePair = static fn (string $from, string $to): string
+            => "from_class '$from' to_class '$to'";
+
+        // Pair-keyed both ways, so this branch answers the count question itself
+        // and skips the generic count guard below. That only holds while each
+        // pair appears at most once per side, hence the two duplicate guards:
+        // without them a duplicated row on either side would hide a missing one.
+        $dataByPair = [];
+        $mismatches = [];
         foreach ($records as $record) {
-            $dataByFrom[(string) $record['from_class']] = $record;
+            $from = (string) $record['from_class'];
+            $to = (string) $record['to_class'];
+            $key = $pairKey($from, $to);
+            if (isset($dataByPair[$key])) {
+                $mismatches[] = '_data has more than one <extension> for '
+                    . $describePair($from, $to);
+                continue;
+            }
+            $dataByPair[$key] = ['record' => $record, 'matched' => false];
         }
 
-        $mismatches = [];
         foreach ($items as $file) {
             $itemName = $file->getFilename();
             $decoded = json_decode((string) file_get_contents($file->getPathname()), true);
@@ -114,28 +129,40 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
                 continue;
             }
             $from = (string) ($decoded['from_class'] ?? '');
-            if (!isset($dataByFrom[$from])) {
-                $mismatches[] = "$itemName: from_class '$from' has no matching _data <extension>";
+            $to = (string) ($decoded['to_class'] ?? '');
+            $key = $pairKey($from, $to);
+            if (!isset($dataByPair[$key])) {
+                $mismatches[] = "$itemName: " . $describePair($from, $to)
+                    . ' has no matching _data <extension>';
                 continue;
             }
-            $record = $dataByFrom[$from];
-
-            $diffs = [];
-            $outTo = (string) ($decoded['to_class'] ?? '');
-            $dataTo = (string) $record['to_class'];
-            if ($outTo !== $dataTo) {
-                $diffs[] = "to_class _output='$outTo' vs _data='$dataTo'";
+            if ($dataByPair[$key]['matched']) {
+                $mismatches[] = "$itemName: " . $describePair($from, $to)
+                    . ' is claimed by more than one _output item';
+                continue;
             }
+            $dataByPair[$key]['matched'] = true;
+            $record = $dataByPair[$key]['record'];
+
             // "1" and true are equal; a genuine true-vs-false difference is not.
             $outActive = (bool) ($decoded['active'] ?? null);
             $dataActive = ((string) $record['active'] === '1');
             if ($outActive !== $dataActive) {
-                $diffs[] = 'active _output=' . ($outActive ? 'true' : 'false')
+                $mismatches[] = "$itemName: active _output=" . ($outActive ? 'true' : 'false')
                     . ' vs _data=' . ($dataActive ? 'true' : 'false');
             }
-            if ($diffs) {
-                $mismatches[] = "$itemName: " . implode('; ', $diffs);
+        }
+
+        // The reverse direction, reported per row rather than left to be inferred
+        // from a count: a _data record no _output item claimed is named outright.
+        foreach ($dataByPair as $entry) {
+            if ($entry['matched']) {
+                continue;
             }
+            $record = $entry['record'];
+            $mismatches[] = '_data <extension> '
+                . $describePair((string) $record['from_class'], (string) $record['to_class'])
+                . ' has no matching _output item';
         }
 
         if ($mismatches) {
