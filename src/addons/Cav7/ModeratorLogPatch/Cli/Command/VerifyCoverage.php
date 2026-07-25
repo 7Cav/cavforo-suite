@@ -3,6 +3,7 @@
 namespace Cav7\ModeratorLogPatch\Cli\Command;
 
 use Cav7\ModeratorLogPatch\AuthorshipRule;
+use Cav7\ModeratorLogPatch\CategoryOverrides;
 use Cav7\ModeratorLogPatch\ContentAuthor;
 use Cav7\ModeratorLogPatch\ContentScope;
 use Cav7\ModeratorLogPatch\HandlerCoverage;
@@ -71,7 +72,9 @@ class VerifyCoverage extends Command
     protected array $categoryByType = [];
 
     /**
-     * Content types whose rule-phase sample was not real board content, and why.
+     * Content types whose rule-phase sample was not content from the scope the
+     * operator named, and why. Only a `fabricated` sample is not board content at
+     * all; a `board` or `unscoped` one is a real row that nobody asked for.
      *
      * @var array<string, string>
      */
@@ -144,14 +147,58 @@ class VerifyCoverage extends Command
         $this->nodeId = (int) $input->getArgument('node');
         $this->categoryId = (int) $input->getArgument('category');
 
-        foreach ((array) $input->getOption('category-id') as $pair) {
-            if (!preg_match('/^([a-z0-9_]+)=(\d+)$/i', (string) $pair, $match)) {
-                $output->writeln(
-                    "<error>--category-id expects <content_type>=<id>, got '$pair'.</error>"
-                );
-                return 1;
+        // The overrides get the same treatment the node and user arguments get, and
+        // for the same reason. A key was previously checked for its shape and
+        // nothing else, so anything of the form <word>=<digits> was stored under a
+        // key nothing would ever look up: a misspelling, a case difference, or a
+        // correctly spelled type that has no category column at all were all
+        // discarded in silence, and the run then read that type's category from the
+        // positional argument and reported a scoped PASS against content the
+        // operator had not named. Refused rather than warned about, because that is
+        // the failure this whole command exists to make impossible.
+        $registeredTypes = array_keys($app->getContentTypeField('moderator_log_handler_class'));
+        sort($registeredTypes);
+
+        $read = CategoryOverrides::parse((array) $input->getOption('category-id'));
+        $this->categoryByType = $read['overrides'];
+
+        $inputErrors = $read['errors'];
+        foreach (CategoryOverrides::unknownKeys($this->categoryByType, $registeredTypes) as $unknown) {
+            $inputErrors[] = "--category-id names '$unknown', which is not a content type this install registers a moderator log handler for";
+        }
+        // An override for a type filed under a node, or under nothing, provably
+        // cannot be used: the search narrows a node-filed type by the node argument,
+        // and a type with no scope column has no column to narrow at all.
+        foreach (array_keys($this->categoryByType) as $overridden) {
+            $filing = $this->filingOf($overridden);
+            if ($filing !== null && $filing !== ContentScope::CATEGORY) {
+                $inputErrors[] = "--category-id names '$overridden', which is filed "
+                    . ($filing === ContentScope::NODE ? 'under a node' : 'under neither a node nor a category')
+                    . ', so no category id can be used for it';
             }
-            $this->categoryByType[$match[1]] = (int) $match[2];
+        }
+
+        if ($inputErrors) {
+            foreach ($inputErrors as $inputError) {
+                $output->writeln("<error>$inputError.</error>");
+            }
+            $output->writeln('The content types this install registers a moderator log handler for, and how each is filed:');
+            foreach ($registeredTypes as $registered) {
+                $output->writeln('  ' . $registered . ': ' . ($this->filingOf($registered) ?? 'no entity this install can build'));
+            }
+            $output->writeln('Only a content type filed under a category can take --category-id.');
+            return 1;
+        }
+
+        // Echoed whether or not anything else goes wrong, so the run says out loud
+        // which ids it is about to use for which type. Every confusion in this area
+        // has been an override the operator believed was applied and was not.
+        if ($this->categoryByType) {
+            $applied = [];
+            foreach ($this->categoryByType as $overridden => $overrideId) {
+                $applied[] = "$overridden=$overrideId";
+            }
+            $output->writeln('<comment>Category id overrides applied: ' . implode(', ', $applied) . '</comment>');
         }
 
         $handlers = $this->checkCoverage();
@@ -283,9 +330,22 @@ class VerifyCoverage extends Command
         $wrongCategoryScopes = [];
 
         foreach ($handlers as $type => $handler) {
-            $sample = $this->sampleContent($type);
+            // The same scenario the coverage phase catches for reaches this read too,
+            // and it used to abort the whole run from here: an `entity` field naming a
+            // class that no longer loads throws from `em()->create()`, and a structure
+            // that has gained a column the schema step never applied throws from the
+            // finder. Either took every remaining content type, the end-to-end phase
+            // and the summary with it.
+            $sample = null;
+            $readError = 'no entity of this content type could be built or found';
+            try {
+                $sample = $this->sampleContent($type);
+            } catch (\Throwable $e) {
+                $readError = \get_class($e) . ': ' . $e->getMessage();
+            }
+
             if (!$sample) {
-                $this->check("$type has content to ask about", false, 'no entity of this content type could be built or found');
+                $this->check("$type has content to ask about", false, $readError);
                 continue;
             }
 
@@ -301,7 +361,11 @@ class VerifyCoverage extends Command
             if ($provenance !== ContentScope::FROM_SCOPE) {
                 $this->sampleNotes[$type] = $sample['note'];
                 if ($provenance === ContentScope::FROM_BOARD && $sample['scope'] === ContentScope::CATEGORY) {
-                    $wrongCategoryScopes[] = $type;
+                    // Keyed by type and carrying the id the search actually used, so
+                    // the failure below can name it. Naming the positional argument
+                    // instead sent the operator to a category that was not the one
+                    // read, and told them to use the option they had just used.
+                    $wrongCategoryScopes[$type] = (int) $sample['scopeValue'];
                 }
             }
             $label = $type . ($provenance === ContentScope::FROM_SCOPE ? '' : " [$provenance sample]");
@@ -418,18 +482,28 @@ class VerifyCoverage extends Command
         }
 
         // The node argument is validated as a forum before any phase runs. The
-        // category argument was taken on trust, and it cannot be validated the same
-        // way: there is no one category entity, and the two content types filed
-        // under a category use unrelated id spaces. What can be said is that a
-        // content type with content on the board and none in the category given
-        // means the number is wrong for that type, which is the mistyped-id case and
-        // used to produce an all-PASS run against fabricated content.
+        // category ids cannot be validated the same way: there is no one category
+        // entity, and the two content types filed under a category use unrelated id
+        // spaces. What can be said is that a content type with content on the board
+        // and none in the id used for it means that number is wrong for that type,
+        // which is the mistyped-id case and used to produce an all-PASS run against
+        // content from somewhere else.
+        //
+        // Each type is reported with the id the search used and where that id came
+        // from, because the two are not the same question and the operator can only
+        // fix the one they were given.
+        $missed = [];
+        foreach ($wrongCategoryScopes as $missedType => $missedId) {
+            $missed[] = "$missedType (read category $missedId, "
+                . (isset($this->categoryByType[$missedType]) ? 'from --category-id' : 'from the category argument')
+                . ')';
+        }
         $this->check(
-            'the category id given matches content of every content type filed under a category',
+            'every content type filed under a category has content in the category the run read for it',
             $wrongCategoryScopes === [],
-            'these types have content on the board but none in category ' . $this->categoryId
-                . ', so the rule phase did not read the content you named: ' . implode(', ', $wrongCategoryScopes)
-                . '. Name one per type with --category-id <content_type>=<id>'
+            'these types have content on the board but none in the category the run read for them, so the rule phase did not read the content you named: '
+                . implode(', ', $missed)
+                . '. Give the right id for each with --category-id <content_type>=<id>'
         );
     }
 
@@ -626,27 +700,34 @@ class VerifyCoverage extends Command
      * that type anywhere on the board, and an operator reading `scoped` reads "the
      * content I named".
      *
-     * @return array{entity: Entity, provenance: string, scope: string, note: string}|null
+     * @return array{entity: Entity, provenance: string, scope: string, scopeValue: int|null, note: string}|null
      */
     protected function sampleContent(string $type): ?array
     {
-        $app = \XF::app();
-
-        $entityClass = $app->getContentTypeFieldValue($type, 'entity');
-        if (!$entityClass) {
+        $entity = $this->newEntity($type);
+        if (!$entity) {
             return null;
         }
-
-        $entity = $app->em()->create($entityClass);
 
         $filing = ContentScope::of(array_keys($entity->structure()->columns));
         $scope = $filing['scope'];
         $scopeColumn = $filing['column'];
+        // The entity's own short name, which is what the content-type field holds and
+        // what the finder takes. Read off the structure rather than fetched a second
+        // time, so the rows read are of the type the columns above were read from.
+        $shortName = $entity->structure()->shortName;
         $scopeValue = null;
         if ($scopeColumn !== null) {
-            $scopeValue = $scope === ContentScope::NODE
-                ? $this->nodeId
-                : ($this->categoryByType[$type] ?? $this->categoryId);
+            // Resolved once, by the unit CI can run, and reported wherever the id is
+            // named. A failure message that interpolated the positional argument
+            // while the search had used an override sent the operator to inspect a
+            // category that had nothing to do with the miss.
+            $scopeValue = CategoryOverrides::effectiveId(
+                $type,
+                $scope,
+                $this->categoryByType,
+                $scope === ContentScope::NODE ? $this->nodeId : $this->categoryId
+            );
         }
 
         $primaryKey = $entity->structure()->primaryKey;
@@ -656,11 +737,11 @@ class VerifyCoverage extends Command
         $found = null;
         $foundInScope = false;
         if ($scopeColumn !== null) {
-            $found = $this->newestOf($entityClass, $primaryKey, $scopeColumn, $scopeValue);
+            $found = $this->newestOf($shortName, $primaryKey, $scopeColumn, $scopeValue);
             $foundInScope = $found !== null;
         }
         if (!$found) {
-            $found = $this->newestOf($entityClass, $primaryKey, null, null);
+            $found = $this->newestOf($shortName, $primaryKey, null, null);
         }
 
         $provenance = ContentScope::provenance($scopeColumn, $foundInScope, $found !== null);
@@ -679,20 +760,63 @@ class VerifyCoverage extends Command
             'entity' => $found,
             'provenance' => $provenance,
             'scope' => $scope,
+            'scopeValue' => $scopeValue,
             'note' => $this->sampleNote($provenance, $scopeColumn, $scopeValue),
         ];
     }
 
     /**
-     * The newest row of $entityClass, optionally narrowed to one column value.
+     * An unsaved entity of $type, or null when the content type names none.
      *
-     * @param string|list<string> $primaryKey As the entity's structure declares it; a
-     *                                        compound key cannot be ordered on, so
-     *                                        such a type is read unordered.
+     * Throws rather than answering null when the class it names cannot be built:
+     * that is a broken install and the caller reports it per content type, with the
+     * exception's own words, instead of turning it into "no content found".
      */
-    protected function newestOf(string $entityClass, $primaryKey, ?string $column, $value): ?Entity
+    protected function newEntity(string $type): ?Entity
     {
-        $finder = \XF::app()->finder($entityClass);
+        $entityShortName = (string) \XF::app()->getContentTypeFieldValue($type, 'entity');
+        if ($entityShortName === '') {
+            return null;
+        }
+
+        return \XF::app()->em()->create($entityShortName);
+    }
+
+    /**
+     * How $type is filed, as `ContentScope` names it, or null when this install
+     * cannot build an entity of the type to read its columns.
+     *
+     * Answers null rather than throwing: this runs while the arguments are still
+     * being checked, and a content type whose entity will not load is the coverage
+     * phase's to report loudly, not a reason to refuse the run before any phase has
+     * said anything.
+     */
+    protected function filingOf(string $type): ?string
+    {
+        try {
+            $entity = $this->newEntity($type);
+            if (!$entity) {
+                return null;
+            }
+
+            return ContentScope::of(array_keys($entity->structure()->columns))['scope'];
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * The newest row of the entity type named, optionally narrowed to one column
+     * value.
+     *
+     * @param string              $entityShortName As the content-type field holds it.
+     * @param string|list<string> $primaryKey      As the entity's structure declares it; a
+     *                                             compound key cannot be ordered on, so
+     *                                             such a type is read unordered.
+     */
+    protected function newestOf(string $entityShortName, $primaryKey, ?string $column, $value): ?Entity
+    {
+        $finder = \XF::app()->finder($entityShortName);
         if ($column !== null) {
             $finder->where($column, $value);
         }

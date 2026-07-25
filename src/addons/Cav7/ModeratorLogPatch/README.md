@@ -122,7 +122,11 @@ php cmd.php cav7-moderator-log-patch:verify <node> <user> <category>
 - `--category-id <content_type>=<id>` — optional, repeatable. The two content
   types filed under a category use unrelated id spaces (`ticket_category_id` and
   `category_id`), so one number is right for both only by coincidence. Give one
-  per type when it is not.
+  per type when it is not. The key is checked against the content types the
+  install registers and has to name one that is filed under a category: a
+  misspelling, a difference in case, a type filed under a node or under nothing,
+  and a type named twice all refuse the run rather than being dropped. The ones
+  that are used are echoed before the first phase.
 
 Three phases. It reads the registered handler content types off the install,
 checks each one resolves through this addon, and reports anything else in the
@@ -193,6 +197,10 @@ the verification command is for.
   enough to assert what the source text cannot: that a withheld decision never
   reaches the handler underneath, and that a handler answering "no" is still
   obeyed. It covers `ContentAuthor` and `HandlerCoverage` the same way.
+- `tests/CategoryOverridesTest.php` covers the `--category-id` options: how the
+  pairs are read, which keys the command refuses, and which id a content type is
+  actually looked up in. The command itself can only be run by hand against a
+  live forum, so the reading and the resolution live in a unit that cannot.
 - `tests/WiringTest.php` pins what CI cannot execute: the eight class-extension
   registrations and their `_output` copies, both overrides and the shape of each,
   the eight subclasses that compose the trait, and the verification command.

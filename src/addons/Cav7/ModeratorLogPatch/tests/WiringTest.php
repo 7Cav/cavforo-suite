@@ -445,6 +445,7 @@ $ruleSrc = (string) @file_get_contents("$root/AuthorshipRule.php");
 $ruleCode = stripComments($ruleSrc);
 foreach ([
     'AuthorshipRule' => $ruleCode,
+    'CategoryOverrides' => stripComments((string) @file_get_contents("$root/CategoryOverrides.php")),
     'HandlerCoverage' => stripComments((string) @file_get_contents("$root/HandlerCoverage.php")),
 ] as $pureClass => $pureCode) {
     check(
@@ -456,9 +457,9 @@ foreach ([
         'this is only covered by the ordinary test run for as long as it runs without a stack'
     );
 }
-// Neither is registered as an extendable class, and both are static-only, which is
-// the suite's own shape for a pure helper.
-foreach (['AuthorshipRule', 'ContentAuthor', 'HandlerCoverage'] as $pureClass) {
+// None of them is registered as an extendable class, and all of them are
+// static-only, which is the suite's own shape for a pure helper.
+foreach (['AuthorshipRule', 'CategoryOverrides', 'ContentAuthor', 'HandlerCoverage'] as $pureClass) {
     check(
         "$pureClass is final",
         (bool) preg_match(
@@ -771,6 +772,37 @@ check(
     str_contains($ruleCheckBody, '$wrongCategoryScopes')
         && str_contains($configureBody, "'category-id'"),
     'ticket_category_id and category_id are different id spaces, so one number is right for both only by coincidence, and a mistyped id used to produce an all-PASS run against fabricated content'
+);
+// The overrides are the only free-form input the command takes, and the only one
+// that used to be accepted on its shape alone: any <word>=<digits> was stored under
+// a key nothing would look up, so a misspelling, a case difference, or a correctly
+// spelled type with no category column at all were all discarded in silence and the
+// run then reported a scoped PASS against the positional argument's content. Reading
+// and resolving them lives in CategoryOverrides, which CI executes; what has to stay
+// on the command is the comparison against the install's own type list.
+check(
+    'the overrides are read, checked against the install, and resolved by the unit CI can run',
+    str_contains($executeBody, 'CategoryOverrides::parse(')
+        && str_contains($executeBody, 'CategoryOverrides::unknownKeys(')
+        && str_contains($executeBody, "getContentTypeField('moderator_log_handler_class')")
+        && str_contains($sampleBody, 'CategoryOverrides::effectiveId('),
+    'a key checked for its shape and not against the install is a key nothing looks up, and the run then reads the scope from the argument and says PASS for content the operator never named'
+);
+check(
+    'an override the install cannot use refuses the run, the way node and user do',
+    (bool) preg_match('/if\s*\(\s*\$inputErrors\s*\)\s*\{.*?return\s+1\s*;/s', $executeBody),
+    'warning about it and carrying on produces a green run whose every signal — label, note, tally, exit code — says it was scoped to what the operator asked for'
+);
+// The failure has to name the id the search used. It interpolated the positional
+// argument whatever had been overridden, which sent the operator to inspect a
+// category that was innocent and told them to use the option they had just used —
+// while the per-type note lower down carried the right number, so the run
+// contradicted itself and the FAIL line is the one read first.
+check(
+    'the category failure names the id the run read for each type, not the positional argument',
+    !str_contains($ruleCheckBody, '$this->categoryId')
+        && (bool) preg_match('/foreach\s*\(\s*\$wrongCategoryScopes\s+as\s+/', $ruleCheckBody),
+    'the id the search used is the per-type one, and it is the only number that can tell the operator which category to go and look at'
 );
 // The scope column is discovered from the entity's own structure, and the discovery
 // itself lives in ContentScope so CI can execute it: which column wins, and what a
