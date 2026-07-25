@@ -21,7 +21,9 @@
  * is what identifies a row. A row present on only one side, or a disagreeing
  * execute_order or active, fails even when the file count is unchanged. An
  * absent execute_order or active is a mismatch too, named by the side it is
- * missing from, since 0 and false are both legitimate values.
+ * missing from, since 0 and false are both legitimate values — and so is a
+ * value in a shape no export writes, which is refused rather than cast into
+ * one of those two.
  * (docs/adr/0003-canonical-class-extension-order.md rests on the same pair
  * identity: it fixes the row order of a committed _data file as a byte
  * comparison of from_class then to_class, and leaves execute_order out of that
@@ -130,6 +132,39 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
             return "$field missing from " . implode(' and ', $sides);
         };
 
+        // The two content-checked fields are one comparison, so they are written
+        // once: each side declares the shapes its export actually writes, and
+        // anything else is refused rather than cast. Casting was how a value
+        // that went missing kept comparing equal to a legitimate one — false
+        // and 0 are what a cast of nothing lands on, and they are also real
+        // values of these two columns. Reading the shape instead closes that
+        // for a JSON null, a quoted "false" (truthy, so it used to read as
+        // enabled) and any other value no exporter produces alike.
+        // A normaliser returns null for a shape it does not recognise; absence
+        // is settled before they run, so null here only ever means malformed.
+        $fieldChecks = [
+            // _output json_encodes the tinyint as a JSON bool; _data spells the
+            // same column as the XML string "1" or "0".
+            'active' => [
+                'output' => static fn ($raw) => is_bool($raw) ? $raw : null,
+                'data' => static function (string $raw): ?bool {
+                    return $raw === '1' ? true : ($raw === '0' ? false : null);
+                },
+                'render' => static fn (bool $value): string => $value ? 'true' : 'false',
+            ],
+            // execute_order decides which extension wraps which when several
+            // share a from_class, so a drift here changes what runs first
+            // without changing any count or any pair. _output holds a JSON int,
+            // _data the same number as an XML string.
+            'execute_order' => [
+                'output' => static fn ($raw) => is_int($raw) ? $raw : null,
+                'data' => static function (string $raw): ?int {
+                    return preg_match('/^-?\d+$/', $raw) === 1 ? (int) $raw : null;
+                },
+                'render' => static fn (int $value): string => (string) $value,
+            ],
+        ];
+
         // Pair-keyed both ways, so this branch answers the count question itself
         // and skips the generic count guard below. That only holds while each
         // pair appears at most once per side, hence the two duplicate guards:
@@ -171,36 +206,38 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
             $dataByPair[$key]['matched'] = true;
             $record = $dataByPair[$key]['record'];
 
-            // "1" and true are equal; a genuine true-vs-false difference is not.
-            // An absent value is a mismatch naming the side rather than a silent
-            // false, for the same reason execute_order treats one as a mismatch
-            // rather than a silent 0: a real export always writes the column,
-            // and false is a legitimate active. Read absence off the key itself,
-            // since casting an absent value lands on false either way and would
-            // make an unexported row compare equal to a disabled one.
-            $outActive = array_key_exists('active', $decoded) ? (bool) $decoded['active'] : null;
-            $dataActive = isset($record['active']) ? ((string) $record['active'] === '1') : null;
-            if ($outActive === null || $dataActive === null) {
-                $mismatches[] = "$itemName: "
-                    . $describeMissing('active', $outActive === null, $dataActive === null);
-            } elseif ($outActive !== $dataActive) {
-                $mismatches[] = "$itemName: active _output=" . ($outActive ? 'true' : 'false')
-                    . ' vs _data=' . ($dataActive ? 'true' : 'false');
-            }
+            foreach ($fieldChecks as $field => $check) {
+                // One absence test for both fields and both sides. `?? null`
+                // rather than array_key_exists(): a key whose value is a JSON
+                // null is a value that went missing, not a value of false, and
+                // an export that wrote the column would not have left it there.
+                $rawOutput = $decoded[$field] ?? null;
+                $rawData = isset($record[$field]) ? (string) $record[$field] : null;
+                if ($rawOutput === null || $rawData === null) {
+                    $mismatches[] = "$itemName: "
+                        . $describeMissing($field, $rawOutput === null, $rawData === null);
+                    continue;
+                }
 
-            // execute_order decides which extension wraps which when several
-            // share a from_class, so a drift here changes what runs first
-            // without changing any count or any pair. An absent value is a
-            // mismatch in its own right rather than a silent 0: a real export
-            // always writes the column, and 0 is a legitimate order.
-            $outOrder = $decoded['execute_order'] ?? null;
-            $dataOrder = isset($record['execute_order']) ? $record['execute_order'] : null;
-            if ($outOrder === null || $dataOrder === null) {
-                $mismatches[] = "$itemName: "
-                    . $describeMissing('execute_order', $outOrder === null, $dataOrder === null);
-            } elseif ((int) $outOrder !== (int) $dataOrder) {
-                $mismatches[] = "$itemName: execute_order _output=" . (int) $outOrder
-                    . ' vs _data=' . (int) $dataOrder;
+                $outValue = $check['output']($rawOutput);
+                $dataValue = $check['data']($rawData);
+                if ($outValue === null || $dataValue === null) {
+                    $sides = [];
+                    if ($outValue === null) {
+                        $sides[] = '_output=' . json_encode($rawOutput);
+                    }
+                    if ($dataValue === null) {
+                        $sides[] = '_data=' . json_encode($rawData);
+                    }
+                    $mismatches[] = "$itemName: $field " . implode(' and ', $sides)
+                        . ' is not a value any export writes';
+                    continue;
+                }
+
+                if ($outValue !== $dataValue) {
+                    $mismatches[] = "$itemName: $field _output=" . $check['render']($outValue)
+                        . ' vs _data=' . $check['render']($dataValue);
+                }
             }
         }
 

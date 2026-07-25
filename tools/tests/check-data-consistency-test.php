@@ -45,6 +45,14 @@
  * disabled one and the tool called it clean. Each case names the side, or sides,
  * the field went missing from.
  *
+ * Cases 23 to 26 close the same hole where JSON leaves a second door open. A key
+ * present with a null value is a value that went missing, but an absence test
+ * that only asks whether the key exists says otherwise and the cast behind it
+ * lands on false — the disabled row again. Cases 24 to 26 are the shapes either
+ * side of a cast: "false" is a truthy string, so it read as enabled, and an
+ * empty array read as disabled. Neither is a shape an export writes, so both are
+ * refused rather than guessed at.
+ *
  * Run:
  *   php tools/tests/check-data-consistency-test.php
  *
@@ -267,6 +275,7 @@ try {
     check('flipped active names the offending item', str_contains($out, $fileA), $out);
 
     // --- 4. corrupted from_class: _output item matches no _data <extension> -----
+    $bogusFrom = 'Test\\Vendor\\Entity\\BOGUS';
     $badFrom = makeFixture(
         $base,
         'bad-from-class',
@@ -276,13 +285,23 @@ try {
         ],
         [
             // from_class mangled: no matching _data record.
-            $fileA => ['from_class' => 'Test\\Vendor\\Entity\\BOGUS', 'to_class' => $toA, 'execute_order' => 10, 'active' => true],
+            $fileA => ['from_class' => $bogusFrom, 'to_class' => $toA, 'execute_order' => 10, 'active' => true],
             $fileB => ['from_class' => $fromB, 'to_class' => $toB, 'execute_order' => 10, 'active' => true],
         ]
     );
     [$code, $out] = runTool($tool, $badFrom);
     check('corrupted from_class fails (exit non-zero)', $code !== 0, "exit=$code\n$out");
-    check('corrupted from_class names the offending item', str_contains($out, $fileA), $out);
+    // The whole line, not just the filename: this is the message the pair
+    // matching rewrote, and the to_class half of it is what tells a mangled
+    // from_class apart from an extension that was never exported at all.
+    check(
+        'corrupted from_class names the item and both halves of the pair that matched nothing',
+        str_contains(
+            $out,
+            "$fileA: from_class '$bogusFrom' to_class '$toA' has no matching _data <extension>"
+        ),
+        $out
+    );
 
     // --- 5. two extensions on one from_class, both matching (issue #150) --------
     // XenForo lets an addon register several extensions against the same
@@ -351,7 +370,14 @@ try {
     );
     [$code, $out] = runTool($tool, $dupExtraOutput);
     check('an _output item with no _data record fails', $code !== 0, "exit=$code\n$out");
-    check('the extra _output item is named', str_contains($out, $dupFileTwo), $out);
+    check(
+        'the extra _output item is named with the pair nothing matched',
+        str_contains(
+            $out,
+            "$dupFileTwo: from_class '$dupFrom' to_class '$dupToTwo' has no matching _data <extension>"
+        ),
+        $out
+    );
 
     // --- 8. a _data record with no _output item, sharing a from_class ----------
     $dupExtraData = makeFixture(
@@ -697,6 +723,90 @@ try {
     check(
         'active missing from both sides names both',
         str_contains($out, "$fileA: active missing from _output and _data"),
+        $out
+    );
+
+    // --- 23. active present as a JSON null in _output --------------------------
+    // The absence case again, through the door JSON leaves open: the key is
+    // there, its value is gone. Asking only whether the key exists and then
+    // casting lands on false, which is exactly the disabled row _data holds, so
+    // this used to read as a clean match.
+    $outActiveNull = makeFixture(
+        $base,
+        'output-active-null',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => '0'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10, 'active' => null],
+        ]
+    );
+    [$code, $out] = runTool($tool, $outActiveNull);
+    check('an _output item whose active is a JSON null fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'a JSON-null active is reported as missing from _output, not as false',
+        str_contains($out, "$fileA: active missing from _output"),
+        $out
+    );
+
+    // --- 24. active as the string "false" in _output --------------------------
+    // No export writes a string here, and "false" is a truthy one, so casting it
+    // read a disabled row as enabled. The shape is rejected outright instead.
+    $outActiveString = makeFixture(
+        $base,
+        'output-active-string',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => '1'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10, 'active' => 'false'],
+        ]
+    );
+    [$code, $out] = runTool($tool, $outActiveString);
+    check('an _output active holding the string "false" fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the string active is named as a shape no export writes',
+        str_contains($out, "$fileA: active _output=\"false\" is not a value any export writes"),
+        $out
+    );
+
+    // --- 25. active as an array in _output ------------------------------------
+    $outActiveArray = makeFixture(
+        $base,
+        'output-active-array',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => '0'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10, 'active' => []],
+        ]
+    );
+    [$code, $out] = runTool($tool, $outActiveArray);
+    check('an _output active holding an array fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the array active is named as a shape no export writes',
+        str_contains($out, "$fileA: active _output=[] is not a value any export writes"),
+        $out
+    );
+
+    // --- 26. active holding something other than "1"/"0" in _data -------------
+    // The _data mirror of cases 24 and 25: the column is exported as "1" or "0",
+    // and anything else is a hand-edit rather than a value to guess at.
+    $dataActiveOdd = makeFixture(
+        $base,
+        'data-active-odd',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => 'true'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $dataActiveOdd);
+    check('a _data active outside "1"/"0" fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the odd _data active is named as a shape no export writes',
+        str_contains($out, "$fileA: active _data=\"true\" is not a value any export writes"),
         $out
     );
 } finally {
