@@ -53,6 +53,15 @@
  * empty array read as disabled. Neither is a shape an export writes, so both are
  * refused rather than guessed at.
  *
+ * Cases 27 and 28 carry that refusal over to execute_order, where the stakes are
+ * higher than on active: a cast of any unwritten shape lands on 0, and 0 is a
+ * legitimate execute_order, so a cast agrees with any _data row holding one.
+ * Case 29 pins the malformed-item report. class_extensions is the one type that
+ * answers the count question itself and so has no generic count guard behind it;
+ * an item whose bytes fail json_decode claims no pair, which leaves the reverse
+ * walk silent about it too, and this report the only thing between a half-written
+ * file and a clean run.
+ *
  * Run:
  *   php tools/tests/check-data-consistency-test.php
  *
@@ -272,7 +281,14 @@ try {
     );
     [$code, $out] = runTool($tool, $flipped);
     check('flipped active fails (exit non-zero)', $code !== 0, "exit=$code\n$out");
-    check('flipped active names the offending item', str_contains($out, $fileA), $out);
+    // The whole line, not just the filename: the message renders each side back
+    // as the word it stands for, and a renderer that swapped them would still
+    // fail the run while telling the reader to fix the wrong file.
+    check(
+        'flipped active names the item and reports each side as the value it holds',
+        str_contains($out, "$fileA: active _output=false vs _data=true"),
+        $out
+    );
 
     // --- 4. corrupted from_class: _output item matches no _data <extension> -----
     $bogusFrom = 'Test\\Vendor\\Entity\\BOGUS';
@@ -807,6 +823,86 @@ try {
     check(
         'the odd _data active is named as a shape no export writes',
         str_contains($out, "$fileA: active _data=\"true\" is not a value any export writes"),
+        $out
+    );
+
+    // --- 27. execute_order in shapes _output never writes ----------------------
+    // The same refusal as cases 24 and 25, on the field where it matters most:
+    // every cast of a shape the exporter never writes lands on 0, and 0 is a
+    // legitimate execute_order, so a cast would quietly agree with any _data row
+    // holding it. A quoted number and a fraction are the two shapes a hand-edit
+    // reaches for, and both cast to the 10 that _data holds here.
+    $orderShapes = makeFixture(
+        $base,
+        'output-execute-order-shapes',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => '10', 'active' => '1'],
+            ['from_class' => $fromB, 'to_class' => $toB, 'execute_order' => '10', 'active' => '1'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => '10', 'active' => true],
+            $fileB => ['from_class' => $fromB, 'to_class' => $toB, 'execute_order' => 10.5, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $orderShapes);
+    check('an _output execute_order outside a JSON int fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'both refused _output execute_order shapes are named as shapes no export writes',
+        str_contains($out, "$fileA: execute_order _output=\"10\" is not a value any export writes")
+            && str_contains($out, "$fileB: execute_order _output=10.5 is not a value any export writes"),
+        $out
+    );
+
+    // --- 28. execute_order holding a non-number in _data ----------------------
+    // The _data mirror of case 27, and the sharpest case for refusing over
+    // casting: (int) 'first' is 0, and the _output item here legitimately holds
+    // 0, so a cast reads a garbage row as a clean match.
+    $dataOrderOdd = makeFixture(
+        $base,
+        'data-execute-order-odd',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 'first', 'active' => '1'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 0, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $dataOrderOdd);
+    check('a _data execute_order that is not a number fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the non-numeric _data execute_order is named as a shape no export writes',
+        str_contains($out, "$fileA: execute_order _data=\"first\" is not a value any export writes"),
+        $out
+    );
+
+    // --- 29. an _output item whose bytes are not valid JSON -------------------
+    // class_extensions is the one type with no generic count guard behind it, so
+    // this report is the only thing standing between a half-written _output item
+    // and a clean run: an item that fails json_decode claims no pair, which
+    // leaves the reverse walk with nothing to say about it either. Two _data rows
+    // against three _output items, the third cut off mid-write.
+    $truncatedFile = 'Test-Vendor-Entity-Baz_Cav7-Fixture-Vendor-Entity-Baz.json';
+    $malformed = makeFixture(
+        $base,
+        'output-item-malformed',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => '1'],
+            ['from_class' => $fromB, 'to_class' => $toB, 'active' => '1'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10, 'active' => true],
+            $fileB => ['from_class' => $fromB, 'to_class' => $toB, 'execute_order' => 10, 'active' => true],
+        ]
+    );
+    file_put_contents(
+        "$malformed/_output/class_extensions/$truncatedFile",
+        "{\n    \"from_class\": \"Test\\\\Vendor\\\\Entity\\\\Baz\",\n    \"to_cl"
+    );
+    [$code, $out] = runTool($tool, $malformed);
+    check('an _output item that is not valid JSON fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the unreadable _output item is named rather than passed over',
+        str_contains($out, "$truncatedFile: not readable as a JSON object"),
         $out
     );
 } finally {
