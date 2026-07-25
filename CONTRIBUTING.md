@@ -27,7 +27,28 @@ Code changes are just PHP edits in the addon directory. Changes to options, phra
 
 1. Edit through the admin control panel with development mode on. XenForo writes the changes to the addon's `_output/` directory.
 2. Refresh the install bundle with `php cmd.php xf-addon:export Cav7/<AddonId>`, which exports the current data to `_data/`. Both `_output/` and `_data/` are exported from the database; one is not compiled from the other.
-3. Commit both `_output/` and the regenerated `_data/`. Do not hand-edit either.
+3. Commit both `_output/` and the regenerated `_data/`. Never write either tree
+   by hand: derive the one you did not edit, as below.
+
+### Data-only changes without an install
+
+When the whole change is XenForo data — a template modification's find string, an
+option's default, a phrase's wording — you do not need an install to keep the two
+trees in step. Edit one tree and derive the other:
+
+```
+php tools/sync-addon-data.php src/addons/Cav7/<AddonId> --to-output
+php tools/sync-addon-data.php src/addons/Cav7/<AddonId> --to-data
+```
+
+The script needs only `php`. It is what step 3 means by deriving rather than
+writing by hand: reproducing XenForo's formatting yourself is guesswork, and the
+consistency check fails on any drift.
+
+It is a second path, not a replacement. With an install, `xf-addon:export` and
+`xf-dev:export` stay canonical, and they are the only path that picks up a change
+made in the control panel. What the script does and does not reproduce is in
+[tools/README.md](tools/README.md).
 
 There is more detail on the `_output/` and `_data/` split in [docs/addon-format.md](docs/addon-format.md).
 
