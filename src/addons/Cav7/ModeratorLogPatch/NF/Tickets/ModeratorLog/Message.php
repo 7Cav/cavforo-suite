@@ -13,8 +13,9 @@ use Cav7\ModeratorLogPatch\AuthorshipLogging;
  * somewhere to land; it holds no logic of its own on purpose.
  *
  * The class extension that reaches this file is registered against
- * `NF\Tickets\ModeratorLog\MessageHandler`, a name with no file behind it. See
- * docs/adr/0003-register-the-name-xenforo-resolves-to.md.
+ * `NF\Tickets\ModeratorLog\MessageHandler`, a name with no file behind it, because
+ * that is the name XenForo's aliasing autoloader resolves to when the moderator log
+ * asks for this handler. `cav7-moderator-log-patch:verify` checks it on the install.
  */
 class Message extends XFCP_Message
 {

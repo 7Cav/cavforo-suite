@@ -180,7 +180,7 @@ if ($classExtXml !== false) {
 // the content-type field says. Registered against the names on the files, those two
 // records install, validate, export, and never load. Spelled out per handler rather
 // than derived from the to_class, because deriving it would reproduce whatever
-// mistake the source made. See docs/adr/0003-register-the-name-xenforo-resolves-to.md.
+// mistake the source made.
 $expectedExtensions = [
     'NF\Calendar\ModeratorLog\EventHandler' => 'Cav7\ModeratorLogPatch\NF\Calendar\ModeratorLog\EventHandler',
     'NF\Tickets\ModeratorLog\MessageHandler' => 'Cav7\ModeratorLogPatch\NF\Tickets\ModeratorLog\Message',
@@ -226,7 +226,7 @@ usort(
 check(
     'the committed rows are in canonical order (byte comparison of from_class, then to_class)',
     $committedPairs === $sortedPairs,
-    'the repo-root docs/adr/0003-canonical-class-extension-order.md (not this addon\'s ADR 0003, which is a different document): re-export rather than hand-sorting, and do not revert the reordering hunks'
+    'the repo-root docs/adr/0003-canonical-class-extension-order.md: re-export rather than hand-sorting, and do not revert the reordering hunks'
 );
 
 check(
@@ -634,7 +634,7 @@ check(
     'the coverage phase reports a user gate at either end of the chain that would be discarded',
     str_contains($coverageBody, 'HandlerCoverage::discardedUserGates(')
         && (bool) preg_match('/function\s+discardedUserGates/', $coverageCode),
-    'replacing isLoggableUser is right while the abstract handler is its only declaration anywhere, which is an assumption about somebody else\'s code and the same class ADR 0003 records as having already bitten'
+    'replacing isLoggableUser is right while the abstract handler is its only declaration anywhere, which is an assumption about somebody else\'s code and the same class that already bit once, by never being resolved through the extension system'
 );
 // The two classes entitled to declare the user gate are read off the chain: the one
 // composing our trait, and the root of the hierarchy. Hardcoding XenForo's abstract

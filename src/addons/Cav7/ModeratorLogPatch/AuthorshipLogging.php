@@ -13,8 +13,7 @@ use XF\Mvc\Entity\Entity;
  * class-extension chain fixes each subclass's parent to the XFCP proxy of the
  * handler it extends, and the abstract handler those handlers share is never
  * resolved through the extension system, so extending it would register an
- * extension nothing ever loads. See
- * docs/adr/0002-one-extension-per-registered-handler.md.
+ * extension nothing ever loads.
  *
  * Both overrides are thin. The decision is in {@see AuthorshipRule}, which the
  * ordinary test run covers because it needs nothing from XenForo, and who wrote the

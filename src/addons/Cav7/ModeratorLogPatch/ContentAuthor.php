@@ -18,8 +18,7 @@ use XF\Mvc\Entity\Entity;
  * member's own id, so for `user` this returns the subject of the moderation rather
  * than somebody who wrote something, and the rule above reads "the actor is the
  * subject" where it says "the actor is the author". It is inert: no action logged
- * against a member is author-reachable. See
- * docs/adr/0006-two-cases-the-authorship-axis-cannot-express.md.
+ * against a member is author-reachable.
  */
 final class ContentAuthor
 {
