@@ -85,10 +85,16 @@ class QueueReminder
         // What they do not close is handing the wrong list to the right name —
         // `standardPrefixIds: $reenlistPrefixIds` reads perfectly well, and
         // `standardPositionIds: PositionIdList::parse($rawStandardPrefixIds)` reads
-        // almost as well. Both are silent: the affected type routes unrecognized, or
-        // to no seat, and its threads are skipped hourly with nothing an admin sees.
-        // ScanWiringTest pins each of the four bindings to the variable that belongs
-        // to it, and that pin — not the argument names — is what closes this half.
+        // almost as well. Both DO log, and that is the trap rather than the defence:
+        // the log names the wrong cause. The first leaves both prefix lists holding
+        // 58, so the overlap warning below fires against cav7ERStandardPrefixIds and
+        // cav7ERReenlistPrefixIds, two options that are correctly configured, while 57
+        // threads are skipped as unrecognized. The second turns the standard seats into
+        // [57], so the no-seat skip sends an admin to cav7ERStandardClerkPositionIds —
+        // also correct. Either way the admin edits a healthy textbox and the fault
+        // stays exactly where it is. ScanWiringTest pins each of the four bindings to
+        // the variable that belongs to it, and that pin — not the argument names, and
+        // not the log — is what closes this half.
         $routing = new EnlistmentRouting(
             standardPrefixIds: $standardPrefixIds,
             standardPositionIds: PositionIdList::parse($rawStandardPositionIds),
@@ -99,16 +105,6 @@ class QueueReminder
         $rawInProcessingPrefixIds = (string) \XF::options()->cav7ERInProcessingPrefixIds;
         $inProcessingPrefixIds = PositionIdList::parse($rawInProcessingPrefixIds);
 
-        if (!$nodeId)
-        {
-            \XF::logError('[Cav7/EnlistmentReminder] Queue node id is not configured; nothing to scan.');
-            return;
-        }
-        if (!$botUserId)
-        {
-            \XF::logError('[Cav7/EnlistmentReminder] Bot user id is not configured; cannot post reminders.');
-            return;
-        }
         // A prefix listed under BOTH type sets is a config error (story 21): a
         // thread of that prefix fail-safes to the union of both clerk sets so no
         // responsible clerk is silently dropped, but the misconfig is surfaced
@@ -153,11 +149,32 @@ class QueueReminder
                 $rawReenlistPrefixIds
             ));
         }
-        // The first abort, and the lowest an abort can sit: everything above it only
-        // logs, so an admin holding a blank status option AND a blank type list hears
-        // about both from this one run rather than fixing one, waiting an hour, and
-        // then learning about the other. Everything below it either aborts too or
+        // The log-only preamble ends here. Everything above only warns, so an admin
+        // holding an unconfigured queue node AND an overlap, or a blank type list,
+        // hears about both from this one run rather than fixing one, waiting an hour,
+        // and then learning about the other. Everything from here down either aborts or
         // queries.
+        //
+        // The node and bot aborts lead, and they sit this low deliberately. Placed at
+        // the top, where an option-reading guard naturally wants to go, either one
+        // swallows all three warnings above on exactly the board that needs them most:
+        // one whose config was never filled in. Neither can mass-remind on its own — an
+        // unconfigured node scans nothing and an unconfigured bot posts nothing — so
+        // neither has to run early to be safe, nothing in the preamble reads $nodeId or
+        // $botUserId, and no warning depends on either having been validated. The order
+        // is therefore free to put the reporting first. `if (!$nodeId)` is the first
+        // abort, and the marker ScanWiringTest's ordering pins compare the log-only
+        // checks against.
+        if (!$nodeId)
+        {
+            \XF::logError('[Cav7/EnlistmentReminder] Queue node id is not configured; nothing to scan.');
+            return;
+        }
+        if (!$botUserId)
+        {
+            \XF::logError('[Cav7/EnlistmentReminder] Bot user id is not configured; cannot post reminders.');
+            return;
+        }
         if (!$inProcessingPrefixIds)
         {
             // With no status prefix configured, nothing can ever read as handled.

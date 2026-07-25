@@ -678,8 +678,14 @@ check(
 // others — its own class docblock names the handled signal ("the processing-status
 // prefixes (cav7ERInProcessingPrefixIds) that decide whether a thread reads as
 // handled"), which is exactly the clause a well-meaning reword could turn back into a
-// clerk's reply. Setup.php is the one file genuinely out of scope: its docblocks only
-// discuss the marker table.
+// clerk's reply. THREE of the add-on's PHP files sit outside that list, not one, and
+// each is out for the same reason rather than by oversight: Setup.php discusses the
+// marker table and the retired #144 option, Cron/ScanQueue.php the deadline clamp, and
+// XF/Alert/ThreadHandler.php the alert opt-out registration. None of the three says
+// anything about what makes a thread read as handled, so none carries a clause these
+// arms could bite. The list is closed only while that stays true — a file added later
+// has to be held against that test, not assumed excluded because the list looks
+// settled.
 //
 // Those docblocks do narrate the OLD rule, in the past tense ("their reply stopped
 // counting", "a reply-authorship rule could withdraw a pickup"), which is why the
@@ -938,11 +944,14 @@ check(
 // overlap warning does: an admin carrying a blank type list AND one of the config
 // faults below hears about both from one run.
 //
-// The marker they are compared against is the FIRST abort in remind(), not any later
-// one. Compared against a later abort, a log-only check could sit between two aborts
-// and still pass while never running on a board that trips the earlier one — which is
-// what the blank-status guard used to do to all three of these before it moved down
-// here.
+// The marker they are compared against has to be the EARLIEST abort in remind() —
+// `if (!$nodeId)`, which is why the node and bot guards sit below the whole log-only
+// preamble even though neither can mass-remind on its own. Compared against any later
+// abort instead, a log-only check could sit between two aborts and still pass while
+// never running on a board that trips the earlier one: with the node guard above them,
+// an admin holding an unconfigured queue node AND a blank type list returned before
+// any of these three warnings, and the pins stayed green. The order this pins is
+// therefore: every log-only check, then every abort.
 foreach ([
     'if (!$standardPrefixIds && $reenlistPrefixIds)',
     'if (!$reenlistPrefixIds && $standardPrefixIds)',
@@ -951,7 +960,7 @@ foreach ([
         $remindBody,
         "the blank-type-list warning `$blankWarningMarker` comes before the first abort that would end the run",
         $blankWarningMarker,
-        'if (!$inProcessingPrefixIds)',
+        'if (!$nodeId)',
         'a log-only check placed below an abort is never reached on a board that has both faults'
     );
 }
@@ -986,14 +995,14 @@ check(
 // admin carrying both an overlap and one of the config faults fixes one, waits an
 // hour, and only then hears about the other. One run, both reports.
 // Both the resolve and the branch that logs it, since moving either one alone
-// below the aborts is enough to lose the report. Compared against the first abort,
-// for the reason given at the blank-type-list warnings above.
+// below the aborts is enough to lose the report. Compared against the earliest abort
+// (`if (!$nodeId)`), for the reason given at the blank-type-list warnings above.
 foreach (['$routing->overlappingPrefixIds()', 'if ($overlapPrefixIds)'] as $overlapMarker) {
     checkOrderedWithin(
         $remindBody,
         "the overlap warning's `$overlapMarker` comes before the first abort that would end the run",
         $overlapMarker,
-        'if (!$inProcessingPrefixIds)',
+        'if (!$nodeId)',
         'a log-only check placed below an abort is never reached on a board that has both faults'
     );
 }
@@ -1527,20 +1536,47 @@ check(
 // four arguments are named, which closes the positional transposition — all four
 // parameters are array and the pairs interleave, so swapping two of them by
 // position would type-check and construct. Named arguments do NOT close handing the
-// wrong variable to the right name, and every one of those mutations is silent:
+// wrong variable to the right name, and nothing else in the run catches it. Three of
+// the four mutations below DO reach the error log — the trap is that the line names an
+// option that is correctly configured, so an admin following it edits a healthy
+// textbox — and the fourth is silent outright:
 //
-//   standardPrefixIds: $reenlistPrefixIds     — prefix 57 routes unrecognized with
-//                                               no seats: every standard enlistment
-//                                               skipped, forever
-//   reenlistPrefixIds: $standardPrefixIds     — the mirror image, for re-enlistments
+//   standardPrefixIds: $reenlistPrefixIds     — both prefix lists then hold 58, so
+//                                               overlappingPrefixIds() returns [58]
+//                                               and the run reports an overlap
+//                                               against cav7ERStandardPrefixIds and
+//                                               cav7ERReenlistPrefixIds, neither of
+//                                               which is wrong. 57 threads take the
+//                                               unrecognized skip (its own line,
+//                                               blaming the thread's own prefix); 58
+//                                               threads route BOTH and alert the union
+//   reenlistPrefixIds: $standardPrefixIds     — the mirror image, overlap [57]
 //   standardPositionIds: parse($rawStandardPrefixIds)
 //                                             — the standard seats become [57], a
-//                                               prefix id used as a position id, so
-//                                               no holder resolves and the
-//                                               empty-audience skip fires hourly
-//   both pairs rotated                        — 57 alerts the re-enlistment clerks
-//                                               and 58 the standard ones: every
-//                                               alert reaches the wrong seats
+//                                               prefix id used as a position id, so no
+//                                               holder resolves and the empty-audience
+//                                               skip fires hourly naming
+//                                               cav7ERStandardClerkPositionIds, which
+//                                               is also correct
+//   BOTH prefix bindings swapped, positions   — rows 1 and 2 applied together rather
+//   left alone                                  than a fourth case. 57 then alerts the
+//                                               re-enlistment clerks and 58 the
+//                                               standard ones, every alert reaching
+//                                               the wrong seats — and the two lists
+//                                               are disjoint again, so the overlap is
+//                                               empty, no skip fires and NOTHING is
+//                                               logged. The one genuinely silent
+//                                               mutation of the four, and the same
+//                                               routing a positional swap of the two
+//                                               prefix arguments produces
+//
+// Rotating both PAIRS — prefixes and positions together — is deliberately NOT on that
+// list. It preserves the prefix-to-positions mapping: route(58) still returns the
+// re-enlistment seats and route(57) the standard ones, the overlap stays empty and
+// typePrefixIdsAmong is unchanged because it merges both lists, so nobody is alerted
+// wrongly. All it corrupts is the `%s` type string in the no-seat skip's log line and
+// the option that line tells an admin to check — and that line only fires on a board
+// already short of a seated clerk.
 //
 // So bind each parameter to its own variable, one check each, inside the
 // construction statement itself.
