@@ -181,6 +181,37 @@ function makeTypeFixture(
     return $dir;
 }
 
+/**
+ * Write a _data/<dataBase>.xml into an existing fixture without creating any
+ * _output/ counterpart. This is the shape the _output-driven walk cannot see: a
+ * type that holds records on the _data side and was never exported.
+ *
+ * $records: list of attribute maps, one per record element. An empty list writes
+ *           the self-closed empty file XenForo exports for a type with no rows.
+ */
+function writeDataFile(string $addonDir, string $dataBase, string $recordTag, array $records): void
+{
+    if (!is_dir("$addonDir/_data")) {
+        mkdir("$addonDir/_data", 0777, true);
+    }
+    $xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+    if (!$records) {
+        $xml .= "<$dataBase/>\n";
+        file_put_contents("$addonDir/_data/$dataBase.xml", $xml);
+        return;
+    }
+    $xml .= "<$dataBase>\n";
+    foreach ($records as $attrs) {
+        $xml .= "  <$recordTag";
+        foreach ($attrs as $attr => $value) {
+            $xml .= sprintf(' %s="%s"', $attr, htmlspecialchars((string) $value, ENT_QUOTES));
+        }
+        $xml .= "/>\n";
+    }
+    $xml .= "</$dataBase>\n";
+    file_put_contents("$addonDir/_data/$dataBase.xml", $xml);
+}
+
 /** Run the real tool against a fixture; return [exitCode, combinedOutput]. */
 function runTool(string $tool, string $addonDir): array
 {
@@ -628,9 +659,10 @@ try {
     );
 
     // --- 18. a type whose _data file is not named after its _output dir --------
-    // cron_entries is the sole entry in the tool's $dataFileFor map: items live
-    // in _output/cron_entries/ while the records are in _data/cron.xml. Lose the
-    // mapping and the tool looks for a _data/cron_entries.xml that never exists.
+    // cron_entries is one of the two entries in the tool's $dataFileFor map:
+    // items live in _output/cron_entries/ while the records are in _data/cron.xml.
+    // Lose the mapping and the tool looks for a _data/cron_entries.xml that never
+    // exists. Case 35 covers the other entry, admin_permissions.
     $cronOk = makeTypeFixture(
         $base,
         'cron-ok',
@@ -903,6 +935,153 @@ try {
     check(
         'the unreadable _output item is named rather than passed over',
         str_contains($out, "$truncatedFile: not readable as a JSON object"),
+        $out
+    );
+
+    // --- 30. a _data type holding records that was never exported -------------
+    // The walk starts from _output, so a _data type with no _output/<type>/ at
+    // all was never reached and passed silently. This is the first-record case:
+    // _data carries a file for every type whether or not it holds records, but
+    // an _output/<type>/ appears only once that type has one, so a type going
+    // from zero records to its first with xf-addon:export run and xf-dev:export
+    // not is exactly this shape. Once a type has records the count guard has it.
+    $neverExported = makeTypeFixture(
+        $base,
+        'never-exported',
+        'routes',
+        'route',
+        [['route_id' => 'fixture', 'route_prefix' => 'fixture']],
+        ['fixture.json' => "{}\n"]
+    );
+    writeDataFile($neverExported, 'options', 'option', [
+        ['option_id' => 'cav7FixtureOne'],
+        ['option_id' => 'cav7FixtureTwo'],
+    ]);
+    [$code, $out] = runTool($tool, $neverExported);
+    check('a _data type with records and no _output dir fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the un-exported type is named with its record count',
+        str_contains($out, 'options: _data has 2 record(s) but _output/options/ is missing'),
+        $out
+    );
+
+    // --- 31. the same shape with an empty _data file --------------------------
+    // Every addon commits all 27 _data files and most hold no rows, so an empty
+    // file with no _output dir is the normal state of an unused type. If case 30
+    // fired on absence rather than on records, every addon in the repo would
+    // fail with two dozen findings apiece.
+    $emptyUnexported = makeTypeFixture(
+        $base,
+        'empty-unexported',
+        'routes',
+        'route',
+        [['route_id' => 'fixture', 'route_prefix' => 'fixture']],
+        ['fixture.json' => "{}\n"]
+    );
+    writeDataFile($emptyUnexported, 'options', 'option', []);
+    [$code, $out] = runTool($tool, $emptyUnexported);
+    check('an empty _data type with no _output dir passes', $code === 0, "exit=$code\n$out");
+    check(
+        'the empty un-exported type is not reported at all',
+        !str_contains($out, 'options'),
+        $out
+    );
+
+    // --- 32. no _output tree at all, with records still in _data --------------
+    // The old short-circuit printed SKIP and exited 0 before looking at _data,
+    // so an addon that lost its whole export tree passed. Losing every type at
+    // once is the same mistake as losing one, and reads as a clean run.
+    $lostTree = "$base/lost-output-tree";
+    mkdir("$lostTree/_data", 0777, true);
+    writeDataFile($lostTree, 'options', 'option', [['option_id' => 'cav7Fixture']]);
+    [$code, $out] = runTool($tool, $lostTree);
+    check('no _output tree with records in _data fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the missing tree is reported per type rather than as a skip',
+        str_contains($out, 'options: _data has 1 record(s) but _output/options/ is missing')
+            && !str_contains($out, 'SKIP'),
+        $out
+    );
+
+    // --- 33. no _output tree, and nothing in _data to miss --------------------
+    // A code-only addon still commits its empty _data files. There is genuinely
+    // nothing to cross-check, so it stays a SKIP rather than becoming noise.
+    $codeOnly = "$base/code-only";
+    mkdir("$codeOnly/_data", 0777, true);
+    writeDataFile($codeOnly, 'options', 'option', []);
+    writeDataFile($codeOnly, 'routes', 'route', []);
+    [$code, $out] = runTool($tool, $codeOnly);
+    check('no _output tree and only empty _data files still skips', $code === 0, "exit=$code\n$out");
+    check(
+        'the skip still says why it skipped',
+        str_contains($out, 'SKIP code-only: no _output/ tree'),
+        $out
+    );
+
+    // --- 34. neither tree at all ---------------------------------------------
+    // Cav7/Core's shape: it carries addon.json, so CI runs this check on it, but
+    // it has no _data/ and no _output/. The _data-side pass must tolerate the
+    // directory being absent rather than erroring on the glob.
+    $noTrees = "$base/no-trees";
+    mkdir($noTrees, 0777, true);
+    [$code, $out] = runTool($tool, $noTrees);
+    check('an addon with neither tree still exits 0', $code === 0, "exit=$code\n$out");
+    check(
+        'the addon with neither tree is reported as a skip, not an error',
+        str_contains($out, 'SKIP no-trees: no _output/ tree'),
+        $out
+    );
+
+    // --- 35. the second type whose _data file is not named after its dir ------
+    // admin permissions export to _output/admin_permissions/ while their records
+    // live in _data/admin_permission.xml, singular. The map carried only the
+    // cron pairing, so a correctly exported admin permission was told its _data
+    // file was missing while it sat right there under the other name. Nothing in
+    // the repo registers one yet, which is the only reason this never fired.
+    $adminPermOk = makeTypeFixture(
+        $base,
+        'admin-perm-ok',
+        'admin_permissions',
+        'admin_permission',
+        [['admin_permission_id' => 'cav7Fixture', 'display_order' => '10']],
+        ['cav7Fixture.json' => "{}\n"],
+        'admin_permission'
+    );
+    [$code, $out] = runTool($tool, $adminPermOk);
+    check(
+        'an exported admin permission is matched to its singular _data file',
+        $code === 0,
+        "exit=$code\n$out"
+    );
+    check(
+        'the admin permission type is not reported as a missing _data file',
+        !str_contains($out, 'admin_permissions.xml is missing'),
+        $out
+    );
+
+    // --- 36. the same pairing seen from the _data side ------------------------
+    // The _data-side pass has to resolve the pairing the other way to name the
+    // directory it expected. Getting this wrong points the reader at an
+    // _output/admin_permission/ that XenForo never writes.
+    $adminPermUnexported = makeTypeFixture(
+        $base,
+        'admin-perm-unexported',
+        'routes',
+        'route',
+        [['route_id' => 'fixture', 'route_prefix' => 'fixture']],
+        ['fixture.json' => "{}\n"]
+    );
+    writeDataFile($adminPermUnexported, 'admin_permission', 'admin_permission', [
+        ['admin_permission_id' => 'cav7Fixture', 'display_order' => '10'],
+    ]);
+    [$code, $out] = runTool($tool, $adminPermUnexported);
+    check('an un-exported admin permission fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the un-exported admin permission names the plural _output directory',
+        str_contains(
+            $out,
+            'admin_permission: _data has 1 record(s) but _output/admin_permissions/ is missing'
+        ),
         $out
     );
 } finally {
