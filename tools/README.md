@@ -131,6 +131,43 @@ php tools/validate-addon.php src/addons/Cav7/SteamChecker
 php tools/check-data-consistency.php src/addons/Cav7/SteamChecker
 ```
 
+### `sync-addon-data.php <addon-dir> --to-output|--to-data`
+
+Derives an addon's `_output/` tree from its `_data/` bundle, or the other way
+round, with no XenForo install and no database. This is the supported path for a
+change that is nothing but XenForo data: edit one tree, derive the other, commit
+both. Needs only `php`.
+
+```
+php tools/sync-addon-data.php src/addons/Cav7/SteamChecker --to-output
+php tools/sync-addon-data.php src/addons/Cav7/SteamChecker --to-data
+```
+
+It reimplements XenForo's own exporters rather than wrapping them, so it is only
+correct while it agrees with them byte for byte. `tools/tests/sync-addon-data-test.php`
+holds that down by deriving both trees for every committed addon and comparing
+against what is in the repo.
+
+Three things worth knowing before you trust a derived tree:
+
+- **It cannot see a type no addon here commits.** The type table covers the
+  eleven types that appear in this repo. A type XenForo adds later, or one this
+  suite starts using, needs adding to that table; `_data` files for the other
+  types are still written, as the empty containers `xf-addon:export` emits.
+- **`_data` is lossy in two known places, and the tool fills them from XenForo's
+  entity defaults.** `admin_navigation.super_admin_only`,
+  `api_scopes.usable_with_oauth_clients` and `option_groups.advanced` exist in
+  `_output` but have no `_data` attribute at all. Every committed record happens
+  to hold the default, so the round trip is exact today; a record that set one of
+  them to a non-default value would lose it going through `_data`. That is a
+  property of XenForo's export format, not of this script.
+- **Record order comes from the database, so it comes from the column type.**
+  Nearly every id column these exports sort on is `varbinary` and orders by
+  bytes. `xf_class_extension.from_class`/`to_class` are the exception —
+  `varchar` under `utf8mb4_general_ci`, which folds case — which is why
+  [ADR 0004](../docs/adr/0004-class-extension-order-is-case-folded.md) scopes its
+  case-folded rule to class extensions and to nothing else.
+
 ### `discord-resync-cooldown-check.sh`
 
 The odd one out here: every other script in this directory runs with only `php`,

@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <options>
+  <option option_id="cav7EnlistDefDefaultPositionId" edit_format="spinbox" data_type="unsigned_integer" advanced="0">
+    <default_value>193</default_value>
+    <edit_format_params>min=0
+step=1</edit_format_params>
+    <relation group_id="cav7EnlistmentDefaults" display_order="50"/>
+  </option>
+  <option option_id="cav7EnlistDefDefaultRankId" edit_format="spinbox" data_type="unsigned_integer" advanced="0">
+    <default_value>23</default_value>
+    <edit_format_params>min=0
+step=1</edit_format_params>
+    <relation group_id="cav7EnlistmentDefaults" display_order="40"/>
+  </option>
   <option option_id="cav7EnlistDefPucAwardId" edit_format="spinbox" data_type="unsigned_integer" advanced="0">
     <default_value>61</default_value>
     <edit_format_params>min=0
@@ -17,17 +29,5 @@ step=1</edit_format_params>
     <edit_format_params>min=0
 step=1</edit_format_params>
     <relation group_id="cav7EnlistmentDefaults" display_order="30"/>
-  </option>
-  <option option_id="cav7EnlistDefDefaultRankId" edit_format="spinbox" data_type="unsigned_integer" advanced="0">
-    <default_value>23</default_value>
-    <edit_format_params>min=0
-step=1</edit_format_params>
-    <relation group_id="cav7EnlistmentDefaults" display_order="40"/>
-  </option>
-  <option option_id="cav7EnlistDefDefaultPositionId" edit_format="spinbox" data_type="unsigned_integer" advanced="0">
-    <default_value>193</default_value>
-    <edit_format_params>min=0
-step=1</edit_format_params>
-    <relation group_id="cav7EnlistmentDefaults" display_order="50"/>
   </option>
 </options>
