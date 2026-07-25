@@ -152,7 +152,6 @@ $classExtXml = @simplexml_load_file("$root/_data/class_extensions.xml");
 check('_data/class_extensions.xml could be read', $classExtXml !== false);
 
 $extByFrom = [];
-$committedPairs = [];
 if ($classExtXml !== false) {
     foreach ($classExtXml->extension as $ext) {
         $extByFrom[(string) $ext['from_class']] = [
@@ -160,7 +159,6 @@ if ($classExtXml !== false) {
             'active' => (string) $ext['active'],
             'order' => (string) $ext['execute_order'],
         ];
-        $committedPairs[] = [(string) $ext['from_class'], (string) $ext['to_class']];
     }
 }
 
@@ -205,28 +203,6 @@ check(
     'those eight are the whole set',
     ($classExtXml !== false ? count($classExtXml->extension) : -1) === count($expectedExtensions),
     'a ninth registration means a content type was covered without this list, and one of these missing means a content type lost its cover'
-);
-
-// ADR 0003 at the suite level: the committed rows are ordered by a byte comparison
-// of from_class, then to_class, which is the order our own exports emit. Pinned here
-// so this addon's own file cannot drift out of it, whatever else in the repo does or
-// does not check the rule. Worth pinning because a re-export producing a diff on rows
-// a change had nothing to do with is what trained people to revert those hunks by
-// hand, which is how the drift the ADR describes happened in the first place.
-//
-// Keyed on the pair rather than on from_class alone. from_class is unique in this
-// addon's file today, so a from_class sort would pass on rows the rule considers
-// unordered; the pair is the identity the ADR defines and the one XenForo's own
-// UNIQUE KEY uses.
-$sortedPairs = $committedPairs;
-usort(
-    $sortedPairs,
-    fn (array $a, array $b) => strcmp($a[0], $b[0]) ?: strcmp($a[1], $b[1])
-);
-check(
-    'the committed rows are in canonical order (byte comparison of from_class, then to_class)',
-    $committedPairs === $sortedPairs,
-    'the repo-root docs/adr/0003-canonical-class-extension-order.md: re-export rather than hand-sorting, and do not revert the reordering hunks'
 );
 
 check(

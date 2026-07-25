@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <class_extensions>
-  <extension from_class="XF\BbCode\Renderer\Html" to_class="Cav7\MilpacTooltip\XF\BbCode\Renderer\Html" execute_order="10" active="1"/>
   <extension from_class="NF\Rosters\Pub\Controller\Roster" to_class="Cav7\MilpacTooltip\NF\Rosters\Pub\Controller\Roster" execute_order="10" active="1"/>
+  <extension from_class="XF\BbCode\Renderer\Html" to_class="Cav7\MilpacTooltip\XF\BbCode\Renderer\Html" execute_order="10" active="1"/>
 </class_extensions>

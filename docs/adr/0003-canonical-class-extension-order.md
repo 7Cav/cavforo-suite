@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [0004](0004-class-extension-order-is-case-folded.md), which replaces the byte comparison in the decision below with a case-folded one. The rest still holds.
 
 ## Context
 
