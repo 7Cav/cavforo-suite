@@ -76,6 +76,7 @@ namespace Cav7\ModeratorLogPatch\Tests\Fixture {
     require __DIR__ . '/../ContentAuthor.php';
     require __DIR__ . '/../AuthorshipLogging.php';
     require __DIR__ . '/../HandlerCoverage.php';
+    require __DIR__ . '/../ContentScope.php';
 
     class SpyHandler
     {
@@ -147,6 +148,7 @@ namespace Cav7\ModeratorLogPatch\Tests\Fixture {
 namespace Cav7\ModeratorLogPatch\Tests {
 
 use Cav7\ModeratorLogPatch\ContentAuthor;
+use Cav7\ModeratorLogPatch\ContentScope;
 use Cav7\ModeratorLogPatch\HandlerCoverage;
 use Cav7\ModeratorLogPatch\Tests\Fixture\IndirectHandler;
 use Cav7\ModeratorLogPatch\Tests\Fixture\LaterAddonHandler;
@@ -350,10 +352,15 @@ check(
 // the abstract handler is its only declaration, which is true today and is an
 // assumption about somebody else's code. A vendor override would be discarded here
 // with no error, and every other check in the command still passes.
+// The root of every fixture chain here is `SpyHandler`, which is deliberately not
+// named after XenForo's abstract handler. That makes this check the behavioural form
+// of "the entitled classes are read off the chain rather than named": a predicate that
+// hardcoded the vendor name would not find SpyHandler entitled, and would report the
+// healthy chain as discarding a gate. `WiringTest` keeps the source-text pin.
 check(
     'the healthy chain has no discarded user gate',
     HandlerCoverage::discardedUserGates(new PatchedHandler()) === [],
-    'the two classes entitled to declare it are the one composing our trait and the root of the chain; flagging either would make this check useless'
+    'the two classes entitled to declare it are the one composing our trait and the root of the chain, whatever that root is called; flagging either would make this check useless'
 );
 check(
     'a vendor gate underneath ours is reported',
@@ -361,13 +368,79 @@ check(
         === ['Cav7\ModeratorLogPatch\Tests\Fixture\VendorGateHandler'],
     'this addon replaces the method rather than deferring, so a rule a vendor adds here is thrown away without a word: the exact failure the addon exists to remove'
 );
+// =========================================================================
+// where a content type is filed, and how honestly its sample was found
+//
+// The verification command labels every line it prints with the sample's
+// provenance, and an operator reads `scoped` as "this is the content I named". So
+// the label has to be earned. The content types with no scope column, which is most
+// of them, earned it for a round by being handed `scoped` unconditionally, which made
+// a PASS against an arbitrary board-wide row byte-identical to one against the
+// operator's own content — the exact defect the labels were added to remove.
+// =========================================================================
+
 check(
-    'the entitled classes are read off the chain, not named',
-    !str_contains(
-        (string) @file_get_contents(__DIR__ . '/../HandlerCoverage.php'),
-        'AbstractHandler'
-    ),
-    'hardcoding the abstract handler\'s name would make the predicate wrong for any handler hierarchy that does not have it at the root'
+    'a type filed under a node is narrowed by the node column',
+    ContentScope::of(['thread_id', 'node_id', 'title', 'user_id'])
+        === ['scope' => ContentScope::NODE, 'column' => 'node_id'],
+    'the node argument is the one validated as a forum before any phase runs, so a type carrying the column has to be narrowed by it'
+);
+check(
+    'a type filed under a plainly named category is narrowed by it',
+    ContentScope::of(['resource_id', 'category_id', 'user_id'])
+        === ['scope' => ContentScope::CATEGORY, 'column' => 'category_id'],
+    'this is the column name the argument was written for'
+);
+check(
+    'a type filed under a prefixed category column is narrowed by it too',
+    ContentScope::of(['event_id', 'event_category_id', 'user_id'])
+        === ['scope' => ContentScope::CATEGORY, 'column' => 'event_category_id'],
+    'the two content types filed under a category use unrelated id spaces and unrelated column names; matching only the bare name would leave one of them unscoped'
+);
+check(
+    'a node column wins over a category column whatever the declaration order',
+    ContentScope::of(['x_category_id', 'node_id'])
+        === ['scope' => ContentScope::NODE, 'column' => 'node_id'],
+    'walking the column list in declaration order would narrow an entity carrying both by whichever it happened to declare first, which is a fact about somebody else\'s entity and not a decision'
+);
+check(
+    'a type filed under neither has no column to narrow on',
+    ContentScope::of(['post_id', 'thread_id', 'user_id', 'message'])
+        === ['scope' => ContentScope::UNSCOPED, 'column' => null],
+    'a post, a profile post, its comments, a member and a ticket message are all filed under neither, so most of the registered types land here'
+);
+check(
+    'a column merely ending in the category suffix without the separator is not one',
+    ContentScope::of(['subcategory_id', 'user_id'])
+        === ['scope' => ContentScope::UNSCOPED, 'column' => null],
+    'narrowing on a column that is not the type\'s category would read the wrong rows and call them the operator\'s'
+);
+
+check(
+    'a row found in the scope named is the only thing called scoped',
+    ContentScope::provenance('node_id', true, true) === ContentScope::FROM_SCOPE,
+    'this is the label a bare PASS rests on, and it means the check ran against content the operator pointed at'
+);
+check(
+    'a type with a scope column and nothing in it falls back, and says so',
+    ContentScope::provenance('node_id', false, true) === ContentScope::FROM_BOARD,
+    'an id from the wrong space produces this, and an all-PASS run against content nobody asked about is what it used to produce silently'
+);
+check(
+    'a type with no scope column is never called scoped',
+    ContentScope::provenance(null, false, true) !== ContentScope::FROM_SCOPE,
+    'it cannot be: there is no column to narrow on, so the sample is the newest row of that type anywhere on the board however the command was invoked'
+);
+check(
+    'a type with no scope column is called unscoped',
+    ContentScope::provenance(null, false, true) === ContentScope::FROM_ANYWHERE,
+    'the label has to say how the row was actually found, and "unscoped" is both what the type is and how the sample was reached'
+);
+check(
+    'no content of the type anywhere is fabricated, whether the type is scoped or not',
+    ContentScope::provenance('node_id', false, false) === ContentScope::FABRICATED
+        && ContentScope::provenance(null, false, false) === ContentScope::FABRICATED,
+    'an unsaved entity runs the handler\'s real code but cannot say the content exists, and that is true of an unscoped type as much as a scoped one'
 );
 
 if ($failures > 0) {

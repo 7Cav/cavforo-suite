@@ -4,6 +4,7 @@ namespace Cav7\ModeratorLogPatch\Cli\Command;
 
 use Cav7\ModeratorLogPatch\AuthorshipRule;
 use Cav7\ModeratorLogPatch\ContentAuthor;
+use Cav7\ModeratorLogPatch\ContentScope;
 use Cav7\ModeratorLogPatch\HandlerCoverage;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -278,7 +279,6 @@ class VerifyCoverage extends Command
             . implode(', ', AuthorshipRule::AUTHOR_REACHABLE_ACTIONS)
         );
 
-        $app = \XF::app();
         $guest = $this->syntheticUser(0, false);
         $wrongCategoryScopes = [];
 
@@ -291,18 +291,20 @@ class VerifyCoverage extends Command
 
             $content = $sample['entity'];
 
-            // A fabricated or board-wide sample still runs the handler's real code,
-            // but it is not the content the operator asked about. Said out loud, and
-            // carried into every label for this type, because a PASS earned against
-            // an unsaved entity used to be byte-identical to one earned against a
-            // real row.
-            if ($sample['provenance'] !== 'scoped') {
+            // Anything but a scoped sample still runs the handler's real code, and is
+            // still not the content the operator asked about. Said out loud, and
+            // carried into every label for this type, because a PASS earned against an
+            // unsaved entity — or, for the types with no scope column at all, against
+            // an arbitrary row from anywhere on the board — used to be byte-identical
+            // to one earned against content somebody named.
+            $provenance = $sample['provenance'];
+            if ($provenance !== ContentScope::FROM_SCOPE) {
                 $this->sampleNotes[$type] = $sample['note'];
-                if ($sample['provenance'] === 'board' && $sample['scope'] === 'category') {
+                if ($provenance === ContentScope::FROM_BOARD && $sample['scope'] === ContentScope::CATEGORY) {
                     $wrongCategoryScopes[] = $type;
                 }
             }
-            $label = $type . ($sample['provenance'] === 'scoped' ? '' : " [{$sample['provenance']} sample]");
+            $label = $type . ($provenance === ContentScope::FROM_SCOPE ? '' : " [$provenance sample]");
 
             $authorId = ContentAuthor::userId($content);
             if ($authorId === null) {
@@ -616,12 +618,13 @@ class VerifyCoverage extends Command
      * scope arguments bound which content the operator's own board contributes, not
      * whether anything is touched.
      *
-     * Three provenances, and the caller reports which. `scoped` is real content in
-     * the scope named. `board` is real content of the right type from outside it,
-     * which is what an id from the wrong space produces. `fabricated` is an unsaved
-     * entity, used only when the board has no content of the type at all: it still
-     * runs the real handler's real code, because both gates read the actor and the
-     * content's author and nothing else, but it cannot say the content exists.
+     * Which scope column a type has, and what a sample found one way or another is
+     * called, are both decided in `ContentScope`, where CI can execute them. The
+     * caller reports the answer against every line it prints for the type, and the
+     * names it can print are documented there. What matters here is that a type
+     * with no scope column is never called `scoped`: its sample is the newest row of
+     * that type anywhere on the board, and an operator reading `scoped` reads "the
+     * content I named".
      *
      * @return array{entity: Entity, provenance: string, scope: string, note: string}|null
      */
@@ -636,74 +639,91 @@ class VerifyCoverage extends Command
 
         $entity = $app->em()->create($entityClass);
 
-        // Tested by name rather than by walking the column list in declaration
-        // order: a vendor entity carrying both would otherwise be narrowed by
-        // whichever column it happened to declare first.
-        $scope = 'board';
-        $scopeColumn = null;
+        $filing = ContentScope::of(array_keys($entity->structure()->columns));
+        $scope = $filing['scope'];
+        $scopeColumn = $filing['column'];
         $scopeValue = null;
-        if ($entity->isValidColumn('node_id')) {
-            $scope = 'node';
-            $scopeColumn = 'node_id';
-            $scopeValue = $this->nodeId;
-        } else {
-            foreach (array_keys($entity->structure()->columns) as $name) {
-                if ($name === 'category_id' || substr($name, -12) === '_category_id') {
-                    $scope = 'category';
-                    $scopeColumn = $name;
-                    $scopeValue = $this->categoryByType[$type] ?? $this->categoryId;
-                    break;
-                }
-            }
+        if ($scopeColumn !== null) {
+            $scopeValue = $scope === ContentScope::NODE
+                ? $this->nodeId
+                : ($this->categoryByType[$type] ?? $this->categoryId);
         }
 
         $primaryKey = $entity->structure()->primaryKey;
 
+        // Both reads in one place, and the label decided once from what they found,
+        // so no return can name a provenance the search did not earn.
+        $found = null;
+        $foundInScope = false;
         if ($scopeColumn !== null) {
-            $finder = $app->finder($entityClass)->where($scopeColumn, $scopeValue);
-            if (\is_string($primaryKey)) {
-                $finder->order($primaryKey, 'DESC');
-            }
-            $found = $finder->fetchOne();
-            if ($found) {
-                return [
-                    'entity' => $found,
-                    'provenance' => 'scoped',
-                    'scope' => $scope,
-                    'note' => "$scopeColumn $scopeValue",
-                ];
-            }
+            $found = $this->newestOf($entityClass, $primaryKey, $scopeColumn, $scopeValue);
+            $foundInScope = $found !== null;
+        }
+        if (!$found) {
+            $found = $this->newestOf($entityClass, $primaryKey, null, null);
         }
 
-        $finder = $app->finder($entityClass);
-        if (\is_string($primaryKey)) {
-            $finder->order($primaryKey, 'DESC');
-        }
-        $found = $finder->fetchOne();
-        if ($found) {
-            return [
-                'entity' => $found,
-                'provenance' => $scopeColumn === null ? 'scoped' : 'board',
-                'scope' => $scope,
-                'note' => $scopeColumn === null
-                    ? 'newest on the board; this content type is filed under neither a node nor a category'
-                    : "nothing with $scopeColumn $scopeValue, so the newest of this type anywhere on the board was read instead",
-            ];
-        }
+        $provenance = ContentScope::provenance($scopeColumn, $foundInScope, $found !== null);
 
-        // Nothing of this type anywhere. An unsaved entity still carries the content
-        // type's real class, so the handler's own override runs; give it an author so
-        // the authorship half has something to compare.
-        if ($entity->isValidColumn('user_id')) {
-            $entity->setTrusted('user_id', 1);
+        if (!$found) {
+            // Nothing of this type anywhere. An unsaved entity still carries the
+            // content type's real class, so the handler's own override runs; give it
+            // an author so the authorship half has something to compare.
+            if ($entity->isValidColumn('user_id')) {
+                $entity->setTrusted('user_id', 1);
+            }
+            $found = $entity;
         }
 
         return [
-            'entity' => $entity,
-            'provenance' => 'fabricated',
+            'entity' => $found,
+            'provenance' => $provenance,
             'scope' => $scope,
-            'note' => 'the board holds no content of this type, so the checks below ran against an unsaved entity: they exercise the handler\'s code, not this board\'s content',
+            'note' => $this->sampleNote($provenance, $scopeColumn, $scopeValue),
         ];
+    }
+
+    /**
+     * The newest row of $entityClass, optionally narrowed to one column value.
+     *
+     * @param string|list<string> $primaryKey As the entity's structure declares it; a
+     *                                        compound key cannot be ordered on, so
+     *                                        such a type is read unordered.
+     */
+    protected function newestOf(string $entityClass, $primaryKey, ?string $column, $value): ?Entity
+    {
+        $finder = \XF::app()->finder($entityClass);
+        if ($column !== null) {
+            $finder->where($column, $value);
+        }
+        if (\is_string($primaryKey)) {
+            $finder->order($primaryKey, 'DESC');
+        }
+
+        return $finder->fetchOne();
+    }
+
+    /**
+     * What to tell the operator about a sample that is not content they named.
+     *
+     * The `scoped` case is here for completeness; the caller prints a note only for
+     * the provenances that need one.
+     */
+    protected function sampleNote(string $provenance, ?string $scopeColumn, $scopeValue): string
+    {
+        if ($provenance === ContentScope::FROM_SCOPE) {
+            return "$scopeColumn $scopeValue";
+        }
+
+        if ($provenance === ContentScope::FROM_ANYWHERE) {
+            return 'this content type is filed under neither a node nor a category, so there is no column to narrow it: the newest of this type anywhere on the board was read, and neither argument you gave bounded it';
+        }
+
+        if ($provenance === ContentScope::FROM_BOARD) {
+            return "nothing with $scopeColumn $scopeValue, so the newest of this type anywhere on the board was read instead";
+        }
+
+        return 'the board holds no content of this type, so the checks below ran against an unsaved entity: they exercise the handler\'s code, not this board\'s content';
     }
 
     /**

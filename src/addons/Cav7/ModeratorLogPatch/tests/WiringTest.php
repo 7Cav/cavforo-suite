@@ -679,9 +679,13 @@ check(
 // nothing. Authorship is varied by changing who is asking, never by editing content
 // that belongs to a member.
 $sampleBody = methodBody($verifyCode, 'sampleContent');
+// The finder call the phase reads content with lives in its own method, so the pin
+// covers that too: narrowing it to sampleContent() alone would leave the only code
+// here that touches the database unchecked.
+$sampleReadBody = $sampleBody . methodBody($verifyCode, 'newestOf');
 check(
     'the sample-content phase writes nothing',
-    !preg_match('/->save\(\)|->delete\(\)|->update\(|->insert\(/', $sampleBody),
+    !preg_match('/->save\(\)|->delete\(\)|->update\(|->insert\(/', $sampleReadBody),
     'this phase reads real content in the scopes the operator named; a write here would edit a member\'s thread to test a predicate'
 );
 $ruleCheckBody = methodBody($verifyCode, 'checkRule');
@@ -742,16 +746,21 @@ check(
         && str_contains($unpatchedBody, '$unpatched->isLoggable($content, $action, $recordHoldingAuthor)'),
     'a blanket "not withheld" would be wrong: for edit, title and attachment_deleted the handlers underneath legitimately withhold from a record-holding author, which is the behaviour rule 1 preserves. Equality with the unpatched answer is the assertion that holds either way'
 );
-// A fabricated or out-of-scope sample runs the handler's real code but is not the
-// content the operator pointed at. Every PASS for such a type used to be byte
-// identical to one earned against a real row.
+// Any sample that is not from the scope named runs the handler's real code but is not
+// the content the operator pointed at. Every PASS for such a type used to be byte
+// identical to one earned against a real row. The label was later written at each
+// return in turn, and the return for a type with no scope column said `scoped` — so
+// the same defect stood for most of the types while the rest were fixed. One decision,
+// taken from what the search found, is what stops that recurring; `ContentScope` holds
+// it and HandlerBehaviourTest executes it.
 check(
-    'the sample\'s provenance is reported and carried into this type\'s labels',
-    str_contains($sampleBody, "'provenance' => 'scoped'")
-        && str_contains($sampleBody, "'provenance' => 'fabricated'")
+    'the sample\'s provenance is decided in one place and carried into this type\'s labels',
+    str_contains($sampleBody, 'ContentScope::provenance(')
+        && substr_count($sampleBody, "'provenance' =>") === 1
+        && !preg_match("/'provenance'\s*=>\s*'/", $sampleBody)
         && str_contains($ruleCheckBody, "\$sample['provenance']")
         && (bool) preg_match('/\$label\s*=\s*\$type\s*\.\s*\(/', $ruleCheckBody),
-    'a run that quietly substituted an unsaved entity printed the same PASS lines as one against real content, and neither the exit code nor the output said which had happened'
+    'a run that quietly substituted an unsaved entity, or an arbitrary row from anywhere on the board, printed the same PASS lines as one against real content, and neither the exit code nor the output said which had happened'
 );
 // The category argument was taken on trust while node was validated as a forum. It
 // cannot be validated the same way — there is no one category entity, and the two
@@ -763,13 +772,15 @@ check(
         && str_contains($configureBody, "'category-id'"),
     'ticket_category_id and category_id are different id spaces, so one number is right for both only by coincidence, and a mistyped id used to produce an all-PASS run against fabricated content'
 );
-// The scope column is discovered from the entity's own structure. Tested by name
-// rather than by walking the column list, so a vendor entity carrying both is not
-// narrowed by whichever column it declared first.
+// The scope column is discovered from the entity's own structure, and the discovery
+// itself lives in ContentScope so CI can execute it: which column wins, and what a
+// type with no column at all is called, are pure functions of a column list, and both
+// have been got wrong here in prose the command could not check.
 check(
-    'the scope column is chosen by asking for node_id before any category column',
-    (bool) preg_match('/if\s*\(\s*\$entity->isValidColumn\(\s*\'node_id\'\s*\)\s*\)/', $sampleBody),
-    'a foreach over structure()->columns lets a vendor\'s declaration order decide which scope narrows the lookup'
+    'the scope column is discovered by the predicate CI can run, off the entity\'s own columns',
+    str_contains($sampleBody, 'ContentScope::of(array_keys($entity->structure()->columns))')
+        && !preg_match('/foreach\s*\([^)]*structure\(\)->columns/', $sampleBody),
+    'a copy of the discovery on the command can only be checked by reading it, which is how the no-scope-column case came to be labelled scoped'
 );
 // The ACP list is a plain finder over the table, so the actor and date row covers it.
 // The thread's own "Moderator actions" view is not: the repository selects on the

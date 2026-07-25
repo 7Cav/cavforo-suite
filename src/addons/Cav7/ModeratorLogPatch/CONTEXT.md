@@ -14,9 +14,10 @@ A member's row in XenForo's moderator table, surfaced on their user as
 bar and the staff list, and XenForo also uses it as the sole gate on writing to
 the moderator log. Holding one is independent of holding any permission that
 authorises a moderation action, which is why five members hold a record here
-while several hundred can stick a thread and twenty of twenty-five admins hold
-none. The two populations barely overlap, and the gap between them is the whole
-reason this addon exists.
+while close to two hundred can stick a thread, several hundred hold at least one
+permission that authorises a logged moderation action, and twenty of twenty-five
+admins hold none. The two populations barely overlap, and the gap between them is
+the whole reason this addon exists.
 _Avoid_: "moderator" unqualified — it reads as either the record or anyone who
 can moderate, and that ambiguity is precisely what this addon unpicks. Also
 avoid "staff", which is an org role and tracks neither.

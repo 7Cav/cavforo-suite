@@ -34,13 +34,12 @@ that run as a guest out of the log.
 
 The per-action check adds one rule in front of the handler's own. For the
 **author-reachable action**s — the ones a member can produce on their own content
-with own-content permissions, decided in
-[ADR-0001](docs/adr/0001-log-by-authorship-not-by-permission.md) and
-[ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md) and listed in
-`AuthorshipRule::AUTHOR_REACHABLE_ACTIONS` — an entry is written only when the
-actor is not the content's author. Everything else is taken to be unreachable
-without authority over somebody else's content, so it always logs. A member who
-holds a moderator record skips the rule entirely.
+with own-content permissions — an entry is written only when the actor is not the
+content's author. Which names those are is
+`AuthorshipRule::AUTHOR_REACHABLE_ACTIONS`, and its docblock cites the ADR behind
+each of them. Everything else is taken to be unreachable without authority over
+somebody else's content, so it always logs. A member who holds a moderator record
+skips the rule entirely.
 
 Every other case is handed to the handler underneath rather than answered here.
 That is deliberate. Seven of the eight registered handlers override this check
@@ -84,14 +83,16 @@ authorship rule cannot see and a permission rule could. ADR-0001 records why we
 took the trade.
 
 **Most of the list is withheld from its author here rather than by the handler
-underneath.** Across the eight registered handlers only two action names are
-withheld from the author by a handler at all: `edit`, by XenForo's post and both
-profile-post handlers, by the ticket-message handler and by the calendar handler,
-and `title`, by XenForo's thread handler and the ticket handler. XenForo's member
-handler withholds nothing. Every other name in the list is this addon's decision
-and nobody else's, which is why each one is an ADR rather than a line in a
-switch: [ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md) for
-`attachment_deleted` and `poll_reset`, and
+underneath.** Only a few of the names have an author rule of their own in any of
+the eight registered handlers, and the list is a strict superset of those few.
+Which names they are is in
+[ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md), which holds the
+reading, so this file does not repeat it. A rule existing somewhere is also not a
+rule everywhere: XenForo withholds `attachment_deleted` from a post's author and
+not from a profile post's, which is the asymmetry ADR-0004 removes. Every other
+name in the list is this addon's decision and nobody else's, which is why each one
+is an ADR rather than a line in a switch: ADR-0004 for `attachment_deleted` and
+`poll_reset`, and
 [ADR-0005](docs/adr/0005-unapprove-is-author-reachable-through-the-spam-check.md)
 for `unapprove`.
 
@@ -132,11 +133,15 @@ as a member who both wrote it and holds a moderator record — and asks the same
 handler built without the extension, so the run can show which answers this addon
 changed and that a record holder's are unchanged. That phase writes nothing. It
 also says, per content type, whether the sample it read was real content in the
-scope you named; a `[board sample]` or `[fabricated sample]` tag on a PASS means
-that line was earned somewhere other than where you pointed it. Finally it creates
-a throwaway thread, sticks it, retitles it, unsticks it, checks which of those
-landed in `xf_moderator_log` and that the entry is reachable from the thread's own
-moderator actions view, then deletes the thread and the rows.
+scope you named; a `[board sample]`, `[unscoped sample]` or `[fabricated sample]`
+tag on a PASS means that line was earned somewhere other than where you pointed
+it. Expect the `[unscoped sample]` tag on most of the types: neither argument can
+narrow a content type that is filed under neither a node nor a category, so the
+newest row of it anywhere on the board is all there is to read, and the tag is the
+command saying so rather than a fault. Finally it creates a throwaway thread,
+sticks it, retitles it, unsticks it, checks which of those landed in
+`xf_moderator_log` and that the entry is reachable from the thread's own moderator
+actions view, then deletes the thread and the rows.
 
 Run it after any XenForo or vendor upgrade. The failure this catches writes
 nothing anywhere: a class extension whose `from_class` no longer resolves to the
