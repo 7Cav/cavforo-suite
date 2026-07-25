@@ -13,11 +13,13 @@ A member's row in XenForo's moderator table, surfaced on their user as
 `is_moderator`. It is an appointment, not a capability: it drives the moderator
 bar and the staff list, and XenForo also uses it as the sole gate on writing to
 the moderator log. Holding one is independent of holding any permission that
-authorises a moderation action, which is why five members hold a record here
-while close to two hundred can stick a thread, several hundred hold at least one
-permission that authorises a logged moderation action, and twenty of twenty-five
-admins hold none. The two populations barely overlap, and the gap between them is
-the whole reason this addon exists.
+authorises a moderation action, and nothing confers it implicitly: a permission
+does not come with a record, and neither does being an admin. So the members who
+can perform a logged moderation action and the members who hold a record need not
+be the same people, and on this board they barely overlap — which means most of
+what the first group does never reaches the log at all. That is the whole reason
+this addon exists. Current sizes for either population come from the board's built
+permission cache.
 _Avoid_: "moderator" unqualified — it reads as either the record or anyone who
 can moderate, and that ambiguity is precisely what this addon unpicks. Also
 avoid "staff", which is an org role and tracks neither.
@@ -30,12 +32,10 @@ themselves and someone acting on a stranger's content; everything outside the
 category is treated as moderation on the strength of its name.
 
 Which names qualify is a reading of the code that logs each one, and it lives in
-exactly one place: `AuthorshipRule::AUTHOR_REACHABLE_ACTIONS`. The reasoning for
-the first set is in
-[ADR-0001](docs/adr/0001-log-by-authorship-not-by-permission.md), and
-[ADR-0004](docs/adr/0004-two-more-author-reachable-actions.md) records two names
-that were missing from it — so membership is the part of this definition worth
-checking against the code rather than against prose.
+exactly one place: `AuthorshipRule::AUTHOR_REACHABLE_ACTIONS`. Its docblock names
+the ADR in [docs/adr](docs/adr) that carries the evidence for each entry, so
+membership is the part of this definition worth checking against the code rather
+than against prose.
 _Avoid_: "self-edit" for this category. An author-reachable action performed on
 someone else's content is moderation and does log, so the category describes
 which actions are *capable* of being self-actions, not who performed a given
