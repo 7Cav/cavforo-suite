@@ -97,8 +97,15 @@ loud:
 - the in-processing list contains an enlistment type prefix. Every application in
   the queue carries one, so the whole queue would read as handled and nothing
   would ever be reminded or logged.
-- either type-prefix list is empty. That leaves the check above with nothing to
-  compare against, so the same silencing gets through unnoticed.
+- both type-prefix lists are empty. Nothing can route as an enlistment at all,
+  and the check above has nothing left to compare against, so the same silencing
+  would get through unnoticed.
+
+One empty type-prefix list is not an abort. The check above compares against both
+lists together, so the other type still routes and a collision on its ids is still
+caught; only the emptied type goes unreminded, and it is skipped thread by thread
+as unrecognized. The run logs the blank option by name and carries on, so a fault
+confined to one type does not silence the other.
 
 ## License
 

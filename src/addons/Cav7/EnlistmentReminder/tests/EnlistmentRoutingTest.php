@@ -153,11 +153,39 @@ check(
     $routing->typePrefixIdsAmong(['53', '57']) === [57]
 );
 // Nothing configured as a type prefix means nothing can collide; the empty status
-// set is the other guard's business, not this one's.
+// set is the other guard's business, not this one's. BOTH lists blank is what makes
+// this answer vacuous, which is why the caller aborts on that and only that.
 $noTypePrefixes = new EnlistmentRouting([], $standardPositionIds, [], $reenlistPositionIds);
 check(
     'a config with no type prefixes reports no collision',
     $noTypePrefixes->typePrefixIdsAmong([53, 54, 55, 57, 58]) === []
+);
+// ONE blank list does not make the collision check inert, and this is what the
+// caller's guards rest on: the intersection runs against the UNION of both lists,
+// so the populated type's ids are still compared and its threads still route. A
+// caller that aborted on a single blank list would stop reminding a type whose
+// config is entirely healthy, so the asymmetry is pinned here rather than assumed.
+$noStandardPrefixes = new EnlistmentRouting([], $standardPositionIds, [58], $reenlistPositionIds);
+check(
+    'a blank standard list still reports a re-enlist type prefix in the status set',
+    $noStandardPrefixes->typePrefixIdsAmong([53, 54, 55, 58]) === [58],
+    'got: ' . implode(',', $noStandardPrefixes->typePrefixIdsAmong([53, 54, 55, 58]))
+);
+check(
+    'a blank standard list still routes a re-enlistment to its own clerks',
+    $noStandardPrefixes->route(58) === ['type' => EnlistmentRouting::TYPE_REENLIST, 'position_ids' => [579, 960, 1012]],
+    'got type=' . $noStandardPrefixes->route(58)['type']
+);
+$noReenlistPrefixes = new EnlistmentRouting([57], $standardPositionIds, [], $reenlistPositionIds);
+check(
+    'a blank re-enlist list still reports a standard type prefix in the status set',
+    $noReenlistPrefixes->typePrefixIdsAmong([53, 54, 55, 57]) === [57],
+    'got: ' . implode(',', $noReenlistPrefixes->typePrefixIdsAmong([53, 54, 55, 57]))
+);
+check(
+    'a blank re-enlist list still routes a standard enlistment to its own clerks',
+    $noReenlistPrefixes->route(57) === ['type' => EnlistmentRouting::TYPE_STANDARD, 'position_ids' => [579, 580, 751, 1012]],
+    'got type=' . $noReenlistPrefixes->route(57)['type']
 );
 check(
     'an empty status set collides with nothing',

@@ -32,9 +32,10 @@ namespace Cav7\EnlistmentReminder;
  * A fourth runs the other way and aborts for the same reason: an enlistment TYPE
  * prefix configured into the in-processing set. Every valid queue thread carries
  * one, so it reads the whole queue as handled and the add-on goes permanently,
- * silently dark. The two type-prefix options are guarded for emptiness alongside
- * it, because that check intersects the status set with them and a blank one makes
- * it inert.
+ * silently dark. That check intersects the status set with the union of both
+ * type-prefix options, so BOTH of them being blank would leave it nothing to
+ * compare against and aborts too. One blank only degrades: the other type still
+ * routes and still collides, so it is warned about and the run carries on.
  *
  * A blank in-processing option aborts too, but for a different reason: nothing
  * could read as handled, and ProcessingStatus refuses that input rather than
@@ -132,27 +133,43 @@ class QueueReminder
                 implode(', ', $overlapPrefixIds)
             ));
         }
-        // The two type-prefix options are what the collision guard below intersects
-        // the status set against, so a blank one makes that guard inert: the
-        // intersection is empty whatever is in the status set, and a 57 typed into
-        // cav7ERInProcessingPrefixIds then reads every standard application as
-        // handled with nothing logged. On its own a blank one is milder but still
-        // wrong — every thread of that type routes to unrecognized, and the
-        // per-thread log line blames the thread's prefix when the fault is an empty
-        // textbox. Guard each by name so the abort points at the one that is blank.
-        if (!$standardPrefixIds)
+        // One blank type-prefix option is a degraded state, not a fault to stop for.
+        // The collision guard below intersects the status set with the UNION of both
+        // lists, so with one blank it still catches a collision on the other type's
+        // ids, and route() still resolves that type's threads. What a blank list does
+        // cost is its own type: every thread of it routes to unrecognized, and the
+        // per-thread log line there blames the thread's prefix when the fault is an
+        // empty textbox. So warn by name and carry on, letting the healthy type keep
+        // being reminded — the same trade the clerk seats make by resolving from the
+        // union rather than aborting on one empty per-type option.
+        //
+        // Log-only, so these sit above the aborts for the reason the overlap warning
+        // does: one run reports every fault an admin is carrying.
+        if (!$standardPrefixIds && $reenlistPrefixIds)
         {
             \XF::logError(sprintf(
-                '[Cav7/EnlistmentReminder] No prefix parsed from cav7ERStandardPrefixIds="%s"; skipping this run. No thread could route as a standard enlistment, and the type/status collision check has nothing to compare against.',
+                '[Cav7/EnlistmentReminder] No prefix parsed from cav7ERStandardPrefixIds="%s"; no thread can route as a standard enlistment, so every one of them is skipped as unrecognized. Re-enlistments are unaffected and this run continues.',
                 $rawStandardPrefixIds
             ));
-            return;
         }
-        if (!$reenlistPrefixIds)
+        if (!$reenlistPrefixIds && $standardPrefixIds)
         {
             \XF::logError(sprintf(
-                '[Cav7/EnlistmentReminder] No prefix parsed from cav7ERReenlistPrefixIds="%s"; skipping this run. No thread could route as a re-enlistment, and the type/status collision check has nothing to compare against.',
+                '[Cav7/EnlistmentReminder] No prefix parsed from cav7ERReenlistPrefixIds="%s"; no thread can route as a re-enlistment, so every one of them is skipped as unrecognized. Standard enlistments are unaffected and this run continues.',
                 $rawReenlistPrefixIds
+            ));
+        }
+        // BOTH blank is the different case, and the one the collision guard below
+        // genuinely needs ruled out: with nothing configured as a type prefix its
+        // intersection is empty whatever the status set holds, so a 57 typed into
+        // cav7ERInProcessingPrefixIds would read every queue thread as handled with
+        // nothing logged. Nothing could route as an enlistment either way, so there
+        // is no healthy half left to protect and the run stops, naming both options.
+        if (!$standardPrefixIds && !$reenlistPrefixIds)
+        {
+            \XF::logError(sprintf(
+                '[Cav7/EnlistmentReminder] No prefix parsed from either cav7ERStandardPrefixIds="%s" or cav7ERReenlistPrefixIds="%s"; skipping this run. No thread could route as an enlistment of either type, and the type/status collision check has nothing left to compare against.',
+                $rawStandardPrefixIds, $rawReenlistPrefixIds
             ));
             return;
         }
@@ -161,8 +178,9 @@ class QueueReminder
         // queue thread read as handled, so nothing is ever reminded and nothing is
         // ever logged. The option is free text with no validation_class, so the slip
         // is easy to make and impossible to notice. Abort rather than warn: the
-        // consequence is total silence, not a widened audience. The two guards above
-        // establish this one's precondition, that both type sets are populated.
+        // consequence is total silence, not a widened audience. The guard above
+        // establishes this one's precondition — that at least one type set is
+        // populated, so the intersection has something to run against.
         $typePrefixesInStatusSet = $routing->typePrefixIdsAmong($inProcessingPrefixIds);
         if ($typePrefixesInStatusSet)
         {

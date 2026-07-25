@@ -793,38 +793,71 @@ check(
     ),
     'the admin has to know which two lists to compare'
 );
-// That collision guard intersects the status set with the two type-prefix sets, so
-// it is only as good as those sets being populated: with cav7ERStandardPrefixIds
-// blank the intersection is empty whatever is in the status set, and a 57 typed
-// into the status option then suppresses the whole queue with nothing logged. Guard
-// each type-prefix option for emptiness so the collision guard's precondition is
-// established rather than assumed. Single-fault case matters too: a blank
-// type-prefix option routes every thread to unrecognized and the per-thread log
-// line blames the thread's own prefix when the real fault is a blank textbox.
+// That collision guard intersects the status set with the UNION of both type-prefix
+// sets, so ONE blank list does not make it inert: with cav7ERReenlistPrefixIds
+// blank, a 57 in the status option is still caught and standard threads still
+// route. Only both blank empties the union, and that is the guard's real
+// precondition — so that, and only that, aborts. Naming both options there, since
+// neither is wrong on its own.
+$bothBlankMarker = 'if (!$standardPrefixIds && !$reenlistPrefixIds)';
+$bothBlankBlock = ifBlock($remindBody, $bothBlankMarker);
 check(
-    'remind() aborts when the standard type-prefix option parses to nothing',
-    abortsWithLoggedError($remindBody, 'if (!$standardPrefixIds)')
-        && str_contains(ifBlock($remindBody, 'if (!$standardPrefixIds)'), 'cav7ERStandardPrefixIds'),
-    'a blank type-prefix set makes the collision guard inert and routes every thread to unrecognized'
+    'remind() aborts when BOTH type-prefix options parse to nothing',
+    abortsWithLoggedError($remindBody, $bothBlankMarker)
+        && str_contains($bothBlankBlock, 'cav7ERStandardPrefixIds')
+        && str_contains($bothBlankBlock, 'cav7ERReenlistPrefixIds'),
+    'with neither type set populated no thread can route at all and the collision guard has nothing to compare against'
+);
+// A SINGLE blank list must NOT abort. The fault is confined to one type: the other
+// type still routes, still collides, and still has seated clerks, so aborting here
+// stops the healthy type being reminded over a fault that is not about it — the
+// same trade the clerk seats already resolve from the union to avoid. Warn by name
+// (the per-thread unrecognized line otherwise blames each thread's own prefix) and
+// carry on. The premise — one blank list still routes and still catches a collision
+// on the other type's ids — is exercised for real in EnlistmentRoutingTest.
+$standardBlankWarning = ifBlock($remindBody, 'if (!$standardPrefixIds && $reenlistPrefixIds)');
+$reenlistBlankWarning = ifBlock($remindBody, 'if (!$reenlistPrefixIds && $standardPrefixIds)');
+check(
+    'a blank standard type-prefix option warns and lets the run continue',
+    $standardBlankWarning !== ''
+        && str_contains($standardBlankWarning, 'logError(')
+        && str_contains($standardBlankWarning, 'cav7ERStandardPrefixIds')
+        && !(bool) preg_match('/\breturn;/', $standardBlankWarning),
+    'aborting on one empty type set would silence the other type, which still routes and still has holders'
 );
 check(
-    'remind() aborts when the re-enlistment type-prefix option parses to nothing',
-    abortsWithLoggedError($remindBody, 'if (!$reenlistPrefixIds)')
-        && str_contains(ifBlock($remindBody, 'if (!$reenlistPrefixIds)'), 'cav7ERReenlistPrefixIds'),
-    'a blank type-prefix set makes the collision guard inert and routes every thread to unrecognized'
+    'a blank re-enlistment type-prefix option warns and lets the run continue',
+    $reenlistBlankWarning !== ''
+        && str_contains($reenlistBlankWarning, 'logError(')
+        && str_contains($reenlistBlankWarning, 'cav7ERReenlistPrefixIds')
+        && !(bool) preg_match('/\breturn;/', $reenlistBlankWarning),
+    'aborting on one empty type set would silence the other type, which still routes and still has holders'
 );
-// ...and each names its OWN option, or an admin fixing one textbox reads the log
-// line for the other.
-$standardEmptyBlock = ifBlock($remindBody, 'if (!$standardPrefixIds)');
-$reenlistEmptyBlock = ifBlock($remindBody, 'if (!$reenlistPrefixIds)');
+// ...and each names its OWN option, or an admin fixing one textbox reads the line
+// for the other.
 check(
-    'each type-prefix emptiness abort names only its own option',
-    $standardEmptyBlock !== ''
-        && $reenlistEmptyBlock !== ''
-        && !str_contains($standardEmptyBlock, 'cav7ERReenlistPrefixIds')
-        && !str_contains($reenlistEmptyBlock, 'cav7ERStandardPrefixIds'),
-    'the abort has to point at the one textbox that is blank'
+    'each blank type-prefix warning names only its own option',
+    $standardBlankWarning !== ''
+        && $reenlistBlankWarning !== ''
+        && !str_contains($standardBlankWarning, 'cav7ERReenlistPrefixIds')
+        && !str_contains($reenlistBlankWarning, 'cav7ERStandardPrefixIds'),
+    'the warning has to point at the one textbox that is blank'
 );
+// Log-only, so both warnings belong ABOVE the aborts, for the same reason the
+// overlap warning does: an admin carrying a blank type list AND one of the config
+// faults below hears about both from one run.
+foreach ([
+    'if (!$standardPrefixIds && $reenlistPrefixIds)',
+    'if (!$reenlistPrefixIds && $standardPrefixIds)',
+] as $blankWarningMarker) {
+    checkOrderedWithin(
+        $remindBody,
+        "the blank-type-list warning `$blankWarningMarker` comes before the aborts that would end the run",
+        $blankWarningMarker,
+        'if ($typePrefixesInStatusSet)',
+        'a log-only check placed below an abort is never reached on a board that has both faults'
+    );
+}
 
 // SV/MultiPrefix DISABLED rather than uninstalled is the state neither link-table
 // guard can see. XenForo checks `require` on install and upgrade only, never at
@@ -876,8 +909,7 @@ $abortGuardMarkers = [
     'if (!$nodeId)',
     'if (!$botUserId)',
     'if (!$inProcessingPrefixIds)',
-    'if (!$standardPrefixIds)',
-    'if (!$reenlistPrefixIds)',
+    'if (!$standardPrefixIds && !$reenlistPrefixIds)',
     'if ($typePrefixesInStatusSet)',
     "if (!\\XF::isAddOnActive('SV/MultiPrefix'",
     'if (!$clerkUserIds)',
