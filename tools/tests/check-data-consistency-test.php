@@ -23,6 +23,13 @@
  * pair is what makes the rows distinct, and the one-sided cases pin that each
  * unmatched row is named on whichever side it went missing from.
  *
+ * Cases 10 to 13 hold down the generic record-count guard that every type except
+ * class_extensions still relies on. Nothing covered it before, so deleting it
+ * went unnoticed: a count-only type (templates) stopped reporting an unexported
+ * item, and on an exact-id type (phrases) a duplicated _data record slipped
+ * through, since array_diff collapses duplicates and the count was the only
+ * thing counting them.
+ *
  * Run:
  *   php tools/tests/check-data-consistency-test.php
  *
@@ -78,6 +85,50 @@ function makeFixture(string $base, string $name, array $dataExts, array $outputI
             "$dir/_output/class_extensions/$filename",
             json_encode($item, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n"
         );
+    }
+    return $dir;
+}
+
+/**
+ * Build a throwaway fixture addon under $base for any non-class_extensions type:
+ * a _data/<dataBase>.xml holding $dataRecords, and _output/<type>/ holding
+ * $outputFiles.
+ *
+ * $dataRecords: list of attribute maps, one per record element.
+ * $outputFiles: path relative to _output/<type>/ => file contents. A path may
+ *               contain a subdirectory, since some types nest (templates).
+ */
+function makeTypeFixture(
+    string $base,
+    string $name,
+    string $type,
+    string $recordTag,
+    array $dataRecords,
+    array $outputFiles,
+    ?string $dataBase = null
+): string {
+    $dir = "$base/$name";
+    mkdir("$dir/_data", 0777, true);
+    mkdir("$dir/_output/$type", 0777, true);
+
+    $xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<$type>\n";
+    foreach ($dataRecords as $attrs) {
+        $xml .= "  <$recordTag";
+        foreach ($attrs as $attr => $value) {
+            $xml .= sprintf(' %s="%s"', $attr, htmlspecialchars((string) $value, ENT_QUOTES));
+        }
+        $xml .= "/>\n";
+    }
+    $xml .= "</$type>\n";
+    file_put_contents("$dir/_data/" . ($dataBase ?? $type) . '.xml', $xml);
+
+    foreach ($outputFiles as $relative => $contents) {
+        $target = "$dir/_output/$type/$relative";
+        $parent = dirname($target);
+        if (!is_dir($parent)) {
+            mkdir($parent, 0777, true);
+        }
+        file_put_contents($target, $contents);
     }
     return $dir;
 }
@@ -302,6 +353,110 @@ try {
     [$code, $out] = runTool($tool, $uniqueExtraData);
     check('a unique-from_class _data record with no _output item fails', $code !== 0, "exit=$code\n$out");
     check('that unclaimed unique row is named too', str_contains($out, $toB), $out);
+
+    // --- 10. count-checked type, counts agree ---------------------------------
+    // templates is the nesting case: _output items sit under a style-type
+    // subfolder, and the tool counts them recursively.
+    $templatesOk = makeTypeFixture(
+        $base,
+        'templates-ok',
+        'templates',
+        'template',
+        [
+            ['type' => 'public', 'title' => 'cav7_one'],
+            ['type' => 'public', 'title' => 'cav7_two'],
+        ],
+        [
+            'public/cav7_one.html' => "<div>one</div>\n",
+            'public/cav7_two.html' => "<div>two</div>\n",
+        ]
+    );
+    [$code, $out] = runTool($tool, $templatesOk);
+    check('a count-checked type passes when the counts agree', $code === 0, "exit=$code\n$out");
+    check(
+        'the passing count-checked type is reported as count-checked',
+        str_contains($out, 'count-checked'),
+        $out
+    );
+
+    // --- 11. count-checked type, counts disagree ------------------------------
+    // The guard that catches "someone added a template and forgot to re-export".
+    // class_extensions answers the count question with its own pair matching, but
+    // every other type has nothing else to fall back on.
+    $templatesShort = makeTypeFixture(
+        $base,
+        'templates-short',
+        'templates',
+        'template',
+        [
+            ['type' => 'public', 'title' => 'cav7_one'],
+        ],
+        [
+            'public/cav7_one.html' => "<div>one</div>\n",
+            'public/cav7_two.html' => "<div>two</div>\n",
+            'public/cav7_three.html' => "<div>three</div>\n",
+        ]
+    );
+    [$code, $out] = runTool($tool, $templatesShort);
+    check(
+        'a count-checked type fails when _output holds more items than _data',
+        $code !== 0,
+        "exit=$code\n$out"
+    );
+    check(
+        'the count mismatch reports both counts',
+        str_contains($out, '_output has 3 item(s), _data has 1'),
+        $out
+    );
+
+    // --- 12. exact-id type with a duplicated _data record ---------------------
+    // array_diff collapses duplicates, so id comparison alone calls this clean;
+    // only the count guard sees the extra record.
+    $phrasesDup = makeTypeFixture(
+        $base,
+        'phrases-dup',
+        'phrases',
+        'phrase',
+        [
+            ['title' => 'cav7_p1'],
+            ['title' => 'cav7_p1'],
+            ['title' => 'cav7_p2'],
+        ],
+        [
+            'cav7_p1.txt' => "One\n",
+            'cav7_p2.txt' => "Two\n",
+        ]
+    );
+    [$code, $out] = runTool($tool, $phrasesDup);
+    check(
+        'a duplicated _data record on an exact-id type fails',
+        $code !== 0,
+        "exit=$code\n$out"
+    );
+    check(
+        'the duplicated-record failure reports the differing counts',
+        str_contains($out, '_output has 2 item(s), _data has 3'),
+        $out
+    );
+
+    // --- 13. exact-id type, ids agree ----------------------------------------
+    $phrasesOk = makeTypeFixture(
+        $base,
+        'phrases-ok',
+        'phrases',
+        'phrase',
+        [
+            ['title' => 'cav7_p1'],
+            ['title' => 'cav7_p2'],
+        ],
+        [
+            'cav7_p1.txt' => "One\n",
+            'cav7_p2.txt' => "Two\n",
+        ]
+    );
+    [$code, $out] = runTool($tool, $phrasesOk);
+    check('an exact-id type passes when the ids agree', $code === 0, "exit=$code\n$out");
+    check('the passing exact-id type is reported as ids match', str_contains($out, 'ids match'), $out);
 } finally {
     rmrf($base);
 }

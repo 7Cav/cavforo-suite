@@ -11,9 +11,11 @@
  *
  * Each _output/<type>/ directory is matched to its _data/<type>.xml. Item files
  * are counted recursively, since some types (templates) nest under subfolders by
- * style type. For most types the record counts must agree. For options, phrases
- * and option_groups the item ids are also compared exactly, since the _output
- * filename is the id. class_extensions is matched row by row on the
+ * style type. For every type but class_extensions the record counts must agree.
+ * For options, phrases and option_groups the item ids are compared exactly on
+ * top of that count, since the _output filename is the id — the count is what
+ * catches a duplicated record, which comparing ids alone cannot see.
+ * class_extensions is matched row by row on the
  * (from_class, to_class) pair instead of counted, so an addon may register
  * several extensions against one from_class (see
  * docs/adr/0003-canonical-class-extension-order.md for why that pair is the
@@ -173,6 +175,15 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
         }
 
         $report[] = "  $type: $countOutput item(s), content matches (content-checked)";
+        continue;
+    }
+
+    // Every type but class_extensions is count-guarded first. For the count-only
+    // types this is the whole check; for the exact-id types below it is what
+    // catches a duplicated record, which the id comparison cannot see because
+    // array_diff collapses duplicates.
+    if ($countOutput !== $countData) {
+        $errors[] = "$type: _output has $countOutput item(s), _data has $countData (run xf-addon:export?)";
         continue;
     }
 
