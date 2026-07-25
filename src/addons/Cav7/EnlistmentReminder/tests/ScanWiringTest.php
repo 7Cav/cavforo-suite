@@ -449,6 +449,43 @@ foreach (['options', 'option_groups', 'cron_entries', 'class_extensions', 'phras
         'hand-edited without re-exporting: ' . implode(' | ', $drifted)
     );
 }
+// The md5 loop proves _output is internally consistent, and nothing more. _DATA is
+// what a production install imports, and check-data-consistency.php compares options
+// by id and count rather than by content, so a hand-edited field there reaches the
+// live board unchallenged. `data_type` is the field that matters most on the three
+// comma-list options: as `unsigned_integer`, "53,54,55" coerces to 53, so In Progress
+// and Approved threads read un-actioned and the queue is reminded on work already
+// underway — #186's own regression, on the side the board installs from. The two type
+// lists coerce the same way, taking the collision guard's ids with them.
+$dataTypeByOption = [];
+if ($optXml !== false) {
+    foreach ($optXml->option as $option) {
+        $dataTypeByOption[(string) $option['option_id']] = (string) $option['data_type'];
+    }
+}
+foreach ([
+    'cav7ERInProcessingPrefixIds',
+    'cav7ERStandardPrefixIds',
+    'cav7ERReenlistPrefixIds',
+] as $listOption) {
+    check(
+        "the _data data_type for $listOption is string, so a comma list survives the save",
+        ($dataTypeByOption[$listOption] ?? null) === 'string',
+        'a numeric data_type keeps only the first id in the list; got: '
+            . var_export($dataTypeByOption[$listOption] ?? null, true)
+    );
+    // And the two sides must agree, so the drift is caught whichever one is edited.
+    $listOutputFile = "$root/_output/options/$listOption.json";
+    $listOutputJson = is_file($listOutputFile)
+        ? json_decode((string) file_get_contents($listOutputFile), true)
+        : null;
+    check(
+        "the _output copy of $listOption's data_type matches _data",
+        is_array($listOutputJson)
+            && ($listOutputJson['data_type'] ?? null) === ($dataTypeByOption[$listOption] ?? null),
+        'dev mode installs from _output; got: ' . var_export($listOutputJson['data_type'] ?? null, true)
+    );
+}
 // Templates nest one level deeper and are indexed by their style-relative path
 // ("public/alert_thread_enlistment_reminder.html") in one _metadata.json at the
 // templates root, so they need their own pass rather than the flat loop above.
@@ -635,17 +672,30 @@ check(
 // Acceptance criterion 9: the docs have to describe the same rule the code
 // implements. They read correctly today, but nothing would catch a regression that
 // re-documented a clerk's reply as the handled signal — and the docs are what the
-// next reader (and the next agent) works from. Same grep as the worker gets, over
-// the two prose homes.
+// next reader (and the next agent) works from. Criterion 9 names the class
+// docblocks alongside the two prose homes, so all six go through the same grep: the
+// worker plus the three pure seams. Those docblocks do narrate the OLD rule, in the
+// past tense ("their reply stopped counting", "a reply-authorship rule could
+// withdraw a pickup"), which is why the patterns below all require a
+// present-tense claim — "means", "counts as", "is the signal" — rather than banning
+// the word "reply" near the word "handled".
 $docsPhrasing = [];
-foreach (['README.md', 'CONTEXT.md'] as $docFile) {
+foreach ([
+    'README.md',
+    'CONTEXT.md',
+    'QueueReminder.php',
+    'ProcessingStatus.php',
+    'ReminderDecision.php',
+    'EnlistmentRouting.php',
+] as $docFile) {
     $doc = @file_get_contents("$root/$docFile");
     check("$docFile reads", is_string($doc) && $doc !== '');
     if (!is_string($doc)) {
         continue;
     }
-    // Deliberately narrow: the docs DO discuss reply authorship, to say it does not
-    // count. What must never come back is prose making a reply the signal.
+    // Deliberately narrow: docs and docblocks alike DO discuss reply authorship, to
+    // say it does not count and to record what the old rule cost. What must never
+    // come back is prose asserting, in the present tense, that a reply is the signal.
     foreach ([
         '/repl(y|ied|ies)[^.]{0,80}\bmeans\b/i',
         '/repl(y|ied|ies)[^.]{0,80}(counts as|marks it|is the signal|suppress)/i',
@@ -657,7 +707,7 @@ foreach (['README.md', 'CONTEXT.md'] as $docFile) {
     }
 }
 check(
-    'no doc makes a clerk reply the handled signal (acceptance criterion 9)',
+    'no doc or class docblock makes a clerk reply the handled signal (acceptance criterion 9)',
     $docsPhrasing === [],
     'the handled signal is the processing status prefix; found: ' . implode(' | ', $docsPhrasing)
 );
@@ -992,6 +1042,55 @@ check(
     'unexpected: ' . implode(' | ', $unexpectedInProcessingUses)
         . ' (all ' . count($inProcessingUses) . ' use(s): ' . implode(' | ', $inProcessingUses) . ')'
 );
+// The two links between that map and the remind loop — $facts going in, $toRemind
+// coming out — are the rest of the plumbing, and they need the same fence. The
+// decision call is pinned as an ASSIGNMENT with its exact arguments, for the reason
+// the ProcessingStatus call is: a call whose result is thrown away, or one handed
+// the raw $threads rows instead of the built facts, satisfies a pin that only looks
+// for the call text. Raw rows carry no op_timestamp and no in_processing, so a
+// decision fed them reads every thread as past the deadline and un-actioned — the
+// whole queue, noted and alerted, every hour.
+check(
+    'the remind list is ASSIGNED from ReminderDecision::selectThreadsToRemind over the built facts',
+    (bool) preg_match(
+        '/\$toRemind\s*=\s*ReminderDecision::selectThreadsToRemind\(\s*\\\\XF::\$time,\s*\$deadlineHours\s*\*\s*3600,\s*\$facts\s*\);/',
+        $remindBody
+    ),
+    'the facts are what carry the deadline, the status and the marker; handed the raw rows the decision defaults every thread remindable'
+);
+// $facts: initialised, appended once per thread, handed to the decision. Nothing
+// else. A post-loop rewrite of one fact is the sharpest mutation this fences off —
+// `$facts[$i]['in_processing'] = false` is issue #186's own bug restored, and it
+// leaves $inProcessing's use count at 2 so the fence above never notices; `= true`
+// reads the whole queue as handled (permanent silence); `['already_reminded'] =
+// false` uncaps the once-only rule and re-notes the applicant's thread hourly.
+$factsUses = variableUseLines($remindBody, '$facts');
+$unexpectedFactsUses = unexpectedUseLines($factsUses, [
+    '/^\$facts\s*=\s*\[\];$/',
+    '/^\$facts\[\]\s*=\s*\[$/',
+    '/^\$facts$/',
+]);
+check(
+    'the facts are built once and handed straight to the decision, with nothing rewriting them in between',
+    count($factsUses) === 3 && $unexpectedFactsUses === [],
+    'unexpected: ' . implode(' | ', $unexpectedFactsUses)
+        . ' (all ' . count($factsUses) . ' use(s): ' . implode(' | ', $factsUses) . ')'
+);
+// $toRemind: assigned from the decision, iterated once. Nothing else. Looping over
+// $threadIds instead — or re-assigning $toRemind = $threadIds after the call — notes
+// and alerts every open queue thread every hour, deadline, status and marker all
+// ignored, and every pin above stays green.
+$toRemindUses = variableUseLines($remindBody, '$toRemind');
+$unexpectedToRemindUses = unexpectedUseLines($toRemindUses, [
+    '/^\$toRemind\s*=\s*ReminderDecision::selectThreadsToRemind\($/',
+    '/^foreach\s*\(\$toRemind as \$threadId\)$/',
+]);
+check(
+    'the remind loop iterates the decision\'s own answer and nothing else',
+    count($toRemindUses) === 2 && $unexpectedToRemindUses === [],
+    'unexpected: ' . implode(' | ', $unexpectedToRemindUses)
+        . ' (all ' . count($toRemindUses) . ' use(s): ' . implode(' | ', $toRemindUses) . ')'
+);
 // Acceptance criterion 4: reply authorship no longer influences the decision. The
 // name-based checks above ("fetchReplyAuthorIds is gone") are walked past by any
 // renamed helper, so pin the fact array itself: exactly the four keys
@@ -1172,6 +1271,19 @@ check(
     (bool) preg_match('/alertClerks\(\s*\$threadId\s*,\s*\$botUserId\s*,\s*\$alertUserIds\s*\)/', $worker)
         && !(bool) preg_match('/alertClerks\(\s*\$threadId\s*,\s*\$botUserId\s*,\s*\$clerkUserIds\s*\)/', $worker),
     'the alert must reach only the clerks who own this thread\'s enlistment type'
+);
+// ...and the pin above keys on the NAME handed to alertClerks, so it says nothing
+// about what fills it. Feed $alertUserIds from allClerkPositionIds() and every
+// clerk is alerted for both types while that pin stays green — acceptance criterion
+// 7's whole point, walked past. The audience has to come from the route's own
+// position ids.
+check(
+    "the per-type audience is resolved from the route's own position ids",
+    (bool) preg_match(
+        '/\$alertUserIds\s*=\s*\$this->resolveClerkUserIds\(\s*\$route\[[\'"]position_ids[\'"]\]\s*\);/',
+        $remindBody
+    ),
+    'resolving the audience from the union alerts every clerk for both types, which criterion 7 forbids'
 );
 
 // The alert goes through UserAlertRepository::alert (not insertAlert), so a clerk
@@ -1398,6 +1510,25 @@ check(
         && !str_contains($unrecognizedSkip, 'recordReminder')
         && !str_contains($unrecognizedSkip, 'alertClerks'),
     'a postReminderNote/recordReminder/alertClerks inside this branch would mark a mis-prefixed enlistment done and never alert a clerk, yet still pass the looser ordering pin above'
+);
+
+// The branch's comparison OPERATOR is invisible to both pins above: they match
+// `TYPE_UNRECOGNIZED)` followed by `{`, and the sliced branch body still reads as a
+// log-only skip either way. Inverted to `!==`, every VALID enlistment takes the skip
+// and is never reminded, while an unrecognized thread falls through to the
+// empty-audience skip — one character, nothing ever reminded again, both skip pins
+// green. So pin the operator, and pin the absence of the inversion.
+check(
+    'the unrecognized skip tests identity with TYPE_UNRECOGNIZED, not its negation',
+    (bool) preg_match(
+        '/if\s*\(\s*\$route\[[\'"]type[\'"]\]\s*===\s*EnlistmentRouting::TYPE_UNRECOGNIZED\s*\)/',
+        $remindBody
+    )
+        && !(bool) preg_match(
+            '/\$route\[[\'"]type[\'"]\]\s*!==\s*EnlistmentRouting::TYPE_UNRECOGNIZED/',
+            $remindBody
+        ),
+    'inverted, the skip swallows every valid enlistment and the queue is never reminded again'
 );
 
 // A RECOGNIZED thread whose per-type clerk positions resolve to no seated holder
