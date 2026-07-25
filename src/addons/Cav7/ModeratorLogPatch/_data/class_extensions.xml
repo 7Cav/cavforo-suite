@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<class_extensions>
+  <extension from_class="NF\Calendar\ModeratorLog\EventHandler" to_class="Cav7\ModeratorLogPatch\NF\Calendar\ModeratorLog\EventHandler" execute_order="10" active="1"/>
+  <extension from_class="NF\Tickets\ModeratorLog\MessageHandler" to_class="Cav7\ModeratorLogPatch\NF\Tickets\ModeratorLog\Message" execute_order="10" active="1"/>
+  <extension from_class="NF\Tickets\ModeratorLog\TicketHandler" to_class="Cav7\ModeratorLogPatch\NF\Tickets\ModeratorLog\Ticket" execute_order="10" active="1"/>
+  <extension from_class="XF\ModeratorLog\PostHandler" to_class="Cav7\ModeratorLogPatch\XF\ModeratorLog\PostHandler" execute_order="10" active="1"/>
+  <extension from_class="XF\ModeratorLog\ProfilePostCommentHandler" to_class="Cav7\ModeratorLogPatch\XF\ModeratorLog\ProfilePostCommentHandler" execute_order="10" active="1"/>
+  <extension from_class="XF\ModeratorLog\ProfilePostHandler" to_class="Cav7\ModeratorLogPatch\XF\ModeratorLog\ProfilePostHandler" execute_order="10" active="1"/>
+  <extension from_class="XF\ModeratorLog\ThreadHandler" to_class="Cav7\ModeratorLogPatch\XF\ModeratorLog\ThreadHandler" execute_order="10" active="1"/>
+  <extension from_class="XF\ModeratorLog\UserHandler" to_class="Cav7\ModeratorLogPatch\XF\ModeratorLog\UserHandler" execute_order="10" active="1"/>
+</class_extensions>

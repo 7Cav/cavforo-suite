@@ -1,0 +1,26 @@
+{
+    "NF-Calendar-ModeratorLog-EventHandler_Cav7-ModeratorLogPatch-NF-Calendar-ModeratorLog-EventHandler.json": {
+        "hash": "ac859f3cb8d1f90dceab9713404fd9e3"
+    },
+    "NF-Tickets-ModeratorLog-MessageHandler_Cav7-ModeratorLogPatch-NF-Tickets-ModeratorLog-Message.json": {
+        "hash": "46ef0e8e672355538dbbac97c76ce4a3"
+    },
+    "NF-Tickets-ModeratorLog-TicketHandler_Cav7-ModeratorLogPatch-NF-Tickets-ModeratorLog-Ticket.json": {
+        "hash": "997ce6fe108692b86831cbaf4e0a4725"
+    },
+    "XF-ModeratorLog-PostHandler_Cav7-ModeratorLogPatch-XF-ModeratorLog-PostHandler.json": {
+        "hash": "3d71f997d331da51394d3d95e4b5b50f"
+    },
+    "XF-ModeratorLog-ProfilePostCommentHandler_Cav7-ModeratorLogPatch-XF-ModeratorLog-ProfilePostCommentHandler.json": {
+        "hash": "36bbf4ec797eba1560a38c9539362b7f"
+    },
+    "XF-ModeratorLog-ProfilePostHandler_Cav7-ModeratorLogPatch-XF-ModeratorLog-ProfilePostHandler.json": {
+        "hash": "d045bd9b63f6ce812dfe2d7dcf3ff05a"
+    },
+    "XF-ModeratorLog-ThreadHandler_Cav7-ModeratorLogPatch-XF-ModeratorLog-ThreadHandler.json": {
+        "hash": "b53a802cbf8de4a42c61b1f41ececc3b"
+    },
+    "XF-ModeratorLog-UserHandler_Cav7-ModeratorLogPatch-XF-ModeratorLog-UserHandler.json": {
+        "hash": "28cf236c6c8abf68d4fb44bac6bc6c74"
+    }
+}

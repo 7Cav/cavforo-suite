@@ -1,0 +1,6 @@
+{
+    "from_class": "XF\\ModeratorLog\\UserHandler",
+    "to_class": "Cav7\\ModeratorLogPatch\\XF\\ModeratorLog\\UserHandler",
+    "execute_order": 10,
+    "active": true
+}
