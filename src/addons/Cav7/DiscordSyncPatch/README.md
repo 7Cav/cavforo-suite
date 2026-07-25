@@ -75,15 +75,23 @@ the pending guard below then refuses every press after it, indefinitely and sile
 
 Then two guards. A press made while a sync is already pending for that member is
 refused, with a note that one is on its way. Past that, a member may queue at most
-one resync every five minutes; that limit is XenForo's own flood check, which does
-not apply to anyone holding `general:bypassFloodCheck`. If nothing was queued even
-so, the member is told rather than left waiting on a sync that will never run, and
-the cooldown is handed straight back. That failure goes to the server error log,
-because by then there is no explanation left to offer and staff need to know.
+one resync every five minutes. That limit is XenForo's flood check, keyed to this
+action alone and called as the service rather than through the controller helper, so
+it binds every member — including anyone holding `general:bypassFloodCheck`, whom the
+helper would exempt. Why that permission is not the staff exemption it looks like on
+this forum is in
+[ADR-0007](docs/adr/0007-bind-the-resync-cooldown-without-the-flood-bypass-permission.md).
+If nothing was queued even so, the member is told rather than left waiting on a sync
+that will never run, and the cooldown is handed straight back. That failure goes to
+the server error log, because by then there is no explanation left to offer and staff
+need to know.
 
 The button syncs whether or not anything is actually wrong. Why it does not check
 first, and what the two guards are there to protect, is in
-[ADR-0005](docs/adr/0005-honour-a-resync-request-without-checking-divergence.md).
+[ADR-0005](docs/adr/0005-honour-a-resync-request-without-checking-divergence.md) —
+read alongside
+[ADR-0007](docs/adr/0007-bind-the-resync-cooldown-without-the-flood-bypass-permission.md),
+which corrects what ADR-0005 assumed about who holds the flood-bypass permission.
 
 The two outcomes that are not refusals — the resync was queued, one was already
 pending — reach the member as a flash message, which is a JavaScript path. The
@@ -137,9 +145,9 @@ nothing accounts for; those age out with the rest of the log, on the
 The sync fix and the resync button both depend on things nobody promised would stay
 true. Mostly that is NF/Discord: how it queues a per-user sync, what it stores about
 one, and what it reads back. The resync action also leans on XenForo core — how the router builds an
-action name out of a route's action prefix, how the flood check treats the bypass
-permission, and how wide `xf_flood_check.flood_action` is — so a core upgrade can
-break it as readily as a vendor one. They are listed in the docblocks of
+action name out of a route's action prefix, the signature and the atomicity of
+`FloodCheckService::checkFlooding()`, and how wide `xf_flood_check.flood_action` is —
+so a core upgrade can break it as readily as a vendor one. They are listed in the docblocks of
 `NF/Discord/ApiMessage/SyncUser.php` and `XF/Pub/Controller/Account.php`.
 
 One of them is a rule a new caller has to know before writing the call, so it is
@@ -194,12 +202,18 @@ CI cannot see any of them, and each one fails silently in production if it break
    template modification still finding its anchor in the vendor template, which is the
    check most likely to break and the one CI is blindest to.
 2. A press lands a per-user sync row in `xf_nf_discord_queue` for that member.
-3. A second press inside five minutes is refused, naming the time remaining.
+3. A second press inside five minutes is refused, naming the time remaining — for a
+   member holding `general:bypassFloodCheck` as well as one without it.
 4. The pending note renders beside the button once a row is queued.
 
-Getting as far as 2 takes setup: the integration needs its credentials and at least
-one server row that is both active and carries a guild id, or the action refuses at a
-precondition and never reaches the queueing call. Put whatever you changed back
+`tools/discord-resync-cooldown-check.sh` does 2 and 3 unattended, for both kinds of
+member. It builds its own user group, its own members and its own credentials, lets
+XenForo build the permission cache from the group rather than editing the cache, and
+removes all of it afterwards. 1 and 4 are what a browser is still needed for.
+
+Getting as far as 2 by hand takes setup: the integration needs its credentials and at
+least one server row that is both active and carries a guild id, or the action refuses
+at a precondition and never reaches the queueing call. Put whatever you changed back
 afterwards.
 
 The role change itself is a different matter. A resync only moves roles once the
