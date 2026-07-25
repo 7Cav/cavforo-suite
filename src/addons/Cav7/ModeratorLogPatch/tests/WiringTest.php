@@ -55,11 +55,23 @@ function outputItems(string $root, string $type): array
  * The source of one method, from its `function <name>` declaration up to the next
  * method's docblock or declaration, so a check stays anchored to the method that
  * owns it.
+ *
+ * A miss fails the run rather than returning quietly. Half the checks below are
+ * purely negative — "this method never writes", "there is no second return path" —
+ * and an empty string satisfies every one of them, so a method renamed out from
+ * under its checks reported PASS on a read-only guarantee it no longer made. The
+ * name being wrong is itself the failure worth reporting: nothing here can pin a
+ * method it cannot find.
  */
 function methodBody(string $src, string $name): string
 {
     $start = strpos($src, 'function ' . $name);
     if ($start === false) {
+        check(
+            "a method named '$name' is declared where the checks below read it",
+            false,
+            'a renamed or removed method silently satisfies every check on its body that only forbids something'
+        );
         return '';
     }
     $body = substr($src, $start);
