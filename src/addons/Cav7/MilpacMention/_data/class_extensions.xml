@@ -6,8 +6,8 @@
   <extension from_class="XF\Alert\ProfilePostHandler" to_class="Cav7\MilpacMention\XF\Alert\ProfilePostHandler" execute_order="10" active="1"/>
   <extension from_class="XF\Service\Message\PreparerService" to_class="Cav7\MilpacMention\XF\Service\Message\PreparerService" execute_order="10" active="1"/>
   <extension from_class="XF\Service\Post\NotifierService" to_class="Cav7\MilpacMention\XF\Service\Post\NotifierService" execute_order="10" active="1"/>
-  <extension from_class="XF\Service\ProfilePost\NotifierService" to_class="Cav7\MilpacMention\XF\Service\ProfilePost\NotifierService" execute_order="10" active="1"/>
   <extension from_class="XF\Service\ProfilePostComment\NotifierService" to_class="Cav7\MilpacMention\XF\Service\ProfilePostComment\NotifierService" execute_order="10" active="1"/>
+  <extension from_class="XF\Service\ProfilePost\NotifierService" to_class="Cav7\MilpacMention\XF\Service\ProfilePost\NotifierService" execute_order="10" active="1"/>
   <extension from_class="XF\Service\Report\NotifierService" to_class="Cav7\MilpacMention\XF\Service\Report\NotifierService" execute_order="10" active="1"/>
   <extension from_class="XF\Str\MentionFormatter" to_class="Cav7\MilpacMention\XF\Str\MentionFormatter" execute_order="10" active="1"/>
 </class_extensions>
