@@ -11,13 +11,26 @@
  *
  * Each _output/<type>/ directory is matched to its _data/<type>.xml. Item files
  * are counted recursively, since some types (templates) nest under subfolders by
- * style type. For every type the record counts must agree. For options, phrases
- * and option_groups the item ids are also compared exactly, since the _output
- * filename is the id. For class_extensions the item content (from_class,
- * to_class, active) is compared against the matching _data <extension> record,
- * so a corrupted to_class or a flipped active fails even when the file count is
- * unchanged. Other types are count-checked only; the report says which is which,
- * so nothing is skipped silently.
+ * style type. For every type but class_extensions the record counts must agree.
+ * For options, phrases and option_groups the item ids are compared exactly on
+ * top of that count, since the _output filename is the id — the count is what
+ * catches a duplicated record, which comparing ids alone cannot see.
+ * class_extensions is matched row by row on the (from_class, to_class) pair
+ * instead of counted: xf_class_extension carries a UNIQUE KEY over exactly
+ * those two columns, so one from_class may hold several extensions and the pair
+ * is what identifies a row. A row present on only one side, or a disagreeing
+ * execute_order or active, fails even when the file count is unchanged. An
+ * absent execute_order or active is a mismatch too, named by the side it is
+ * missing from, since 0 and false are both legitimate values — and so is a
+ * value in a shape no export writes, which is refused rather than cast into
+ * one of those two.
+ * (docs/adr/0003-canonical-class-extension-order.md rests on the same pair
+ * identity: it fixes the row order of a committed _data file as a byte
+ * comparison of from_class then to_class, and leaves execute_order out of that
+ * rule because the UNIQUE KEY over the pair means the exporter never reaches it
+ * as a tiebreaker.)
+ * Other types are count-checked only; the report says which is which, so
+ * nothing is skipped silently.
  *
  * This is a structural heuristic, not a re-implementation of xf-addon:export. It
  * catches the realistic mistakes (forgot to export, hand-edited one side); the
@@ -89,23 +102,87 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
     $records = $doc->children();
     $countData = count($records);
 
-    if ($countOutput !== $countData) {
-        $errors[] = "$type: _output has $countOutput item(s), _data has $countData (run xf-addon:export?)";
-        continue;
-    }
-
-    // class_extensions: content-checked, not just counted. Match each _output
-    // item to its _data <extension> by from_class, then compare from_class,
-    // to_class and active. _data stores active as the string "1"; _output as the
-    // JSON bool true, so normalise active before comparing (CalendarPatch's
-    // JoinerServiceSetupWiringTest pins the same comparison for its extension).
+    // class_extensions: content-checked, not just counted. A row's identity is
+    // the (from_class, to_class) pair — xf_class_extension's UNIQUE KEY covers
+    // exactly those two columns, and XenForo builds the _output filename from
+    // both — so an addon may register several extensions against one from_class
+    // and they stay distinct here (issue #150). Each _output item is matched to
+    // its _data <extension> on that pair, then the two columns that are left,
+    // execute_order and active, are compared; between them the four cover every
+    // field either side exports. _data spells both as XML strings ("1", "20")
+    // where _output has a JSON bool and a JSON int, so normalise before
+    // comparing (CalendarPatch's JoinerServiceSetupWiringTest pins the same
+    // comparison for its extension).
     if ($type === 'class_extensions') {
-        $dataByFrom = [];
+        $pairKey = static fn (string $from, string $to): string => "$from\0$to";
+        $describePair = static fn (string $from, string $to): string
+            => "from_class '$from' to_class '$to'";
+        // Names every side the field is actually absent from, rather than the
+        // first one asked: a field missing from both sides is a worse export
+        // than one missing from either, and reads as neither if the message
+        // stops at the first.
+        $describeMissing = static function (string $field, bool $noOutput, bool $noData): string {
+            $sides = [];
+            if ($noOutput) {
+                $sides[] = '_output';
+            }
+            if ($noData) {
+                $sides[] = '_data';
+            }
+            return "$field missing from " . implode(' and ', $sides);
+        };
+
+        // The two content-checked fields are one comparison, so they are written
+        // once: each side declares the shapes its export actually writes, and
+        // anything else is refused rather than cast. Casting was how a value
+        // that went missing kept comparing equal to a legitimate one — false
+        // and 0 are what a cast of nothing lands on, and they are also real
+        // values of these two columns. Reading the shape instead closes that
+        // for a JSON null, a quoted "false" (truthy, so it used to read as
+        // enabled) and any other value no exporter produces alike.
+        // A normaliser returns null for a shape it does not recognise; absence
+        // is settled before they run, so null here only ever means malformed.
+        $fieldChecks = [
+            // _output json_encodes the tinyint as a JSON bool; _data spells the
+            // same column as the XML string "1" or "0".
+            'active' => [
+                'output' => static fn ($raw) => is_bool($raw) ? $raw : null,
+                'data' => static function (string $raw): ?bool {
+                    return $raw === '1' ? true : ($raw === '0' ? false : null);
+                },
+                'render' => static fn (bool $value): string => $value ? 'true' : 'false',
+            ],
+            // execute_order decides which extension wraps which when several
+            // share a from_class, so a drift here changes what runs first
+            // without changing any count or any pair. _output holds a JSON int,
+            // _data the same number as an XML string.
+            'execute_order' => [
+                'output' => static fn ($raw) => is_int($raw) ? $raw : null,
+                'data' => static function (string $raw): ?int {
+                    return preg_match('/^-?\d+$/', $raw) === 1 ? (int) $raw : null;
+                },
+                'render' => static fn (int $value): string => (string) $value,
+            ],
+        ];
+
+        // Pair-keyed both ways, so this branch answers the count question itself
+        // and skips the generic count guard below. That only holds while each
+        // pair appears at most once per side, hence the two duplicate guards:
+        // without them a duplicated row on either side would hide a missing one.
+        $dataByPair = [];
+        $mismatches = [];
         foreach ($records as $record) {
-            $dataByFrom[(string) $record['from_class']] = $record;
+            $from = (string) $record['from_class'];
+            $to = (string) $record['to_class'];
+            $key = $pairKey($from, $to);
+            if (isset($dataByPair[$key])) {
+                $mismatches[] = '_data has more than one <extension> for '
+                    . $describePair($from, $to);
+                continue;
+            }
+            $dataByPair[$key] = ['record' => $record, 'matched' => false];
         }
 
-        $mismatches = [];
         foreach ($items as $file) {
             $itemName = $file->getFilename();
             $decoded = json_decode((string) file_get_contents($file->getPathname()), true);
@@ -114,28 +191,66 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
                 continue;
             }
             $from = (string) ($decoded['from_class'] ?? '');
-            if (!isset($dataByFrom[$from])) {
-                $mismatches[] = "$itemName: from_class '$from' has no matching _data <extension>";
+            $to = (string) ($decoded['to_class'] ?? '');
+            $key = $pairKey($from, $to);
+            if (!isset($dataByPair[$key])) {
+                $mismatches[] = "$itemName: " . $describePair($from, $to)
+                    . ' has no matching _data <extension>';
                 continue;
             }
-            $record = $dataByFrom[$from];
+            if ($dataByPair[$key]['matched']) {
+                $mismatches[] = "$itemName: " . $describePair($from, $to)
+                    . ' is claimed by more than one _output item';
+                continue;
+            }
+            $dataByPair[$key]['matched'] = true;
+            $record = $dataByPair[$key]['record'];
 
-            $diffs = [];
-            $outTo = (string) ($decoded['to_class'] ?? '');
-            $dataTo = (string) $record['to_class'];
-            if ($outTo !== $dataTo) {
-                $diffs[] = "to_class _output='$outTo' vs _data='$dataTo'";
+            foreach ($fieldChecks as $field => $check) {
+                // One absence test for both fields and both sides. `?? null`
+                // rather than array_key_exists(): a key whose value is a JSON
+                // null is a value that went missing, not a value of false, and
+                // an export that wrote the column would not have left it there.
+                $rawOutput = $decoded[$field] ?? null;
+                $rawData = isset($record[$field]) ? (string) $record[$field] : null;
+                if ($rawOutput === null || $rawData === null) {
+                    $mismatches[] = "$itemName: "
+                        . $describeMissing($field, $rawOutput === null, $rawData === null);
+                    continue;
+                }
+
+                $outValue = $check['output']($rawOutput);
+                $dataValue = $check['data']($rawData);
+                if ($outValue === null || $dataValue === null) {
+                    $sides = [];
+                    if ($outValue === null) {
+                        $sides[] = '_output=' . json_encode($rawOutput);
+                    }
+                    if ($dataValue === null) {
+                        $sides[] = '_data=' . json_encode($rawData);
+                    }
+                    $mismatches[] = "$itemName: $field " . implode(' and ', $sides)
+                        . ' is not a value any export writes';
+                    continue;
+                }
+
+                if ($outValue !== $dataValue) {
+                    $mismatches[] = "$itemName: $field _output=" . $check['render']($outValue)
+                        . ' vs _data=' . $check['render']($dataValue);
+                }
             }
-            // "1" and true are equal; a genuine true-vs-false difference is not.
-            $outActive = (bool) ($decoded['active'] ?? null);
-            $dataActive = ((string) $record['active'] === '1');
-            if ($outActive !== $dataActive) {
-                $diffs[] = 'active _output=' . ($outActive ? 'true' : 'false')
-                    . ' vs _data=' . ($dataActive ? 'true' : 'false');
+        }
+
+        // The reverse direction, reported per row rather than left to be inferred
+        // from a count: a _data record no _output item claimed is named outright.
+        foreach ($dataByPair as $entry) {
+            if ($entry['matched']) {
+                continue;
             }
-            if ($diffs) {
-                $mismatches[] = "$itemName: " . implode('; ', $diffs);
-            }
+            $record = $entry['record'];
+            $mismatches[] = '_data <extension> '
+                . $describePair((string) $record['from_class'], (string) $record['to_class'])
+                . ' has no matching _output item';
         }
 
         if ($mismatches) {
@@ -144,6 +259,15 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
         }
 
         $report[] = "  $type: $countOutput item(s), content matches (content-checked)";
+        continue;
+    }
+
+    // Every type but class_extensions is count-guarded first. For the count-only
+    // types this is the whole check; for the exact-id types below it is what
+    // catches a duplicated record, which the id comparison cannot see because
+    // array_diff collapses duplicates.
+    if ($countOutput !== $countData) {
+        $errors[] = "$type: _output has $countOutput item(s), _data has $countData (run xf-addon:export?)";
         continue;
     }
 
