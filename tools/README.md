@@ -115,9 +115,11 @@ php tools/package-web-assets.php src/addons/Cav7/MilpacMention build/upload Cav7
 
 The static checks CI runs in place of an install. `validate-addon.php` checks the
 `addon.json` shape and that every `_data/*.xml` is well-formed.
-`check-data-consistency.php` cross-checks the `_output/` tree against the
-`_data/` bundle and fails on drift, which catches a `_data/` that was not
-re-exported after a change. Both need only `php`.
+`check-data-consistency.php` cross-checks the `_output/` tree and the `_data/`
+bundle against each other and fails on drift, which catches either side not
+being re-exported after a change — including a data type that reached `_data/`
+but was never exported to `_output/`, and an addon whose `_output/` tree is gone
+while `_data/` still holds records. Both need only `php`.
 
 ```
 php tools/validate-addon.php src/addons/Cav7/SteamChecker

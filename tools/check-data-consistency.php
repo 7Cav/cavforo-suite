@@ -32,6 +32,15 @@
  * Other types are count-checked only; the report says which is which, so
  * nothing is skipped silently.
  *
+ * That walk runs from _output, which only ever reaches a type that has been
+ * exported at least once (see docs/addon-format.md on what each tree holds). A
+ * second pass runs from _data to cover the rest: any _data file holding records
+ * that no _output directory claimed was never exported, and fails. It is what
+ * catches a type going from zero records to its first with xf-addon:export run
+ * and xf-dev:export not, and an addon that lost its whole _output tree while
+ * _data still holds records. An empty _data file is not a finding, so an addon
+ * with no records to miss still skips.
+ *
  * This is a structural heuristic, not a re-implementation of xf-addon:export. It
  * catches the realistic mistakes (forgot to export, hand-edited one side); the
  * gold-standard check is running the real export in a stack and diffing _data/.
@@ -46,15 +55,24 @@ $name = basename($dir);
 $outRoot = "$dir/_output";
 $dataRoot = "$dir/_data";
 
-// A code-only addon has no _output tree; there is nothing to cross-check.
-if (!is_dir($outRoot)) {
-    echo "SKIP $name: no _output/ tree\n";
-    exit(0);
-}
+// A code-only addon has no _output tree. That is not a blanket pass: the _data
+// side is still walked below, so an addon that lost its whole export tree while
+// _data still holds records fails rather than skipping. The SKIP is only reached
+// at the end, once nothing has been found to report.
+$hasOutputTree = is_dir($outRoot);
 
 // _output type dir -> _data file basename, for the cases where they differ.
+//
+// XenForo names every data type twice and the two names are not always the same
+// string: the _output directory is getTypeDir() on the XF\DevelopmentOutput\*
+// handler, the _data file is getContainerTag() on the matching XF\AddOn\DataType\*
+// class. Regex those two methods out of the two class trees to re-derive this
+// table against a newer XenForo — it is the only way to check it, since this
+// tool must run without XenForo and so can never notice a type XenForo adds
+// later. Across all 27 types in XenForo 2.3.11 exactly these two disagree.
 $dataFileFor = [
-    'cron_entries' => 'cron',
+    'admin_permissions' => 'admin_permission',
+    'cron_entries'      => 'cron',
 ];
 
 // Types whose ids we compare exactly: the _output filename (minus extension) is
@@ -83,20 +101,36 @@ $collectItems = static function (string $root): array {
 $errors = [];
 $report = [];
 
-foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
+// Open a _data file, recording the same failure whichever pass asked for it.
+// Returns false once the error is recorded, so callers only skip.
+$loadDataDoc = static function (string $xmlFile, string $dataBase, array &$errors) {
+    $doc = @simplexml_load_file($xmlFile);
+    if ($doc === false) {
+        $errors[] = "_data/$dataBase.xml is not readable as XML";
+    }
+    return $doc;
+};
+
+// Every _data basename some _output type dir claimed, filled in by the walk
+// below and read by the _data-side pass after it.
+$dataFilesSeen = [];
+
+$typeDirs = $hasOutputTree ? glob("$outRoot/*", GLOB_ONLYDIR) : [];
+
+foreach ($typeDirs as $typeDir) {
     $type = basename($typeDir);
     $items = $collectItems($typeDir);
     $countOutput = count($items);
 
     $dataBase = $dataFileFor[$type] ?? $type;
+    $dataFilesSeen[$dataBase] = true;
     $xmlFile = "$dataRoot/$dataBase.xml";
     if (!is_file($xmlFile)) {
         $errors[] = "_output/$type/ has $countOutput item(s) but _data/$dataBase.xml is missing";
         continue;
     }
-    $doc = @simplexml_load_file($xmlFile);
+    $doc = $loadDataDoc($xmlFile, $dataBase, $errors);
     if ($doc === false) {
-        $errors[] = "_data/$dataBase.xml is not readable as XML";
         continue;
     }
     $records = $doc->children();
@@ -312,12 +346,62 @@ foreach (glob("$outRoot/*", GLOB_ONLYDIR) as $typeDir) {
     $report[] = "  $type: $countOutput item(s), ids match";
 }
 
+// The second pass described at the top of this file. It is a set difference over
+// the forward mapping rather than an inversion of it: whatever the walk above did
+// not claim, nothing exported. Inverting the map would mean deciding the verdict
+// from a guessed directory name. $outputDirFor only phrases the message, so a row
+// missing from the map costs a wrong suggestion rather than a wrong verdict.
+$outputDirFor = array_flip($dataFileFor);
+
+$dataFiles = is_dir($dataRoot) ? glob("$dataRoot/*.xml") : [];
+
+foreach ($dataFiles as $xmlFile) {
+    $dataBase = basename($xmlFile, '.xml');
+    if (isset($dataFilesSeen[$dataBase])) {
+        continue;
+    }
+    $doc = $loadDataDoc($xmlFile, $dataBase, $errors);
+    if ($doc === false) {
+        continue;
+    }
+    // _data carries a file for every type whether or not it holds rows, so an
+    // empty one here is the normal state of an unused type, not a finding.
+    $countData = count($doc->children());
+    if ($countData === 0) {
+        continue;
+    }
+    // The directory this file's records belong in. It is normally absent, which
+    // is the whole finding — but a _data file XenForo never writes (a stale
+    // hand-made one, or one named after the _output directory rather than after
+    // its own container tag) resolves to a directory that does exist, and saying
+    // it is missing would be a lie. Name the file as the anomaly instead.
+    $type = $outputDirFor[$dataBase] ?? $dataBase;
+    if ($hasOutputTree && is_dir("$outRoot/$type")) {
+        $errors[] = "$dataBase: _data has $countData record(s) but no _output type dir claims"
+            . " _data/$dataBase.xml (_output/$type/ is matched to _data/"
+            . ($dataFileFor[$type] ?? $type) . '.xml)';
+        continue;
+    }
+    // xf-dev:export, not xf-addon:export: _output is the side that is missing,
+    // and that is the command that writes it.
+    $errors[] = "$dataBase: _data has $countData record(s) but _output/$type/ is missing"
+        . ' (run xf-dev:export?)';
+}
+
 if ($errors) {
     fwrite(STDERR, "FAIL $name\n");
     foreach ($errors as $error) {
         fwrite(STDERR, "  - $error\n");
     }
     exit(1);
+}
+
+// Reached only once the _data side has been walked and found nothing to report,
+// so this says "no _output tree and no _data records to miss", not "no _output
+// tree, so nothing was looked at".
+if (!$hasOutputTree) {
+    echo "SKIP $name: no _output/ tree\n";
+    exit(0);
 }
 
 echo "OK $name\n";

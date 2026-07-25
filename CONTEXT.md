@@ -16,3 +16,19 @@ the org. Within this system a member has at most one milpac; two
 `RosterUser` rows for the same member is a data error, not a supported state.
 _Avoid_: profile (the XenForo user profile is a separate thing), personnel
 jacket, record (ambiguous with service record)
+
+**data type**:
+One kind of XenForo add-on data — options, phrases, routes, cron entries. A
+data type is named twice, once for each of the two trees below, and the two
+names are not always the same string.
+_Avoid_: type on its own where it could mean either name
+
+**`_data` tree**:
+An add-on's data as XenForo exports it for release. This is the tree that
+ships. What it holds:
+[`docs/addon-format.md`](docs/addon-format.md).
+
+**`_output` tree**:
+The same data as XenForo exports it in development mode. What it holds:
+[`docs/addon-format.md`](docs/addon-format.md).
+_Avoid_: build output (nothing compiles it; it is an export like `_data`)
