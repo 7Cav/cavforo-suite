@@ -275,14 +275,15 @@ class VerifyCoverage extends Command
             // The user gate is replaced outright rather than deferred to, which is
             // right while the abstract handler is its only declaration anywhere in
             // the install. That is an assumption about somebody else's code, and NF
-            // ships updates to both addons. If one adds a gate of its own, this
-            // addon throws it away with no error, and every other check here still
-            // passes.
+            // ships updates to both addons. A gate added at either end of the chain
+            // costs one of the two rules with no error, and every other check here
+            // still passes.
             $discarded = HandlerCoverage::discardedUserGates($handler);
             $this->check(
-                sprintf('%s: no user gate underneath is being discarded', $type),
+                sprintf('%s: no user gate is being discarded, in either direction', $type),
                 $discarded === [],
-                'these classes declare ' . HandlerCoverage::USER_GATE . '() and this addon replaces it without deferring, so their rule about who may write to the log is gone: '
+                'these classes declare ' . HandlerCoverage::USER_GATE
+                    . '() alongside this addon\'s, and one of the two rules about who may write to the log is being discarded with nothing said. Below the class carrying our rule, theirs is gone, because this addon replaces the method instead of deferring to it. Above it, ours is gone and this content type is back to logging moderator-record holders only, which is the fault this addon exists to remove. Read the chain to see which way round it is: '
                     . implode(', ', $discarded)
             );
         }

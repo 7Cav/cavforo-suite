@@ -63,7 +63,9 @@ namespace XF\Entity {
 // The handler shapes. `SpyHandler` stands in for XF\ModeratorLog\AbstractHandler:
 // it declares both methods the trait overrides, with the vendor's untyped
 // signatures and the vendor's `user_id && is_moderator` answer, and it records
-// whether the addon delegated to it.
+// whether the addon delegated to it. Abstract, as that class is, because being
+// abstract is what makes the root of a chain the framework's own base rather than
+// a handler that stands alone. `HandlerCoverage` reads that distinction.
 // ---------------------------------------------------------------------------
 
 namespace Cav7\ModeratorLogPatch\Tests\Fixture {
@@ -78,7 +80,7 @@ namespace Cav7\ModeratorLogPatch\Tests\Fixture {
     require __DIR__ . '/../HandlerCoverage.php';
     require __DIR__ . '/../ContentScope.php';
 
-    class SpyHandler
+    abstract class SpyHandler
     {
         /** @var int how many times the addon handed the question on */
         public int $delegations = 0;
@@ -143,6 +145,49 @@ namespace Cav7\ModeratorLogPatch\Tests\Fixture {
     {
         use AuthorshipLogging;
     }
+
+    /**
+     * The other direction, and the one that produces this addon's own failure mode: a
+     * later addon extends the same handler after this one and brings a user gate of
+     * its own, which sits ABOVE ours and discards it. The rule is still in the chain
+     * and the coverage check still passes, while the gate the addon exists to open is
+     * shut again for that content type.
+     *
+     * Its signature carries the `: bool` our trait declares, because a subclass may
+     * not drop a return type its parent declared. That is the only constraint the
+     * chain puts on a later addon's gate.
+     */
+    class LaterAddonGateHandler extends PatchedHandler
+    {
+        public function isLoggableUser(User $actor): bool
+        {
+            return ($actor->user_id && $actor->is_moderator);
+        }
+    }
+
+    /**
+     * A registered handler that does not extend the abstract handler at all, and so
+     * declares the user gate itself. Its own declaration is the root of the chain,
+     * which is the position the abstract handler's declaration occupies everywhere
+     * else.
+     */
+    class StandaloneHandler
+    {
+        public function isLoggable(Entity $content, $action, User $actor)
+        {
+            return true;
+        }
+
+        public function isLoggableUser(User $actor)
+        {
+            return $actor->user_id > 100;
+        }
+    }
+
+    class PatchedOverStandalone extends StandaloneHandler
+    {
+        use AuthorshipLogging;
+    }
 }
 
 namespace Cav7\ModeratorLogPatch\Tests {
@@ -151,8 +196,10 @@ use Cav7\ModeratorLogPatch\ContentAuthor;
 use Cav7\ModeratorLogPatch\ContentScope;
 use Cav7\ModeratorLogPatch\HandlerCoverage;
 use Cav7\ModeratorLogPatch\Tests\Fixture\IndirectHandler;
+use Cav7\ModeratorLogPatch\Tests\Fixture\LaterAddonGateHandler;
 use Cav7\ModeratorLogPatch\Tests\Fixture\LaterAddonHandler;
 use Cav7\ModeratorLogPatch\Tests\Fixture\PatchedHandler;
+use Cav7\ModeratorLogPatch\Tests\Fixture\PatchedOverStandalone;
 use Cav7\ModeratorLogPatch\Tests\Fixture\PatchedOverVendorGate;
 use Cav7\ModeratorLogPatch\Tests\Fixture\UnpatchedHandler;
 use XF\Entity\User;
@@ -367,6 +414,35 @@ check(
     HandlerCoverage::discardedUserGates(new PatchedOverVendorGate())
         === ['Cav7\ModeratorLogPatch\Tests\Fixture\VendorGateHandler'],
     'this addon replaces the method rather than deferring, so a rule a vendor adds here is thrown away without a word: the exact failure the addon exists to remove'
+);
+// The other direction, and the one that produces this addon's own headline failure
+// mode. A later addon extending the same handler after this one puts its class last,
+// so a user gate it declares sits ABOVE ours and ours is the rule that goes. The pair
+// of answers is the point: the coverage check still says the rule is in force, which
+// is why nothing else here would notice.
+$laterGate = new LaterAddonGateHandler();
+check(
+    'a gate above ours is reported, and the rule still reads as being in force',
+    HandlerCoverage::discardedUserGates($laterGate)
+        === ['Cav7\ModeratorLogPatch\Tests\Fixture\LaterAddonGateHandler']
+        && HandlerCoverage::carriesRule($laterGate) === true,
+    'without both halves this reads as an uncovered content type, when what has actually happened is that the coverage is real and the gate has been shut behind it'
+);
+check(
+    'and the gate above really does shut the one this addon opened',
+    $laterGate->isLoggableUser(member(41)) === false,
+    'this is the state the addon exists to remove, reached from the other side: the log goes quiet for that content type again and nothing else in the run says so'
+);
+// The chain's root is trusted to be the framework's abstract handler carrying the
+// `user_id && is_moderator` gate, and being abstract is what says so. A registered
+// handler that extends it not at all has to declare the gate itself to work, and
+// that declaration is the last class in the chain — so a whitelist that trusted the
+// position alone would call the discarded rule entitled and pass.
+check(
+    'a handler that stands on its own declares the gate itself, and that is reported',
+    HandlerCoverage::discardedUserGates(new PatchedOverStandalone())
+        === ['Cav7\ModeratorLogPatch\Tests\Fixture\StandaloneHandler'],
+    'the position of a declaration says nothing about whose rule it is; only the framework\'s own base class is entitled to the one this addon replaces'
 );
 // =========================================================================
 // where a content type is filed, and how honestly its sample was found

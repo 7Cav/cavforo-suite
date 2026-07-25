@@ -130,30 +130,61 @@ final class HandlerCoverage
     }
 
     /**
-     * Declarations of the user gate that this addon's trait replaces without
-     * saying so. Empty is the healthy answer.
+     * Declarations of the user gate that are talking past this addon's, in either
+     * direction. Empty is the healthy answer.
      *
      * Two classes are entitled to declare it: the one composing our trait, and the
      * root of the chain, which is the moderator log's abstract handler and the
      * `user_id && is_moderator` gate ADR 0001 set out to replace. Both are read off
      * the chain rather than named, so no vendor class name appears here.
      *
-     * Anything else is somebody's rule about who may write to the log, and this
-     * addon discards it silently — the failure mode it exists to remove. Nothing
-     * declares one today, which is why this is a check rather than a fix: it passes
-     * until the day a vendor upgrade adds one.
+     * Anything else is somebody's rule about who may write to the log, and which
+     * rule is lost depends on where the declaration sits. Below the class composing
+     * our trait, theirs goes: we replace the method outright rather than deferring
+     * to it. Above it, ours goes, because a later addon extending the same handler
+     * after this one has the last word — and that is this addon's own failure mode,
+     * with the log going quiet again for that content type while every other check
+     * here still passes. Either way one of the two rules is discarded with nothing
+     * said.
+     *
+     * Nothing declares one today, which is why this is a check rather than a fix: it
+     * passes until the day an upgrade at either end adds one.
      *
      * @return list<class-string>
      */
     public static function discardedUserGates(object $handler): array
     {
+        return array_values(array_diff(
+            self::userGateDeclarers($handler),
+            array_filter([self::traitBearer($handler), self::frameworkBase($handler)])
+        ));
+    }
+
+    /**
+     * The root of $handler's chain when it is the framework's own base class for
+     * these handlers, and null when the chain has no such root.
+     *
+     * The root being abstract is what says so, and it is the whole premise the
+     * entitlement above rests on: every registered handler extends a base class it
+     * cannot instantiate, and that base is where the gate ADR 0001 replaces is
+     * declared. A registered handler that extends no such class has to declare the
+     * gate itself to work at all, and its declaration is the last class in the
+     * chain too — so trusting the position alone would call that handler's own rule
+     * entitled and report nothing while our trait discarded it. Read by reflection
+     * rather than by name: the class this recognises belongs to XenForo, and naming
+     * it would put a fact about one install inside a predicate.
+     *
+     * @return class-string|null
+     */
+    public static function frameworkBase(object $handler): ?string
+    {
         $chain = self::chain($handler);
+        if (!$chain) {
+            return null;
+        }
 
-        $entitled = array_filter([
-            self::traitBearer($handler),
-            $chain ? $chain[count($chain) - 1] : null,
-        ]);
+        $root = $chain[count($chain) - 1];
 
-        return array_values(array_diff(self::userGateDeclarers($handler), $entitled));
+        return (new ReflectionClass($root))->isAbstract() ? $root : null;
     }
 }

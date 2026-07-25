@@ -623,23 +623,29 @@ check(
         && substr_count($coverageCode, 'class_uses(') >= 2,
     'class_uses() is not transitive, so a single call reports a false gap from the command whose job is saying whether the coverage is real'
 );
-// Nothing detects a vendor handler acquiring a user gate of its own, and this addon
-// replaces the method outright rather than deferring, so it would discard one without
-// a word. CI cannot see this: the vendor is not in the repo. The command is the only
-// place it can be checked, and it passes today and fails the day it matters.
+// Nothing detects a handler at either end of the chain acquiring a user gate of its
+// own: underneath, this addon replaces the method outright rather than deferring and
+// discards theirs; above, a later addon's gate discards ours and the log goes quiet
+// again for that content type. CI cannot see either: the vendor is not in the repo.
+// The command is the only place it can be checked, and it passes today and fails the
+// day it matters.
 check(
-    'the coverage phase reports a user gate underneath that this addon would discard',
+    'the coverage phase reports a user gate at either end of the chain that would be discarded',
     str_contains($coverageBody, 'HandlerCoverage::discardedUserGates(')
         && (bool) preg_match('/function\s+discardedUserGates/', $coverageCode),
     'replacing isLoggableUser is right while the abstract handler is its only declaration anywhere, which is an assumption about somebody else\'s code and the same class ADR 0003 records as having already bitten'
 );
 // The two classes entitled to declare the user gate are read off the chain: the one
 // composing our trait, and the root of the hierarchy. Hardcoding XenForo's abstract
-// handler by name would be a fact about one install written into a predicate.
+// handler by name would be a fact about one install written into a predicate. What
+// makes the root entitled is that it cannot be instantiated, which is asked rather
+// than assumed: a registered handler extending no base class of its own declares the
+// gate itself, and that declaration is the last class in the chain too.
 check(
-    'the entitled user-gate declarers are read off the chain, not named',
-    !str_contains($coverageCode, 'AbstractHandler'),
-    'the root of the parent chain IS the abstract handler, so there is nothing to hardcode'
+    'the entitled root is recognised by being abstract, and no vendor class is named',
+    !str_contains($coverageCode, 'AbstractHandler')
+        && str_contains($coverageCode, 'isAbstract()'),
+    'trusting the last position alone whitelists a standalone handler\'s own rule, which is the one case where the position is not the framework\'s base class'
 );
 // A registered class whose file is missing throws from `new` rather than answering
 // null, and an uncaught throw takes the whole run with it: no remaining content type
