@@ -1018,6 +1018,10 @@ function outputFiles(string $typeDir, ?string $extension): array
         $found[] = $relativePath;
     }
 
+    // Directory order is the filesystem's, and differs between machines. Sort so
+    // a derived tree depends only on its inputs.
+    sort($found);
+
     return $found;
 }
 
@@ -1025,12 +1029,32 @@ function outputFiles(string $typeDir, ?string $extension): array
  * Order records the way XenForo's exporter read them out of the database, so the
  * derived _data file matches the committed one.
  */
-function sortDataRecords(string $type, array $records): array
+function sortDataRecords(string $type, array $records, array $priorOrder = []): array
 {
     $keys = TYPES[$type]['sort'];
     $collation = TYPES[$type]['collation'] ?? 'binary';
 
-    usort($records, static function (array $a, array $b) use ($keys, $collation): int {
+    // XenForo's ORDER BY is not always a total order. ApiKeyManager registers two
+    // code event listeners that agree on event_id, callback_class and
+    // callback_method and differ only in hint, so the database is free to return
+    // them either way round and does so in primary key — that is, insertion —
+    // order. Nothing in _output records that: a listener's file is named
+    // event_id_md5(class-method-hint), which carries no position.
+    //
+    // So where the ORDER BY ties, the committed _data file is the only evidence
+    // of what the database returned, and its order is preserved. Records it does
+    // not know fall in behind, ordered by their _output filename so the result
+    // depends on the records alone and not on the order the filesystem listed
+    // them in.
+    $rank = static function (array $record) use ($type, $priorOrder): array {
+        $identity = fileNameFor($type, $record);
+
+        return isset($priorOrder[$identity])
+            ? [0, $priorOrder[$identity], '']
+            : [1, 0, $identity];
+    };
+
+    usort($records, static function (array $a, array $b) use ($keys, $collation, $rank): int {
         foreach ($keys as $key) {
             $left = $a[$key] ?? '';
             $right = $b[$key] ?? '';
@@ -1044,10 +1068,25 @@ function sortDataRecords(string $type, array $records): array
             }
         }
 
-        return 0;
+        return $rank($a) <=> $rank($b);
     });
 
     return $records;
+}
+
+/**
+ * Where each record of a committed _data file sits, keyed by the _output
+ * filename that identifies it. Empty when the file is not there yet.
+ */
+function priorDataOrder(string $addonDir, string $type): array
+{
+    $order = [];
+
+    foreach (readDataRecords($addonDir, $type) as $position => $record) {
+        $order[fileNameFor($type, $record)] = $position;
+    }
+
+    return $order;
 }
 
 // ---------------------------------------------------------------------------
@@ -1075,7 +1114,7 @@ function dataAttributeValue($value): ?string
  * XF\Service\AddOn\ExporterService does, so indentation and escaping come from
  * the same place rather than from string building here.
  */
-function writeDataType(string $addonDir, string $container, array $records): void
+function writeDataType(string $addonDir, string $container, array $records, array $priorOrder = []): void
 {
     $doc = new \DOMDocument('1.0', 'utf-8');
     $doc->formatOutput = true;
@@ -1086,7 +1125,7 @@ function writeDataType(string $addonDir, string $container, array $records): voi
     if ($type !== null) {
         $spec = TYPES[$type];
 
-        foreach (sortDataRecords($type, $records) as $record) {
+        foreach (sortDataRecords($type, $records, $priorOrder) as $record) {
             $node = $doc->createElement($spec['childTag']);
 
             foreach ($spec['attributes'] as $attr) {
@@ -1198,8 +1237,17 @@ function toData(string $addonDir): void
 {
     foreach (CONTAINERS as $container) {
         $type = containerToType($container);
-        $records = $type === null ? [] : readOutputRecords($addonDir, $type);
-        writeDataType($addonDir, $container, $records);
+
+        if ($type === null) {
+            writeDataType($addonDir, $container, []);
+            continue;
+        }
+
+        // Read the order of the file about to be overwritten, for the ties the
+        // ORDER BY cannot settle.
+        $priorOrder = priorDataOrder($addonDir, $type);
+
+        writeDataType($addonDir, $container, readOutputRecords($addonDir, $type), $priorOrder);
     }
 }
 

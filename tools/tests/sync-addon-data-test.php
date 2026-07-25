@@ -304,6 +304,40 @@ check('case 2d: deriving _output with no _data bundle is refused', $exit !== 0);
 check('case 2d: still nothing was written', !is_dir($bare . '/_output'), 'an _output directory appeared');
 
 // ---------------------------------------------------------------------------
+// Case 2e: a tie in XenForo's ORDER BY keeps the order already committed.
+//
+// ApiKeyManager registers two code event listeners that agree on event_id,
+// callback_class and callback_method — every key the exporter sorts on — and
+// differ only in hint. The database returned them in insertion order and nothing
+// in _output records that, so the committed _data file is the only evidence of
+// it. Deriving must not reorder them, and must not depend on the order the
+// filesystem happened to list _output in, which differs between machines.
+// ---------------------------------------------------------------------------
+
+$scratch = scratchCopy('ApiKeyManager', 'case2e');
+$listenersPath = $scratch . '/_data/code_event_listeners.xml';
+
+preg_match_all('#hint="([^"]*)"#', file_get_contents($listenersPath), $matches);
+$hintsBefore = $matches[1];
+
+check('case 2e: the fixture ties on every sort key', count($hintsBefore) === 2, 'expected 2 listeners');
+
+[$exit, $out] = run($tool, $scratch, '--to-data');
+check('case 2e: tool exits 0 on the tied fixture', $exit === 0, "exit $exit: $out");
+
+preg_match_all('#hint="([^"]*)"#', file_get_contents($listenersPath), $matches);
+check(
+    'case 2e: the tied records keep the committed order',
+    $matches[1] === $hintsBefore,
+    'got ' . implode(', ', $matches[1]) . ' — expected ' . implode(', ', $hintsBefore)
+);
+
+// Deriving twice must not drift either.
+[$exit, $out] = run($tool, $scratch, '--to-data');
+preg_match_all('#hint="([^"]*)"#', file_get_contents($listenersPath), $matches);
+check('case 2e: a second derivation is stable', $matches[1] === $hintsBefore);
+
+// ---------------------------------------------------------------------------
 // Case 3: a field whose value is the empty string survives the round trip.
 //
 // RosterAudit's admin navigation entry carries icon: "". XenForo's _data export
