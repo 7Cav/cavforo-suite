@@ -649,7 +649,7 @@ class VerifyCoverage extends Command
             $this->check(
                 'sticking a thread writes a stick entry',
                 $this->actionsLogged('thread', $threadId) === ['stick'],
-                'this is the reported bug: the member has the permission, holds no moderator record, and the entry never appeared'
+                'this is the reported bug: a member who holds the permission and no moderator record sticks a thread and no entry appears. This check covers the log path for a member holding no record. It says nothing about the permission: the save is driven on the entity, and no permission is consulted anywhere on that path. That a member without the permission is still blocked is XenForo\'s own controller check, and a separate criterion this phase does not reach'
             );
 
             \XF::asVisitor($actor, function () use ($thread)
