@@ -1,9 +1,9 @@
 {
     "legacy_addon_id": "",
     "title": "7Cav - Enlistment Reminder",
-    "description": "Hourly cron that reminds the processing team when an enlistment application has sat in the queue past the deadline with no clerk reply, posting one neutral note per thread.",
-    "version_id": 1010070,
-    "version_string": "1.1.0",
+    "description": "Hourly cron that reminds the processing team when an enlistment application has sat in the queue past the deadline with no processing status prefix on it, posting one neutral note per thread.",
+    "version_id": 1020070,
+    "version_string": "1.2.0",
     "dev": "Cav7",
     "dev_url": "https://github.com/7Cav",
     "faq_url": "",
@@ -21,6 +21,10 @@
         "NF/Rosters": [
             2010000,
             "Rosters and Personnel Status Reports 2.1+"
+        ],
+        "SV/MultiPrefix": [
+            1775899552,
+            "Multi Prefix 2.17.2+"
         ]
     },
     "icon": ""

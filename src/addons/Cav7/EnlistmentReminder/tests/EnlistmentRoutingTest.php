@@ -15,8 +15,11 @@
  *    so the caller skips it rather than mass-alerting;
  *  - a prefix listed under both type sets fail-safes to the union of both, and is
  *    reported as an overlap so the caller can log the misconfig;
- *  - the pickup union equals both position lists merged and de-duplicated, so
- *    pickup coverage is unchanged by the split;
+ *  - which of a given set of prefix ids are configured type prefixes, so the
+ *    caller can refuse to run when a type prefix has been listed as an
+ *    in-processing status (issue #186);
+ *  - the union of both position lists is merged and de-duplicated, so the
+ *    caller's "is any seat held at all" guard sees every configured seat;
  *  - id robustness: the string ids the DB hands back and the ints the option
  *    parser yields compare as the same id.
  *
@@ -28,6 +31,7 @@
 
 namespace Cav7\EnlistmentReminder\Tests;
 
+require __DIR__ . '/../PositionIdList.php';
 require __DIR__ . '/../EnlistmentRouting.php';
 
 use Cav7\EnlistmentReminder\EnlistmentRouting;
@@ -48,7 +52,7 @@ function check(string $label, bool $ok, string $detail = ''): void
 // The configured defaults: 57 is Standard, 58 is Re-Enlistment. Standard is
 // worked by Enlistment (580), Processing Clerk IT (751), Senior (1012) and Lead
 // (579); Re-Enlistment by Re-Enlistment (960), Senior (1012) and Lead (579).
-// Senior and Lead sit in both, so their union is the five whose reply is a pickup.
+// Senior and Lead sit in both, so the union of the two sets is five seats.
 $standardPrefixIds   = [57];
 $standardPositionIds = [579, 580, 751, 1012];
 $reenlistPrefixIds   = [58];
@@ -117,26 +121,99 @@ check(
         && $stillStandard['position_ids'] === [579, 580, 751, 1012]
 );
 
-// --- the pickup union -------------------------------------------------------
-// Senior (1012) and Lead (579) are in both lists, so the union de-dups them: the
-// five seats whose reply counts as a pickup, unchanged by the split.
+// --- the type prefix / status prefix collision (issue #186) -----------------
+// cav7ERInProcessingPrefixIds is free text with no validation_class, and a type
+// prefix listed there is the add-on's worst config fault:
+// every valid queue thread carries its type prefix in the same link table the
+// status is read from, so one entry reads the whole queue as handled and the
+// reminder goes permanently, silently dark. This is what the caller asks before
+// it decides anything, so it can abort instead.
 check(
-    'the pickup union equals both position lists merged and de-duplicated',
-    $routing->pickupPositionIds() === [579, 580, 751, 1012, 960],
-    'got: ' . implode(',', $routing->pickupPositionIds())
+    'the shipped default status set collides with neither type prefix',
+    $routing->typePrefixIdsAmong([53, 54, 55]) === [],
+    'got: ' . implode(',', $routing->typePrefixIdsAmong([53, 54, 55]))
+);
+check(
+    'a Standard type prefix in the status set is reported',
+    $routing->typePrefixIdsAmong([53, 54, 55, 57]) === [57]
+);
+check(
+    'a Re-Enlist type prefix in the status set is reported',
+    $routing->typePrefixIdsAmong([58]) === [58]
+);
+check(
+    'both type prefixes in the status set are both reported',
+    $routing->typePrefixIdsAmong([57, 58]) === [57, 58],
+    'got: ' . implode(',', $routing->typePrefixIdsAmong([57, 58]))
+);
+// String ids from a hand-typed option must collide just the same, or the check
+// would pass on exactly the input an admin produces.
+check(
+    'a string type prefix id in the status set is still reported',
+    $routing->typePrefixIdsAmong(['53', '57']) === [57]
+);
+// Nothing configured as a type prefix means nothing can collide; the empty status
+// set is the other guard's business, not this one's. BOTH lists blank is what makes
+// this answer vacuous, which is why the caller aborts on that and only that.
+$noTypePrefixes = new EnlistmentRouting([], $standardPositionIds, [], $reenlistPositionIds);
+check(
+    'a config with no type prefixes reports no collision',
+    $noTypePrefixes->typePrefixIdsAmong([53, 54, 55, 57, 58]) === []
+);
+// ONE blank list does not make the collision check inert, and this is what the
+// caller's guards rest on: the intersection runs against the UNION of both lists,
+// so the populated type's ids are still compared and its threads still route. A
+// caller that aborted on a single blank list would stop reminding a type whose
+// config is entirely healthy, so the asymmetry is pinned here rather than assumed.
+$noStandardPrefixes = new EnlistmentRouting([], $standardPositionIds, [58], $reenlistPositionIds);
+check(
+    'a blank standard list still reports a re-enlist type prefix in the status set',
+    $noStandardPrefixes->typePrefixIdsAmong([53, 54, 55, 58]) === [58],
+    'got: ' . implode(',', $noStandardPrefixes->typePrefixIdsAmong([53, 54, 55, 58]))
+);
+check(
+    'a blank standard list still routes a re-enlistment to its own clerks',
+    $noStandardPrefixes->route(58) === ['type' => EnlistmentRouting::TYPE_REENLIST, 'position_ids' => [579, 960, 1012]],
+    'got type=' . $noStandardPrefixes->route(58)['type']
+);
+$noReenlistPrefixes = new EnlistmentRouting([57], $standardPositionIds, [], $reenlistPositionIds);
+check(
+    'a blank re-enlist list still reports a standard type prefix in the status set',
+    $noReenlistPrefixes->typePrefixIdsAmong([53, 54, 55, 57]) === [57],
+    'got: ' . implode(',', $noReenlistPrefixes->typePrefixIdsAmong([53, 54, 55, 57]))
+);
+check(
+    'a blank re-enlist list still routes a standard enlistment to its own clerks',
+    $noReenlistPrefixes->route(57) === ['type' => EnlistmentRouting::TYPE_STANDARD, 'position_ids' => [579, 580, 751, 1012]],
+    'got type=' . $noReenlistPrefixes->route(57)['type']
+);
+check(
+    'an empty status set collides with nothing',
+    $routing->typePrefixIdsAmong([]) === []
 );
 
-// --- id robustness: string ids from the DB still match ---------------------
-// The option parser hands back ints; a raw DB prefix column arrives as a string.
-// Constructing from string ids and routing an int (and vice versa) must agree.
+// --- the union of both clerk sets -------------------------------------------
+// Senior (1012) and Lead (579) are in both lists, so the union de-dups them down
+// to the five distinct seats RRD staffs the queue with.
+check(
+    'the union equals both position lists merged and de-duplicated',
+    $routing->allClerkPositionIds() === [579, 580, 751, 1012, 960],
+    'got: ' . implode(',', $routing->allClerkPositionIds())
+);
+
+// --- id robustness: string ids from a hand-typed option still match ---------
+// The option parser hands back ints, but a config array can arrive as strings, so
+// the constructor normalises its four lists. route() takes `int $prefixId`, so the
+// reverse — routing a string id — is a type error rather than a case to cover; the
+// asymmetry is the point of normalising on the way in.
 $stringIdRouting = new EnlistmentRouting(['57'], ['579', '580'], ['58'], ['579', '960']);
 check(
     'a string-configured Standard prefix routes an int prefix id',
     $stringIdRouting->route(57) === ['type' => EnlistmentRouting::TYPE_STANDARD, 'position_ids' => [579, 580]]
 );
 check(
-    'the pickup union of string-configured positions is a de-duplicated int list',
-    $stringIdRouting->pickupPositionIds() === [579, 580, 960]
+    'the union of string-configured positions is a de-duplicated int list',
+    $stringIdRouting->allClerkPositionIds() === [579, 580, 960]
 );
 
 // --- a recognized type whose clerk set is empty ----------------------------
@@ -169,7 +246,7 @@ $emptyRouting = new EnlistmentRouting([], [], [], []);
 check(
     'an empty config routes every prefix to unrecognized',
     $emptyRouting->route(57)['type'] === EnlistmentRouting::TYPE_UNRECOGNIZED
-        && $emptyRouting->pickupPositionIds() === []
+        && $emptyRouting->allClerkPositionIds() === []
 );
 
 if ($failures > 0) {

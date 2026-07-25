@@ -4,7 +4,7 @@ This repo holds the 7th Cavalry's XenForo addons in one place. Before you start,
 
 ## Dev setup
 
-You need a working XenForo 2.3 install to run an addon, or to change anything that lives in XenForo data (options, phrases, templates, and the like). Pure PHP changes do not need one: you can edit the code and run an addon's tests with just `php`. If you need a stack and do not have one, contact the maintainers. Some addons also need third-party addons present to install (NF/Rosters, XenForo Enhanced Search, SV/ElasticSearchEssentials); each addon's README lists what it requires.
+You need a working XenForo 2.3 install to run an addon, or to change anything that lives in XenForo data (options, phrases, templates, and the like). Pure PHP changes do not need one: you can edit the code and run an addon's tests with just `php`. If you need a stack and do not have one, contact the maintainers. Some addons also need third-party addons present to install; each addon's README lists what it requires.
 
 1. Install XenForo somewhere local. A common layout is a `xenforo/` directory beside this repo, which `.gitignore` already keeps out of version control.
 2. Point the install's addon tree at this repo so it loads every addon:

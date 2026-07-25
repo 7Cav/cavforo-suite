@@ -1,1 +1,1 @@
-Reminds the processing team about enlistment applications that have sat in the queue past the deadline with no clerk reply.
+Reminds the processing team about enlistment applications that have sat in the queue past the deadline with no processing status on them.

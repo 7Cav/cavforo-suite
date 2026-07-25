@@ -12,21 +12,31 @@ namespace Cav7\EnlistmentReminder;
  * The clerk seats split by enlistment type into two overlapping responsibility
  * sets (see CONTEXT.md's Processing Clerk term): a thread's _primary_ prefix is
  * either Standard (57 by default) or Re-Enlistment (58). Built from the four
- * parsed config lists, this exposes two things:
+ * parsed config lists, it answers the routing question and reports the two config
+ * faults that live in those same four lists:
  *
- *   - pickupPositionIds(): the union of both clerk-position lists. Pickup is NOT
- *     type-scoped — a reply from any seat clears the reminder — so the pickup
- *     check and the mass-remind guard resolve this union, the same coverage the
- *     single clerk-position option gave before the split.
- *   - route(): for one thread's prefix id, the clerk positions to ALERT. Only the
- *     alert audience narrows. A prefix in one type set routes to that set; a
- *     prefix in BOTH (a config error) fail-safes to the union so no responsible
- *     clerk is silently dropped; a prefix in NEITHER is unrecognized — not a
- *     valid intake thread — and the caller skips it rather than mass-alerting.
+ *   - allClerkPositionIds(): the union of both clerk-position lists. Two uses. The
+ *     caller resolves it once to decide whether ANY seat is held at all, and
+ *     aborts the run if none is, so an unstaffed board says so once rather than
+ *     once per thread per hour; and it is route()'s fail-safe audience for a
+ *     prefix listed under both types.
+ *   - route(): for one thread's prefix id, the clerk positions to ALERT. A prefix
+ *     in one type set routes to that set; a prefix in BOTH (a config error)
+ *     fail-safes to the union so no responsible clerk is silently dropped; a
+ *     prefix in NEITHER is unrecognized — not a valid intake thread — and the
+ *     caller skips it rather than mass-alerting.
+ *   - overlappingPrefixIds(): the prefixes listed under both types, so the caller
+ *     can warn about the ambiguity route() just fail-safed around. Log only.
+ *   - typePrefixIdsAmong(): whether a given set of prefix ids — in practice the
+ *     configured in-processing status set — contains a type prefix. This is the
+ *     one the caller ABORTS the run on, so a reader stopping at this header should
+ *     not conclude there is no collision check.
  *
- * Ids are normalised to positive ints on the way in, so the string prefix id XF
- * hands back from the DB and the ints PositionIdList parses compare as the same
- * id (mirroring ReminderDecision's int/string robustness).
+ * Ids are normalised on the way in through PositionIdList::normalize, so a config
+ * list of hand-typed strings and one of ints resolve to the same set. The row side
+ * is not this class's business: route() takes an int and the caller casts at the
+ * read. ProcessingStatus normalises its configured status set for the same reason
+ * and through the same call.
  */
 final class EnlistmentRouting
 {
@@ -72,36 +82,23 @@ final class EnlistmentRouting
         array $reenlistPrefixIds,
         array $reenlistPositionIds
     ) {
-        $this->standardPrefixIds   = self::normalize($standardPrefixIds);
-        $this->standardPositionIds = self::normalize($standardPositionIds);
-        $this->reenlistPrefixIds   = self::normalize($reenlistPrefixIds);
-        $this->reenlistPositionIds = self::normalize($reenlistPositionIds);
-    }
-
-    /**
-     * Positive int ids, de-duplicated with first-seen order preserved. array_filter
-     * drops the 0 intval yields for a blank or non-numeric id, so a stray token
-     * never becomes a phantom seat, matching PositionIdList::parse.
-     *
-     * @param int[]|string[] $ids
-     * @return int[]
-     */
-    private static function normalize(array $ids): array
-    {
-        return array_values(array_unique(array_filter(array_map('intval', $ids))));
+        $this->standardPrefixIds   = PositionIdList::normalize($standardPrefixIds);
+        $this->standardPositionIds = PositionIdList::normalize($standardPositionIds);
+        $this->reenlistPrefixIds   = PositionIdList::normalize($reenlistPrefixIds);
+        $this->reenlistPositionIds = PositionIdList::normalize($reenlistPositionIds);
     }
 
     /**
      * The union of both clerk-position lists, de-duplicated with first-seen order
      * preserved (Senior and Lead sit in both sets, so they collapse to one entry).
-     * This is the set whose reply counts as a pickup and whose emptiness aborts
-     * the run — pickup coverage is unchanged by the type split.
+     * Two uses: it is the fail-safe audience for a prefix listed under both types,
+     * and its emptiness is what aborts a run that could reach nobody at all.
      *
      * @return int[]
      */
-    public function pickupPositionIds(): array
+    public function allClerkPositionIds(): array
     {
-        return array_values(array_unique(array_merge($this->standardPositionIds, $this->reenlistPositionIds)));
+        return PositionIdList::normalize(array_merge($this->standardPositionIds, $this->reenlistPositionIds));
     }
 
     /**
@@ -119,7 +116,7 @@ final class EnlistmentRouting
 
         if ($inStandard && $inReenlist)
         {
-            return ['type' => self::TYPE_BOTH, 'position_ids' => $this->pickupPositionIds()];
+            return ['type' => self::TYPE_BOTH, 'position_ids' => $this->allClerkPositionIds()];
         }
         if ($inStandard)
         {
@@ -142,5 +139,30 @@ final class EnlistmentRouting
     public function overlappingPrefixIds(): array
     {
         return array_values(array_intersect($this->standardPrefixIds, $this->reenlistPrefixIds));
+    }
+
+    /**
+     * Which of the given prefix ids are configured as an enlistment TYPE prefix,
+     * under either type. Empty in a healthy config.
+     *
+     * The caller asks this of the in-processing status set
+     * (cav7ERInProcessingPrefixIds), because a type prefix listed there is the
+     * add-on's worst config fault: every valid queue thread carries its type
+     * prefix in the same link table the status is read from, so one entry reads
+     * the entire queue as handled and the reminder goes permanently, silently
+     * dark. The option is free text with no validation_class, so the collision is
+     * a slip away and nothing in the ACP stops it. Unlike the
+     * both-types overlap above, which fail-safes to the union and only warrants a
+     * warning, the caller aborts the run on a non-empty answer here.
+     *
+     * @param int[]|string[] $prefixIds
+     * @return int[] the subset that is a configured type prefix
+     */
+    public function typePrefixIdsAmong(array $prefixIds): array
+    {
+        return array_values(array_intersect(
+            PositionIdList::normalize($prefixIds),
+            array_merge($this->standardPrefixIds, $this->reenlistPrefixIds)
+        ));
     }
 }
