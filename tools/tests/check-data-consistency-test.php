@@ -1215,6 +1215,34 @@ try {
         str_contains($out, '_data/options.xml is not readable as XML'),
         $out
     );
+    // The id comparison itself had nothing pinning it. The duplicate-record case
+    // above is caught by the count guard, not by this, so removing the id
+    // comparison outright used to leave the suite green — on develop as well as
+    // here, so this closes a gap rather than one these changes opened.
+    // option_groups is the type where the ids are the whole check, which makes
+    // it the honest place to pin it: equal counts, disagreeing ids.
+    $groupIdDrift = makeTypeFixture(
+        $base,
+        'option-group-id-drift',
+        'option_groups',
+        'option_group',
+        [
+            ['group_id' => 'cav7FixtureGroupOne'],
+            ['group_id' => 'cav7FixtureGroupTwo'],
+        ],
+        [
+            'cav7FixtureGroupOne.json' => "{}\n",
+            'cav7FixtureGroupThree.json' => "{}\n",
+        ]
+    );
+    [$code, $out] = runTool($tool, $groupIdDrift);
+    check('ids that disagree at equal counts fail', $code !== 0, "exit=$code\n$out");
+    check(
+        'both sides of the id disagreement are named',
+        str_contains($out, 'cav7FixtureGroupThree') && str_contains($out, 'cav7FixtureGroupTwo'),
+        $out
+    );
+
     // Phrase text is the payload, and it lived outside the check entirely: the
     // ids were compared and the bytes behind them were not, so re-exporting one
     // tree after an edit and forgetting the other left two trees describing
@@ -1708,6 +1736,29 @@ try {
     check('the mixed-report fixture passes', $code === 0, "exit=$code\n$out");
     check('the report accounts for the content-checked type', str_contains($out, 'template_modifications'), $out);
     check('the report accounts for the counted type too', str_contains($out, 'routes'), $out);
+
+    // Naming the type is not enough on its own — a reader has to be able to tell
+    // the two strengths apart, which is the whole criterion. This pins the
+    // classification rather than the sentence around it: the counted type's line
+    // must not claim the content was checked. Dropping the strength from the
+    // line passes every assertion above and fails this one.
+    $routesLine = '';
+    foreach (explode("\n", $out) as $line) {
+        if (str_starts_with(trim($line), 'routes:')) {
+            $routesLine = $line;
+        }
+    }
+    check('the report carries a line for the counted type', $routesLine !== '', $out);
+    check(
+        'the counted type does not present itself as content-checked',
+        $routesLine !== '' && !str_contains($routesLine, 'content-checked'),
+        $routesLine
+    );
+    check(
+        'the counted type says what it did not compare',
+        str_contains($routesLine, 'count-checked'),
+        $routesLine
+    );
     // The point of the criterion: a reader can tell which fields were actually
     // compared, rather than trusting that "checked" covered the payload. Read off
     // that type's own line rather than the whole report — scanning everything
