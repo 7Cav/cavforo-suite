@@ -49,5 +49,11 @@ _Avoid_: canonical build
 **dev-only path**:
 A path an add-on carries for the people working on it rather than for the board
 running it — its `tests/`, `docs/`, `CONTEXT.md` and `_output` tree. Distinct
-from a path that ships somewhere else rather than not at all, such as `_files`,
-whose contents are relocated to the upload web root.
+from a build input, below, which the build itself consumes.
+
+**build input**:
+A path the build reads while assembling the zip and then leaves out of it —
+`build.json`, which declares the build's own handling, and `_files`, whose
+contents are relocated to the upload web root rather than dropped. Neither is
+dev-only: they are there for the build, not for the people working on the
+add-on. Both are excluded from the release zip, and asserted.

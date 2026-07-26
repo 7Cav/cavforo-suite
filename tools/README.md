@@ -82,7 +82,8 @@ was never achievable: the local build writes `hashes.json`, the file-health
 manifest, and this path writes none — the zip installs fine without it. What is
 asserted instead is exclusion, on this path only, by
 `tools/tests/package-addon-test.php`: no addon's release zip carries a dev-only
-path, and no dot- or underscore-prefixed top-level entry ships except `_data`.
+path or a build input, and no dot- or underscore-prefixed top-level entry ships
+except `_data`. Between them those cover every entry in the `excludes` array.
 The local build ships all of those. [ADR 0005](../docs/adr/0005-the-release-build-is-the-distribution-channel.md)
 covers why that is left alone.
 

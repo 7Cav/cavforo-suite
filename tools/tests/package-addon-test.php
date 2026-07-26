@@ -15,9 +15,9 @@
  * .htaccess that nginx ignores, which makes a shipped tests/*.php an
  * unauthenticated, executable endpoint.
  *
- * The dev-only list below is deliberately a second copy of what the script
- * excludes, not a read of it. A test that derived its expectations from the
- * excludes array would shrink with it and pass forever.
+ * The lists below are deliberately a second copy of what the script excludes,
+ * not a read of it. A test that derived its expectations from the excludes
+ * array would shrink with it and pass forever.
  *
  * Run:
  *   php tools/tests/package-addon-test.php
@@ -129,6 +129,19 @@ function shippedAnywhere(array $entries, string $name): array
 const DEV_ONLY = ['tests', 'docs', 'CONTEXT.md'];
 
 /**
+ * Paths read while the zip is assembled that are no part of what installs.
+ * Not dev-only — a board ignores a stray build.json rather than being
+ * endangered by one — but it is an entry in the same excludes array, and an
+ * entry nothing asserts is the failure this whole test exists to catch.
+ *
+ * Kept as its own set rather than folded into DEV_ONLY so the distinction the
+ * glossary draws survives contact with the code: a dev-only path is carried for
+ * the people working on the addon, a build input is consumed by the build.
+ * _files is the other build input, and the prefix rule below already covers it.
+ */
+const BUILD_INPUTS = ['build.json'];
+
+/**
  * All six directories XenForo itself keeps out of a build are underscore-
  * prefixed, so the prefix reads as "not addon code" to anyone working here.
  * The rule below holds that reading true: a prefixed top-level entry does not
@@ -174,7 +187,7 @@ foreach ($addonIds as $addonId) {
         continue;
     }
 
-    foreach (DEV_ONLY as $name) {
+    foreach ([...DEV_ONLY, ...BUILD_INPUTS] as $name) {
         $shipped = shippedAnywhere($entries, $name);
         check(
             "$addonId: the release zip carries no $name",
