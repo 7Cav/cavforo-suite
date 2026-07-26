@@ -80,7 +80,6 @@ src/addons/Cav7/RosterPatch/
   Repository/PositionGroupSync.php       holder query + the re-apply logic
   Cli/Command/SyncPositionGroups.php     one-off backlog reconcile
   tests/                                 pure-logic tests, shape guards, and the pattern tests over date-cell markup written in the tests, no stack required
-  build.json                             drops tests/ from the xf-addon:build-release zip
   _data/, _output/                       class-extension + template-modification registration
 ```
 

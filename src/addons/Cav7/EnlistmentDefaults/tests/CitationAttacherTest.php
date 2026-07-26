@@ -382,7 +382,7 @@ check('the re-run commits the citation and rolls nothing back', $secondImage->up
 // The award row is already saved when setImage() runs, so the two ways the
 // vendor says no have to end the same way. This is the one a misdeployed
 // citation asset takes: a date added to the bundled set without its JPG, or an
-// _assets directory that lost its read permission in a deploy.
+// assets directory that lost its read permission in a deploy.
 foreach ([false, true] as $exceptionSide) {
     $half = $exceptionSide ? '\Exception-side' : '\Error-side';
 

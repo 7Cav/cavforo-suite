@@ -23,9 +23,14 @@ Runs the repo-level tool tests (`tools/tests/*.php`), which pin the scripts in
 this directory (`package-web-assets.php`, `check-data-consistency.php`, ...)
 against failure modes the live build's happy path does not exercise. Like the
 addon tests, each is a self-contained script that exits non-zero on failure, so
-there is no framework and no XenForo. It discovers every `tools/tests/*.php`, so
-a new one is picked up with no change here. Takes no arguments and needs only
-`php`. CI runs this in its own job.
+there is no framework. It discovers every `tools/tests/*.php`, so a new one is
+picked up with no change here. Takes no arguments. CI runs this in its own job.
+
+The constraint on these is **no XenForo**, not "only `php`". Most need nothing
+but `php`; `package-addon-test.php` runs the real packaging script, so it also
+needs the `bash`, `git` and `zip` that script needs, plus PHP's `zip` extension
+to read the archive back. A host missing any of those cannot build a release
+either, so the test fails there rather than skipping — a skip reads as a pass.
 
 ```
 tools/run-tools-tests.sh
@@ -33,10 +38,17 @@ tools/run-tools-tests.sh
 
 ### `build.sh <AddonId>`
 
-Builds a release zip the canonical way, through XenForo's own
-`xf-addon:build-release`: it exports `_data/` from the database, then packages
-the zip into the addon's `_releases/` directory. This needs a working XenForo
-install. Point it at yours with one of:
+Builds a **local build** through XenForo's own `xf-addon:build-release`: it
+exports `_data/` from the database, then packages the zip into the addon's
+`_releases/` directory. This needs a working XenForo install.
+
+A local build is a testing artifact, not something to install a board from. It
+ships the addon's `tests/`, `docs/` and `CONTEXT.md`, deliberately and
+unchecked; `package-addon.sh` below is the release build, and the only
+distribution channel. The reasoning is in
+[ADR 0005](../docs/adr/0005-the-release-build-is-the-distribution-channel.md).
+
+Point it at your install with one of:
 
 ```
 XF_ROOT=/path/to/xenforo                              tools/build.sh SteamChecker
@@ -49,7 +61,8 @@ this repo.
 
 ### `package-addon.sh <AddonId> [--ref <git-ref>] [--out <file.zip>]`
 
-Builds a release zip from committed files, with no XenForo install. It
+Builds the **release build** from committed files, with no XenForo install —
+the zip CI checks, the release workflow publishes, and a board installs from. It
 reproduces the `upload/src/addons/Cav7/<Id>/` layout that
 `xf-addon:build-release` emits, so the zip installs through the admin panel's
 "Install/upgrade from archive". Because it archives committed content only,
@@ -64,24 +77,36 @@ The copy and placement match what `xf-addon:build-release` does. The `<xf:js>`
 resolution check is an extra guard this path adds, not something XenForo runs at
 build time. It needs `php` on the PATH.
 
-It does not reproduce the whole of what `xf-addon:build-release` does, and the
-list below is what has come up rather than all of it. It writes no
-`hashes.json`, the file-health manifest the real build generates, and the zip
-installs fine without it. It ignores two `build.json` keys, `exec` and
-`rollup`, because `package-web-assets.php` reads `additional_files` and
-`minify` and nothing else. RosterPatch's `exec` prunes `tests/`, which this path leaves out anyway, so the
-two agree there by coincidence rather than by design — an `exec` pruning
-anything else needs that path adding to the `excludes` array in
-`package-addon.sh` to be reproduced here, and an `exec` doing something other
-than pruning, along with any `rollup` bundling, does not happen here at all.
-Nor does XenForo's install-root fallback for an `additional_files` path with no
-`_files/` backing, or its `_no_upload` relocation. And the two paths exclude
-different things: `package-addon.sh` carries a fixed `excludes` array, so
-`_build/`, `_no_upload/`, `_releases/` and `_stubs/` are not dropped here the
-way `ReleaseBuilderService::getExcludedDirectories()` drops them, and it names
-two dotfiles where XenForo's `isExcludedFileName()` strips every dotfile but
-`.htaccess`. None of our addons carry any of that today, which is why the zips
-match; an addon that does needs the array widening first.
+**The two paths do not produce matching zips, and are not meant to.** Parity
+was never achievable: the local build writes `hashes.json`, the file-health
+manifest, and this path writes none — the zip installs fine without it. What is
+asserted instead is exclusion, on this path only, by
+`tools/tests/package-addon-test.php`: no addon's release zip carries a dev-only
+path or a build input, and no dot- or underscore-prefixed top-level entry ships
+except `_data`. Every entry in the `excludes` array falls under one of those
+rules, but the rules do not all bite equally hard. A dev-only path or a build
+input is caught at any depth; the prefix rule reads top-level names only, so a
+nested `_scratch/` would ship undetected. And a rule only fails a build where
+an add-on actually carries the path — no add-on has a `.gitattributes`, so that
+entry is covered in principle and unexercised in fact.
+The local build ships all of those. [ADR 0005](../docs/adr/0005-the-release-build-is-the-distribution-channel.md)
+covers why that is left alone.
+
+The rest of what this path does not reproduce, as it has come up rather than
+exhaustively. It ignores two `build.json` keys, `exec` and `rollup`, because
+`package-web-assets.php` reads `additional_files` and `minify` and nothing else;
+no addon declares either key today, and an `exec` that pruned something would
+need that path adding to the `excludes` array here to have the same effect.
+There is no install-root fallback for an `additional_files` path with no
+`_files/` backing, and no `_no_upload` relocation. The exclusion lists differ in
+both directions: `package-addon.sh` carries a fixed `excludes` array, so
+`_build/`, `_no_upload/`, `_releases/` and `_stubs/` are not dropped here the way
+`ReleaseBuilderService::getExcludedDirectories()` drops them, and it names two
+dotfiles where XenForo's `isExcludedFileName()` strips every dotfile but
+`.htaccess` — though only leaf files, since its copy loop walks `CHILD_FIRST`
+and a dot-*directory*'s contents are visited before the entry that would exclude
+them. No addon carries anything in that first group today; one that did needs the
+array widening.
 
 ```
 tools/package-addon.sh SteamChecker
@@ -187,7 +212,8 @@ Three things worth knowing before you trust a derived tree:
 
 ### `discord-resync-cooldown-check.sh`
 
-The odd one out here: every other script in this directory runs with only `php`,
+The odd one out here: every other script in this directory runs without a
+XenForo install,
 and this one needs a live XenForo dev stack with NF/Discord and
 `Cav7/DiscordSyncPatch` installed. CI does not run it. It is here rather than in
 the addon's `tests/` because `run-tests.sh` runs everything in there with bare

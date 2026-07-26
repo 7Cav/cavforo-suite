@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 #
-# build.sh — build one addon's release zip the canonical way, through
-# XenForo's own xf-addon:build-release. This is the local build step, and it
-# needs a working XenForo install: it exports _data/ from the database first,
-# then packages the zip.
+# build.sh — build one addon's *local build*, through XenForo's own
+# xf-addon:build-release. It needs a working XenForo install: it exports _data/
+# from the database first, then packages the zip.
+#
+# A local build is a testing artifact. It ships the addon's tests/, docs/ and
+# CONTEXT.md, deliberately and unchecked, so it is not a zip to install a board
+# from — tools/package-addon.sh builds the one that is. See
+# docs/adr/0005-the-release-build-is-the-distribution-channel.md.
 #
 # Point it at your install with one of:
 #   XF_ROOT=/path/to/xenforo                              tools/build.sh SteamChecker
@@ -13,8 +17,8 @@
 # setup in CONTRIBUTING.md), so the export writes back into this repo and the
 # zip lands in the addon's _releases/ directory.
 #
-# To package a zip without a XenForo install (CI, or a quick build from already
-# committed data), use tools/package-addon.sh instead.
+# To build the release zip — no XenForo install needed, and what CI and the
+# release workflow publish — use tools/package-addon.sh instead.
 
 set -euo pipefail
 

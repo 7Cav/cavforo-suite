@@ -32,3 +32,29 @@ ships. What it holds:
 The same data as XenForo exports it in development mode. What it holds:
 [`docs/addon-format.md`](docs/addon-format.md).
 _Avoid_: build output (nothing compiles it; it is an export like `_data`)
+
+**release build**:
+The zip an add-on is distributed as, and the only one anyone installs from. It
+carries add-on code and its `_data` tree, and no dev-only path. Built without a
+XenForo install, so CI produces it.
+_Avoid_: canonical build (which named the other one)
+
+**local build**:
+The zip XenForo's own release builder produces from a working install. A testing
+artifact — it carries dev-only paths and is not a thing to install a board from.
+Why the two differ:
+[`docs/adr/0005-the-release-build-is-the-distribution-channel.md`](docs/adr/0005-the-release-build-is-the-distribution-channel.md).
+_Avoid_: canonical build
+
+**dev-only path**:
+A path an add-on carries for the people working on it rather than for the board
+running it — its `tests/`, `docs/`, `CONTEXT.md` and `_output` tree. Distinct
+from a build input, below, which the build itself consumes.
+
+**build input**:
+A path the build reads while assembling the zip, and which is no part of what
+installs — `build.json`, which declares the build's own handling, and `_files`.
+Neither is dev-only: they are there for the build, not for the people working on
+the add-on. Neither survives as itself, but they leave differently: `build.json`
+is dropped, while `_files`' contents are relocated to the upload web root.
+What asserts this: [`tools/README.md`](tools/README.md).

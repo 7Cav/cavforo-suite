@@ -6,7 +6,7 @@
  *
  * PucSet is pure, XenForo-free data: it owns the six dates (2003-03-18,
  * 2004-09-01, 2009-08-10, 2010-09-18, 2011-06-02, 2021-05-16), maps each to its
- * bundled citation image under _assets/puc-citations/, and converts each date to
+ * bundled citation image under assets/puc-citations/, and converts each date to
  * the unix timestamp the addon stamps on the matching RosterUserAward.award_date.
  *
  * The set is bundled, not derived at runtime (ADR-0001): these assertions pin
@@ -70,7 +70,7 @@ foreach ($expectedDates as $date) {
     }
 }
 check(
-    'every PUC date maps to a bundled citation JPG present under _assets/puc-citations/',
+    'every PUC date maps to a bundled citation JPG present under assets/puc-citations/',
     $allExist,
     implode('; ', $missing)
 );
@@ -78,7 +78,7 @@ check(
 // --- The citation path lives inside the addon, named by its date ----------
 check(
     'citation path is the date-named asset bundled in the addon',
-    str_ends_with(PucSet::citationPath('2021-05-16'), '_assets/puc-citations/2021-05-16.jpg'),
+    str_ends_with(PucSet::citationPath('2021-05-16'), 'assets/puc-citations/2021-05-16.jpg'),
     PucSet::citationPath('2021-05-16')
 );
 

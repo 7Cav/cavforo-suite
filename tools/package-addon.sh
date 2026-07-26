@@ -5,9 +5,14 @@
 # emits, so the zip installs through the admin panel's "Install/upgrade from
 # archive". CI's build check and the release workflow both use this.
 #
+# This is the release build: the only zip a board should be installed from.
+#
 # It archives committed content only (from a git ref), so _data/ must already be
-# exported and committed. Dev-only paths (_output/, tests/, docs/, ...) are left
-# out of the zip.
+# exported and committed. Dev-only paths (_output/, tests/, docs/, ...) and build
+# inputs (build.json, _files/) are left out of the zip, and
+# tools/tests/package-addon-test.php asserts every entry in the array below for
+# every addon. That test names those sets itself rather than reading the array,
+# so edit both: one is the implementation, the other the specification.
 #
 # usage:
 #   tools/package-addon.sh <AddonId> [--ref <git-ref>] [--out <file.zip>]
