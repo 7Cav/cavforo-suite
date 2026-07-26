@@ -99,17 +99,45 @@ class FakeCitationImage implements CitationImage
     public bool $throwOnDeleteFile = false;
     public string $rejectReason = 'not a valid image';
 
+    /**
+     * Reject by throwing rather than by returning false. This is the vendor's
+     * OTHER way of saying no, and the one the CitationImage docblock used not to
+     * admit: NF\Rosters' Image::setImage() delegates to validateImageForRecord(),
+     * which raises \InvalidArgumentException for a missing source file and again
+     * for an unreadable one, both before any branch that returns false. Modelling
+     * only the false left the throwing half uncovered, and it is the half a
+     * misdeployed citation asset actually takes.
+     */
+    public bool $throwOnSetImage = false;
+
+    /**
+     * Fail while producing the rejection reason. The vendor hands back an
+     * \XF\Phrase and the production adapter renders it, which goes through the
+     * phrase cache and can fail — while the award row is already saved.
+     */
+    public bool $throwOnErrorText = false;
+
     /** Raise the \Exception-side failures instead of the \Error-side defaults. */
     public bool $failWithException = false;
 
     public function setImage(string $path): bool
     {
         $this->setImageCalls++;
+        if ($this->throwOnSetImage) {
+            throw $this->failWithException
+                ? new \InvalidArgumentException("Invalid file '$path' passed to image service")
+                : new \Error("Invalid file '$path' passed to image service");
+        }
+
         return !$this->rejectImage;
     }
 
     public function errorText(): string
     {
+        if ($this->throwOnErrorText) {
+            throw new \RuntimeException('phrase render failed');
+        }
+
         return $this->rejectReason;
     }
 
@@ -146,8 +174,29 @@ class RecordingLogger
     /** @var array<int, array{context: string, message: string}> */
     public array $entries = [];
 
+    /**
+     * Refuse the write. The seam reaches \XF::logException, whose own guard
+     * catches \Exception only, so an \Error out of the error-log write escapes
+     * to the caller — which is why the default here is \Error.
+     */
+    public bool $throwOnLog = false;
+
+    /**
+     * The same refusal from the \Exception half — an XF\Db\Exception on the
+     * insert. Named to match FakeCitationImage's flag of the same meaning: the
+     * two fakes model different seams but the same both-halves-of-\Throwable
+     * idea, and one name for it keeps a reader from looking for a distinction.
+     */
+    public bool $failWithException = false;
+
     public function __invoke(\Throwable $e, string $context): void
     {
+        if ($this->throwOnLog) {
+            throw $this->failWithException
+                ? new \RuntimeException('error log write failed')
+                : new \Error('error log write failed');
+        }
+
         $this->entries[] = ['context' => $context, 'message' => $e->getMessage()];
     }
 }
@@ -160,7 +209,7 @@ $award = new FakeCitationAward();
 $image = new FakeCitationImage();
 $threw = false;
 try {
-    (new CitationAttacher($logger))->attach($award, $image, $path);
+    (new CitationAttacher($logger))->attach($award, fn () => $image, $path);
 } catch (\Throwable $e) {
     $threw = true;
 }
@@ -176,7 +225,7 @@ $image = new FakeCitationImage();
 $image->throwOnUpdate = true;
 $caught = null;
 try {
-    (new CitationAttacher($logger))->attach($award, $image, $path);
+    (new CitationAttacher($logger))->attach($award, fn () => $image, $path);
 } catch (\Throwable $e) {
     $caught = $e;
 }
@@ -203,7 +252,7 @@ $image->rejectImage = true;
 $image->rejectReason = 'provided file is not a valid image';
 $caught = null;
 try {
-    (new CitationAttacher($logger))->attach($award, $image, $path);
+    (new CitationAttacher($logger))->attach($award, fn () => $image, $path);
 } catch (\Throwable $e) {
     $caught = $e;
 }
@@ -227,7 +276,7 @@ $image->throwOnUpdate = true;        // the real cause
 $image->throwOnDeleteFile = true;    // the file cleanup also fails
 $caught = null;
 try {
-    (new CitationAttacher($logger))->attach($award, $image, $path);
+    (new CitationAttacher($logger))->attach($award, fn () => $image, $path);
 } catch (\Throwable $e) {
     $caught = $e;
 }
@@ -260,7 +309,7 @@ $image->failWithException = true;
 $image->throwOnUpdate = true;
 $caught = null;
 try {
-    (new CitationAttacher($logger))->attach($award, $image, $path);
+    (new CitationAttacher($logger))->attach($award, fn () => $image, $path);
 } catch (\Throwable $e) {
     $caught = $e;
 }
@@ -285,7 +334,7 @@ $image->throwOnUpdate = true;        // the real cause
 $image->throwOnDeleteFile = true;    // the \Exception-side cleanup failure
 $caught = null;
 try {
-    (new CitationAttacher($logger))->attach($award, $image, $path);
+    (new CitationAttacher($logger))->attach($award, fn () => $image, $path);
 } catch (\Throwable $e) {
     $caught = $e;
 }
@@ -312,7 +361,7 @@ $firstAward = new FakeCitationAward();
 $firstImage = new FakeCitationImage();
 $firstImage->throwOnUpdate = true;
 try {
-    (new CitationAttacher($logger))->attach($firstAward, $firstImage, $path);
+    (new CitationAttacher($logger))->attach($firstAward, fn () => $firstImage, $path);
 } catch (\Throwable $e) {
     // expected — first run fails and rolls back
 }
@@ -322,12 +371,171 @@ $secondAward = new FakeCitationAward();
 $secondImage = new FakeCitationImage();
 $reThrew = false;
 try {
-    (new CitationAttacher($logger))->attach($secondAward, $secondImage, $path);
+    (new CitationAttacher($logger))->attach($secondAward, fn () => $secondImage, $path);
 } catch (\Throwable $e) {
     $reThrew = true;
 }
 check('a re-run of the same date succeeds once the image is healthy', !$reThrew);
 check('the re-run commits the citation and rolls nothing back', $secondImage->updateImageCalls === 1 && $secondAward->deleteCalls === 0);
+
+// --- Issue #168: rejection arriving as a THROW, not as a false --------------
+// The award row is already saved when setImage() runs, so the two ways the
+// vendor says no have to end the same way. This is the one a misdeployed
+// citation asset takes: a date added to the bundled set without its JPG, or an
+// _assets directory that lost its read permission in a deploy.
+foreach ([false, true] as $exceptionSide) {
+    $half = $exceptionSide ? '\Exception-side' : '\Error-side';
+
+    $logger = new RecordingLogger();
+    $award = new FakeCitationAward();
+    $image = new FakeCitationImage();
+    $image->throwOnSetImage = true;
+    $image->failWithException = $exceptionSide;
+    $caught = null;
+    try {
+        (new CitationAttacher($logger))->attach($award, fn () => $image, $path);
+    } catch (\Throwable $e) {
+        $caught = $e;
+    }
+
+    check(
+        "a $half throw out of setImage() leaves no citationless row behind",
+        $award->deleteCalls === 1,
+        'delete calls: ' . $award->deleteCalls
+    );
+    check(
+        "a $half throw out of setImage() never commits the citation",
+        $image->updateImageCalls === 0
+    );
+    check(
+        "a $half throw out of setImage() surfaces as the original cause",
+        $caught !== null && str_contains($caught->getMessage(), 'passed to image service'),
+        $caught === null ? '(no throw)' : $caught->getMessage()
+    );
+}
+
+// --- Issue #168: the rejection reason itself failing ------------------------
+// A plain false from setImage() means errorText() gets asked why, and the
+// production adapter answers by rendering a vendor \XF\Phrase. That render can
+// fail, and the row is saved by then.
+$logger = new RecordingLogger();
+$award = new FakeCitationAward();
+$image = new FakeCitationImage();
+$image->rejectImage = true;
+$image->throwOnErrorText = true;
+$caught = null;
+try {
+    (new CitationAttacher($logger))->attach($award, fn () => $image, $path);
+} catch (\Throwable $e) {
+    $caught = $e;
+}
+check(
+    'a rejection whose reason cannot be rendered still rolls the saved row back',
+    $award->deleteCalls === 1,
+    'delete calls: ' . $award->deleteCalls
+);
+check(
+    'the render failure is what surfaces, so the log names the real cause',
+    $caught !== null && $caught->getMessage() === 'phrase render failed',
+    $caught === null ? '(no throw)' : $caught->getMessage()
+);
+
+// --- Issue #168: resolving the image service failing ------------------------
+// The resolution needs the saved record_id, so it cannot happen before the row
+// exists. Handing it to attach() as a closure is what puts it inside the
+// rollback's reach; done in the caller it would be in a window nothing covers.
+// Raised as an \Error because that is the shape vendor drift takes — a renamed
+// or removed NF\Rosters service class.
+$logger = new RecordingLogger();
+$award = new FakeCitationAward();
+$caught = null;
+try {
+    (new CitationAttacher($logger))->attach(
+        $award,
+        fn () => throw new \Error('Call to undefined service NF\Rosters:AwardRecord\Image'),
+        $path
+    );
+} catch (\Throwable $e) {
+    $caught = $e;
+}
+check(
+    'a failure resolving the image service still rolls the saved row back',
+    $award->deleteCalls === 1,
+    'delete calls: ' . $award->deleteCalls
+);
+check(
+    'the resolution failure is the one surfaced',
+    $caught !== null && str_contains($caught->getMessage(), 'undefined service'),
+    $caught === null ? '(no throw)' : $caught->getMessage()
+);
+check(
+    'nothing was staged, so no breadcrumb claims a file cleanup was attempted',
+    $logger->entries === [],
+    implode(' | ', array_column($logger->entries, 'context'))
+);
+
+// --- Issue #168: a broken log seam must not cost the rollback ---------------
+// Two faults at once: the file cleanup fails, so a breadcrumb is logged, and the
+// log seam itself refuses. The award row delete comes AFTER that breadcrumb, so
+// an unguarded logging call takes the delete and the original failure with it —
+// leaving the citationless row that pendingDates() then skips forever. Driven
+// from both halves of the \Throwable range: \XF::logException's internal guard
+// catches \Exception only, so an \Error escapes it, while the everyday failure
+// (an XF\Db\Exception on the xf_error_log insert) is \Exception-side.
+foreach ([false, true] as $exceptionSide) {
+    $half = $exceptionSide ? '\Exception-side' : '\Error-side';
+
+    $logger = new RecordingLogger();
+    $logger->throwOnLog = true;
+    $logger->failWithException = $exceptionSide;
+    $award = new FakeCitationAward();
+    $image = new FakeCitationImage();
+    $image->throwOnUpdate = true;        // the real cause
+    $image->throwOnDeleteFile = true;    // the cleanup failure that gets logged
+    $caught = null;
+    try {
+        (new CitationAttacher($logger))->attach($award, fn () => $image, $path);
+    } catch (\Throwable $e) {
+        $caught = $e;
+    }
+
+    check(
+        "a $half log-seam failure on the first breadcrumb still deletes the award row",
+        $award->deleteCalls === 1,
+        'delete calls: ' . $award->deleteCalls
+    );
+    check(
+        "a $half log-seam failure still re-throws the ORIGINAL attach failure",
+        $caught !== null && $caught->getMessage() === 'save after copy failed',
+        $caught === null ? '(no throw)' : get_class($caught) . ': ' . $caught->getMessage()
+    );
+}
+
+// Both breadcrumbs failing to log, with the row delete failing too: the original
+// still comes back out rather than a logging error.
+$logger = new RecordingLogger();
+$logger->throwOnLog = true;
+$award = new FakeCitationAward();
+$award->throwOnDelete = true;
+$image = new FakeCitationImage();
+$image->throwOnUpdate = true;
+$image->throwOnDeleteFile = true;
+$caught = null;
+try {
+    (new CitationAttacher($logger))->attach($award, fn () => $image, $path);
+} catch (\Throwable $e) {
+    $caught = $e;
+}
+check(
+    'a log seam that refuses both breadcrumbs still surfaces the original cause',
+    $caught !== null && $caught->getMessage() === 'save after copy failed',
+    $caught === null ? '(no throw)' : get_class($caught) . ': ' . $caught->getMessage()
+);
+check(
+    'both cleanup attempts are still made when neither breadcrumb can be logged',
+    $image->deleteFileCalls === 1 && $award->deleteCalls === 1,
+    "deleteFile: {$image->deleteFileCalls}, delete: {$award->deleteCalls}"
+);
 
 // --- Summary --------------------------------------------------------------
 if ($failures > 0) {

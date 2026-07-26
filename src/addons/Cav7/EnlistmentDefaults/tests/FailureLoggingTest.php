@@ -170,8 +170,27 @@ namespace NF\Rosters\Service\AwardRecord {
          */
         public array $rejectDates = [];
 
+        /**
+         * PUC dates whose citation source the service rejects by THROWING rather
+         * than by returning false. This is the vendor's real behaviour for a
+         * missing or unreadable source: setImage() delegates to
+         * validateImageForRecord(), which raises \InvalidArgumentException for
+         * both, before reaching any branch that returns false. The message is the
+         * vendor's own. Modelling only $rejectDates left the throwing half of the
+         * contract uncovered in both fakes at once (issue #168).
+         *
+         * @var string[]
+         */
+        public array $throwDates = [];
+
         public function setImage(string $path): bool
         {
+            foreach ($this->throwDates as $date) {
+                if (str_contains($path, $date . '.jpg')) {
+                    throw new \InvalidArgumentException("Invalid file '$path' passed to image service");
+                }
+            }
+
             foreach ($this->rejectDates as $date) {
                 if (str_contains($path, $date . '.jpg')) {
                     return false;
@@ -261,6 +280,16 @@ namespace {
 
         public static ?object $serviceStub = null;
 
+        /**
+         * PUC dates whose image-service RESOLUTION fails, matched against the
+         * award row the service is asked for. Models vendor drift — a renamed or
+         * removed NF\Rosters service class — landing in the window after the
+         * award row is saved, which is why it is raised as an \Error.
+         *
+         * @var string[]
+         */
+        public static array $serviceThrowDates = [];
+
         public static function logException(\Throwable $e, bool $rollback = false, string $messagePrefix = '', bool $forceLog = false): void
         {
             if (self::$logThrows) {
@@ -294,6 +323,15 @@ namespace {
 
         public static function service(string $class, ...$args): object
         {
+            $award = $args[0] ?? null;
+            $awardDate = $award instanceof \NF\Rosters\Entity\RosterUserAward
+                ? gmdate('Y-m-d', (int) $award->award_date)
+                : '';
+
+            if (in_array($awardDate, self::$serviceThrowDates, true)) {
+                throw new \Error("Call to undefined method $class");
+            }
+
             return self::$serviceStub ?? new \NF\Rosters\Service\AwardRecord\Image();
         }
     }
@@ -657,6 +695,134 @@ namespace Cav7\EnlistmentDefaults\Tests {
     );
     check(
         'the enlistment record is still written after a date drops',
+        count($entity->serviceRecords) === 1 && $entity->serviceRecords[0]->saveCalls === 1,
+        (string) count($entity->serviceRecords)
+    );
+
+    // --- issue #168: a citation the service rejects by THROWING --------------
+    // The same one-bad-date shape as above, except the service says no the way
+    // the real vendor says no about a missing or unreadable source file: it
+    // raises before it ever reaches a branch that returns false. The award row
+    // is already saved at that point, so if that throw escapes the rollback the
+    // milpac keeps a citationless PUC — and pendingDates() matches on
+    // award_date, so nothing ever retries that date. Everything else about the
+    // enlistment has to carry on regardless.
+    \XF::$logged = [];
+    $service = new \NF\Rosters\Service\AwardRecord\Image();
+    $service->acceptImage = true;
+    $service->throwDates = ['2010-09-18'];
+    \XF::$serviceStub = $service;
+
+    $entity = enlistingMilpac();
+
+    $threw = postSaveThrew($entity);
+    \XF::$serviceStub = null;
+
+    check('a citation source the service throws over still lets the milpac save through', !$threw);
+    check(
+        'no citationless row survives a throwing rejection',
+        survivingDates($entity->awards) === datesExcept(['2010-09-18'])
+            && rolledBackDates($entity->awards) === ['2010-09-18'],
+        'survivors: ' . implode(', ', survivingDates($entity->awards))
+            . ' | rolled back: ' . implode(', ', rolledBackDates($entity->awards))
+    );
+    check(
+        'the thrown-over date is logged against this milpac and member',
+        droppedDates(\XF::$logged) === ['2010-09-18'] && allStamped(\XF::$logged),
+        prefixes(\XF::$logged) ?: 'nothing logged'
+    );
+    check(
+        'the entry keeps the vendor exception whole, so it says what broke',
+        count(\XF::$logged) === 1
+            && \XF::$logged[0]['exception'] instanceof \InvalidArgumentException
+            && str_contains(\XF::$logged[0]['exception']->getMessage(), 'passed to image service'),
+        count(\XF::$logged) === 1 ? get_class(\XF::$logged[0]['exception']) : 'nothing logged'
+    );
+    check(
+        'the enlistment record is still written after a throwing rejection',
+        count($entity->serviceRecords) === 1 && $entity->serviceRecords[0]->saveCalls === 1,
+        (string) count($entity->serviceRecords)
+    );
+
+    // The rolled-back date is still pending on a re-run, which is the whole
+    // point of rolling it back: the milpac now carries the five that landed, and
+    // the applier asked for those five and no more.
+    $survivors = [];
+    foreach ($entity->awards as $award) {
+        if ($award->deleteCalls === 0) {
+            $survivors[] = (int) $award->award_date;
+        }
+    }
+    check(
+        're-running against the surviving rows still treats the failed date as pending',
+        \Cav7\EnlistmentDefaults\EnlistmentDecisions::pendingDates($survivors) === ['2010-09-18'],
+        implode(', ', \Cav7\EnlistmentDefaults\EnlistmentDecisions::pendingDates($survivors))
+    );
+
+    // --- issue #168: the image service failing to RESOLVE --------------------
+    // The window between the award row save and the attach. The resolution needs
+    // the saved record_id so it cannot be hoisted above the save; it has to be
+    // reachable by the rollback instead.
+    \XF::$logged = [];
+    $service = new \NF\Rosters\Service\AwardRecord\Image();
+    $service->acceptImage = true;
+    \XF::$serviceStub = $service;
+    \XF::$serviceThrowDates = ['2004-09-01'];
+
+    $entity = enlistingMilpac();
+
+    $threw = postSaveThrew($entity);
+    \XF::$serviceStub = null;
+    \XF::$serviceThrowDates = [];
+
+    check('a failure resolving the image service still lets the milpac save through', !$threw);
+    check(
+        'no citationless row survives a failed image-service resolution',
+        survivingDates($entity->awards) === datesExcept(['2004-09-01'])
+            && rolledBackDates($entity->awards) === ['2004-09-01'],
+        'survivors: ' . implode(', ', survivingDates($entity->awards))
+            . ' | rolled back: ' . implode(', ', rolledBackDates($entity->awards))
+    );
+    check(
+        'the date whose service could not be resolved is logged, and stamped',
+        droppedDates(\XF::$logged) === ['2004-09-01'] && allStamped(\XF::$logged),
+        prefixes(\XF::$logged) ?: 'nothing logged'
+    );
+    // On its own, "not an \Exception" says nothing: the fixture only ever throws
+    // an \Error, so that conjunct holds however the guard behaves. Nor does the
+    // message distinguish much — narrowing the applier's catch to \Exception
+    // routes the SAME exception object to the entity's last-resort catch, so
+    // class and message both survive unchanged and only the prefix moves to
+    // 'enlistment defaults failed'. The droppedDates() check above is what
+    // catches that (verified by mutation), and this one is here for the
+    // narrower thing it does pin: the exception reaches the log whole rather
+    // than flattened to its message, which is what keeps the class and stack
+    // trace an admin needs. See ADR-0002.
+    check(
+        'the entry carries the resolution failure whole, class and message',
+        count(\XF::$logged) === 1
+            && !\XF::$logged[0]['exception'] instanceof \Exception
+            && \XF::$logged[0]['exception']->getMessage() === 'Call to undefined method NF\Rosters:AwardRecord\Image',
+        count(\XF::$logged) === 1
+            ? get_class(\XF::$logged[0]['exception']) . ': ' . \XF::$logged[0]['exception']->getMessage()
+            : 'nothing logged'
+    );
+
+    // The same re-run guarantee AC7 asks for, on this route too: the rolled-back
+    // date has to come back as pending, not merely as "no row present".
+    $survivors = [];
+    foreach ($entity->awards as $award) {
+        if ($award->deleteCalls === 0) {
+            $survivors[] = (int) $award->award_date;
+        }
+    }
+    check(
+        're-running after a failed resolution still treats that date as pending',
+        \Cav7\EnlistmentDefaults\EnlistmentDecisions::pendingDates($survivors) === ['2004-09-01'],
+        implode(', ', \Cav7\EnlistmentDefaults\EnlistmentDecisions::pendingDates($survivors))
+    );
+    check(
+        'the enlistment record is still written after a failed resolution',
         count($entity->serviceRecords) === 1 && $entity->serviceRecords[0]->saveCalls === 1,
         (string) count($entity->serviceRecords)
     );

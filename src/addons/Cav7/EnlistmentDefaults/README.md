@@ -128,6 +128,50 @@ logged and the form still renders. The prefill runs on every roster's add form,
 not just an enlistment roster, since a non-enlistment add is the rare case a
 recruiter just overrides.
 
+## Tests
+
+`tools/run-tests.sh EnlistmentDefaults`. The decisions are plain units with no
+XenForo dependency — which dates are pending, who a grant is attributed to, how a
+record is dated, and the citation-attach rollback — and each is exercised for
+real. `tests/FailureLoggingTest.php` goes further and drives the entity
+extension's post-save against stand-ins for the vendor entities, so the
+fail-open policy and the identity stamp on a dropped grant are covered too.
+
+What none of it covers is the vendor. Every test here compares our code against
+our own expectations, and the stand-ins were written from reading NF/Rosters, not
+from running it. The list below is what a stack run has to confirm.
+
+### Re-run these on a dev stack after an NF/Rosters or XenForo upgrade
+
+CI cannot see any of them, and each one fails silently in production if it breaks.
+
+1. Creating a milpac grants the whole PUC set, each award carrying its citation
+   image. This is the class extension on the milpac entity's post-save still
+   firing on insert, and the two vendor row factories (`getNewAward()`,
+   `getNewServiceRecord()`) still being there.
+2. A PUC date whose citation JPG is missing from `_assets/puc-citations/` leaves
+   **no** award row for that date, while the other dates and the enlistment
+   record still apply and the milpac still saves. This is the one the rollback
+   exists for: the vendor's image service rejects a missing or unreadable source
+   by **throwing** (`Service\AwardRecord\Image::validateImageForRecord()` raises
+   before it reaches any branch that returns false), not by returning false, and
+   the award row is already saved by then. If the vendor ever swaps the throw for
+   a plain false, or moves the validation, the rollback is what stops a
+   citationless row surviving — and `EnlistmentDecisions::pendingDates()` matches
+   on `award_date`, so a surviving row makes that date look granted for good.
+3. The error-log entry for that dropped date names the milpac and the member, and
+   keeps the exception's class and stack trace.
+4. A rejection the service signals by returning false rather than throwing also
+   leaves no row behind, and the reason reaches the log entry. The reason arrives
+   as an `\XF\Phrase` the addon renders; a vendor that returns a plain string
+   instead still works, one that returns something else does not.
+5. The add-form prefill still fills rank and position on a new milpac's add form,
+   and the submitted values are what save.
+
+Item 2 is worth driving deliberately rather than waiting for it: move one JPG out
+of `_assets/puc-citations/`, create a milpac, confirm no row for that date, then
+put the file back.
+
 ## Out of scope
 
 Backfilling defaults or re-dating records on existing milpacs; scoping the form
