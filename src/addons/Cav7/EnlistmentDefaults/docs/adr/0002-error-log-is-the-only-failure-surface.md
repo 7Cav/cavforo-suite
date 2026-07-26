@@ -3,6 +3,9 @@
 - **Status:** Accepted
 - **Date:** 2026-07-22
 - **Issues:** #62
+- **Amended by:** [ADR-0003](0003-a-prefill-rejection-stays-silent.md), which scopes
+  "recorded in the error log and nowhere else" below to the applier path. A value
+  the add-form prefill cannot set is dropped silently and deliberately.
 
 ## Context
 

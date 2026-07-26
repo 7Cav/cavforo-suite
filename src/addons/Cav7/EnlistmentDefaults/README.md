@@ -97,6 +97,8 @@ example an unreadable citation file) leaves new milpacs missing part of the set
 until someone reads the error log: check it as part of routine maintenance. The
 reasoning is in
 [docs/adr/0002-error-log-is-the-only-failure-surface.md](docs/adr/0002-error-log-is-the-only-failure-surface.md).
+That rule is the applier's: the add-form prefill drops a rejected value silently,
+which [ADR-0003](docs/adr/0003-a-prefill-rejection-stays-silent.md) decided.
 
 **What the log seam does not cover.** The isolation is only as good as the
 logging it leans on. A throw out of the error log call escapes both the grant
@@ -123,8 +125,15 @@ citation image and cutting a release. See
 **Prefill is form-only.** The defaults are set on the milpac entity the add-form
 GET render hands the view, and only on that GET render. The POST branch is left
 exactly as the vendor produced it, so whatever the recruiter submits is what
-saves. The prefill is also fail-open: a bad option or a rejected field value is
-logged and the form still renders. The prefill runs on every roster's add form,
+saves. The prefill is also fail-open, but its two failures differ: a bad board
+timezone throws and is logged, costing the whole prefill (rank and position
+included), while a value the field set rejects is dropped silently — nothing is
+logged, and
+that one field is left unfilled while the others still fill. Do not search the
+error log for a field that did not prefill; the silence is deliberate, and the
+reasoning is in
+[docs/adr/0003-a-prefill-rejection-stays-silent.md](docs/adr/0003-a-prefill-rejection-stays-silent.md).
+Either way the form still renders. The prefill runs on every roster's add form,
 not just an enlistment roster, since a non-enlistment add is the rare case a
 recruiter just overrides.
 
@@ -167,6 +176,17 @@ CI cannot see any of them, and each one fails silently in production if it break
    instead still works, one that returns something else does not.
 5. The add-form prefill still fills rank and position on a new milpac's add form,
    and the submitted values are what save.
+6. A roster field the prefill writes (`joinDate`, `promoDate`) that rejects the
+   value still leaves that one field blank, fills the other, renders the form, and
+   logs **nothing** — the silence ADR-0003 decided on. Every rejection branch in
+   `XF\CustomField\Set::set()` returns false under `ignoreInvalid` rather than
+   throwing; a vendor that starts throwing instead would turn a blank field into a
+   logged, wholly-unfilled prefill. Drive it by capping a field's max length below
+   ten characters, opening the add form, then putting the cap back.
+7. The prefill's `catch (\Throwable)` still renders the add form when an `\Error`
+   is raised inside it. Nothing in CI throws through this catch, so its breadth
+   rests on this check; narrowing it to `\Exception` gives an error page instead of
+   the add form.
 
 Item 2 is worth driving deliberately rather than waiting for it: move one JPG out
 of `_assets/puc-citations/`, create a milpac, confirm no row for that date, then
