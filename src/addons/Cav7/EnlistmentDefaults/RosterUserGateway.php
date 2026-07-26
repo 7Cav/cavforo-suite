@@ -97,9 +97,7 @@ class RosterUserGateway implements EnlistmentGateway
         // and rolling the grant back on failure (so a date stays all-or-nothing
         // and a re-run retries it cleanly) is the intricate part, so it lives in
         // CitationAttacher; here we only adapt the vendor types to its seams.
-        /** @var Image $imageService */
-        $imageService = \XF::service('NF\Rosters:AwardRecord\Image', $award);
-
+        //
         // The attacher's cleanup breadcrumbs are logged from the applier path
         // too, so they go through logFailure and get the same milpac stamp. The
         // date is folded in here because the attacher is handed an opaque
@@ -111,9 +109,22 @@ class RosterUserGateway implements EnlistmentGateway
                 $context . ' for ' . gmdate('Y-m-d', $awardDate)
             )
         );
+
+        // Resolving the image service is handed over as a closure rather than
+        // done here. The row is saved by this point, so a throw out of
+        // \XF::service() — a vendor rename, a container fault — would leave a
+        // citationless row that no rollback ever reaches. Run inside attach(),
+        // it rolls back like any other attach failure. Nothing between the
+        // save() above and the call below can throw: both are plain object
+        // constructions.
         $attacher->attach(
             $this->citationAward($award),
-            $this->citationImage($imageService),
+            function () use ($award): CitationImage {
+                /** @var Image $imageService */
+                $imageService = \XF::service('NF\Rosters:AwardRecord\Image', $award);
+
+                return $this->citationImage($imageService);
+            },
             $citationPath
         );
     }
