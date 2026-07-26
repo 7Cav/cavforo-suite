@@ -28,9 +28,9 @@ picked up with no change here. Takes no arguments. CI runs this in its own job.
 
 The constraint on these is **no XenForo**, not "only `php`". Most need nothing
 but `php`; `package-addon-test.php` runs the real packaging script, so it also
-needs the `bash`, `git` and `zip` that script needs. A host missing one of those
-cannot build a release either, so the test fails there rather than skipping —
-a skip reads as a pass.
+needs the `bash`, `git` and `zip` that script needs, plus PHP's `zip` extension
+to read the archive back. A host missing any of those cannot build a release
+either, so the test fails there rather than skipping — a skip reads as a pass.
 
 ```
 tools/run-tools-tests.sh
@@ -206,7 +206,8 @@ Three things worth knowing before you trust a derived tree:
 
 ### `discord-resync-cooldown-check.sh`
 
-The odd one out here: every other script in this directory runs with only `php`,
+The odd one out here: every other script in this directory runs without a
+XenForo install,
 and this one needs a live XenForo dev stack with NF/Discord and
 `Cav7/DiscordSyncPatch` installed. CI does not run it. It is here rather than in
 the addon's `tests/` because `run-tests.sh` runs everything in there with bare

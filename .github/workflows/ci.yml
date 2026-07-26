@@ -89,6 +89,8 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
+          # package-addon-test.php reads the built archive through ZipArchive.
+          extensions: zip
           coverage: none
       - name: Run tools tests
         run: tools/run-tools-tests.sh

@@ -572,7 +572,7 @@ tests/*.php                                        # §7
 ```
 Pub/Controller/MilpacMention.php                  # actionFind, mirrors MemberController::actionFind (§4.3)
 _data/routes.xml (+ _output)                       # route: milpac-mention/find
-_assets/… (addon JS)                               # $ AutoCompleter on editor:init (§4.1); rich + plain handlers
+assets/… (addon JS)                                # $ AutoCompleter on editor:init (§4.1); rich + plain handlers
 _data/templates + template_modification            # deliver/load the JS; displayTemplate for rows
 ```
 

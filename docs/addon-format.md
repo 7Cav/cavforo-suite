@@ -20,7 +20,7 @@ The vendor is `Cav7` and the PHP namespace root is `Cav7\<AddonId>`. It is `Cav7
 - `Setup.php`: only if the addon creates tables, options, fields, or other install state. A class-extension-only addon does not need one.
 - PHP classes under namespaced directories that match XenForo's conventions (`XF/`, `Pub/`, `Admin/`, `Entity/`, `Repository/`, `Job/`, and so on).
 - `README.md`: a short description, the requirements, and a provenance note (see below).
-- `build.json`: only if the addon needs XenForo's build-time handling — web assets copied out of `_files/` (`additional_files`, `minify`, `rollup`), or `exec` commands, which run from the addon's own source directory and have to spell the staged path themselves. XenForo reads it during `xf-addon:build-release` and keeps it out of the zip; most addons do not have one. For what each key does here and how an `exec` goes wrong, see [`tools/README.md`](../tools/README.md).
+- `build.json`: only if the addon needs XenForo's build-time handling — web assets copied out of `_files/` (`additional_files`, `minify`, `rollup`), or `exec` commands, which run from the addon's own source directory and have to spell the staged path themselves. XenForo reads it during `xf-addon:build-release` and keeps it out of the zip; most addons do not have one. For what each key does here, and which of them the release build reproduces, see [`tools/README.md`](../tools/README.md). An `exec` cannot report its own failure — `execCmds()` hands each entry to `passthru()` and discards the exit status — which is part of why the release build does not rely on one; see [ADR 0005](adr/0005-the-release-build-is-the-distribution-channel.md).
 
 ### addon.json
 

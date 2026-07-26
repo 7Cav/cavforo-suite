@@ -48,5 +48,6 @@ _Avoid_: canonical build
 
 **dev-only path**:
 A path an add-on carries for the people working on it rather than for the board
-running it — its `tests/`, `docs/`, `CONTEXT.md`. Distinct from a path that is
-merely not shipped *in place*, such as `_files`.
+running it — its `tests/`, `docs/`, `CONTEXT.md` and `_output` tree. Distinct
+from a path that ships somewhere else rather than not at all, such as `_files`,
+whose contents are relocated to the upload web root.

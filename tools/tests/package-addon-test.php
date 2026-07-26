@@ -82,6 +82,12 @@ function packageAddon(string $script, string $addonId, string $out): array
     return $entries;
 }
 
+/** The path segments of a zip entry. Directory entries carry a trailing slash. */
+function segmentsOf(string $entry): array
+{
+    return explode('/', rtrim($entry, '/'));
+}
+
 /**
  * The zip entries at or below $path inside the addon's own directory. Zip
  * directory entries carry a trailing slash, so a directory shows up both as
@@ -91,6 +97,22 @@ function shippedUnder(array $entries, string $path): array
 {
     return array_values(array_filter($entries, fn (string $e): bool =>
         $e === $path || $e === "$path/" || str_starts_with($e, "$path/")));
+}
+
+/**
+ * The zip entries carrying $name as any path segment, not only the first.
+ *
+ * package-addon.sh strips its excludes at the addon root, so a nested
+ * NF/Rosters/tests/ would survive it. No addon has one, and this asserts the
+ * invariant rather than what the script currently reaches: a dev-only path does
+ * not ship, wherever it sits.
+ */
+function shippedAnywhere(array $entries, string $name): array
+{
+    return array_values(array_filter(
+        $entries,
+        fn (string $e): bool => in_array($name, segmentsOf($e), true)
+    ));
 }
 
 /**
@@ -116,7 +138,7 @@ const DEV_ONLY = ['tests', 'docs', 'CONTEXT.md'];
  *
  * _data is the exception because it is the tree that ships — see the glossary.
  */
-const SHIPPED_PREFIXED = '_data';
+const PREFIXED_THAT_SHIPS = '_data';
 
 /** The distinct first path segments of a set of addon-relative zip entries. */
 function topLevelNames(array $entries): array
@@ -139,7 +161,10 @@ sort($addonIds);
 check('there are addons to package', $addonIds !== [], "none found under src/addons/Cav7");
 
 $tmp = sys_get_temp_dir() . '/package-addon-test-' . getmypid();
-mkdir($tmp, 0777, true);
+if (!is_dir($tmp) && !mkdir($tmp, 0777, true)) {
+    fwrite(STDERR, "could not create the temp directory $tmp\n");
+    exit(1);
+}
 
 foreach ($addonIds as $addonId) {
     try {
@@ -149,39 +174,38 @@ foreach ($addonIds as $addonId) {
         continue;
     }
 
-    foreach (DEV_ONLY as $path) {
-        $shipped = shippedUnder($entries, $path);
+    foreach (DEV_ONLY as $name) {
+        $shipped = shippedAnywhere($entries, $name);
         check(
-            "$addonId: the release zip carries no $path",
+            "$addonId: the release zip carries no $name",
             $shipped === [],
             implode(', ', array_slice($shipped, 0, 4))
         );
     }
 
-    $prefixed = array_values(array_diff(topLevelNames($entries), [SHIPPED_PREFIXED]));
     $prefixed = array_values(array_filter(
-        $prefixed,
+        array_diff(topLevelNames($entries), [PREFIXED_THAT_SHIPS]),
         fn (string $n): bool => str_starts_with($n, '.') || str_starts_with($n, '_')
     ));
 
     check(
-        "$addonId: the release zip carries no dot- or underscore-prefixed directory but " . SHIPPED_PREFIXED,
+        "$addonId: the release zip carries no dot- or underscore-prefixed entry but " . PREFIXED_THAT_SHIPS,
         $prefixed === [],
         implode(', ', $prefixed)
     );
 
     // The other half of the exception. Nothing else reads a zip, so without
     // this an addon could be excluded into shipping no XenForo data at all.
-    if (is_dir("$repoRoot/src/addons/Cav7/$addonId/" . SHIPPED_PREFIXED)) {
+    if (is_dir("$repoRoot/src/addons/Cav7/$addonId/" . PREFIXED_THAT_SHIPS)) {
         check(
-            "$addonId: the release zip carries its " . SHIPPED_PREFIXED,
-            shippedUnder($entries, SHIPPED_PREFIXED) !== []
+            "$addonId: the release zip carries its " . PREFIXED_THAT_SHIPS,
+            shippedUnder($entries, PREFIXED_THAT_SHIPS) !== []
         );
     }
 }
 
-foreach (glob("$tmp/*.zip") as $zip) {
-    unlink($zip);
+foreach (glob("$tmp/*") as $leftover) {
+    unlink($leftover);
 }
 rmdir($tmp);
 
