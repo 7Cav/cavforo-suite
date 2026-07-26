@@ -52,8 +52,9 @@ running it — its `tests/`, `docs/`, `CONTEXT.md` and `_output` tree. Distinct
 from a build input, below, which the build itself consumes.
 
 **build input**:
-A path the build reads while assembling the zip and then leaves out of it —
-`build.json`, which declares the build's own handling, and `_files`, whose
-contents are relocated to the upload web root rather than dropped. Neither is
-dev-only: they are there for the build, not for the people working on the
-add-on. Both are excluded from the release zip, and asserted.
+A path the build reads while assembling the zip, and which is no part of what
+installs — `build.json`, which declares the build's own handling, and `_files`.
+Neither is dev-only: they are there for the build, not for the people working on
+the add-on. Neither survives as itself, but they leave differently: `build.json`
+is dropped, while `_files`' contents are relocated to the upload web root.
+What asserts this: [`tools/README.md`](tools/README.md).

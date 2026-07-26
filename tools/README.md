@@ -83,7 +83,12 @@ manifest, and this path writes none — the zip installs fine without it. What i
 asserted instead is exclusion, on this path only, by
 `tools/tests/package-addon-test.php`: no addon's release zip carries a dev-only
 path or a build input, and no dot- or underscore-prefixed top-level entry ships
-except `_data`. Between them those cover every entry in the `excludes` array.
+except `_data`. Every entry in the `excludes` array falls under one of those
+rules, but the rules do not all bite equally hard. A dev-only path or a build
+input is caught at any depth; the prefix rule reads top-level names only, so a
+nested `_scratch/` would ship undetected. And a rule only fails a build where
+an add-on actually carries the path — no add-on has a `.gitattributes`, so that
+entry is covered in principle and unexercised in fact.
 The local build ships all of those. [ADR 0005](../docs/adr/0005-the-release-build-is-the-distribution-channel.md)
 covers why that is left alone.
 

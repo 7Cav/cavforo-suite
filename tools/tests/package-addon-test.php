@@ -129,15 +129,13 @@ function shippedAnywhere(array $entries, string $name): array
 const DEV_ONLY = ['tests', 'docs', 'CONTEXT.md'];
 
 /**
- * Paths read while the zip is assembled that are no part of what installs.
- * Not dev-only — a board ignores a stray build.json rather than being
- * endangered by one — but it is an entry in the same excludes array, and an
- * entry nothing asserts is the failure this whole test exists to catch.
+ * Build inputs — see the glossary in the root CONTEXT.md. Kept apart from
+ * DEV_ONLY because they are excluded for a different reason and carry a
+ * different severity: a shipped tests/*.php is an executable endpoint, a
+ * shipped build.json is inert. The assertion does not grade on that. An entry
+ * in the excludes array with nothing covering it is how the array regressed.
  *
- * Kept as its own set rather than folded into DEV_ONLY so the distinction the
- * glossary draws survives contact with the code: a dev-only path is carried for
- * the people working on the addon, a build input is consumed by the build.
- * _files is the other build input, and the prefix rule below already covers it.
+ * _files is the other build input; the prefix rule below covers it.
  */
 const BUILD_INPUTS = ['build.json'];
 
