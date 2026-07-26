@@ -1,20 +1,30 @@
 <?php
 
 /**
- * Runs the milpac date template modifications over the captured date rows in
- * tests/fixtures/ — the vendor's own nf_rosters_user_view and the edited copy
- * the 7Cav style carries.
- *
- * Rather than describing the shape of the modification records, this asks what
- * those records do to markup: after XenForo applies them, does the date cell go
- * through the UTC getter? RosterPatch's README ("The date cells are
+ * Runs the milpac date template modifications over date-cell markup written out
+ * below, and asks what they do to it: after XenForo applies them, does the date
+ * cell go through the UTC getter? RosterPatch's README ("The date cells are
  * matched by pattern") is where that question and its history live.
  *
- * What this pins is the patterns, against markup taken from NF/Rosters 2.1.5.
- * The fixtures are frozen copies, not the installed add-on, and CI has neither
- * XenForo nor a vendor tree — so a later NF/Rosters release that moves the date
- * cell leaves the fixtures matching and this suite green. Recapture them when
- * NF/Rosters is upgraded.
+ * What this pins is the patterns — the shipped <find>/<replace>, read straight
+ * out of _data/template_modifications.xml — against date-cell spellings written
+ * here by hand. It quotes no vendor file. The NF/Rosters expression it does name
+ * is the same one the shipped <find> already describes, a template modification
+ * being a description of the markup it targets.
+ *
+ * Two limits, neither of which this suite can close on its own:
+ *
+ *   - It never reaches the add-on you have installed. CI has no XenForo and no
+ *     vendor tree, so an NF/Rosters release that moved or rewrote the date cell
+ *     would leave every check here green while the board went back to per-viewer
+ *     dates. Verifying the patterns against a real install is a dev-stack job,
+ *     and the README says so.
+ *   - applyModification() below is a hand-written mirror of
+ *     XF\Repository\TemplateModificationRepository::applyTemplateModifications(),
+ *     not a call into it. It is faithful for everything this add-on ships — see
+ *     the note on that function for the three places it diverges and why none of
+ *     them is reachable — but nothing here enforces that it stays faithful
+ *     across a XenForo upgrade.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -176,31 +186,6 @@ function applyModification(array $mod, string $template): array
 }
 
 /**
- * The captured markup a fixture file holds, without the leading provenance
- * comment — or null when the file does not open with one. That comment says
- * where the capture came from and what it left out, and it is not template
- * markup. Nothing below actually trips over it today: neither the finds nor the
- * surviving-call patterns can reach that prose, and leaving a header in place
- * passes every assertion. It comes off because every assertion below is written
- * as though the file were the template, and a file that does not open with a
- * header is reported rather than quietly run whole.
- *
- * Line endings are normalised here, the one place fixture text enters this file.
- * applyModification() normalises its own input, while the expectations below are
- * built from this text, so a fixture arriving as CRLF would redden checks that
- * have nothing to do with the patterns. A recapture that goes through a browser
- * — the admin template editor's textarea, say — is where that would come from:
- * HTML form submission normalises line breaks to CRLF by spec.
- */
-function fixtureBody(string $text): ?string
-{
-    $text = str_replace("\r\n", "\n", $text);
-    $body = (string) preg_replace('/\A\s*<!--.*?-->\n/s', '', $text);
-
-    return $body === $text ? null : $body;
-}
-
-/**
  * Run a set of modifications over one accumulating template, in the order given,
  * the way XenForo runs the pass. Ordering the set is
  * modificationsForTemplate()'s job, not this one's.
@@ -220,28 +205,6 @@ function applyPass(array $mods, string $template): array
 }
 
 /**
- * The expression $dateCells says a fixture spells, when the fixture still
- * spells it; null when the table and the fixture have drifted apart, and null
- * too when the table carries no entry for that fixture at all — a different
- * mistake with a different fix, which the caller checks and names on its own.
- *
- * The expectations below are derived with str_replace() over the fixture, and
- * str_replace() is a silent no-op when its needle is absent: a recaptured
- * fixture the table was not updated for would leave the expectation as the
- * untouched template, and the failure would read as a broken pattern while
- * dumping the whole template. This turns that into one check that names the real
- * problem.
- *
- * @param array{fixtureExpressions: array<string, string>} $cell
- */
-function expressionStillInFixture(array $cell, string $fixtureLabel, string $template): ?string
-{
-    $spelt = $cell['fixtureExpressions'][$fixtureLabel] ?? null;
-
-    return is_string($spelt) && $spelt !== '' && str_contains($template, $spelt) ? $spelt : null;
-}
-
-/**
  * The date expression each modification owns.
  *
  * The modification replaces a whole {{ date(...) }} expression with a bare
@@ -256,15 +219,18 @@ function expressionStillInFixture(array $cell, string $fixtureLabel, string $tem
  *
  * - replacement:        the getter expression the modification is expected to
  *                       write, spelled out here rather than read back off the
- *                       record under test. fixtureExpressions and spellings pin
- *                       the span the find takes; this pins what lands in it, so
- *                       an expectation cannot agree with a replacement that
- *                       broke the row it was written into.
+ *                       record under test. canonicalCall and spellings pin the
+ *                       span the find takes; this pins what lands in it, so an
+ *                       expectation cannot agree with a replacement that broke
+ *                       the row it was written into.
  * - survivingCallRe:    a PCRE pattern, delimiters included, that finds a
  *                       viewer-timezone date() call the modification failed to
  *                       remove.
- * - fixtureExpressions: the exact expression each fixture spells, keyed by the
- *                       fixture labels in $fixtures below.
+ * - canonicalCall:      the spelling the composed-pass template below is built
+ *                       from — one date cell per modification, so the pass has
+ *                       something to accumulate over. Written out here rather
+ *                       than taken from a spellings label, so renaming a label
+ *                       cannot quietly change what the pass runs against.
  * - spellings:          date() call spellings the pattern has to cope with, each
  *                       as [expression, the markup it sits in]. That markup is a
  *                       sprintf format carrying exactly one %s, which is where
@@ -290,7 +256,7 @@ function expressionStillInFixture(array $cell, string $fixtureLabel, string $tem
  * @var array<string, array{
  *     replacement: string,
  *     survivingCallRe: string,
- *     fixtureExpressions: array<string, string>,
+ *     canonicalCall: string,
  *     spellings: array<string, array{0: string, 1: string}>,
  *     nonMatches: array<string, string>
  * }> $dateCells
@@ -299,13 +265,10 @@ $dateCells = [
     'cav7RosterPatchRecordDateUtc' => [
         'replacement'     => '{$record.getRecordDate()}',
         'survivingCallRe' => '/date\s*\(\s*\$record\.record_date/',
-        'fixtureExpressions' => [
-            'the captured vendor rows' => "{{ date(\$record.record_date, 'Y-m-d') }}",
-            'the style-edited copy'    => "{{ date(\$record.record_date, 'Y-m-d', 'Z' )}}",
-        ],
+        'canonicalCall'   => "{{ date(\$record.record_date, 'Y-m-d') }}",
         'spellings' => [
             'the vendor spelling'                 => ["{{ date(\$record.record_date, 'Y-m-d') }}", '<xf:cell>%s</xf:cell>'],
-            "the style's trailing 'Z' argument"   => ["{{ date(\$record.record_date, 'Y-m-d', 'Z' )}}", '<xf:cell>%s</xf:cell>'],
+            "a trailing 'Z' argument"             => ["{{ date(\$record.record_date, 'Y-m-d', 'Z' )}}", '<xf:cell>%s</xf:cell>'],
             'no space inside the braces'          => ["{{date(\$record.record_date, 'Y-m-d')}}", '<xf:cell>%s</xf:cell>'],
             'a space before the argument list'    => ["{{ date (\$record.record_date, 'Y-m-d') }}", '<xf:cell>%s</xf:cell>'],
             'space around the argument list'      => ["{{ date( \$record.record_date , 'Y-m-d' ) }}", '<xf:cell>%s</xf:cell>'],
@@ -325,10 +288,7 @@ $dateCells = [
     'cav7RosterPatchAwardDateUtc' => [
         'replacement'     => '{$award.getAwardDate()}',
         'survivingCallRe' => '/date\s*\(\s*\$award\.award_date/',
-        'fixtureExpressions' => [
-            'the captured vendor rows' => "{{ date(\$award.award_date, 'Y-m-d') }}",
-            'the style-edited copy'    => "{{ date(\$award.award_date, 'Y-m-d') }}",
-        ],
+        'canonicalCall'   => "{{ date(\$award.award_date, 'Y-m-d') }}",
         'spellings' => [
             'the vendor spelling'                 => ["{{ date(\$award.award_date, 'Y-m-d') }}", '<xf:cell>%s</xf:cell>'],
             "a trailing 'Z' argument"             => ["{{ date(\$award.award_date, 'Y-m-d', 'Z' )}}", '<xf:cell>%s</xf:cell>'],
@@ -353,7 +313,7 @@ $dateCells = [
 $mods = loadModifications($root);
 
 // Nothing below can mean anything if a modification failed to load, so say so
-// once here rather than once per fixture.
+// once here rather than once per spelling.
 //
 // The replacement is pinned here too, once, against the table's own literal.
 // Every expectation below is built by putting that literal into the markup, so
@@ -370,10 +330,10 @@ foreach ($dateCells as $key => $cell) {
     );
     // The wrapper-free shape the docblock describes, asserted rather than
     // described. Every expectation below is built by putting this literal into
-    // markup the fixture or the table already carries, so a replacement that
-    // brought its own <xf:cell> would be wrapped twice on a board while every
-    // expectation agreed with it — the check above included, since it compares
-    // the shipped <replace> against this same literal.
+    // markup the table already carries, so a replacement that brought its own
+    // <xf:cell> would be wrapped twice on a board while every expectation agreed
+    // with it — the check above included, since it compares the shipped
+    // <replace> against this same literal.
     check(
         "$key's replacement carries no markup of its own",
         !str_contains($cell['replacement'], '<'),
@@ -382,29 +342,6 @@ foreach ($dateCells as $key => $cell) {
     );
 }
 
-// --- both dates render in UTC in the captured vendor rows and the style copy -
-$fixtures = [
-    'the captured vendor rows' => 'nf_rosters_user_view.vendor-2.1.5.html',
-    'the style-edited copy'    => 'nf_rosters_user_view.style-edited-2.1.5.html',
-];
-
-// "the table has no entry for this fixture" and "the entry has drifted from the
-// fixture" are different mistakes with different fixes, and the containment
-// check inside the loop can only say the second. Say the first once, here.
-foreach ($dateCells as $key => $cell) {
-    $missing = array_diff(array_keys($fixtures), array_keys($cell['fixtureExpressions']));
-    $unknown = array_diff(array_keys($cell['fixtureExpressions']), array_keys($fixtures));
-    check(
-        "\$dateCells['$key'] carries an expected expression for every fixture and no others",
-        $missing === [] && $unknown === [],
-        'no entry for: ' . (implode(', ', $missing) ?: 'none')
-            . '; entry for no such fixture: ' . (implode(', ', $unknown) ?: 'none')
-    );
-}
-
-// The same completeness question for the other two tables, which have no
-// $fixtures to be checked against and so are checked against themselves.
-//
 // Every assertion further down is written "for each entry, assert X". That says
 // nothing at all about a table with no entries — set 'spellings' or 'nonMatches'
 // to [] and the loops below run zero times and report zero failures — and it
@@ -450,126 +387,6 @@ foreach ($dateCells as $key => $cell) {
     }
 }
 
-/** @var array<string, string> $fixtureText */
-$fixtureText = [];
-
-foreach ($fixtures as $fixtureLabel => $file) {
-    $raw = @file_get_contents("$root/tests/fixtures/$file");
-    check("$fixtureLabel fixture could be read", is_string($raw) && $raw !== '');
-    if (!is_string($raw) || $raw === '') {
-        // Every assertion below would fail against an empty template, burying
-        // the one failure that actually says what went wrong.
-        continue;
-    }
-
-    $template = fixtureBody($raw);
-    check(
-        "$fixtureLabel fixture opens with the provenance header the strip expects",
-        $template !== null,
-        'without it, the header text runs through the patterns as if it were template markup'
-    );
-    if ($template === null) {
-        continue;
-    }
-    $fixtureText[$fixtureLabel] = $template;
-
-    foreach ($dateCells as $key => $cell) {
-        $mod = $mods[$key] ?? null;
-        if ($mod === null) {
-            continue;
-        }
-
-        // The expectations below are derived by swapping this expression out of
-        // the fixture, so the table has to still spell the expression the
-        // fixture spells. The README asks for a recapture on every NF/Rosters
-        // upgrade, which is exactly when the two drift apart; without this, that
-        // drift surfaces as a pattern failure dumping the whole template.
-        $spelt = expressionStillInFixture($cell, $fixtureLabel, $template);
-        check(
-            "\$dateCells['$key'] spells the expression $fixtureLabel actually carries",
-            $spelt !== null,
-            'the table says ' . var_export($cell['fixtureExpressions'][$fixtureLabel] ?? null, true)
-                . ', which is not in the fixture — recapture the fixture and the table together'
-        );
-        if ($spelt === null) {
-            continue;
-        }
-
-        // survivingCallRe is only ever asserted negatively — no such call is
-        // left. A pattern that matches nothing at all satisfies every one of
-        // those, so pin it positively here: before the modification runs, the
-        // fixture holds exactly the call it is supposed to find.
-        check(
-            "\$dateCells['$key'] finds a viewer-timezone call in $fixtureLabel before the modification runs",
-            preg_match_all($cell['survivingCallRe'], $template) === 1,
-            'a pattern that cannot match the unmodified fixture turns every "no call survived" check into a tautology'
-        );
-
-        [$result, $count] = applyModification($mod, $template);
-
-        check(
-            "$key matches $fixtureLabel exactly once",
-            $count === 1,
-            'match count: ' . var_export($count, true)
-                . ' — 0 means the date keeps rendering in the viewer timezone and XenForo says nothing'
-        );
-
-        // The whole fixture, with that one expression swapped for the getter and
-        // nothing else touched. Both halves come from the table by hand rather
-        // than from the record: the span from fixtureExpressions, the text that
-        // lands in it from replacement. A find that matches the wrong span, or a
-        // replacement that writes the wrong thing, fails here instead of
-        // agreeing with itself.
-        $expected = str_replace($spelt, $cell['replacement'], $template);
-        check(
-            "$key rewrites the date expression in $fixtureLabel to exactly " . $cell['replacement'],
-            $result === $expected,
-            'got: ' . var_export($result, true)
-        );
-        check(
-            "$key leaves no viewer-timezone date() call in $fixtureLabel",
-            preg_match($cell['survivingCallRe'], $result) === 0,
-            'a surviving date() call keeps the per-viewer shift'
-        );
-
-        // XenForo applies the ordered set to the stored, unmodified template
-        // source on every compile (XF\Entity\Template::validateTemplateText()
-        // hands it the unmodified text), so nothing accumulates across rebuilds,
-        // and applyTemplateModifications() visits each record exactly once, so
-        // this one never sees its own output either. What this pins is narrower:
-        // the replacement contains nothing this pattern can match again, which
-        // is what keeps a later widening of the pattern from rewriting the
-        // getter expression a second time.
-        [$again, $againCount] = applyModification($mod, $result);
-        check(
-            "$key is idempotent over $fixtureLabel",
-            $againCount === 0 && $again === $result,
-            're-applying matched ' . var_export($againCount, true) . ' time(s)'
-        );
-    }
-}
-
-// --- the style fixture still carries the style's own markup ------------------
-// Its whole job is holding the live board's variant. Overwritten with a byte
-// copy of the vendor fixture the precondition check above does redden — the
-// table still spells the 'Z' cell, which the copy no longer carries — but all it
-// can say is that a cell went missing. These two name the cause.
-if (isset($fixtureText['the captured vendor rows'], $fixtureText['the style-edited copy'])) {
-    check(
-        'the style fixture is not a copy of the vendor fixture',
-        $fixtureText['the style-edited copy'] !== $fixtureText['the captured vendor rows'],
-        'recapture it from the style, or it pins nothing the vendor fixture does not'
-    );
-    check(
-        "the style fixture still carries the style's third date() argument",
-        str_contains(
-            $fixtureText['the style-edited copy'],
-            "date(\$record.record_date, 'Y-m-d', 'Z' )"
-        ),
-        "the 'Z' argument is the edit this fixture exists to cover"
-    );
-}
-
 // --- the whole shipped set over one template, the way XenForo runs the pass --
 // XenForo applies every enabled modification for one (type, template) to a
 // single accumulating template, in (execution_order, modification_key) order, so
@@ -578,6 +395,11 @@ if (isset($fixtureText['the captured vendor rows'], $fixtureText['the style-edit
 // the declared home for later NF/Rosters patches — is in the pass whether this
 // table knows about it or not, and if it puts a viewer-timezone date() call back
 // the final markup says so. $dateCells stays the expectation table.
+//
+// The template is built here, one canonical date cell per modification, rather
+// than captured from a board. Two rows is all the pass needs to accumulate over,
+// and the spellings loop further down is where the shapes a real style might
+// carry are covered.
 $pass = modificationsForTemplate($mods, 'public', 'nf_rosters_user_view');
 $passCarriesBoth = array_diff(array_keys($dateCells), array_keys($pass)) === [];
 
@@ -587,32 +409,33 @@ check(
     'the pass runs: ' . (implode(', ', array_keys($pass)) ?: 'nothing')
 );
 
-foreach ($passCarriesBoth ? $fixtureText : [] as $fixtureLabel => $template) {
-    $expected = $template;
-    $drifted = false;
+if ($passCarriesBoth) {
+    $passTemplate = '';
+    $passExpected = '';
+
     foreach ($dateCells as $key => $cell) {
-        $spelt = expressionStillInFixture($cell, $fixtureLabel, $template);
-        if ($spelt === null) {
-            // Already reported per fixture above, and an expectation derived
-            // from a table that no longer matches would only fail for the wrong
-            // reason. Only the comparison against it is dropped: an NF/Rosters
-            // upgrade drifts both fixtures at once, which is precisely when the
-            // checks below — none of which read $expected — are worth running.
-            $drifted = true;
-            break;
-        }
-        $expected = str_replace($spelt, $cell['replacement'], $expected);
-    }
-
-    [$composed, $counts] = applyPass($pass, $template);
-
-    if (!$drifted) {
+        // survivingCallRe is only ever asserted negatively — no such call is
+        // left. A pattern that matches nothing at all satisfies every one of
+        // those, so pin it positively here: the call the pass template is built
+        // from is one this pattern can actually find.
         check(
-            "one composed pass over $fixtureLabel rewrites both date expressions and nothing else",
-            $composed === $expected,
-            'got: ' . var_export($composed, true)
+            "\$dateCells['$key'] finds its own canonical call before the modification runs",
+            preg_match_all($cell['survivingCallRe'], $cell['canonicalCall']) === 1,
+            'a pattern that cannot match the unmodified call turns every "no call survived" check into a tautology'
         );
+
+        $row = "<xf:datarow>\n    <xf:cell>" . $cell['canonicalCall'] . "</xf:cell>\n</xf:datarow>\n";
+        $passTemplate .= $row;
+        $passExpected .= str_replace($cell['canonicalCall'], $cell['replacement'], $row);
     }
+
+    [$composed, $counts] = applyPass($pass, $passTemplate);
+
+    check(
+        'one composed pass rewrites both date expressions and nothing else',
+        $composed === $passExpected,
+        'got: ' . var_export($composed, true)
+    );
 
     // $dateCells is written record-first while the pass runs award-first — the
     // two share an execution_order, so modification_key breaks the tie — and ===
@@ -624,14 +447,13 @@ foreach ($passCarriesBoth ? $fixtureText : [] as $fixtureLabel => $template) {
     ksort($dateCounts);
     ksort($wantCounts);
     check(
-        "each date modification still matches exactly once in the composed pass over $fixtureLabel",
+        'each date modification still matches exactly once in the composed pass',
         $dateCounts === $wantCounts,
         'counts: ' . var_export($counts, true)
     );
 
-    // Scoped to the two milpac columns, not to the string 'date(' anywhere: the
-    // fixtures are trimmed captures, and a recapture that keeps a neighbouring
-    // cell with an unrelated date() call in it is not a regression.
+    // Scoped to the two milpac columns, not to the string 'date(' anywhere: a
+    // later row carrying an unrelated date() call is not a regression.
     $surviving = [];
     foreach ($dateCells as $key => $cell) {
         if (preg_match($cell['survivingCallRe'], $composed) !== 0) {
@@ -639,7 +461,7 @@ foreach ($passCarriesBoth ? $fixtureText : [] as $fixtureLabel => $template) {
         }
     }
     check(
-        "the composed pass over $fixtureLabel leaves no viewer-timezone date() call on either milpac column",
+        'the composed pass leaves no viewer-timezone date() call on either milpac column',
         $surviving === [],
         'still matched by: ' . implode(', ', $surviving)
             . ' — a surviving date() call keeps the per-viewer shift'
@@ -658,12 +480,12 @@ foreach ($passCarriesBoth ? $fixtureText : [] as $fixtureLabel => $template) {
 // Add a legitimate callback modification later and this reddens while the board
 // is fine: the mirror is what needs teaching then, not the modification.
 //
-// Every (type, template) the XML targets, not just the pair the fixtures cover.
-// This add-on is the declared home for later NF/Rosters patches, and a patch on
-// another template has no fixture here, so an enabled preg_replace whose find
-// will not compile would otherwise be exercised by nothing. The subject is an
-// empty template on purpose: a find that cannot compile fails against any
-// subject, and match counts are the fixtures' business, not this sweep's.
+// Every (type, template) the XML targets, not just nf_rosters_user_view. This
+// add-on is the declared home for later NF/Rosters patches, and a patch on
+// another template is covered by nothing above, so an enabled preg_replace whose
+// find will not compile would otherwise be exercised by nothing at all. The
+// subject is an empty template on purpose: a find that cannot compile fails
+// against any subject, and match counts are the other blocks' business.
 $targets = [];
 foreach ($mods as $mod) {
     $targets[$mod['type'] . ':' . $mod['template']] = [$mod['type'], $mod['template']];
@@ -686,6 +508,17 @@ foreach ($targets as $label => [$type, $template]) {
 // should the markup around the expression: the modification replaces the
 // expression and owns none of the wrapper, so the wrappers below vary — a bare
 // cell, an attributed one, and none at all.
+//
+// This block carries the regression the patterns were written for. A find that
+// quotes one exact spelling takes the vendor entry and misses every other one
+// here — which is what a style carrying its own edited copy of the template does
+// to it on a live board, silently, since XenForo records a zero-match
+// modification without erroring.
+//
+// 'the vendor spelling' is the one NF/Rosters ships, as of 2.1.5; the rest are
+// shapes a style could put in its own copy. That label is the only thing left
+// recording which of these the vendor writes, the captured template having gone
+// — so keep it, and re-check it when NF/Rosters is upgraded.
 //
 // The pattern swallows the format argument rather than preserving it, and the
 // getter always renders 'Y-m-d'. That is deliberate — one fixed calendar day in
@@ -721,6 +554,7 @@ foreach ($dateCells as $key => $cell) {
             "$key matches $label exactly once",
             $count === 1,
             'match count: ' . var_export($count, true)
+                . ' — 0 means the date keeps rendering in the viewer timezone and XenForo says nothing'
         );
         check(
             "$key rewrites $label to exactly " . $cell['replacement'] . ', wrapper untouched',
@@ -733,6 +567,14 @@ foreach ($dateCells as $key => $cell) {
             'a surviving date() call keeps the per-viewer shift'
         );
 
+        // XenForo applies the ordered set to the stored, unmodified template
+        // source on every compile (XF\Entity\Template::validateTemplateText()
+        // hands it the unmodified text), so nothing accumulates across rebuilds,
+        // and applyTemplateModifications() visits each record exactly once, so
+        // this one never sees its own output either. What this pins is narrower:
+        // the replacement contains nothing this pattern can match again, which
+        // is what keeps a later widening of the pattern from rewriting the
+        // getter expression a second time.
         [$again, $againCount] = applyModification($mod, $result);
         check(
             "$key is idempotent over $label",
