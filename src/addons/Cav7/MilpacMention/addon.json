@@ -1,7 +1,7 @@
 {
     "legacy_addon_id": "",
     "title": "7Cav - Milpac Mention",
-    "description": "Raises a distinct, member-toggleable milpac_mention alert when a member's roster-profile link is posted in a thread, so a milpac link carries the same notification reach as an @-mention.",
+    "description": "Raises a distinct milpac_mention alert for a member's roster-profile link across posts, profile posts, profile-post comments, report comments and ticket messages, as an @-mention would.",
     "version_id": 1010070,
     "version_string": "1.1.0",
     "dev": "Cav7",
