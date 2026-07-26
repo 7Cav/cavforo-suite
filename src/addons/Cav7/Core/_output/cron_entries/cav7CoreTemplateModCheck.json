@@ -1,0 +1,17 @@
+{
+    "cron_class": "Cav7\\Core\\Cron\\CheckTemplateModifications",
+    "cron_method": "run",
+    "run_rules": {
+        "day_type": "dom",
+        "dom": [
+            -1
+        ],
+        "hours": [
+            6
+        ],
+        "minutes": [
+            20
+        ]
+    },
+    "active": true
+}
