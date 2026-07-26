@@ -1312,7 +1312,7 @@ try {
     // the modification did, and it left every count and every id alone. _output
     // is the tree a dev-mode install imports, so this is the copy a developer
     // actually runs while the shipped _data stays correct.
-    $modificationFixture = static fn (array $overrides = [], string $dataType = 'public'): array => [
+    $modificationFixture = static fn (string $dataType = 'public'): array => [
         [
             'type' => $dataType,
             'template' => 'account_wrapper',
@@ -1370,7 +1370,7 @@ try {
         'modification-type-flip',
         'template_modifications',
         'modification',
-        $modificationFixture([], 'admin'),
+        $modificationFixture('admin'),
         ['public/cav7_fixture_mod.json' => $modificationOutput()]
     );
     [$code, $out] = runTool($tool, $modTypeFlip);
@@ -1642,6 +1642,39 @@ try {
     [$code, $out] = runTool($tool, $metadataDeleted);
     check('a missing _metadata.json fails', $code !== 0, "exit=$code\n$out");
 
+    // A finding about a type must not drag a false one behind it. The metadata
+    // check used to bail out before the type claimed its _data file, which left
+    // the _data-side pass announcing that nothing had exported a type whose
+    // directory was sitting right there.
+    check(
+        'a metadata failure does not also claim the type was never exported',
+        !str_contains($out, 'no _output type dir claims')
+            && !str_contains($out, '_output/phrases/ is missing'),
+        $out
+    );
+
+    // And the content comparison still runs, so a tree with both problems
+    // reports both rather than hiding the drift behind the stale index.
+    $metadataAndDrift = makeTypeFixture(
+        $base,
+        'metadata-and-content-drift',
+        'phrases',
+        'phrase',
+        [['title' => 'cav7_meta', '#body' => "Text\n"]],
+        ['cav7_meta.txt' => "Drifted\n"]
+    );
+    file_put_contents(
+        "$metadataAndDrift/_output/phrases/_metadata.json",
+        json_encode(['cav7_meta.txt' => ['hash' => str_repeat('0', 32)]], JSON_PRETTY_PRINT)
+    );
+    [$code, $out] = runTool($tool, $metadataAndDrift);
+    check('a stale index and a content drift are both reported', $code !== 0, "exit=$code\n$out");
+    check(
+        'the content drift is not hidden behind the stale index',
+        str_contains($out, 'content mismatch'),
+        $out
+    );
+
     // A file holding a carriage return still verifies, because the exporter
     // hashes the contents with \r stripped. Plain md5 of the bytes would fail
     // this, and would fail it only on the files where it matters.
@@ -1676,9 +1709,23 @@ try {
     check('the report accounts for the content-checked type', str_contains($out, 'template_modifications'), $out);
     check('the report accounts for the counted type too', str_contains($out, 'routes'), $out);
     // The point of the criterion: a reader can tell which fields were actually
-    // compared, rather than trusting that "checked" covered the payload.
-    foreach (['template', 'description', 'execution_order', 'enabled', 'action', 'find', 'replace'] as $field) {
-        check("the report names $field as compared", str_contains($out, $field), $out);
+    // compared, rather than trusting that "checked" covered the payload. Read off
+    // that type's own line rather than the whole report — scanning everything
+    // let 'template' match inside the type name 'template_modifications', so the
+    // assertion passed with the field list deleted entirely.
+    $modificationLine = '';
+    foreach (explode("\n", $out) as $line) {
+        if (str_starts_with(trim($line), 'template_modifications:')) {
+            $modificationLine = $line;
+        }
+    }
+    check('the report carries a line for the content-checked type', $modificationLine !== '', $out);
+    foreach (['description', 'execution_order', 'enabled', 'action', 'find', 'replace'] as $field) {
+        check(
+            "the type's own report line names $field as compared",
+            str_contains($modificationLine, $field),
+            $modificationLine
+        );
     }
 } finally {
     rmrf($base);

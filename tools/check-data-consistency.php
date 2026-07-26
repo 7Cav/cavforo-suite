@@ -133,7 +133,7 @@ $bodyTypes = ['phrases' => true];
 // line these types print.
 $fieldTypes = [
     'template_modifications' => [
-        'ext' => '.json',
+        'ext' => 'json',
         'dirAttr' => 'type',
         'keyAttr' => 'modification_key',
         'attrs' => [
@@ -151,7 +151,7 @@ $fieldTypes = [
     // record as a flat JSON object, so six of its nine keys are child elements
     // on the _data side and one is a repeated element.
     'options' => [
-        'ext' => '.json',
+        'ext' => 'json',
         'keyAttr' => 'option_id',
         'attrs' => [
             'edit_format' => 'string',
@@ -238,6 +238,18 @@ $collectItems = static function (string $root): array {
     return $items;
 };
 
+// An item's path under its type directory, in the spelling _metadata.json and
+// the _data-derived paths both use: forward slashes, no leading separator. Three
+// places need it — the metadata index, the templates walk and the field-checked
+// walk — and they have to agree on it exactly, so it is derived once.
+$relativePath = static function (string $typeDir, SplFileInfo $file): string {
+    return str_replace(
+        DIRECTORY_SEPARATOR,
+        '/',
+        substr($file->getPathname(), strlen($typeDir) + 1)
+    );
+};
+
 $errors = [];
 $report = [];
 
@@ -268,7 +280,7 @@ $typeDirs = $hasOutputTree ? glob("$outRoot/*", GLOB_ONLYDIR) : [];
 // The hash is md5 of the contents with carriage returns stripped —
 // XF\DevelopmentOutput::hashContents(). md5_file() matches it only until a file
 // holds a \r, at which point it disagrees on exactly the files that have one.
-$checkMetadata = static function (string $typeDir, array $items) use ($normaliseText): array {
+$checkMetadata = static function (string $typeDir, array $items) use ($normaliseText, $relativePath): array {
     $indexFile = "$typeDir/_metadata.json";
     if (!is_file($indexFile)) {
         return ['_metadata.json is missing'];
@@ -279,13 +291,8 @@ $checkMetadata = static function (string $typeDir, array $items) use ($normalise
     }
 
     $problems = [];
-    $prefixLength = strlen($typeDir) + 1;
     foreach ($items as $file) {
-        $relative = str_replace(
-            DIRECTORY_SEPARATOR,
-            '/',
-            substr($file->getPathname(), $prefixLength)
-        );
+        $relative = $relativePath($typeDir, $file);
         if (!isset($index[$relative])) {
             $problems[] = "$relative is not indexed in _metadata.json";
             continue;
@@ -315,14 +322,21 @@ foreach ($typeDirs as $typeDir) {
     $items = $collectItems($typeDir);
     $countOutput = count($items);
 
+    // Claimed before anything about this type can fail. Bailing out earlier left
+    // the _data-side pass below reporting that no _output directory claimed the
+    // file, which is a plain untruth when the directory is sitting right there —
+    // one real finding dragging a false one behind it.
+    $dataBase = $dataFileFor[$type] ?? $type;
+    $dataFilesSeen[$dataBase] = true;
+
+    // Recorded, not returned on. A stale index and a genuine content drift are
+    // separate findings about separate things, and stopping at the first would
+    // hide the second until someone re-exported and ran the tool again.
     $metadataProblems = $checkMetadata($typeDir, $items);
     if ($metadataProblems) {
         $errors[] = "$type: export index mismatch (" . implode('; ', $metadataProblems) . ')';
-        continue;
     }
 
-    $dataBase = $dataFileFor[$type] ?? $type;
-    $dataFilesSeen[$dataBase] = true;
     $xmlFile = "$dataRoot/$dataBase.xml";
     if (!is_file($xmlFile)) {
         $errors[] = "_output/$type/ has $countOutput item(s) but _data/$dataBase.xml is missing";
@@ -491,7 +505,8 @@ foreach ($typeDirs as $typeDir) {
             continue;
         }
 
-        $report[] = "  $type: $countOutput item(s), content matches (content-checked)";
+        $report[] = "  $type: $countOutput item(s), content matches"
+            . ' (content-checked: from_class, to_class, execute_order, active)';
         continue;
     }
 
@@ -533,9 +548,8 @@ foreach ($typeDirs as $typeDir) {
             $dataByPath[$path] = $normaliseText((string) $record);
         }
 
-        $prefixLength = strlen($typeDir) + 1;
         foreach ($items as $file) {
-            $path = str_replace(DIRECTORY_SEPARATOR, '/', substr($file->getPathname(), $prefixLength));
+            $path = $relativePath($typeDir, $file);
             if (!array_key_exists($path, $dataByPath)) {
                 $mismatches[] = "$path: no _data <template> claims this path";
                 continue;
@@ -575,8 +589,8 @@ foreach ($typeDirs as $typeDir) {
         foreach ($records as $record) {
             $key = (string) $record[$spec['keyAttr']];
             $path = isset($spec['dirAttr'])
-                ? ((string) $record[$spec['dirAttr']]) . "/$key" . $spec['ext']
-                : $key . $spec['ext'];
+                ? ((string) $record[$spec['dirAttr']]) . "/$key." . $spec['ext']
+                : "$key." . $spec['ext'];
             if (isset($dataByPath[$path])) {
                 $mismatches[] = "_data has more than one record for $path";
                 continue;
@@ -584,9 +598,8 @@ foreach ($typeDirs as $typeDir) {
             $dataByPath[$path] = $record;
         }
 
-        $prefixLength = strlen($typeDir) + 1;
         foreach ($items as $file) {
-            $path = str_replace(DIRECTORY_SEPARATOR, '/', substr($file->getPathname(), $prefixLength));
+            $path = $relativePath($typeDir, $file);
             if (!isset($dataByPath[$path])) {
                 $mismatches[] = "$path: no _data record claims this path";
                 continue;
