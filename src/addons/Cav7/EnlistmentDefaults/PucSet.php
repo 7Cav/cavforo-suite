@@ -12,11 +12,11 @@ use function in_array;
  * Pure, XenForo-free data. The set is bundled in the addon rather than derived
  * at runtime (see docs/adr/0001-bundle-citation-set.md): the dates are listed
  * here and the citation images live beside this file under
- * _assets/puc-citations/<YYYY-MM-DD>.jpg, the date being both the filename and
+ * assets/puc-citations/<YYYY-MM-DD>.jpg, the date being both the filename and
  * the award_date stamped on the grant.
  *
  * The set grows only when the unit earns another PUC, which means adding its
- * date here and its citation image to _assets/, then cutting a release.
+ * date here and its citation image to assets/, then cutting a release.
  */
 class PucSet
 {
@@ -34,7 +34,7 @@ class PucSet
     ];
 
     /** Where the bundled citation JPGs live, relative to this file. */
-    private const ASSET_DIR = '_assets/puc-citations';
+    private const ASSET_DIR = 'assets/puc-citations';
 
     /**
      * The PUC dates, as 'Y-m-d' strings, in earned order.

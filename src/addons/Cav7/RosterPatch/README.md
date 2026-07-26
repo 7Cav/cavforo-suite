@@ -2,7 +2,7 @@
 
 Behavioural fixes for the [NF/Rosters](https://nixfifty.com/products/rosters-and-personnel-status-reports.5/) XenForo add-on, built as a companion add-on. It attaches to the vendor code through XenForo class extensions and ships none of the vendor's code, so NF/Rosters can be updated independently.
 
-Vendor markup is quoted verbatim only under `tests/`: `tests/fixtures/` holds a handful of lines of NF/Rosters' `nf_rosters_user_view` template, and the tests that run over it spell out the date cells they expect. Neither build path ships `tests/` — `tools/package-addon.sh` excludes it from the zip, and `build.json` deletes it from what `xf-addon:build-release` has staged — so none of that reaches a board installed from a release zip. Copying the add-on directory into an install by hand, the way the Installation steps below describe, does carry it: neither build path runs on that route. What does reach one is the shipped `_data/template_modifications.xml`, whose `<find>` blocks describe the same vendor expression as a regular expression rather than quoting it.
+Vendor markup is quoted verbatim only under `tests/`: `tests/fixtures/` holds a handful of lines of NF/Rosters' `nf_rosters_user_view` template, and the tests that run over it spell out the date cells they expect. The release build leaves `tests/` out, and `tools/tests/package-addon-test.php` asserts it for every add-on, so none of that reaches a board installed from a release zip. Two other routes do carry it, both by design: a local build (`tools/build.sh`), whose output is a testing artifact rather than something to install from, and copying the add-on directory into an install by hand the way the Installation steps below describe. What reaches a board is the shipped `_data/template_modifications.xml`, whose `<find>` blocks describe the same vendor expression as a regular expression rather than quoting it.
 
 This is the home for NF/Rosters *behaviour* patches. Its sibling, [RosterAudit](../RosterAudit/), records an audit trail and guards the two gaps that protect that trail; the fixes here change how the roster behaves and carry their own on/off switch, so a misbehaving fix can be disabled without losing audit history.
 
@@ -78,7 +78,6 @@ src/addons/Cav7/RosterPatch/
   Repository/PositionGroupSync.php       holder query + the re-apply logic
   Cli/Command/SyncPositionGroups.php     one-off backlog reconcile
   tests/                                 pure-logic tests, shape guards, and the template fixtures they run against, no stack required
-  build.json                             drops tests/ from the xf-addon:build-release zip
   _data/, _output/                       class-extension + template-modification registration
 ```
 

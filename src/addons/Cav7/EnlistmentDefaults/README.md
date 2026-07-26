@@ -32,7 +32,7 @@ the addon does two more things inside the same save:
   Citation date (award 61), with `award_date` set to that date and the bundled
   citation JPG attached. The set is six dates today: 2003-03-18, 2004-09-01,
   2009-08-10, 2010-09-18, 2011-06-02, 2021-05-16. The dates and their citation
-  images ship in the addon under `_assets/puc-citations/`.
+  images ship in the addon under `assets/puc-citations/`.
 - **Writes the enlistment record.** One Transfer-typed `ServiceRecord` with the
   body `Enlisted in the 7th Cavalry Regiment, Assigned Boot Camp`, dated to the
   milpac's Join Date. A recruiter who backdates the Join Date for a returning
@@ -158,7 +158,7 @@ CI cannot see any of them, and each one fails silently in production if it break
    image. This is the class extension on the milpac entity's post-save still
    firing on insert, and the two vendor row factories (`getNewAward()`,
    `getNewServiceRecord()`) still being there.
-2. A PUC date whose citation JPG is missing from `_assets/puc-citations/` leaves
+2. A PUC date whose citation JPG is missing from `assets/puc-citations/` leaves
    **no** award row for that date, while the other dates and the enlistment
    record still apply and the milpac still saves. This is the one the rollback
    exists for: the vendor's image service rejects a missing or unreadable source
@@ -189,7 +189,7 @@ CI cannot see any of them, and each one fails silently in production if it break
    the add form.
 
 Item 2 is worth driving deliberately rather than waiting for it: move one JPG out
-of `_assets/puc-citations/`, create a milpac, confirm no row for that date, then
+of `assets/puc-citations/`, create a milpac, confirm no row for that date, then
 put the file back.
 
 ## Out of scope
@@ -214,7 +214,7 @@ src/addons/Cav7/EnlistmentDefaults/
   RosterUserGateway.php         production seam: vendor factories + image service
   NF/Rosters/Entity/RosterUser.php       the insert-only post-save hook
   NF/Rosters/Pub/Controller/Roster.php   the add-form prefill (GET render only)
-  _assets/puc-citations/        the bundled citation JPGs, one per PUC date
+  assets/puc-citations/         the bundled citation JPGs, one per PUC date
   _data/*.xml                   options, option group, class extensions, phrases, template mods
   tests/*.php                   standalone PHP tests (no XenForo)
 ```
