@@ -12,6 +12,10 @@ Issues live in this repo's GitHub Issues, and external PRs are a triage surface 
 
 The five triage roles map to `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
 
+### Rejected requests
+
+Enhancements closed as `wontfix` leave a record in `.out-of-scope/`, one file per concept. Read it before triaging a request, so a prior rejection is surfaced rather than re-litigated.
+
 ### Domain docs
 
 Multi-context: a suite-wide context plus one per addon. See `docs/agents/domain.md` and `CONTEXT-MAP.md`.
