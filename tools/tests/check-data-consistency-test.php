@@ -131,6 +131,7 @@ function makeFixture(string $base, string $name, array $dataExts, array $outputI
             json_encode($item, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n"
         );
     }
+    writeMetadata("$dir/_output/class_extensions");
     return $dir;
 }
 
@@ -168,6 +169,7 @@ function makeTypeFixture(
         }
         file_put_contents($target, $contents);
     }
+    writeMetadata("$dir/_output/$type");
     return $dir;
 }
 
@@ -179,6 +181,13 @@ function makeTypeFixture(
  *
  * $records: list of attribute maps, one per record element. An empty list writes
  *           the self-closed empty file XenForo exports for a type with no rows.
+ *           A record may carry the reserved key '#body', whose value becomes the
+ *           element's CDATA text rather than an attribute — the shape the types
+ *           whose payload is the element body (phrases, templates) export.
+ *           It may instead carry '#children', a list of ['tag' => ..., 'body' =>
+ *           ..., 'attrs' => [...]] maps written as child elements — the shape
+ *           the types whose payload does not fit an attribute export, such as a
+ *           modification's <find>/<replace> or an option's <relation>.
  */
 function writeDataFile(string $addonDir, string $dataBase, string $recordTag, array $records): void
 {
@@ -193,14 +202,68 @@ function writeDataFile(string $addonDir, string $dataBase, string $recordTag, ar
     }
     $xml .= "<$dataBase>\n";
     foreach ($records as $attrs) {
+        $body = $attrs['#body'] ?? null;
+        $children = $attrs['#children'] ?? null;
+        unset($attrs['#body'], $attrs['#children']);
         $xml .= "  <$recordTag";
         foreach ($attrs as $attr => $value) {
             $xml .= sprintf(' %s="%s"', $attr, htmlspecialchars((string) $value, ENT_QUOTES));
         }
-        $xml .= "/>\n";
+        if ($body === null && $children === null) {
+            $xml .= "/>\n";
+            continue;
+        }
+        $xml .= '>';
+        if ($body !== null) {
+            $xml .= '<![CDATA[' . $body . ']]>';
+        }
+        foreach ($children ?? [] as $child) {
+            $xml .= "\n    <" . $child['tag'];
+            foreach ($child['attrs'] ?? [] as $attr => $value) {
+                $xml .= sprintf(' %s="%s"', $attr, htmlspecialchars((string) $value, ENT_QUOTES));
+            }
+            if (!array_key_exists('body', $child)) {
+                $xml .= '/>';
+                continue;
+            }
+            $xml .= '><![CDATA[' . $child['body'] . ']]></' . $child['tag'] . '>';
+        }
+        $xml .= "</$recordTag>\n";
     }
     $xml .= "</$dataBase>\n";
     file_put_contents("$addonDir/_data/$dataBase.xml", $xml);
+}
+
+/**
+ * Write the _metadata.json XenForo keeps beside every exported type, indexing
+ * each item file by its path under the type dir against a hash of its contents.
+ * Fixtures call this so they hold the shape a real export leaves behind; the
+ * cases that exercise the metadata check corrupt the result afterwards.
+ *
+ * The hash is md5 of the contents with carriage returns stripped, which is
+ * XF\DevelopmentOutput::hashContents(). Plain md5_file() agrees with it only
+ * while no file holds a \r, so it is not a substitute.
+ */
+function writeMetadata(string $typeDir): void
+{
+    $entries = [];
+    $walk = new \RecursiveIteratorIterator(
+        new \RecursiveDirectoryIterator($typeDir, \FilesystemIterator::SKIP_DOTS)
+    );
+    foreach ($walk as $file) {
+        if (!$file->isFile() || $file->getFilename() === '_metadata.json') {
+            continue;
+        }
+        $relative = str_replace(
+            DIRECTORY_SEPARATOR,
+            '/',
+            substr($file->getPathname(), strlen($typeDir) + 1)
+        );
+        $contents = (string) file_get_contents($file->getPathname());
+        $entries[$relative] = ['hash' => md5(str_replace("\r", '', $contents))];
+    }
+    ksort($entries);
+    file_put_contents("$typeDir/_metadata.json", json_encode($entries, JSON_PRETTY_PRINT));
 }
 
 /** Run the real tool against a fixture; return [exitCode, combinedOutput]. */
@@ -453,17 +516,20 @@ try {
     check('a unique-from_class _data record with no _output item fails', $code !== 0, "exit=$code\n$out");
     check('that unclaimed unique row is named too', str_contains($out, $toB), $out);
 
-    // --- 10. count-checked type, counts agree ---------------------------------
+    // --- 10. nested type, both sides agree ------------------------------------
     // templates is the nesting case: _output items sit under a style-type
-    // subfolder, and the tool counts them recursively.
+    // subfolder, and the tool walks them recursively. The count-only path this
+    // case used to stand for is covered by cron_entries in case 18, which is
+    // still counted; templates is content-checked now, so the fixture carries
+    // the bodies a real export would.
     $templatesOk = makeTypeFixture(
         $base,
         'templates-ok',
         'templates',
         'template',
         [
-            ['type' => 'public', 'title' => 'cav7_one'],
-            ['type' => 'public', 'title' => 'cav7_two'],
+            ['type' => 'public', 'title' => 'cav7_one', '#body' => "<div>one</div>\n"],
+            ['type' => 'public', 'title' => 'cav7_two', '#body' => "<div>two</div>\n"],
         ],
         [
             'public/cav7_one.html' => "<div>one</div>\n",
@@ -471,10 +537,10 @@ try {
         ]
     );
     [$code, $out] = runTool($tool, $templatesOk);
-    check('a count-checked type passes when the counts agree', $code === 0, "exit=$code\n$out");
+    check('a nested type passes when both sides agree', $code === 0, "exit=$code\n$out");
     check(
-        'the passing count-checked type is reported as count-checked',
-        str_contains($out, 'count-checked'),
+        'the passing nested type is accounted for by name',
+        str_contains($out, 'templates'),
         $out
     );
 
@@ -545,8 +611,8 @@ try {
         'phrases',
         'phrase',
         [
-            ['title' => 'cav7_p1'],
-            ['title' => 'cav7_p2'],
+            ['title' => 'cav7_p1', '#body' => "One\n"],
+            ['title' => 'cav7_p2', '#body' => "Two\n"],
         ],
         [
             'cav7_p1.txt' => "One\n",
@@ -555,7 +621,10 @@ try {
     );
     [$code, $out] = runTool($tool, $phrasesOk);
     check('an exact-id type passes when the ids agree', $code === 0, "exit=$code\n$out");
-    check('the passing exact-id type is reported as ids match', str_contains($out, 'ids match'), $out);
+    // Asserts the report accounts for the type by name, not how it words the
+    // verdict: the wording is prose a person maintains, and pinning it makes a
+    // reworded message look like a regression.
+    check('the passing exact-id type is accounted for by name', str_contains($out, 'phrases'), $out);
 
     // --- 14. the same pair twice in _data -------------------------------------
     // class_extensions buys its way out of the generic count guard by keying
@@ -921,6 +990,10 @@ try {
         "$malformed/_output/class_extensions/$truncatedFile",
         "{\n    \"from_class\": \"Test\\\\Vendor\\\\Entity\\\\Baz\",\n    \"to_cl"
     );
+    // Re-index after adding the item, so the half-written file is the only thing
+    // wrong with this tree. A truncated export writes its index too; leaving the
+    // item unindexed would make this a metadata case instead of a JSON one.
+    writeMetadata("$malformed/_output/class_extensions");
     [$code, $out] = runTool($tool, $malformed);
     check('an _output item that is not valid JSON fails', $code !== 0, "exit=$code\n$out");
     check(
@@ -1142,6 +1215,569 @@ try {
         str_contains($out, '_data/options.xml is not readable as XML'),
         $out
     );
+    // The id comparison itself had nothing pinning it. The duplicate-record case
+    // above is caught by the count guard, not by this, so removing the id
+    // comparison outright used to leave the suite green — on develop as well as
+    // here, so this closes a gap rather than one these changes opened.
+    // option_groups is the type where the ids are the whole check, which makes
+    // it the honest place to pin it: equal counts, disagreeing ids.
+    $groupIdDrift = makeTypeFixture(
+        $base,
+        'option-group-id-drift',
+        'option_groups',
+        'option_group',
+        [
+            ['group_id' => 'cav7FixtureGroupOne'],
+            ['group_id' => 'cav7FixtureGroupTwo'],
+        ],
+        [
+            'cav7FixtureGroupOne.json' => "{}\n",
+            'cav7FixtureGroupThree.json' => "{}\n",
+        ]
+    );
+    [$code, $out] = runTool($tool, $groupIdDrift);
+    check('ids that disagree at equal counts fail', $code !== 0, "exit=$code\n$out");
+    check(
+        'both sides of the id disagreement are named',
+        str_contains($out, 'cav7FixtureGroupThree') && str_contains($out, 'cav7FixtureGroupTwo'),
+        $out
+    );
+
+    // Phrase text is the payload, and it lived outside the check entirely: the
+    // ids were compared and the bytes behind them were not, so re-exporting one
+    // tree after an edit and forgetting the other left two trees describing
+    // different wording under one id, and the tool called it clean. _output
+    // holds the text as the whole .txt file; _data holds it as the element body.
+    $phraseDrift = makeTypeFixture(
+        $base,
+        'phrase-text-drift',
+        'phrases',
+        'phrase',
+        [['title' => 'fixture_greeting', '#body' => 'Hello there.']],
+        ['fixture_greeting.txt' => 'Something else entirely.']
+    );
+    [$code, $out] = runTool($tool, $phraseDrift);
+    check('a phrase whose _output text differs from _data fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the drifted phrase is named',
+        str_contains($out, 'fixture_greeting'),
+        $out
+    );
+
+    // The other direction, and the reason the comparison has to be byte-exact
+    // rather than trimmed: a phrase really can be exported with leading or
+    // trailing whitespace, and two trees that agree must still pass.
+    $phraseClean = makeTypeFixture(
+        $base,
+        'phrase-text-clean',
+        'phrases',
+        'phrase',
+        [['title' => 'fixture_spaced', '#body' => "  padded\ttext\n"]],
+        ['fixture_spaced.txt' => "  padded\ttext\n"]
+    );
+    [$code, $out] = runTool($tool, $phraseClean);
+    check('matching phrase text passes, whitespace and all', $code === 0, "exit=$code\n$out");
+    // A template body is the largest payload either tree carries, and it was
+    // count-checked only — the titles were never compared, let alone the markup.
+    // _output nests templates under their type, and the file name is the title
+    // with .html appended unless the title already carries an extension. That
+    // rule is XF\DevelopmentOutput\Template::convertTemplateNameToFile(); the
+    // check re-derives the path from _data rather than guessing at the tree.
+    $templateDrift = makeTypeFixture(
+        $base,
+        'template-body-drift',
+        'templates',
+        'template',
+        [['title' => 'cav7_fixture', 'type' => 'public', '#body' => "<div>original</div>\n"]],
+        ['public/cav7_fixture.html' => "<div>rewritten</div>\n"]
+    );
+    [$code, $out] = runTool($tool, $templateDrift);
+    check('a template whose _output body differs from _data fails', $code !== 0, "exit=$code\n$out");
+    check('the drifted template is named', str_contains($out, 'cav7_fixture'), $out);
+
+    // The type is not stored in the _output record at all — it is the directory
+    // the file sits in — so a _data type flip moves where the record should be
+    // without changing any count. Nothing could see it while templates were
+    // counted; deriving the path from _data is what makes it visible.
+    $templateTypeFlip = makeTypeFixture(
+        $base,
+        'template-type-flip',
+        'templates',
+        'template',
+        [['title' => 'cav7_fixture', 'type' => 'admin', '#body' => "<div>same</div>\n"]],
+        ['public/cav7_fixture.html' => "<div>same</div>\n"]
+    );
+    [$code, $out] = runTool($tool, $templateTypeFlip);
+    check('a _data template type flip fails though the count is unchanged', $code !== 0, "exit=$code\n$out");
+
+    // A title that already carries an extension keeps it, and one that does not
+    // gains .html. Both live in one add-on in this repo (cav7_milpac and
+    // cav7_milpac.less), so a rule that handled only one of them would fail a
+    // clean tree — and matching on the extension-stripped name would collide
+    // the two titles onto one file.
+    $templateExtensions = makeTypeFixture(
+        $base,
+        'template-extensions',
+        'templates',
+        'template',
+        [
+            ['title' => 'cav7_fixture', 'type' => 'public', '#body' => "<div>markup</div>\n"],
+            ['title' => 'cav7_fixture.less', 'type' => 'public', '#body' => ".a { color: red; }\n"],
+        ],
+        [
+            'public/cav7_fixture.html' => "<div>markup</div>\n",
+            'public/cav7_fixture.less' => ".a { color: red; }\n",
+        ]
+    );
+    [$code, $out] = runTool($tool, $templateExtensions);
+    check(
+        'a dotted title keeps its extension while a plain one gains .html',
+        $code === 0,
+        "exit=$code\n$out"
+    );
+    // The mutation this whole check exists for: an _output modification rewritten
+    // to a find string that matches nothing is the complete undoing of whatever
+    // the modification did, and it left every count and every id alone. _output
+    // is the tree a dev-mode install imports, so this is the copy a developer
+    // actually runs while the shipped _data stays correct.
+    $modificationFixture = static fn (string $dataType = 'public'): array => [
+        [
+            'type' => $dataType,
+            'template' => 'account_wrapper',
+            'modification_key' => 'cav7_fixture_mod',
+            'description' => 'Adds a link',
+            'execution_order' => '10',
+            'enabled' => '1',
+            'action' => 'str_replace',
+            '#children' => [
+                ['tag' => 'find', 'body' => '<h3>{{ phrase(\'settings\') }}</h3>'],
+                ['tag' => 'replace', 'body' => "<h3>replaced</h3>\n\$0"],
+            ],
+        ],
+    ];
+    $modificationOutput = static fn (array $overrides = []): string => json_encode($overrides + [
+        'template' => 'account_wrapper',
+        'description' => 'Adds a link',
+        'execution_order' => 10,
+        'enabled' => true,
+        'action' => 'str_replace',
+        'find' => '<h3>{{ phrase(\'settings\') }}</h3>',
+        'replace' => "<h3>replaced</h3>\n\$0",
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+    $modFindDrift = makeTypeFixture(
+        $base,
+        'modification-find-drift',
+        'template_modifications',
+        'modification',
+        $modificationFixture(),
+        ['public/cav7_fixture_mod.json' => $modificationOutput(['find' => '#NEVER_MATCHES#'])]
+    );
+    [$code, $out] = runTool($tool, $modFindDrift);
+    check('an _output modification with a drifted find string fails', $code !== 0, "exit=$code\n$out");
+    check('the drifted modification is named', str_contains($out, 'cav7_fixture_mod'), $out);
+
+    // An unchanged tree still has to pass, or the check above is worthless.
+    $modClean = makeTypeFixture(
+        $base,
+        'modification-clean',
+        'template_modifications',
+        'modification',
+        $modificationFixture(),
+        ['public/cav7_fixture_mod.json' => $modificationOutput()]
+    );
+    [$code, $out] = runTool($tool, $modClean);
+    check('an unchanged modification pair passes', $code === 0, "exit=$code\n$out");
+
+    // The type is the subdirectory, never a key in the record, so flipping it in
+    // _data disables the modification outright without moving a count. Same
+    // structural blind spot as the template type flip, on the type where the
+    // payload is a regex nobody can eyeball.
+    $modTypeFlip = makeTypeFixture(
+        $base,
+        'modification-type-flip',
+        'template_modifications',
+        'modification',
+        $modificationFixture('admin'),
+        ['public/cav7_fixture_mod.json' => $modificationOutput()]
+    );
+    [$code, $out] = runTool($tool, $modTypeFlip);
+    check('a _data modification type flip fails though the count is unchanged', $code !== 0, "exit=$code\n$out");
+
+    // XenForo omits a _data attribute when, and only when, its value is the
+    // empty string. An absent attribute is therefore a positive claim that the
+    // value is '' — not an unknown to be skipped — so a record with no
+    // description has to pass against an _output description of "", and fail
+    // against anything else. Skipping absent attributes instead would rebuild
+    // the weak check this replaces, quietly.
+    $modEmptyDescription = makeTypeFixture(
+        $base,
+        'modification-empty-description',
+        'template_modifications',
+        'modification',
+        [
+            [
+                'type' => 'public',
+                'template' => 'account_wrapper',
+                'modification_key' => 'cav7_fixture_mod',
+                'execution_order' => '10',
+                'enabled' => '1',
+                'action' => 'str_replace',
+                '#children' => [
+                    ['tag' => 'find', 'body' => 'find me'],
+                    ['tag' => 'replace', 'body' => 'replaced'],
+                ],
+            ],
+        ],
+        ['public/cav7_fixture_mod.json' => json_encode([
+            'template' => 'account_wrapper',
+            'description' => '',
+            'execution_order' => 10,
+            'enabled' => true,
+            'action' => 'str_replace',
+            'find' => 'find me',
+            'replace' => 'replaced',
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)]
+    );
+    [$code, $out] = runTool($tool, $modEmptyDescription);
+    check('an attribute absent from _data matches an empty _output value', $code === 0, "exit=$code\n$out");
+
+    // The same absence against a non-empty _output value is a real mismatch.
+    $modAbsentVsSet = makeTypeFixture(
+        $base,
+        'modification-absent-vs-set',
+        'template_modifications',
+        'modification',
+        [
+            [
+                'type' => 'public',
+                'template' => 'account_wrapper',
+                'modification_key' => 'cav7_fixture_mod',
+                'execution_order' => '10',
+                'enabled' => '1',
+                'action' => 'str_replace',
+                '#children' => [
+                    ['tag' => 'find', 'body' => 'find me'],
+                    ['tag' => 'replace', 'body' => 'replaced'],
+                ],
+            ],
+        ],
+        ['public/cav7_fixture_mod.json' => json_encode([
+            'template' => 'account_wrapper',
+            'description' => 'a description _data never carried',
+            'execution_order' => 10,
+            'enabled' => true,
+            'action' => 'str_replace',
+            'find' => 'find me',
+            'replace' => 'replaced',
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)]
+    );
+    [$code, $out] = runTool($tool, $modAbsentVsSet);
+    check('an attribute absent from _data fails a non-empty _output value', $code !== 0, "exit=$code\n$out");
+    // An option's default_value drifting in _output alone is the one gap in this
+    // family with a demonstrated live consequence: a wrong prefix id set in the
+    // copy a dev-mode install imports reads the whole queue as already handled,
+    // while the shipped _data stays correct. Ids matched, so nothing saw it.
+    $optionRecord = static fn (array $overrides = []): array => $overrides + [
+        'option_id' => 'cav7FixtureOption',
+        'edit_format' => 'textbox',
+        'data_type' => 'string',
+        'advanced' => '0',
+    ];
+    $optionOutput = static fn (array $overrides = []): string => json_encode($overrides + [
+        'edit_format' => 'textbox',
+        'edit_format_params' => '',
+        'data_type' => 'string',
+        'sub_options' => [],
+        'validation_class' => '',
+        'validation_method' => '',
+        'advanced' => false,
+        'default_value' => '53,54,55',
+        'relations' => ['cav7FixtureGroup' => 100],
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    $optionChildren = static fn (string $defaultValue = '53,54,55'): array => [
+        ['tag' => 'default_value', 'body' => $defaultValue],
+        ['tag' => 'relation', 'attrs' => ['group_id' => 'cav7FixtureGroup', 'display_order' => '100']],
+    ];
+
+    $optionDefaultDrift = makeTypeFixture(
+        $base,
+        'option-default-drift',
+        'options',
+        'option',
+        [$optionRecord(['#children' => $optionChildren()])],
+        ['cav7FixtureOption.json' => $optionOutput(['default_value' => '53,54,55,57'])]
+    );
+    [$code, $out] = runTool($tool, $optionDefaultDrift);
+    check('an option whose _output default_value drifts fails', $code !== 0, "exit=$code\n$out");
+    check('the drifted option is named', str_contains($out, 'cav7FixtureOption'), $out);
+
+    $optionClean = makeTypeFixture(
+        $base,
+        'option-clean',
+        'options',
+        'option',
+        [$optionRecord(['#children' => $optionChildren()])],
+        ['cav7FixtureOption.json' => $optionOutput()]
+    );
+    [$code, $out] = runTool($tool, $optionClean);
+    check('an unchanged option pair passes', $code === 0, "exit=$code\n$out");
+
+    // relations is the shape that differs most between the two sides: _output
+    // holds a JSON map of group to display order, _data one <relation> child per
+    // entry. A drifted display order moves where the option appears in its group
+    // and changes no id and no count.
+    $optionRelationDrift = makeTypeFixture(
+        $base,
+        'option-relation-drift',
+        'options',
+        'option',
+        [$optionRecord(['#children' => $optionChildren()])],
+        ['cav7FixtureOption.json' => $optionOutput(['relations' => ['cav7FixtureGroup' => 250]])]
+    );
+    [$code, $out] = runTool($tool, $optionRelationDrift);
+    check('an option whose _output relation display order drifts fails', $code !== 0, "exit=$code\n$out");
+
+    // A relation pointing at a different group entirely.
+    $optionRelationGroupDrift = makeTypeFixture(
+        $base,
+        'option-relation-group-drift',
+        'options',
+        'option',
+        [$optionRecord(['#children' => $optionChildren()])],
+        ['cav7FixtureOption.json' => $optionOutput(['relations' => ['someOtherGroup' => 100]])]
+    );
+    [$code, $out] = runTool($tool, $optionRelationGroupDrift);
+    check('an option whose _output relation names another group fails', $code !== 0, "exit=$code\n$out");
+
+    // sub_options is a JSON list on one side and a newline-joined element body
+    // on the other. The empty list is the omitted case and has to keep passing,
+    // which the two clean fixtures above already cover; this pins the drift.
+    $optionSubOptionsDrift = makeTypeFixture(
+        $base,
+        'option-sub-options-drift',
+        'options',
+        'option',
+        [
+            $optionRecord([
+                '#children' => array_merge(
+                    [['tag' => 'sub_options', 'body' => "alpha\nbeta"]],
+                    $optionChildren()
+                ),
+            ]),
+        ],
+        ['cav7FixtureOption.json' => $optionOutput(['sub_options' => ['alpha', 'gamma']])]
+    );
+    [$code, $out] = runTool($tool, $optionSubOptionsDrift);
+    check('an option whose _output sub_options drift fails', $code !== 0, "exit=$code\n$out");
+
+    // The same list, matching, across the join.
+    $optionSubOptionsClean = makeTypeFixture(
+        $base,
+        'option-sub-options-clean',
+        'options',
+        'option',
+        [
+            $optionRecord([
+                '#children' => array_merge(
+                    [['tag' => 'sub_options', 'body' => "alpha\nbeta"]],
+                    $optionChildren()
+                ),
+            ]),
+        ],
+        ['cav7FixtureOption.json' => $optionOutput(['sub_options' => ['alpha', 'beta']])]
+    );
+    [$code, $out] = runTool($tool, $optionSubOptionsClean);
+    check('a matching sub_options list passes across the newline join', $code === 0, "exit=$code\n$out");
+    // _metadata.json is the exporter's own record of what it wrote, and nothing
+    // read it. It is what separates "this tree came out of xf-dev:export" from
+    // "somebody typed this", which is the one drift the _data comparison cannot
+    // see: edit both sides to agree and they are consistent with each other and
+    // with nothing else. CONTRIBUTING.md's "do not hand-edit either" rests on it.
+    $metadataStale = makeTypeFixture(
+        $base,
+        'metadata-stale-hash',
+        'phrases',
+        'phrase',
+        [['title' => 'cav7_meta', '#body' => "Text\n"]],
+        ['cav7_meta.txt' => "Text\n"]
+    );
+    file_put_contents(
+        "$metadataStale/_output/phrases/_metadata.json",
+        json_encode(['cav7_meta.txt' => ['hash' => str_repeat('0', 32)]], JSON_PRETTY_PRINT)
+    );
+    [$code, $out] = runTool($tool, $metadataStale);
+    check('a _metadata.json hash that is not its file fails', $code !== 0, "exit=$code\n$out");
+    check('the file with the stale hash is named', str_contains($out, 'cav7_meta.txt'), $out);
+
+    // An item the exporter never indexed — the shape a hand-added file leaves.
+    $metadataUnindexed = makeTypeFixture(
+        $base,
+        'metadata-unindexed-item',
+        'phrases',
+        'phrase',
+        [
+            ['title' => 'cav7_meta', '#body' => "Text\n"],
+            ['title' => 'cav7_extra', '#body' => "More\n"],
+        ],
+        ['cav7_meta.txt' => "Text\n", 'cav7_extra.txt' => "More\n"]
+    );
+    $index = json_decode(
+        (string) file_get_contents("$metadataUnindexed/_output/phrases/_metadata.json"),
+        true
+    );
+    unset($index['cav7_extra.txt']);
+    file_put_contents(
+        "$metadataUnindexed/_output/phrases/_metadata.json",
+        json_encode($index, JSON_PRETTY_PRINT)
+    );
+    [$code, $out] = runTool($tool, $metadataUnindexed);
+    check('an item absent from _metadata.json fails', $code !== 0, "exit=$code\n$out");
+    check('the unindexed item is named', str_contains($out, 'cav7_extra.txt'), $out);
+
+    // The reverse: an index entry naming a file that is not there.
+    $metadataGhost = makeTypeFixture(
+        $base,
+        'metadata-ghost-entry',
+        'phrases',
+        'phrase',
+        [['title' => 'cav7_meta', '#body' => "Text\n"]],
+        ['cav7_meta.txt' => "Text\n"]
+    );
+    $index = json_decode(
+        (string) file_get_contents("$metadataGhost/_output/phrases/_metadata.json"),
+        true
+    );
+    $index['cav7_vanished.txt'] = ['hash' => str_repeat('a', 32)];
+    file_put_contents(
+        "$metadataGhost/_output/phrases/_metadata.json",
+        json_encode($index, JSON_PRETTY_PRINT)
+    );
+    [$code, $out] = runTool($tool, $metadataGhost);
+    check('a _metadata.json entry with no file fails', $code !== 0, "exit=$code\n$out");
+    check('the ghost entry is named', str_contains($out, 'cav7_vanished.txt'), $out);
+
+    // Deleting the index outright is not a way out of the check.
+    $metadataDeleted = makeTypeFixture(
+        $base,
+        'metadata-deleted',
+        'phrases',
+        'phrase',
+        [['title' => 'cav7_meta', '#body' => "Text\n"]],
+        ['cav7_meta.txt' => "Text\n"]
+    );
+    unlink("$metadataDeleted/_output/phrases/_metadata.json");
+    [$code, $out] = runTool($tool, $metadataDeleted);
+    check('a missing _metadata.json fails', $code !== 0, "exit=$code\n$out");
+
+    // A finding about a type must not drag a false one behind it. The metadata
+    // check used to bail out before the type claimed its _data file, which left
+    // the _data-side pass announcing that nothing had exported a type whose
+    // directory was sitting right there.
+    check(
+        'a metadata failure does not also claim the type was never exported',
+        !str_contains($out, 'no _output type dir claims')
+            && !str_contains($out, '_output/phrases/ is missing'),
+        $out
+    );
+
+    // And the content comparison still runs, so a tree with both problems
+    // reports both rather than hiding the drift behind the stale index.
+    $metadataAndDrift = makeTypeFixture(
+        $base,
+        'metadata-and-content-drift',
+        'phrases',
+        'phrase',
+        [['title' => 'cav7_meta', '#body' => "Text\n"]],
+        ['cav7_meta.txt' => "Drifted\n"]
+    );
+    file_put_contents(
+        "$metadataAndDrift/_output/phrases/_metadata.json",
+        json_encode(['cav7_meta.txt' => ['hash' => str_repeat('0', 32)]], JSON_PRETTY_PRINT)
+    );
+    [$code, $out] = runTool($tool, $metadataAndDrift);
+    check('a stale index and a content drift are both reported', $code !== 0, "exit=$code\n$out");
+    check(
+        'the content drift is not hidden behind the stale index',
+        str_contains($out, 'content mismatch'),
+        $out
+    );
+
+    // A file holding a carriage return still verifies, because the exporter
+    // hashes the contents with \r stripped. Plain md5 of the bytes would fail
+    // this, and would fail it only on the files where it matters.
+    $metadataCarriageReturn = makeTypeFixture(
+        $base,
+        'metadata-carriage-return',
+        'phrases',
+        'phrase',
+        [['title' => 'cav7_crlf', '#body' => "Line one\r\nLine two\r\n"]],
+        ['cav7_crlf.txt' => "Line one\r\nLine two\r\n"]
+    );
+    [$code, $out] = runTool($tool, $metadataCarriageReturn);
+    check('a file holding carriage returns verifies against its hash', $code === 0, "exit=$code\n$out");
+    // A type this tool still only counts has to be visible as such in the
+    // report, not left to be inferred from its absence. The assertions name the
+    // types and the fields — both data the tool is given — and deliberately do
+    // not pin how the verdict is worded, which is prose a maintainer owns.
+    $mixedReport = makeTypeFixture(
+        $base,
+        'mixed-report',
+        'template_modifications',
+        'modification',
+        $modificationFixture(),
+        ['public/cav7_fixture_mod.json' => $modificationOutput()]
+    );
+    mkdir("$mixedReport/_output/routes", 0777, true);
+    writeDataFile($mixedReport, 'routes', 'route', [['route_id' => 'fixture', 'route_prefix' => 'fixture']]);
+    file_put_contents("$mixedReport/_output/routes/fixture.json", "{}\n");
+    writeMetadata("$mixedReport/_output/routes");
+    [$code, $out] = runTool($tool, $mixedReport);
+    check('the mixed-report fixture passes', $code === 0, "exit=$code\n$out");
+    check('the report accounts for the content-checked type', str_contains($out, 'template_modifications'), $out);
+    check('the report accounts for the counted type too', str_contains($out, 'routes'), $out);
+
+    // Naming the type is not enough on its own — a reader has to be able to tell
+    // the two strengths apart, which is the whole criterion. This pins the
+    // classification rather than the sentence around it: the counted type's line
+    // must not claim the content was checked. Dropping the strength from the
+    // line passes every assertion above and fails this one.
+    $routesLine = '';
+    foreach (explode("\n", $out) as $line) {
+        if (str_starts_with(trim($line), 'routes:')) {
+            $routesLine = $line;
+        }
+    }
+    check('the report carries a line for the counted type', $routesLine !== '', $out);
+    check(
+        'the counted type does not present itself as content-checked',
+        $routesLine !== '' && !str_contains($routesLine, 'content-checked'),
+        $routesLine
+    );
+    check(
+        'the counted type says what it did not compare',
+        str_contains($routesLine, 'count-checked'),
+        $routesLine
+    );
+    // The point of the criterion: a reader can tell which fields were actually
+    // compared, rather than trusting that "checked" covered the payload. Read off
+    // that type's own line rather than the whole report — scanning everything
+    // let 'template' match inside the type name 'template_modifications', so the
+    // assertion passed with the field list deleted entirely.
+    $modificationLine = '';
+    foreach (explode("\n", $out) as $line) {
+        if (str_starts_with(trim($line), 'template_modifications:')) {
+            $modificationLine = $line;
+        }
+    }
+    check('the report carries a line for the content-checked type', $modificationLine !== '', $out);
+    foreach (['description', 'execution_order', 'enabled', 'action', 'find', 'replace'] as $field) {
+        check(
+            "the type's own report line names $field as compared",
+            str_contains($modificationLine, $field),
+            $modificationLine
+        );
+    }
 } finally {
     rmrf($base);
 }

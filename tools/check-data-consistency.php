@@ -11,10 +11,39 @@
  *
  * Each _output/<type>/ directory is matched to its _data/<type>.xml. Item files
  * are counted recursively, since some types (templates) nest under subfolders by
- * style type. For every type but class_extensions the record counts must agree.
- * For options, phrases and option_groups the item ids are compared exactly on
- * top of that count, since the _output filename is the id — the count is what
- * catches a duplicated record, which comparing ids alone cannot see.
+ * style type. Every type's record counts must agree, and on top of that count
+ * each type is checked at one of three strengths, which the report names per
+ * type so a weakly-checked type is visible rather than implied:
+ *
+ *   content-checked  the records are compared field by field, or byte for byte
+ *                    where the payload is the file body. class_extensions,
+ *                    phrases, templates, options and template_modifications.
+ *   id-checked       the _output filename is compared to the id in _data and
+ *                    nothing inside the record is read. option_groups.
+ *   count-checked    only the record count agrees. Everything else: routes,
+ *                    code_event_listeners, cron_entries, admin_navigation,
+ *                    api_scopes and the types no add-on here uses yet.
+ *
+ * The count is what catches a duplicated record, which comparing ids alone
+ * cannot see, so it is kept even where content is compared on top of it.
+ *
+ * The two trees are not key-for-key, which is why each content-checked type
+ * states its own mapping rather than diffing whatever keys happen to match.
+ * _data omits an attribute whose value is the empty string and only then; some
+ * payloads live in a child element rather than an attribute; some take a
+ * different shape entirely (an option's relations); and some fields exist on one
+ * side only, either because _output encodes them structurally (a modification's
+ * type is its directory, its key is its filename) or because _data simply does
+ * not carry them. Comparing only the keys present on both sides would look
+ * strict and quietly skip the payload, so the mapping is written out per type
+ * and the report says which fields it covered.
+ *
+ * Each type directory's _metadata.json is verified too: every item indexed,
+ * every index entry present, every hash the md5 of the file it names with
+ * carriage returns stripped (XF\DevelopmentOutput::hashContents). That is the
+ * one drift comparing the two trees cannot see — hand-edit both sides to agree
+ * and they are consistent with each other and with nothing else.
+ *
  * class_extensions is matched row by row on the (from_class, to_class) pair
  * instead of counted: xf_class_extension carries a UNIQUE KEY over exactly
  * those two columns, so one from_class may hold several extensions and the pair
@@ -29,8 +58,6 @@
  * comparison of from_class then to_class, and leaves execute_order out of that
  * rule because the UNIQUE KEY over the pair means the exporter never reaches it
  * as a tiebreaker.)
- * Other types are count-checked only; the report says which is which, so
- * nothing is skipped silently.
  *
  * That walk runs from _output, which only ever reaches a type that has been
  * exported at least once (see docs/addon-format.md on what each tree holds). A
@@ -83,6 +110,119 @@ $exactTypes = [
     'option_groups' => ['ext' => 'json', 'attr' => 'group_id'],
 ];
 
+// Types whose whole payload is the file body: _output holds it as the entire
+// file, _data as the record's element text. Comparing the two is a byte
+// comparison with no field mapping in between, which is what makes these the
+// cheapest types to check and the largest by volume. Listed here as a set of
+// exact-id types that carry a body on top of the id comparison above.
+$bodyTypes = ['phrases' => true];
+
+// Types compared field by field. The two sides are not key-for-key, so each
+// type states its own mapping rather than trusting the key names to line up:
+//
+//   dirAttr  a _data attribute that _output encodes as the subdirectory rather
+//            than storing in the record, so a _data edit to it moves where the
+//            file belongs while leaving every count alone.
+//   keyAttr  the _data attribute _output encodes as the file name.
+//   attrs    _data attributes, against the _output key of the same name, each
+//            with the JSON shape that side is expected to hold.
+//   children _data child elements, against the _output key of the same name.
+//
+// Only the fields named here are compared. Anything either side holds that is
+// not in this table is not checked, which is the honest reading of the report
+// line these types print.
+$fieldTypes = [
+    'template_modifications' => [
+        'ext' => 'json',
+        'dirAttr' => 'type',
+        'keyAttr' => 'modification_key',
+        'attrs' => [
+            'template' => 'string',
+            'description' => 'string',
+            'execution_order' => 'int',
+            'enabled' => 'bool',
+            'action' => 'string',
+        ],
+        'children' => ['find' => 'string', 'replace' => 'string'],
+    ],
+    // XF\AddOn\DataType\Option::exportAddOnData(): the mapped attributes, then
+    // <default_value> always, <edit_format_params> and <sub_options> only when
+    // non-empty, then one <relation> child per group. _output spells the same
+    // record as a flat JSON object, so six of its nine keys are child elements
+    // on the _data side and one is a repeated element.
+    'options' => [
+        'ext' => 'json',
+        'keyAttr' => 'option_id',
+        'attrs' => [
+            'edit_format' => 'string',
+            'data_type' => 'string',
+            'validation_class' => 'string',
+            'validation_method' => 'string',
+            'advanced' => 'bool',
+        ],
+        'children' => [
+            'default_value' => 'string',
+            'edit_format_params' => 'string',
+            'sub_options' => 'lines',
+        ],
+        'repeated' => [
+            'relations' => ['tag' => 'relation', 'key' => 'group_id', 'value' => 'display_order'],
+        ],
+    ],
+];
+
+// Text as the two sides can both actually represent it. XML normalises line
+// endings on parse — \r\n and a lone \r both arrive as \n, in CDATA as much as
+// anywhere else — so a carriage return cannot survive a round trip through
+// _data, while _output holds the bytes as written. Comparing raw would report a
+// drift on every file holding a \r and nowhere else, which is noise, not a
+// finding. XenForo reaches the same conclusion for its own hashes:
+// XF\DevelopmentOutput::hashContents() strips \r before md5 for this reason.
+$normaliseText = static fn (string $text): string => str_replace("\r", '', $text);
+
+// A _data attribute is written if and only if its value is not the empty
+// string: XF\AddOn\DataType\AbstractDataType::exportMappedAttributes() skips on
+// `$value !== ''` and casts a bool to 1/0 after that test, so false and 0 are
+// both written and only '' goes missing. That makes an absent attribute a
+// positive statement — the value is '' — rather than an unknown, and it is why
+// this comparison can be strict without a table of per-field defaults.
+$dataAttrValue = static function (SimpleXMLElement $record, string $attr): string {
+    return isset($record[$attr]) ? (string) $record[$attr] : '';
+};
+
+// The _data spelling of an _output value. _data is XML, so every value reaches
+// it as a string; returning null means _output held a shape no exporter writes,
+// which is refused rather than cast — a cast is how a value that went missing
+// used to compare equal to a legitimate false or 0.
+$renderOutputValue = static function ($raw, string $shape) use ($normaliseText): ?string {
+    switch ($shape) {
+        // Normalised on this side too: a modification's find or replace can hold
+        // a carriage return, and the _data half it is compared against has
+        // already lost hers to the XML parser.
+        case 'string':
+            return is_string($raw) ? $normaliseText($raw) : null;
+        case 'int':
+            return is_int($raw) ? (string) $raw : null;
+        case 'bool':
+            return is_bool($raw) ? ($raw ? '1' : '0') : null;
+        // A JSON list that _data flattens into one newline-joined element body
+        // (an option's sub_options). The empty list is the omitted case, and
+        // joining it lands on '' — the same value an absent element reads as —
+        // so the two agree without a special case.
+        case 'lines':
+            if (!is_array($raw)) {
+                return null;
+            }
+            foreach ($raw as $line) {
+                if (!is_string($line)) {
+                    return null;
+                }
+            }
+            return $normaliseText(implode("\n", $raw));
+    }
+    return null;
+};
+
 // All item files under an _output type dir, at any depth, minus the _metadata
 // index files. Returns SplFileInfo objects.
 $collectItems = static function (string $root): array {
@@ -96,6 +236,18 @@ $collectItems = static function (string $root): array {
         }
     }
     return $items;
+};
+
+// An item's path under its type directory, in the spelling _metadata.json and
+// the _data-derived paths both use: forward slashes, no leading separator. Three
+// places need it — the metadata index, the templates walk and the field-checked
+// walk — and they have to agree on it exactly, so it is derived once.
+$relativePath = static function (string $typeDir, SplFileInfo $file): string {
+    return str_replace(
+        DIRECTORY_SEPARATOR,
+        '/',
+        substr($file->getPathname(), strlen($typeDir) + 1)
+    );
 };
 
 $errors = [];
@@ -117,13 +269,74 @@ $dataFilesSeen = [];
 
 $typeDirs = $hasOutputTree ? glob("$outRoot/*", GLOB_ONLYDIR) : [];
 
+// The exporter's own index of a type directory, verified against what is
+// actually on disk. Every _output type dir carries one, written by
+// XF\DevelopmentOutput, mapping each item's path under the dir to a hash of its
+// contents. It answers a question the _data comparison structurally cannot:
+// _data-vs-_output says the two trees agree with each other, and two hand-edited
+// trees agree with each other perfectly while agreeing with the database not at
+// all. A stale hash is the only trace that leaves.
+//
+// The hash is md5 of the contents with carriage returns stripped —
+// XF\DevelopmentOutput::hashContents(). md5_file() matches it only until a file
+// holds a \r, at which point it disagrees on exactly the files that have one.
+$checkMetadata = static function (string $typeDir, array $items) use ($normaliseText, $relativePath): array {
+    $indexFile = "$typeDir/_metadata.json";
+    if (!is_file($indexFile)) {
+        return ['_metadata.json is missing'];
+    }
+    $index = json_decode((string) file_get_contents($indexFile), true);
+    if (!is_array($index)) {
+        return ['_metadata.json is not readable as a JSON object'];
+    }
+
+    $problems = [];
+    foreach ($items as $file) {
+        $relative = $relativePath($typeDir, $file);
+        if (!isset($index[$relative])) {
+            $problems[] = "$relative is not indexed in _metadata.json";
+            continue;
+        }
+        $recorded = $index[$relative]['hash'] ?? null;
+        unset($index[$relative]);
+        if (!is_string($recorded)) {
+            $problems[] = "$relative has no hash in _metadata.json";
+            continue;
+        }
+        $actual = md5($normaliseText((string) file_get_contents($file->getPathname())));
+        if ($recorded !== $actual) {
+            $problems[] = "$relative has hash $recorded in _metadata.json but hashes to $actual";
+        }
+    }
+
+    // Whatever the index still claims after every item has been struck off.
+    foreach ($index as $relative => $ignored) {
+        $problems[] = "_metadata.json indexes $relative, which is not there";
+    }
+
+    return $problems;
+};
+
 foreach ($typeDirs as $typeDir) {
     $type = basename($typeDir);
     $items = $collectItems($typeDir);
     $countOutput = count($items);
 
+    // Claimed before anything about this type can fail. Bailing out earlier left
+    // the _data-side pass below reporting that no _output directory claimed the
+    // file, which is a plain untruth when the directory is sitting right there —
+    // one real finding dragging a false one behind it.
     $dataBase = $dataFileFor[$type] ?? $type;
     $dataFilesSeen[$dataBase] = true;
+
+    // Recorded, not returned on. A stale index and a genuine content drift are
+    // separate findings about separate things, and stopping at the first would
+    // hide the second until someone re-exported and ran the tool again.
+    $metadataProblems = $checkMetadata($typeDir, $items);
+    if ($metadataProblems) {
+        $errors[] = "$type: export index mismatch (" . implode('; ', $metadataProblems) . ')';
+    }
+
     $xmlFile = "$dataRoot/$dataBase.xml";
     if (!is_file($xmlFile)) {
         $errors[] = "_output/$type/ has $countOutput item(s) but _data/$dataBase.xml is missing";
@@ -292,7 +505,8 @@ foreach ($typeDirs as $typeDir) {
             continue;
         }
 
-        $report[] = "  $type: $countOutput item(s), content matches (content-checked)";
+        $report[] = "  $type: $countOutput item(s), content matches"
+            . ' (content-checked: from_class, to_class, execute_order, active)';
         continue;
     }
 
@@ -305,8 +519,190 @@ foreach ($typeDirs as $typeDir) {
         continue;
     }
 
+    // templates: content-checked, on a path derived from _data rather than on a
+    // filename read back off the tree. A template record's identity is the
+    // (type, title) pair, and only the title survives into the _output file
+    // name — the type is the directory. Rebuilding the path from both is what
+    // lets a _data type flip fail: it moves where the record should be while
+    // leaving every count alone, so nothing downstream of a count can see it.
+    if ($type === 'templates') {
+        // XF\DevelopmentOutput\Template::convertTemplateNameToFile(): .html is
+        // appended unless the title already holds a dot. strpos(), not
+        // str_contains() — a leading dot sits at offset 0, which is falsy, and
+        // XenForo appends .html in that case too. Matching its quirk matters
+        // more than tidying it: this has to name the file XenForo actually
+        // wrote, not the one it arguably should have.
+        $templateFile = static fn (string $title): string
+            => strpos($title, '.') ? $title : "$title.html";
+
+        $dataByPath = [];
+        $mismatches = [];
+        foreach ($records as $record) {
+            $title = (string) $record['title'];
+            $templateType = (string) $record['type'];
+            $path = $templateType . '/' . $templateFile($title);
+            if (isset($dataByPath[$path])) {
+                $mismatches[] = "_data has more than one <template> for $path";
+                continue;
+            }
+            $dataByPath[$path] = $normaliseText((string) $record);
+        }
+
+        foreach ($items as $file) {
+            $path = $relativePath($typeDir, $file);
+            if (!array_key_exists($path, $dataByPath)) {
+                $mismatches[] = "$path: no _data <template> claims this path";
+                continue;
+            }
+            $outputText = $normaliseText((string) file_get_contents($file->getPathname()));
+            if ($outputText !== $dataByPath[$path]) {
+                $mismatches[] = "$path: _output body differs from _data ("
+                    . strlen($outputText) . ' vs ' . strlen($dataByPath[$path]) . ' bytes)';
+            }
+            unset($dataByPath[$path]);
+        }
+
+        // Whatever no _output file claimed. With the counts already equal this
+        // only fires alongside an unclaimed _output path, but naming both ends
+        // of the swap is what makes a type flip readable as a move.
+        foreach ($dataByPath as $path => $ignored) {
+            $mismatches[] = "$path: _data <template> has no _output file";
+        }
+
+        if ($mismatches) {
+            $errors[] = "$type: content mismatch (" . implode('; ', $mismatches) . ')';
+            continue;
+        }
+
+        $report[] = "  $type: $countOutput item(s), paths and bodies match (content-checked)";
+        continue;
+    }
+
+    // Field-checked types. Same shape as the templates branch above — the path
+    // each record belongs at is rebuilt from _data and then the fields behind it
+    // are compared — but the payload is a JSON object rather than a body.
+    if (isset($fieldTypes[$type])) {
+        $spec = $fieldTypes[$type];
+        $mismatches = [];
+
+        $dataByPath = [];
+        foreach ($records as $record) {
+            $key = (string) $record[$spec['keyAttr']];
+            $path = isset($spec['dirAttr'])
+                ? ((string) $record[$spec['dirAttr']]) . "/$key." . $spec['ext']
+                : "$key." . $spec['ext'];
+            if (isset($dataByPath[$path])) {
+                $mismatches[] = "_data has more than one record for $path";
+                continue;
+            }
+            $dataByPath[$path] = $record;
+        }
+
+        foreach ($items as $file) {
+            $path = $relativePath($typeDir, $file);
+            if (!isset($dataByPath[$path])) {
+                $mismatches[] = "$path: no _data record claims this path";
+                continue;
+            }
+            $record = $dataByPath[$path];
+            unset($dataByPath[$path]);
+
+            $decoded = json_decode((string) file_get_contents($file->getPathname()), true);
+            if (!is_array($decoded)) {
+                $mismatches[] = "$path: not readable as a JSON object";
+                continue;
+            }
+
+            // Attributes and child elements differ only in where the _data half
+            // is read from, so they are compared by one loop over both.
+            $fields = [];
+            foreach ($spec['attrs'] as $field => $shape) {
+                $fields[$field] = [$shape, $dataAttrValue($record, $field)];
+            }
+            foreach ($spec['children'] ?? [] as $field => $shape) {
+                $fields[$field] = [
+                    $shape,
+                    isset($record->$field) ? $normaliseText((string) $record->$field) : '',
+                ];
+            }
+
+            foreach ($fields as $field => [$shape, $dataValue]) {
+                if (!array_key_exists($field, $decoded)) {
+                    $mismatches[] = "$path: $field missing from _output";
+                    continue;
+                }
+                $outputValue = $renderOutputValue($decoded[$field], $shape);
+                if ($outputValue === null) {
+                    $mismatches[] = "$path: $field _output=" . json_encode($decoded[$field])
+                        . ' is not a value any export writes';
+                    continue;
+                }
+                if ($outputValue !== $dataValue) {
+                    $mismatches[] = "$path: $field _output=" . json_encode($outputValue)
+                        . ' vs _data=' . json_encode($dataValue);
+                }
+            }
+
+            // Repeated child elements against the JSON map holding the same
+            // pairs. Both sides are reduced to a key => value map of strings and
+            // sorted, so the comparison answers "the same relations, with the
+            // same display orders" without resting on document order, which
+            // neither side promises.
+            foreach ($spec['repeated'] ?? [] as $field => $repeat) {
+                if (!array_key_exists($field, $decoded)) {
+                    $mismatches[] = "$path: $field missing from _output";
+                    continue;
+                }
+                if (!is_array($decoded[$field])) {
+                    $mismatches[] = "$path: $field _output=" . json_encode($decoded[$field])
+                        . ' is not a value any export writes';
+                    continue;
+                }
+
+                $dataPairs = [];
+                foreach ($record->{$repeat['tag']} as $child) {
+                    $dataPairs[(string) $child[$repeat['key']]] = (string) $child[$repeat['value']];
+                }
+                $outputPairs = [];
+                foreach ($decoded[$field] as $childKey => $childValue) {
+                    $outputPairs[(string) $childKey] = is_scalar($childValue)
+                        ? (string) $childValue
+                        : json_encode($childValue);
+                }
+                ksort($dataPairs);
+                ksort($outputPairs);
+
+                if ($outputPairs !== $dataPairs) {
+                    $mismatches[] = "$path: $field _output=" . json_encode($outputPairs)
+                        . ' vs _data=' . json_encode($dataPairs);
+                }
+            }
+        }
+
+        foreach ($dataByPath as $path => $ignored) {
+            $mismatches[] = "$path: _data record has no _output item";
+        }
+
+        if ($mismatches) {
+            $errors[] = "$type: content mismatch (" . implode('; ', $mismatches) . ')';
+            continue;
+        }
+
+        $compared = implode(', ', array_merge(
+            array_keys($spec['attrs']),
+            array_keys($spec['children'] ?? []),
+            array_keys($spec['repeated'] ?? [])
+        ));
+        $report[] = "  $type: $countOutput item(s), content matches (content-checked: $compared)";
+        continue;
+    }
+
+    // Says what it did not do as well as what it did. A type listed here has had
+    // nothing inside its records compared, and the difference between that and a
+    // content-checked type is the whole point of the line.
     if (!isset($exactTypes[$type])) {
-        $report[] = "  $type: $countOutput item(s), counts match (count-checked)";
+        $report[] = "  $type: $countOutput item(s), counts match"
+            . ' (count-checked: no field inside a record is compared)';
         continue;
     }
 
@@ -343,7 +739,38 @@ foreach ($typeDirs as $typeDir) {
         continue;
     }
 
-    $report[] = "  $type: $countOutput item(s), ids match";
+    // Ids agree as a set and the counts agree, so each id names exactly one
+    // record on each side and the two can be paired by id alone. For a body
+    // type that pairing is the whole mapping: compare the bytes.
+    if (isset($bodyTypes[$type])) {
+        $dataById = [];
+        foreach ($records as $record) {
+            $dataById[(string) $record[$attr]] = $record;
+        }
+
+        $drift = [];
+        foreach ($items as $file) {
+            $base = $file->getFilename();
+            $id = str_ends_with($base, $ext) ? substr($base, 0, -strlen($ext)) : $base;
+            $outputText = $normaliseText((string) file_get_contents($file->getPathname()));
+            $dataText = $normaliseText((string) $dataById[$id]);
+            if ($outputText !== $dataText) {
+                $drift[] = "$id: _output text differs from _data ("
+                    . strlen($outputText) . ' vs ' . strlen($dataText) . ' bytes)';
+            }
+        }
+
+        if ($drift) {
+            $errors[] = "$type: content mismatch (" . implode('; ', $drift) . ')';
+            continue;
+        }
+
+        $report[] = "  $type: $countOutput item(s), ids and text match (content-checked)";
+        continue;
+    }
+
+    $report[] = "  $type: $countOutput item(s), ids match"
+        . ' (id-checked: no field inside a record is compared)';
 }
 
 // The second pass described at the top of this file. It is a set difference over

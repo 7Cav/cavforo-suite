@@ -126,6 +126,23 @@ being re-exported after a change — including a data type that reached `_data/`
 but was never exported to `_output/`, and an addon whose `_output/` tree is gone
 while `_data/` still holds records. Both need only `php`.
 
+How hard it looks depends on the type, and the report says which it used for
+each, so a weakly-checked type is visible rather than assumed covered:
+
+| strength | what is compared | types |
+| --- | --- | --- |
+| content-checked | every field the mapping names, or the whole body where that is the payload | `class_extensions`, `phrases`, `templates`, `options`, `template_modifications` |
+| id-checked | the `_output` filename against the id in `_data`, and nothing inside the record | `option_groups` |
+| count-checked | the record count only | `routes`, `code_event_listeners`, `cron_entries`, `admin_navigation`, `api_scopes` |
+
+It also verifies each type directory's `_metadata.json` — the index
+`xf-dev:export` writes beside the items — so that every item is indexed, every
+entry names a file that exists, and every hash is the md5 of that file with
+carriage returns stripped. Comparing the two trees says they agree with each
+other; two hand-edited trees agree with each other and with nothing else, and a
+stale hash is the only trace that leaves. Neither tree is safe to hand-edit,
+which is what [CONTRIBUTING.md](../CONTRIBUTING.md) already asks.
+
 ```
 php tools/validate-addon.php src/addons/Cav7/SteamChecker
 php tools/check-data-consistency.php src/addons/Cav7/SteamChecker
