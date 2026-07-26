@@ -94,3 +94,16 @@ jobs:
           coverage: none
       - name: Run tools tests
         run: tools/run-tools-tests.sh
+
+  # Repo-level checks that read the tree itself rather than one addon, so they
+  # are neither matrixed nor a test of a tools/ script. No XenForo.
+  repo-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Check the README addon catalog against the addons that ship
+        run: php tools/check-readme-catalog.php

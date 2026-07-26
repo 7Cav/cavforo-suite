@@ -173,6 +173,37 @@ php tools/validate-addon.php src/addons/Cav7/SteamChecker
 php tools/check-data-consistency.php src/addons/Cav7/SteamChecker
 ```
 
+### `check-readme-catalog.php [repo-root]`
+
+Checks that the addon catalog in the repo-root
+[README.md](../README.md) lists exactly the addons that ship, and fails naming
+the ids on whichever side is wrong: an addon with no catalog row, a catalog row
+with no addon behind it, or both at once. Takes only `php`, reads the whole repo
+rather than one addon, and so runs once in its own CI job rather than under the
+per-addon matrix.
+
+What ships is read off CI's `discover` job rather than kept as a second list
+beside it, and that job wants two things of a directory: an `addon.json`, and a
+name of `[A-Za-z0-9_]` only, so a directory name can never inject into the
+`run:` steps consuming the matrix. A directory failing either is never linted,
+validated or packaged and cannot reach a board, so it does not ship and is
+expected to have no catalog row.
+
+The two failures differ. A directory with no manifest is not an addon, and the
+check passes over it in silence. A manifest under a name `discover` refuses is
+an addon nobody can install, skipped there with only a line on stderr, so this
+names it — a directory getting no CI at all should not have to be inferred from
+its absence in a build log.
+
+Only the id column is checked. Whether a description still describes the addon
+is a review concern and no check can settle it. If the catalog table is ever
+reformatted past recognition the check says so directly rather than reporting
+every addon as missing, since a reformat that keeps every addon is not drift.
+
+```
+php tools/check-readme-catalog.php
+```
+
 ### `sync-addon-data.php <addon-dir> --to-output|--to-data`
 
 Derives an addon's `_output/` tree from its `_data/` bundle, or the other way

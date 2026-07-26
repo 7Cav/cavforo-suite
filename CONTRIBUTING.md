@@ -59,6 +59,10 @@ There is more detail on the `_output/` and `_data/` split in [docs/addon-format.
 3. Fill in `addon.json`: title, description, version, and any dependencies in `require`. The add-on id and namespace come from the directory path, so they do not go in the file.
 4. Install it (`php cmd.php xf-addon:install Cav7/<AddonId>`), then develop as above.
 5. Add a short `README.md` describing what the addon does and what it requires.
+6. Add a row for it to the addon catalog in the repo-root [README.md](README.md).
+   That table is the one home for the list of addons, and CI fails when it and
+   the addons that ship disagree — see `check-readme-catalog.php` in
+   [tools/README.md](tools/README.md).
 
 ## Build, test, and release
 
@@ -68,7 +72,7 @@ Shared scripts live in [`tools/`](tools/); [tools/README.md](tools/README.md) ha
 - Build the **release build** from committed files, with no XenForo install: `tools/package-addon.sh <AddonId>`. CI and the release workflow use this, it produces the `upload/...` layout the admin panel installs from, and it is the only zip anyone should install a board from.
 - Build a **local build** for testing against a real install (needs a XenForo install): `tools/build.sh <AddonId>`. It wraps `xf-addon:build-release` (export to `_data/`, then package). Point it at your install with `XF_ROOT` or `XF_CMD`. It ships each addon's `tests/`, `docs/` and `CONTEXT.md` deliberately — see [ADR 0005](docs/adr/0005-the-release-build-is-the-distribution-channel.md).
 
-CI runs the tests and a static build check on every push and pull request: lint, `addon.json` and `_data/` validation, an `_output/`-and-`_data/` consistency check, and a packaging dry-run. It also packages every addon for real and reads the archive, so a release zip that gained a `tests/` directory fails the build. None of it runs XenForo — that is the constraint on what CI can check, rather than any rule about which tools a check may use. The consistency check reads both trees against each other, so re-export and commit both whenever you change XenForo data, or it will fail — including when a data type reaches one tree and not the other. For most types it compares what the records actually say and not just how many there are, so editing one side alone fails even when the counts still line up; [tools/README.md](tools/README.md) lists which types are checked how. It also reads each `_output/<type>/_metadata.json` against the files beside it, which is what catches a tree that was hand-edited rather than exported — so hand-edit neither tree, in either direction.
+CI runs the tests and a static build check on every push and pull request: lint, `addon.json` and `_data/` validation, an `_output/`-and-`_data/` consistency check, and a packaging dry-run. It also packages every addon for real and reads the archive, so a release zip that gained a `tests/` directory fails the build. Once for the repo rather than per addon, it checks the root README's addon catalog against the addons that ship, so adding an addon and leaving the table alone fails. None of it runs XenForo — that is the constraint on what CI can check, rather than any rule about which tools a check may use. The consistency check reads both trees against each other, so re-export and commit both whenever you change XenForo data, or it will fail — including when a data type reaches one tree and not the other. For most types it compares what the records actually say and not just how many there are, so editing one side alone fails even when the counts still line up; [tools/README.md](tools/README.md) lists which types are checked how. It also reads each `_output/<type>/_metadata.json` against the files beside it, which is what catches a tree that was hand-edited rather than exported — so hand-edit neither tree, in either direction.
 
 ### What belongs in CI, and what does not
 
