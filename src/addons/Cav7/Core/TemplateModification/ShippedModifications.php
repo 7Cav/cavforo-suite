@@ -22,10 +22,9 @@ class ShippedModifications
      * as empty it becomes an add-on that ships nothing, and every modification
      * it does ship then goes unchecked while the run still reports health.
      *
-     * `enabled` is not read here. The board's record carries its own, XenForo
-     * maintains that flag across an add-on upgrade rather than resetting it to
-     * what the add-on ships, and it is the board's value that decides whether
-     * anything is applied.
+     * `enabled` is not read here: it is the board's value that decides whether
+     * anything is applied, and the board's record carries its own. Why the two
+     * do not converge is on `Shape::DISABLED`.
      *
      * @return list<array{addon_id: string, modification_key: string, type: string, template: string}>
      */

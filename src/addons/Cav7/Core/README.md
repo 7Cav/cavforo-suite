@@ -20,9 +20,7 @@ The command asks the whole question at once. It exits:
 - `1` — one or more are not, each named on its own line
 - `2` — the check could not be performed, which is not the same as finding nothing wrong
 
-A modification is **shipped** (present in an addon's `_data`), then **installed** (the board holds a record), then **in force** (XenForo has actually applied it). An addon can report installed and active while something it ships is in neither of the later states. The six ways that happens each print their own shape, because the remedies differ:
-
-**shipped but not installed**, **installed but disabled**, **owning add-on inactive**, **target template does not exist**, **matched nothing**, **recorded a non-ok status**. Each failure line carries its own remedy, so the command's output is the reference rather than this list.
+A modification is **shipped** (present in an addon's `_data`), then **installed** (the board holds a record), then **in force** (XenForo has actually applied it). An addon can report installed and active while something it ships is in neither of the later states. There are six ways that happens, and a failure line names which — its **shape** — because the remedies differ. Each line also carries its own remedy, so the command's output is the reference rather than any list here.
 
 It reads XenForo's verdict rather than any template body, so what it reports is what the board recorded the last time each copy was compiled. It repairs nothing, mutes nothing, and ignores modifications belonging to addons outside this suite.
 

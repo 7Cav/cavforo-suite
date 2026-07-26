@@ -13,16 +13,15 @@ namespace Cav7\Core\TemplateModification;
  * modification to a template, so the states where it applied nothing leave
  * nothing to read, and a reader that walks the rows finds them all healthy.
  *
- * No CI coverage, deliberately. The facts this takes are an internal handoff
- * from `BoardFacts` rather than an interface any caller builds — both callers
- * pass one straight to the other — so a test here would pin the shape of that
- * handoff and break on a refactor that changed no behaviour, while the bugs
- * worth catching (a copy never enumerated, a join that drops a style) live in
- * the gathering it does not touch. The seam is covered by the recorded
- * dev-stack pass in
- * `docs/verification/template-modifications-in-force.md`, which produces
- * every shape below against a real board. The consequence is real: CI will go
- * green on a refactor that breaks this.
+ * No CI coverage, deliberately, and for a reason of its own: the facts this
+ * takes are an internal handoff from `BoardFacts` rather than an interface any
+ * caller builds — both callers pass one straight to the other — so a test here
+ * would pin the shape of that handoff and break on a refactor that changed no
+ * behaviour, while the bugs worth catching (a copy never enumerated, a join
+ * that drops a style) live in the gathering it does not touch. Every shape
+ * below is produced against a real board in
+ * `docs/verification/template-modifications-in-force.md`; what its absence from
+ * CI costs is in the addon's README.
  */
 class Reconciliation
 {
@@ -63,8 +62,8 @@ class Reconciliation
                 Shape::NOT_INSTALLED,
                 'the add-on ships this in its _data and the board holds no record of it, so its data was never'
                 . ' imported. Nothing hashes _data, so an add-on whose version_id did not move installs its files'
-                . ' and imports none of its data while every version stamp reads current. Run'
-                . ' "php cmd.php xf:addon-rebuild ' . $modification['addon_id'] . '" and re-run this check'
+                . ' and imports none of its data while every version stamp reads current. Run "'
+                . self::rebuildCommand($modification['addon_id']) . '" and re-run this check'
             );
         }
 
@@ -85,8 +84,8 @@ class Reconciliation
             return $attemptedNothing(
                 Shape::DISABLED,
                 'the record exists and is switched off. Every modification this suite ships is enabled, so somebody'
-                . ' disabled this on the board — XenForo maintains that flag across an add-on upgrade rather than'
-                . ' resetting it to what the add-on ships, so it stays off until somebody turns it back on'
+                . ' disabled this on the board, and no add-on upgrade will turn it back on. Re-enable it under'
+                . ' Appearance > Styles & templates > Template modifications'
             );
         }
 
@@ -133,9 +132,9 @@ class Reconciliation
                 $modification,
                 $copy,
                 'XenForo has recorded no result against this copy, so it has not been compiled since the'
-                . ' modification was installed and the copy cannot be carrying the patch. Run'
-                . ' "php cmd.php xf:addon-rebuild ' . $modification['addon_id'] . '", which re-imports the'
-                . ' modification and recompiles every copy of the template it targets, and re-run this check'
+                . ' modification was installed and the copy cannot be carrying the patch. Run "'
+                . self::rebuildCommand($modification['addon_id']) . '", which re-imports the modification and'
+                . ' recompiles every copy of the template it targets, and re-run this check'
             );
         }
 
@@ -174,4 +173,15 @@ class Reconciliation
         return null;
     }
 
+    /**
+     * The command both remedies tell an operator to type.
+     *
+     * Spelled once because a remedy naming a command that does not exist reads
+     * exactly like one that does, and the reader finds out by typing it. One
+     * spelling is one thing for the dev-stack pass to run.
+     */
+    protected static function rebuildCommand(string $addOnId): string
+    {
+        return "php cmd.php xf:addon-rebuild $addOnId";
+    }
 }

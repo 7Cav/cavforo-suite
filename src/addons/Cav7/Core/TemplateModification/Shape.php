@@ -6,13 +6,17 @@ namespace Cav7\Core\TemplateModification;
  * The ways a shipped template modification fails to be in force.
  *
  * Six of them, and the report names which one it hit because the remedies
- * differ: an add-on whose data never imported is fixed by upgrading it, a find
+ * differ: an add-on whose data never imported is fixed by rebuilding it, a find
  * that stopped matching is fixed by editing a template copy, and nothing about
  * the two looks alike from the board.
  *
- * The values are the words the report prints. They are the vocabulary
- * CONTEXT.md defines for this, so a failure line and the domain doc say the
- * same thing.
+ * The values are the words the report prints, and they are the six the suite
+ * CONTEXT.md lists under *shape*, so a failure line and the domain doc say the
+ * same thing. Two glossary terms deliberately have no constant here:
+ * *master mismatch* and *style mismatch* are the two diagnoses behind
+ * `MATCHED_NOTHING`, and the failure's reason tells them apart rather than the
+ * shape, because an operator sorting a log wants one bucket for "the patch is
+ * not on this copy" and the diagnosis inside it.
  */
 class Shape
 {

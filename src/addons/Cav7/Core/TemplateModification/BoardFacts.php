@@ -14,8 +14,8 @@ use XF\App;
  * `Reconciliation`'s job and happens nowhere else.
  *
  * No CI coverage: every read here needs a live XenForo entity layer and
- * database. Verified on the dev stack, per
- * `docs/verification/template-modifications-in-force.md`.
+ * database. The standing pass is `docs/verification/template-modifications-in-force.md`
+ * in this addon; what its absence from CI costs is in the addon's README.
  */
 class BoardFacts
 {
@@ -139,6 +139,14 @@ class BoardFacts
             // whatever the operator last uploaded and this run cannot read it,
             // so it refuses rather than recording that the add-on ships
             // nothing — which is indistinguishable from a clean pass.
+            //
+            // Narrower than it looks, and knowingly so: XenForo only ever puts
+            // `addon.json` in this list (`XF\AddOn\AddOn::__construct`), so it
+            // catches a directory that is gone or gutted, not one whose `_data`
+            // alone was deleted. That case still reads as "ships nothing",
+            // because nothing on the board says what the files ought to
+            // contain — the same gap `version_id` leaves, and out of reach
+            // without XenForo's file-health hashes.
             if ($addOn->getMissingFiles()) {
                 throw new DiscoveryFailed(
                     "$addOnId is installed and its files are missing from this board ("

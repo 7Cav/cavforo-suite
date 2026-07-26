@@ -82,16 +82,29 @@ add-on can report installed and active while a modification it ships is in
 neither of the later states.
 
 **not in force**:
-The umbrella for every way a shipped modification fails to reach the page:
-shipped but never installed, installed but disabled, owned by an inactive
-add-on, targeting a template that no longer exists, matching nothing where it
-was applied, or recorded with a non-ok status. What they share is silence —
-none of them stops the board rendering, and none is reported by anything until
-somebody notices the wrong output.
+The umbrella for every way a shipped modification fails to reach the page,
+enumerated under _shape_ below. What they share is silence — none of them stops
+the board rendering, and none is reported by anything until somebody notices
+the wrong output.
+
+**shape**:
+Which of those ways a given failure is. A report names the shape because the
+remedies have nothing in common: an add-on whose data never imported is fixed
+by rebuilding it, a find that stopped matching by editing a template copy.
+These are the words a report prints, and the only six it prints:
+
+`shipped but not installed`, `installed but disabled`, `owning add-on
+inactive`, `target template does not exist`, `matched nothing`, `recorded a
+non-ok status`.
+
+`matched nothing` covers two states rather than one, because both mean the same
+thing to a reader — the patch is provably not on that copy. XenForo either
+recorded zero matches against it, or recorded nothing at all, never having
+compiled it since the modification was installed. The failure's own words say
+which; the shape does not.
 
 **master mismatch** / **style mismatch**:
-The two diagnoses behind a modification that matched nothing. A _master
-mismatch_ means the vendor's own markup moved, and every style inherits the
-problem. A _style mismatch_ means somebody edited that style's copy, and only
-the styles resolving to it are affected. Same symptom, different cause,
-different fix.
+The two diagnoses behind a find that stopped matching. A _master mismatch_
+means the vendor's own markup moved, and every style inherits the problem. A
+_style mismatch_ means somebody edited that style's copy, and only the styles
+resolving to it are affected. Same symptom, different cause, different fix.

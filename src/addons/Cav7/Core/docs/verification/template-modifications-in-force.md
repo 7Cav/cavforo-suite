@@ -7,11 +7,16 @@ and database — the joins, the template-map resolution, the in-use-style filter
 Only `ShippedModifications` is covered by a test, and only for its refusal
 contract.
 
-**The consequence is real and should not be discovered later: CI will go green
-on a refactor that breaks this command.** Re-run this pass before releasing
-`Cav7/Core`, and after any XenForo upgrade.
+What that costs the suite, and when this pass has to be re-run, is stated once
+in the addon's [README](../../README.md#it-has-almost-no-ci-coverage-on-purpose).
+This file is the pass itself.
 
 Run against `~/srv/xenforo-dev` (XenForo 2.3.11) on 2026-07-26.
+
+Two habits this pass is written to, because a hand-written record fails in ways
+CI does not: re-derive every number from a run rather than carrying it forward,
+and read the restore block against the break steps object by object. A step
+written from recollection reads exactly like a captured one.
 
 ## Conventions used below
 
@@ -44,13 +49,21 @@ did not exist on the board. Installed with:
 ```bash
 docker exec xenforo-staging-fpm php cmd.php xf-addon:sync-json Cav7/Core
 docker exec xenforo-staging-fpm php cmd.php xf:addon-rebuild Cav7/Core
+Q "SELECT version_id, version_string FROM xf_addon WHERE addon_id='Cav7/Core';"
+Q "SELECT entry_id, cron_class, cron_method, active FROM xf_cron_entry WHERE entry_id='cav7CoreTemplateModCheck';"
+Q "SELECT phrase_text FROM xf_phrase WHERE title='cron_entry.cav7CoreTemplateModCheck';"
 ```
 
 ```
-1000010  1.0.0
+1000070  1.0.0
 cav7CoreTemplateModCheck  Cav7\Core\Cron\CheckTemplateModifications  run  1
 Check this suite's template modifications are in force
 ```
+
+The version stamp has to be the one `addon.json` ships, not merely some 1.0.0.
+Nothing hashes `_data`, so a board already carrying an older stamp imports its
+files and none of its data — the very shape this check reports as *shipped but
+not installed*.
 
 ## The board's own live failure
 
@@ -58,7 +71,7 @@ Before anything was broken deliberately, the check found the failure the issue
 was filed about:
 
 ```
-1 not in force, of 11 modification(s) shipped by this suite, across 11 template copy(ies):
+1 not in force, of 11 modification(s) shipped by this suite, across 12 template copy(ies):
 
   shipped but not installed — cav7DiscordSyncPatchResyncButton (Cav7/DiscordSyncPatch),
   public:connected_account_associated_nfDiscord, costing 1 copy(ies): copy 2089 (master),
@@ -88,8 +101,28 @@ All in force: 11 modification(s) shipped by this suite, across 12 template copy(
 exit=0
 ```
 
-✅ **All in force exits 0 and reports what it checked.** The copy count moves
-11 → 12 because the newly installed modification's target copy joins the set.
+✅ **All in force exits 0 and reports what it checked.**
+
+The copy count does **not** move across this remedy. `BoardFacts` enumerates a
+copy for every *shipped* modification, taking the target from the record where
+there is one and from the shipped row where there is not, so an uninstalled
+modification still contributes its copies — copy 2089 is named in the failure
+line above, while it is still uninstalled. Re-checked by deleting the record
+again:
+
+```bash
+Q "DELETE FROM xf_template_modification WHERE modification_key='cav7DiscordSyncPatchResyncButton';"
+CHECK
+```
+
+```
+1 not in force, of 11 modification(s) shipped by this suite, across 12 template copy(ies):
+```
+
+✅ **The counts are the same either side of installing it**, which is what
+"reconciliation, not scan" means at the level of the totals: what the run says
+it checked is fixed by what the addons ship, not by what the board happens to
+hold.
 
 ## Each failure shape
 
@@ -330,20 +363,31 @@ reachable through any supported path.
 
 ## Restoring the board
 
-The stack was returned to all-in-force afterwards:
+One line per break step above, in the order they appear:
 
 ```bash
-Q "UPDATE xf_template_modification SET enabled=1 WHERE modification_key='cav7MilpacTooltipLink';"
-Q "UPDATE xf_addon SET active=1 WHERE addon_id='Cav7/RosterSearch';"
+# matched nothing, style copy and master copy
+docker exec xenforo-staging-fpm php cav7-verify/edit-copy.php 2153 restore
+docker exec xenforo-staging-fpm php cav7-verify/edit-copy.php 2144 restore
+# no result recorded — cleared inline above by the remedy that line printed, nothing to undo here
+# installed but disabled, and owning add-on inactive
+Q "UPDATE xf_template_modification SET enabled=1 WHERE modification_key='cav7MilpacProfile';"
+Q "UPDATE xf_addon SET active=1 WHERE addon_id='Cav7/RosterPatch';"
+# target template does not exist
 Q "UPDATE xf_template     SET title='member_tooltip' WHERE type='public' AND title='member_tooltip_gone';"
 Q "UPDATE xf_template_map SET title='member_tooltip' WHERE type='public' AND title='member_tooltip_gone';"
+# recorded a non-ok status, and the uncompilable-find probe beside it
 Q "UPDATE xf_template_modification_log SET status='ok' WHERE status='error_compile';"
-docker exec xenforo-staging-fpm php cmd.php xf:addon-rebuild Cav7/MilpacTooltip   # restores a find edited by hand
-docker exec xenforo-staging-fpm php cav7-verify/edit-copy.php <id> restore            # each copy edited
+docker exec xenforo-staging-fpm php cmd.php xf:addon-rebuild Cav7/EnlistmentDefaults
+# discovery failures
+git -C <repo> checkout -- src/addons/Cav7/RosterSearch/_data/template_modifications.xml   # then copy to the stack
+Q "DELETE FROM xf_addon WHERE addon_id='Cav7/Ghost';"
 ```
 
 A deleted application-result row is restored by re-saving the copy, not by
-re-inserting it: `break` then `restore` on the copy makes XenForo write it again.
+re-inserting it: `break` then `restore` on the copy makes XenForo write it
+again. A find edited by hand is restored by rebuilding its owning add-on, which
+re-imports the shipped pattern over the edited one.
 
 Final state:
 
@@ -359,7 +403,27 @@ drift.
 Two things were left changed on purpose: the error log was reloaded from a
 `LOAD DATA` round trip of its 101 rows rather than a dump, so exact byte
 fidelity of its `varbinary` columns is not guaranteed; and `Cav7/Core` is now
-installed at 1.0.0 with its data imported.
+installed at `1000070` / 1.0.0 with its data imported.
+
+Re-checked at the end, so the statements above are the board's state rather
+than a recollection of it:
+
+```bash
+CHECK
+Q "SELECT addon_id FROM xf_addon WHERE addon_id='Cav7/Ghost';"
+Q "SELECT COUNT(*) FROM xf_template_modification_log WHERE status<>'ok';"
+Q "SELECT COUNT(*) FROM xf_template_modification m JOIN xf_addon a USING(addon_id)
+    WHERE a.addon_id LIKE 'Cav7/%' AND (m.enabled=0 OR a.active=0);"
+```
+
+```
+All in force: 11 modification(s) shipped by this suite, across 12 template copy(ies).
+exit=0
+(no rows)
+0
+0
+```
+
 
 ## The helpers
 
