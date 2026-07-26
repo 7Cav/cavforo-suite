@@ -58,3 +58,53 @@ Neither is dev-only: they are there for the build, not for the people working on
 the add-on. Neither survives as itself, but they leave differently: `build.json`
 is dropped, while `_files`' contents are relocated to the upload web root.
 What asserts this: [`tools/README.md`](tools/README.md).
+
+**template copy**:
+One style's own version of a template — a single `xf_template` row. A template
+is a _title_, and a title can have several copies: the master one and a copy in
+each style that has edited it. A style with no copy of its own renders the
+nearest ancestor's. Modifications are applied to, and recorded against, a copy
+rather than a title, so a patch can be working on one copy and broken on
+another.
+_Avoid_: template on its own where the copy is what is meant
+
+**in-use style**:
+The board default style together with any style a member can select. The styles
+whose template copies actually render for somebody. A style that is neither is
+inert: its copies can be broken without any member seeing it.
+
+**in force**:
+Said of a template modification that XenForo has actually applied to the
+template copies it targets. Three separate things have to be true and only the
+third is _in force_: the modification is **shipped** (present in an add-on's
+`_data`), **installed** (a record for it exists on the board), and in force. An
+add-on can report installed and active while a modification it ships is in
+neither of the later states.
+
+**not in force**:
+The umbrella for every way a shipped modification fails to reach the page,
+enumerated under _shape_ below. What they share is silence — none of them stops
+the board rendering, and none is reported by anything until somebody notices
+the wrong output.
+
+**shape**:
+Which of those ways a given failure is. A report names the shape because the
+remedies have nothing in common: an add-on whose data never imported is fixed
+by rebuilding it, a find that stopped matching by editing a template copy.
+These are the words a report prints, and the only six it prints:
+
+`shipped but not installed`, `installed but disabled`, `owning add-on
+inactive`, `target template does not exist`, `matched nothing`, `recorded a
+non-ok status`.
+
+`matched nothing` covers two states rather than one, because both mean the same
+thing to a reader — the patch is provably not on that copy. XenForo either
+recorded zero matches against it, or recorded nothing at all, never having
+compiled it since the modification was installed. The failure's own words say
+which; the shape does not.
+
+**master mismatch** / **style mismatch**:
+The two diagnoses behind a find that stopped matching. A _master mismatch_
+means the vendor's own markup moved, and every style inherits the problem. A
+_style mismatch_ means somebody edited that style's copy, and only the styles
+resolving to it are affected. Same symptom, different cause, different fix.

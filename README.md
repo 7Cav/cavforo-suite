@@ -1,6 +1,6 @@
 # cavforo-suite
 
-One home for the 7th Cavalry's XenForo addons, plus `Cav7/Core`, a shared library the addons will lean on over time.
+One home for the 7th Cavalry's XenForo addons, plus `Cav7/Core`, which carries what serves the suite as a whole.
 
 The addons were scattered across separate repositories, each with its own layout and tooling. This repo brings them together under one structure so they are easier to maintain and so new addons can follow the same pattern.
 
@@ -10,7 +10,7 @@ Addons sit at `src/addons/Cav7/<AddonId>/`, mirroring a XenForo install's tree, 
 
 | Addon | What it does |
 |---|---|
-| `Cav7/Core` | Shared library for the suite (placeholder until shared code is extracted) |
+| `Cav7/Core` | Suite-wide tooling (the template modification check) and the shared library the addons draw on |
 | `Cav7/SteamChecker` | Steam VAC/game-ban checks on enlistment |
 | `Cav7/ApiKeyManager` | Personal API keys for the external API |
 | `Cav7/RosterAudit` | Audit trail for NF/Rosters changes |

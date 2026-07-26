@@ -1,9 +1,9 @@
 {
     "legacy_addon_id": "",
     "title": "7Cav - Core",
-    "description": "Shared library for the 7Cav addon suite. Placeholder for now; shared code is extracted here in a later phase.",
-    "version_id": 1,
-    "version_string": "0.0.1",
+    "description": "Suite-wide code and tooling for the 7Cav addon suite. Carries the checks that span addons; shared library code is extracted here in a later phase.",
+    "version_id": 1000070,
+    "version_string": "1.0.0",
     "dev": "Cav7",
     "dev_url": "https://github.com/7Cav",
     "faq_url": "",
