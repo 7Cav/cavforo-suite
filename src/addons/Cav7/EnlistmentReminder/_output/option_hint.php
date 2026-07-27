@@ -13,6 +13,7 @@ namespace XF;
 /**
  * @property int|null $cav7ERBotUserId Bot user ID
  * @property non-negative-int|null $cav7ERDeadlineHours Reminder deadline (hours)
+ * @property string|null $cav7ERDecorativePrefixIds Decorative prefix IDs
  * @property string|null $cav7ERInProcessingPrefixIds In-processing prefix IDs
  * @property int|null $cav7ERQueueNodeId Enlistment queue node ID
  * @property string|null $cav7ERReenlistClerkPositionIds Re-enlistment clerk position IDs

@@ -35,6 +35,12 @@
         "version_string": "1.0.0",
         "hash": "2e8696a60428ddb364adeee75549d310"
     },
+    "option.cav7ERDecorativePrefixIds.txt": {
+        "global_cache": false,
+        "version_id": 1030070,
+        "version_string": "1.3.0",
+        "hash": "1221801008b99040760a221551056a56"
+    },
     "option.cav7ERInProcessingPrefixIds.txt": {
         "global_cache": false,
         "version_id": 1020070,
@@ -81,7 +87,13 @@
         "global_cache": false,
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "18d90de29eca67c70e8cc5be1e801b6d"
+        "hash": "681243ba0da8ccae2f4af95dc3f9a34d"
+    },
+    "option_explain.cav7ERDecorativePrefixIds.txt": {
+        "global_cache": false,
+        "version_id": 1030070,
+        "version_string": "1.3.0",
+        "hash": "af2c1aebbaf123530cb592a0d75c01e1"
     },
     "option_explain.cav7ERInProcessingPrefixIds.txt": {
         "global_cache": false,

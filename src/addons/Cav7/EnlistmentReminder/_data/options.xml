@@ -7,8 +7,13 @@
   <option option_id="cav7ERDeadlineHours" edit_format="spinbox" data_type="unsigned_integer" advanced="0">
     <default_value>24</default_value>
     <edit_format_params>min=1
+max=720
 step=1</edit_format_params>
     <relation group_id="cav7EnlistmentReminder" display_order="70"/>
+  </option>
+  <option option_id="cav7ERDecorativePrefixIds" edit_format="textbox" data_type="string" advanced="0">
+    <default_value>66,68,110</default_value>
+    <relation group_id="cav7EnlistmentReminder" display_order="67"/>
   </option>
   <option option_id="cav7ERInProcessingPrefixIds" edit_format="textbox" data_type="string" advanced="0">
     <default_value>53,54,55</default_value>
