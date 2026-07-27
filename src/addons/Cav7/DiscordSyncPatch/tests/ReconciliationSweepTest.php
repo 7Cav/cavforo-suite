@@ -40,8 +40,9 @@
  * the Api this addon builds: `assertNotRateLimited()` throws only when
  * `isThrowOnErrors()` is true, that flag defaults to false, and the sweep never sets
  * it — `Api::factory($guildId, false)` passes `$assertConfigured`, not a throw flag.
- * A stub that threw would prove the catch runs and nothing about production. See the
- * open finding recorded against #157.
+ * A stub that threw would prove the catch runs and nothing about production, so the
+ * gap is left open and named rather than papered over: see #233, which also carries
+ * what a real 429 does instead.
  *
  * Whether a refused strip is reported as a refusal rather than as a strip. Its only
  * observable is the wording of a log line, and an assertion on prose reports that
