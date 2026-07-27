@@ -1,0 +1,15 @@
+# Review routing only. The branch ruleset on develop does not set
+# require_code_owner_review, so nothing here blocks a merge — it decides who
+# GitHub requests a review from.
+#
+# GitHub's softener for a required code-owner review is that an approval from
+# any one of the owners is enough, which only helps when there is more than one.
+# With a single owner who is also the usual author, requiring it would make
+# every pull request unmergeable without a bypass, and a control that is
+# bypassed is worse than an honest absence. Revisit if a second regular
+# reviewer appears.
+#
+# Owners must have write permission; a read-only collaborator listed here is
+# silently a no-op.
+
+* @SyniRon
