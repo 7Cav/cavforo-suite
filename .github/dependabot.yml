@@ -9,6 +9,16 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Hold a new release for a week before opening a pull request for it. A
+    # compromised action is usually caught and yanked within days of publishing,
+    # and every workflow here runs with a token that can write to the repo, so
+    # the week buys the ecosystem time to notice on our behalf.
+    #
+    # Only default-days is set: the semver-specific keys apply to package
+    # managers that report a semver change, and a flat week is what we want for
+    # every action regardless.
+    cooldown:
+      default-days: 7
     # One grouped PR for all action bumps rather than a separate PR per action.
     groups:
       actions:
