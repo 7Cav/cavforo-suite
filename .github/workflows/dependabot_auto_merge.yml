@@ -1,0 +1,42 @@
+name: dependabot auto-merge
+
+# Arms GitHub's auto-merge on Dependabot's action bumps so they land on their own
+# once ci-gate passes. Auto-merge does not bypass anything: the branch ruleset
+# still holds, and the pull request merges only if the gate goes green.
+#
+# The review queue this replaces was empty in practice — there is one active
+# maintainer and no pull request in this repo's history has been reviewed by
+# anyone else. The control that a compromised action actually meets is the
+# seven-day cooldown in dependabot.yml, which holds a release until it has had
+# time to be yanked, plus ci-gate. Adding a human step that nobody performs
+# would not have added a third.
+on:
+  pull_request:
+    branches: [develop]
+
+# Dependabot-triggered workflows get a read-only GITHUB_TOKEN whatever the repo
+# default is, so arming auto-merge fails on permissions without this block.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    # pull_request, not pull_request_target: this runs against the pull request's
+    # own merge ref with no access to repository secrets beyond the token above.
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - id: metadata
+        uses: dependabot/fetch-metadata@v3
+
+      # update-type is the highest semver change in the pull request. Because
+      # dependabot.yml groups every action into one pull request, a batch that
+      # contains a single major reports major, and the whole batch waits for a
+      # human. That is the intended reading rather than a gap: a major action
+      # bump is the one that changes behaviour.
+      - if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --squash "$PR_URL"
