@@ -30,11 +30,22 @@ answers at the same roles, back and forth.
 ## Decision
 
 Class-extend `NF\Discord\Cron\SyncUsersFromDiscord` and override `syncUsers()` to do
-nothing, never calling the parent. XenForo resolves a cron entry's class through
-`extendClass` before invoking it, the same seam this addon already uses for the sync
-message, so the override runs wherever the entry fires. While this addon is
-installed the vendor's cron cannot reconcile roles, whatever its option says.
-Scheduled reconciliation has exactly one owner: the sweep.
+nothing, never calling the parent. XenForo's scheduled path resolves a cron entry's
+class through `extendClass` before invoking it (`XF\Job\Cron`), the same seam this
+addon already uses for the sync message, so every scheduled firing runs the override.
+While this addon is installed the vendor's cron cannot reconcile roles on a schedule,
+whatever its option says. Scheduled reconciliation has exactly one owner: the sweep.
+
+**Correction (2026-07-27, during implementation):** this ADR previously said the
+override "runs wherever the entry fires", which is not true.
+`XF\Admin\Controller\CronEntryController::actionRun` invokes
+`call_user_func([$entry->cron_class, $entry->cron_method])` on the raw class with no
+`extendClass`, so an admin pressing "Run" in the control panel reaches the vendor's
+own method. The decision stands as written — what it is about is a second reconciler
+running *on a schedule*, and a control-panel button is a deliberate human act, with
+the vendor's own undefined option still gating it. But the veto is not absolute, and
+anything verifying it must fire through the scheduled path or it is testing the
+vendor's early return instead.
 
 ## Consequences
 

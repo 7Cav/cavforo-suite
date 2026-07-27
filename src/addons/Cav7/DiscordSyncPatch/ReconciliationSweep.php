@@ -32,8 +32,11 @@ use NF\Discord\RateLimitedException;
  *    does exactly this.
  *  - A guild member record is ['user' => ['id' => ...], 'roles' => [...]].
  *  - A member's Discord id is the provider_key of their nfDiscord connected account.
- *  - A role Discord manages itself carries the premium_subscriber tag, which is how
- *    the Nitro-booster role is recognised without naming its id.
+ *  - A role Discord manages itself is flagged `managed`, and the Nitro-booster role
+ *    additionally carries the premium_subscriber tag. Either marks a role no bot can
+ *    move, which is how they are recognised without naming any id.
+ *  - getRoles() returns an empty array for a failed request as well as a successful
+ *    one, so an empty result is read as failure — every guild has an @everyone role.
  */
 class ReconciliationSweep
 {
@@ -56,6 +59,22 @@ class ReconciliationSweep
      * Repository\Queue::run() archives anything older without a Discord round trip.
      */
     protected const PENDING_MAX_AGE_SECONDS = 86400;
+
+    /**
+     * The three lookups below describe the forum, not a guild, so they are read once
+     * for the run rather than once per guild. A sweep is short and works from a
+     * snapshot either way; what this avoids is re-reading every connected account and
+     * every user group for each guild in the map.
+     *
+     * @var array<int, string[]>|null
+     */
+    protected ?array $mappedRoleIdsByGroup = null;
+
+    /** @var array<string, int>|null */
+    protected ?array $linkedUserIdsByDiscordId = null;
+
+    /** @var array<int, int[]>|null */
+    protected ?array $currentGroupIdsByUserId = null;
 
     public function run(): void
     {
@@ -129,21 +148,26 @@ class ReconciliationSweep
             return $divergentUserIds;
         }
 
-        $members = $this->fetchGuildMembers($api, $guildId);
-        if ($members === null) {
-            // Detection has silently halved. Said out loud, because the alternative is
-            // a sweep that looks healthy for months while every hand-edited role and
-            // every unlinked holder goes unnoticed — which is also what a revoked
-            // GUILD_MEMBERS intent looks like from here.
+        // Read first, and cheaper than the member walk, because nothing on the Discord
+        // side can be decided safely without it. Both decisions below take the
+        // protected roles as an input, and both are unsafe with a wrong answer.
+        $preservedRoleIds = $this->preservedRoleIds($api);
+        if ($preservedRoleIds === null) {
             \XF::logError(sprintf(
-                'Cav7/DiscordSyncPatch: the reconciliation sweep could not read guild %s members, so Discord-side divergence and unlinked holders were not checked this run. The bot needs the GUILD_MEMBERS privileged intent for this endpoint.',
+                'Cav7/DiscordSyncPatch: the reconciliation sweep could not read guild %s roles, so it did not check Discord-side divergence or unlinked holders this run. Acting without them would send role sets missing the roles Discord manages itself, which Discord refuses and the integration discards silently.',
                 $guildId
             ));
 
             return $divergentUserIds;
         }
 
-        $preservedRoleIds = $this->preservedRoleIds($api);
+        $members = $this->fetchGuildMembers($api, $guildId);
+        if ($members === null) {
+            // Detection has silently halved. fetchGuildMembers has already said why;
+            // the alternative to saying it is a sweep that looks healthy for months
+            // while every hand-edited role and every unlinked holder goes unnoticed.
+            return $divergentUserIds;
+        }
         $linkedUserIdsByDiscordId = $this->linkedUserIdsByDiscordId();
         $currentGroupIdsByUserId = $this->currentGroupIdsByUserId();
 
@@ -237,7 +261,13 @@ class ReconciliationSweep
     }
 
     /**
-     * The whole guild's member list, or null if it could not be read.
+     * The whole guild's member list, or null if nothing usable could be read.
+     *
+     * Every way out of the walk that is not "reached the end" says so, and says which
+     * one it was. A partial list is not an error — the members it holds are still
+     * reconciled and the rest wait for the next run — but it is never silent, because
+     * the difference between a partial view and a complete one is the difference
+     * between "no unlinked holders on this guild" and "none in the part we read".
      *
      * @return array<int, array>|null
      */
@@ -258,14 +288,17 @@ class ReconciliationSweep
             try {
                 $result = $api->get('guilds/:guildId/members?' . http_build_query($query));
             } catch (RateLimitedException $e) {
-                // Whatever was read stays usable; the rest of the guild waits for the
-                // next run. Returning null here would throw away a complete prefix and
-                // report the run as a total failure.
-                break;
+                return $this->reportPartialWalk($guildId, $members, 'Discord rate-limited the bot part-way through');
             }
 
             if (!is_array($result)) {
-                return $members ? $members : null;
+                // Where a revoked GUILD_MEMBERS intent shows up: the endpoint refuses
+                // and the vendor turns the refusal into a non-array.
+                return $this->reportPartialWalk(
+                    $guildId,
+                    $members,
+                    'a member page could not be read — this endpoint needs the bot to hold the GUILD_MEMBERS privileged intent'
+                );
             }
 
             foreach ($result as $member) {
@@ -282,13 +315,33 @@ class ReconciliationSweep
             }
         }
 
-        \XF::logError(sprintf(
-            'Cav7/DiscordSyncPatch: the reconciliation sweep stopped walking guild %s after %d pages without reaching the end of the member list. Reconciliation ran against a partial view.',
+        return $this->reportPartialWalk(
             $guildId,
-            self::MAX_MEMBER_PAGES
+            $members,
+            sprintf('the walk hit its %d-page bound with Discord still returning full pages', self::MAX_MEMBER_PAGES)
+        );
+    }
+
+    /**
+     * Records a walk that ended somewhere other than the end of the guild, naming the
+     * cause rather than the last thing the loop happened to do.
+     *
+     * @param array<int, array> $members
+     * @return array<int, array>|null
+     */
+    protected function reportPartialWalk(string $guildId, array $members, string $cause): ?array
+    {
+        \XF::logError(sprintf(
+            'Cav7/DiscordSyncPatch: the reconciliation sweep read %d member(s) of guild %s before stopping, because %s. %s',
+            count($members),
+            $guildId,
+            $cause,
+            $members
+                ? 'The members it did read were reconciled; the rest wait for the next run.'
+                : 'No Discord-side divergence or unlinked holders were checked this run.'
         ));
 
-        return $members;
+        return $members ?: null;
     }
 
     /**
@@ -390,19 +443,37 @@ class ReconciliationSweep
      * role set that omits one makes Discord refuse the whole call, and the vendor
      * swallows that refusal, so the strip would be lost with nothing recorded.
      *
-     * @return string[]
+     * Fails closed. The vendor's getRoles() returns [] for a request that failed just
+     * as readily as for one that succeeded — `$this->get(...) ?: []` — so an empty
+     * result cannot be taken at face value. Read as "this guild has no protected
+     * roles", a failed fetch would have the sweep send every booster a role set with
+     * their booster role missing: the exact call Discord refuses and the vendor
+     * swallows, repeated every quarter-hour with nothing logged anywhere.
+     *
+     * An empty list is unambiguous evidence of that failure rather than a guess, since
+     * every guild carries at least the @everyone role.
+     *
+     * @return string[]|null The protected role ids, or null if they could not be read.
      */
-    protected function preservedRoleIds(Api $api): array
+    protected function preservedRoleIds(Api $api): ?array
     {
         try {
             $roles = $api->getRoles(true);
         } catch (RateLimitedException $e) {
-            $roles = [];
+            return null;
+        }
+
+        if (!$roles) {
+            return null;
         }
 
         $preserved = [];
         foreach ($roles as $role) {
-            if (array_key_exists('premium_subscriber', $role['tags'] ?? [])) {
+            // `managed` covers every role an integration owns — a bot's own role as
+            // well as the Nitro-booster role, which carries the premium_subscriber tag
+            // and is managed besides. The tag is still read because it is the property
+            // the vendor itself keys on, and a role could in principle carry it alone.
+            if (!empty($role['managed']) || array_key_exists('premium_subscriber', $role['tags'] ?? [])) {
                 $preserved[] = (string) $role['id'];
             }
         }
@@ -418,6 +489,10 @@ class ReconciliationSweep
      */
     protected function mappedRoleIdsByGroup(): array
     {
+        if ($this->mappedRoleIdsByGroup !== null) {
+            return $this->mappedRoleIdsByGroup;
+        }
+
         $rows = \XF::db()->fetchPairs("
             SELECT user_group_id, nfd_server_group_ids
             FROM xf_user_group
@@ -429,7 +504,7 @@ class ReconciliationSweep
             $byGroup[(int) $groupId] = $this->splitList($mapped);
         }
 
-        return $byGroup;
+        return $this->mappedRoleIdsByGroup = $byGroup;
     }
 
     /**
@@ -454,6 +529,10 @@ class ReconciliationSweep
      */
     protected function linkedUserIdsByDiscordId(): array
     {
+        if ($this->linkedUserIdsByDiscordId !== null) {
+            return $this->linkedUserIdsByDiscordId;
+        }
+
         $rows = \XF::db()->fetchPairs('
             SELECT provider_key, user_id
             FROM xf_user_connected_account
@@ -465,7 +544,7 @@ class ReconciliationSweep
             $linked[(string) $discordId] = (int) $userId;
         }
 
-        return $linked;
+        return $this->linkedUserIdsByDiscordId = $linked;
     }
 
     /**
@@ -473,6 +552,10 @@ class ReconciliationSweep
      */
     protected function currentGroupIdsByUserId(): array
     {
+        if ($this->currentGroupIdsByUserId !== null) {
+            return $this->currentGroupIdsByUserId;
+        }
+
         $rows = \XF::db()->fetchAll('
             SELECT user.user_id, user.user_group_id, user.secondary_group_ids
             FROM xf_user AS user
@@ -488,7 +571,7 @@ class ReconciliationSweep
             );
         }
 
-        return $groups;
+        return $this->currentGroupIdsByUserId = $groups;
     }
 
     /**
@@ -513,10 +596,6 @@ class ReconciliationSweep
      */
     protected function splitList($value): array
     {
-        if (is_array($value)) {
-            return array_map('strval', $value);
-        }
-
         $parts = [];
         foreach (explode(',', (string) $value) as $part) {
             $part = trim($part);

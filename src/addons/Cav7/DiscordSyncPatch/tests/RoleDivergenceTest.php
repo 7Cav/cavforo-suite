@@ -55,6 +55,17 @@ check(
     'correcting settled members would spend the whole Discord budget on no-ops'
 );
 
+// The two sides reach this from different places — Discord's member record against
+// the ids stored on a user group — so they can name the same role while disagreeing
+// on type. Role ids are too large to hold as ints on every platform, so they travel
+// as strings and a comparison that is strict about type reads every member as
+// divergent and corrects the entire guild on every run.
+check(
+    'the same roles as strings and as ints are not a divergence',
+    !RoleDivergence::diverges([100, 101], ['100', '101'], ['100', '101'], []),
+    'a type-strict comparison would correct the whole guild every quarter-hour'
+);
+
 // Managed is a property of the role and the configuration. A role no user group
 // grants is outside this addon entirely, so holding one is never a divergence
 // however it got there — this is what keeps self-assigned interest and game roles

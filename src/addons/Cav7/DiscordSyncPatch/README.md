@@ -240,16 +240,16 @@ stack, which is why the list below exists.
 ## Tests
 
 `tools/run-tests.sh DiscordSyncPatch`. Every decision this addon makes lives in a
-plain unit with no XenForo dependency, and each is exercised for real:
+plain unit with no XenForo dependency:
 
-| Unit | Decides |
-|---|---|
-| `RoleClaim` | which roles one sync run may remove |
-| `RoleScope` | which of the configured roles belong to the guild in hand |
-| `SyncRecordStaleness` | whether a member's sync record still describes a correct sync |
-| `RoleDivergence` | whether a member's managed roles disagree with their groups |
-| `ManagedRoleStrip` | what an unlinked holder should be left holding |
-| `MemberCursor` | where the guild member walk goes next, and when it stops |
+| Unit | Decides | Covered by |
+|---|---|---|
+| `RoleClaim` | which roles one sync run may remove | its own tests |
+| `SyncRecordStaleness` | whether a member's sync record still describes a correct sync | its own tests |
+| `RoleDivergence` | whether a member's managed roles disagree with their groups | its own tests |
+| `ManagedRoleStrip` | what an unlinked holder should be left holding | its own tests |
+| `MemberCursor` | where the guild member walk goes next, and when it stops | its own tests |
+| `RoleScope` | which of the configured roles belong to the guild in hand | `RoleClaim`'s tests, through its caller |
 
 That is the whole of what CI covers here. Everything that needs a live stack — the
 three class-extension registrations, the method overrides, the cron entry, the resync
@@ -279,13 +279,33 @@ CI cannot see any of them, and each one fails silently in production if it break
 8. A second sweep does not stack a second correction on a member whose first one is
    still queued.
 9. The vendor's `SyncUsersFromDiscord` queues nothing **with its
-   `nfDiscordEnableReverseSync` option made to read true**. Without forcing the option
-   the check proves nothing: the vendor's own early return is indistinguishable from
-   the veto, so confirm the same call queues rows when made past the override.
+   `nfDiscordEnableReverseSync` option made to read true**, fired the way the schedule
+   fires it (resolved through `extendClass`, not the control panel's Run button, which
+   calls the raw class). Without forcing the option the check proves nothing: the
+   vendor's own early return is indistinguishable from the veto, so confirm the same
+   call queues rows when made past the override.
+10. The cron entry appears on the cron admin page, and the sweep runs when it fires.
 
-5 to 9 were run this way for the 1.1.0 release, against a mirror of the live board:
-the sweep selected the 10 members whose sync records were inactive and left the other
-3,165 alone, and the vendor's cron queued 100 rows unvetoed against 0 vetoed.
+Items 5 to 10 were run for the 1.1.0 release and the result is recorded in
+[docs/verification/reconciliation-sweep-guards.md](docs/verification/reconciliation-sweep-guards.md).
+
+### Before a release, against the real guild
+
+Nothing above reaches Discord: a dev stack's bot token is blank, so the integration
+returns before any call and no green run says anything about these. They need the real
+guild and the `GUILD_MEMBERS` intent, and they are release blockers, not follow-ups.
+
+1. The member fetch pages through the whole guild and terminates, reading a member
+   count that matches the guild's own.
+2. A managed role hand-added in Discord to a member whose groups do not grant it is
+   taken back off within one cycle, and their self-assigned roles survive it.
+3. A member whose groups changed while their sync was failing is brought into line
+   within one cycle.
+4. An unlinked holder loses their managed roles and keeps every other role.
+5. The strip succeeds for a member holding the Nitro-booster role. This is the one
+   that decides whether Discord refuses a role set omitting a role it manages; if it
+   does, a set built without the booster role fails silently for every booster.
+6. Corrections the sweep makes appear in the corrected member's change log.
 
 `tools/discord-resync-cooldown-check.sh` does 2 and 3 unattended, for both kinds of
 member. It builds its own user group, its own members and its own credentials, lets
