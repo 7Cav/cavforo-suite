@@ -59,6 +59,25 @@ the add-on. Neither survives as itself, but they leave differently: `build.json`
 is dropped, while `_files`' contents are relocated to the upload web root.
 What asserts this: [`tools/README.md`](tools/README.md).
 
+**require entry**:
+One dependency an add-on declares in its manifest — a `[floor, label]` pair
+under `require`, where the label is the prose XenForo prints when the entry
+refuses an install. An entry asserts two independent things: that the dependency
+is installed at all, and that its version clears the floor. An entry pinning no
+version still gates presence, so an inert floor does not make an inert entry.
+_Avoid_: dependency (ambiguous with the depended-on add-on itself), requirement
+
+**version floor**:
+The comparable half of a require entry — an integer XenForo tests against the
+installed dependency's own `version_id` with a plain `>=`, or `*` where no
+version is pinned. The scheme a floor is written in has to be the vendor's own,
+not XenForo's, and a floor in the wrong scheme does not fail safe: depending on
+which way the two schemes differ it is either cleared by everything that vendor
+has published, or refuses all of it. How to write one:
+[`docs/addon-format.md`](docs/addon-format.md).
+_Avoid_: version pin, minimum version (both read as though the label's prose
+were the constraint, when only the floor is compared)
+
 **template copy**:
 One style's own version of a template — a single `xf_template` row. A template
 is a _title_, and a title can have several copies: the master one and a copy in
