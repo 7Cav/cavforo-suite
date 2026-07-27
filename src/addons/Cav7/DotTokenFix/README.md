@@ -12,8 +12,23 @@ Injects a `pattern_replace` char filter into the ElasticSearch analyzer that spl
 
 ## Requirements
 
-- XenForo Enhanced Search (XFES) 2.1.0+
-- ElasticSearch Essentials 1.0.0+
+- XenForo 2.3.0+
+- XenForo Enhanced Search (XFES), any version
+- ElasticSearch Essentials, any version
+
+Both add-on entries carry `*` as their floor, so they gate that the add-on is
+installed and pin no version. How a floor has to be written, and why one in the
+wrong numbering gates nothing, is in
+[`docs/addon-format.md`](../../../../docs/addon-format.md). The short of it here:
+XFES ships inside the XenForo package and tracks core's version, so the XenForo
+floor above already constrains it, and no ElasticSearch Essentials version is
+one this addon needs.
+
+Vendor-coupled behaviour is verified by hand rather than in CI. The pass is
+recorded in
+[docs/verification/require-block-behaviour.md](docs/verification/require-block-behaviour.md).
+Re-run it after a XenForo upgrade, and whenever XFES or ElasticSearch Essentials
+moves.
 
 ## Installation
 

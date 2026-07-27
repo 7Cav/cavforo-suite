@@ -10,13 +10,17 @@
     "support_url": "",
     "extra_urls": [],
     "require": {
-        "SV/ElasticSearchEssentials": [
-            1000000,
-            "ElasticSearch Essentials 1.0.0+"
+        "XF": [
+            2030070,
+            "XenForo 2.3.0+"
         ],
         "XFES": [
-            "2.1.0",
-            "XenForo Enhanced Search 2.1.0+"
+            "*",
+            "XenForo Enhanced Search"
+        ],
+        "SV/ElasticSearchEssentials": [
+            "*",
+            "ElasticSearch Essentials"
         ]
     },
     "icon": ""
