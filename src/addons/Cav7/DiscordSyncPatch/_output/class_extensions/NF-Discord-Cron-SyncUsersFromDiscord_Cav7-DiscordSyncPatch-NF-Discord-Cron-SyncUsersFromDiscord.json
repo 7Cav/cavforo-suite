@@ -1,0 +1,6 @@
+{
+    "from_class": "NF\\Discord\\Cron\\SyncUsersFromDiscord",
+    "to_class": "Cav7\\DiscordSyncPatch\\NF\\Discord\\Cron\\SyncUsersFromDiscord",
+    "execute_order": 10,
+    "active": true
+}

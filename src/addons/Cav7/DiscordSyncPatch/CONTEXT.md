@@ -51,6 +51,18 @@ _Avoid_: "mismatch" (reads as any role difference, including the self-assigned
 roles this excludes), and "drift" for the whole thing (keep it for the Discord-side
 origin alone if origins need naming).
 
+**Stale sync record**:
+A member's `xf_nf_discord_sync_log` row for one guild no longer describing a correct,
+successful sync: the group set it recorded disagrees with the member's groups now, or
+the row is inactive, or it carries an error phrase. It is the forum side's evidence
+of likely **divergence**, and only evidence — the roles themselves are not read, and a
+role write that failed returns before the row is touched at all, so a dropped write
+leaves a record that still looks settled. Note the vendor writes the error phrase and
+clears the active flag together, so an errored record is always an inactive one.
+_Avoid_: treating it as **divergence** itself (that is a statement about roles on
+Discord, which this never looks at), and reading "inactive" as "this member is not
+synced" — an inactive record is one of the strongest reasons to sync them.
+
 **Reconciliation sweep**:
 The scheduled pass that finds the members needing correction and corrects only
 those, leaving everyone already in agreement untouched. It reconciles two distinct
