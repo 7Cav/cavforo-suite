@@ -93,11 +93,32 @@ namespace Cav7\SteamChecker {
         /** @var string[] URL substrings for which httpGet throws (catch-path coverage) */
         public $httpThrows = [];
 
+        /**
+         * URL substrings for which httpGet raises an \Error rather than an
+         * \Exception. The real httpGet() is raw curl, and the HTTP layer's
+         * \Error-side failures are reachable without any Steam or vendor
+         * involvement: curl_init() raises ValueError (an \Error, not an
+         * \Exception) on a rejected URL, and a container rebuilt without
+         * ext-curl makes curl_init() an undefined function. Neither is caught
+         * by catch (\Exception), so the guards around fetchBanData() and
+         * fetchPlayerSummary() are only doing their job while they name
+         * \Throwable. $httpThrows keeps the \Exception side covered — pinning
+         * on \Error alone would trade one blind spot for its mirror image.
+         *
+         * @var string[]
+         */
+        public $httpErrors = [];
+
         /** @var string[] messages passed to postReply */
         public $posted = [];
 
         protected function httpGet(string $url): ?string
         {
+            foreach ($this->httpErrors as $needle) {
+                if (strpos($url, $needle) !== false) {
+                    throw new \Error('stubbed httpGet \Error: ' . $needle);
+                }
+            }
             foreach ($this->httpThrows as $needle) {
                 if (strpos($url, $needle) !== false) {
                     throw new \RuntimeException('stubbed httpGet failure: ' . $needle);
@@ -691,6 +712,83 @@ namespace Issue6Tests {
             && strpos(\XF::$loggedExceptions[0], 'stubbed httpGet failure') !== false,
         'loggedExceptions: ' . var_export(\XF::$loggedExceptions, true)
     );
+
+    // --- Test 7b: \Error out of the HTTP layer (breadth of the same guards) ---
+    // Test 7 drives an \Exception through the fetch guards. An \Error does not
+    // extend \Exception, so those cases stay green if the catches are narrowed
+    // from \Throwable to \Exception — and a narrowed guard would let a
+    // ValueError out of curl_init(), or an undefined curl_init() after a
+    // container rebuild, escape into the member's post action instead of
+    // degrading to a reply. These four hold the breadth: the assertions are on
+    // what the member sees (a reply was posted, and which one), so they also
+    // fail if the guard is deleted outright.
+    $errorCases = [
+        [
+            'label'   => 'runManual, bans fetch',
+            'needle'  => 'GetPlayerBans',
+            'expect'  => 'Steam API error',
+            'absent'  => '[B]Profile:[/B]',
+            'invoke'  => function (Issue6TestableChecker $c): void { $c->runManual(STEAM_ID); },
+            'prepare' => function (): Issue6TestableChecker {
+                global $summaryJson;
+                $c = makeChecker();
+                $c->httpResponses = [SUMMARIES_NEEDLE => $summaryJson];
+                return $c;
+            },
+        ],
+        [
+            'label'   => 'run(), bans fetch',
+            'needle'  => 'GetPlayerBans',
+            'expect'  => 'Steam API error',
+            'absent'  => '[B]Profile:[/B]',
+            'invoke'  => function (Issue6TestableChecker $c): void { $c->run(); },
+            'prepare' => function (): Issue6TestableChecker {
+                global $summaryJson;
+                return makeRunChecker($summaryJson);
+            },
+        ],
+        [
+            'label'   => 'runManual, summaries fetch',
+            'needle'  => 'GetPlayerSummaries',
+            'expect'  => '[B]Profile:[/B] (unknown)',
+            'absent'  => 'Steam API error',
+            'invoke'  => function (Issue6TestableChecker $c): void { $c->runManual(STEAM_ID); },
+            'prepare' => function (): Issue6TestableChecker {
+                global $bansJson;
+                $c = makeChecker();
+                $c->httpResponses = ['GetPlayerBans' => $bansJson];
+                return $c;
+            },
+        ],
+        [
+            'label'   => 'run(), summaries fetch',
+            'needle'  => 'GetPlayerSummaries',
+            'expect'  => '[B]Profile:[/B] (unknown)',
+            'absent'  => 'Steam API error',
+            'invoke'  => function (Issue6TestableChecker $c): void { $c->run(); },
+            'prepare' => function (): Issue6TestableChecker { return makeRunChecker(); },
+        ],
+    ];
+
+    foreach ($errorCases as $case) {
+        resetLogs();
+        $checker = $case['prepare']();
+        $checker->httpErrors = [$case['needle']];
+        $threw = null;
+        try {
+            $case['invoke']($checker);
+        } catch (\Throwable $e) {
+            $threw = get_class($e) . ': ' . $e->getMessage();
+        }
+        check(
+            "{$case['label']}: an \\Error is contained and the reply still posts",
+            $threw === null
+                && count($checker->posted) === 1
+                && strpos($checker->posted[0], $case['expect']) !== false
+                && strpos($checker->posted[0], $case['absent']) === false,
+            'threw: ' . var_export($threw, true) . ' posted: ' . var_export($checker->posted, true)
+        );
+    }
 
     // --- Summary -------------------------------------------------------------
     if ($failures > 0) {
