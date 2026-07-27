@@ -23,13 +23,16 @@ namespace Cav7\EnlistmentReminder;
  * retroactively when the clerk who made it rotated out of RRD, which is how the
  * bot came to remind on thread 100131 while it was marked In Progress.
  *
- * Three faults would each turn the scan into a mass remind of every past-deadline
+ * Four faults would each turn the scan into a mass remind of every past-deadline
  * application, so each aborts the run with a logged error instead: SV/MultiPrefix
  * inactive (disabled rather than uninstalled, so its table is still there but
- * nobody maintains it), a prefix link table that cannot be read, and a link table
- * that returns no rows at all for a non-empty queue.
+ * nobody maintains it), a prefix link table that cannot be read, a link table
+ * that returns no rows at all for a non-empty queue, and a configured status
+ * prefix that no longer exists on the board (issue #191 — deleting a prefix in the
+ * ACP takes every thread's link to it along, so the applications that carried it
+ * keep their type prefix and lose only the mark that said a clerk had them).
  *
- * A fourth runs the other way and aborts for the same reason: an enlistment TYPE
+ * A fifth runs the other way and aborts for the same reason: an enlistment TYPE
  * prefix configured into the in-processing set. Every valid queue thread carries
  * one, so it reads the whole queue as handled and the add-on goes permanently,
  * silently dark. That check intersects the status set with the union of both
@@ -40,7 +43,17 @@ namespace Cav7\EnlistmentReminder;
  * A blank in-processing option aborts too, but for a different reason: nothing
  * could read as handled, and ProcessingStatus refuses that input rather than
  * answering it, so the mass remind is already off the table. What the guard here
- * adds is the admin-facing message and a stop before any DB work.
+ * adds is the admin-facing message and a stop before the queue is read.
+ *
+ * Two further faults are reported without stopping the run, because stopping would
+ * add nothing (issue #191). A queue node id naming no node scans nothing and ends
+ * at the empty-queue return anyway; what the check buys is telling that apart from
+ * a queue which is genuinely clear, since silence is the right answer to only one
+ * of them. And a prefix on a queue thread that is configured neither as a status,
+ * nor as a type, nor as a decoration is recorded once per run: nothing can
+ * validate a workflow that has grown a status nobody added to the option, so the
+ * most that is available is to say what was seen. Both are diffs against what is
+ * configured, so a board in good order reports neither.
  *
  * The private alert is routed by enlistment type (issue #144): a thread's primary
  * prefix says whether it is a Standard or a Re-Enlistment, and the pure
@@ -106,6 +119,16 @@ class QueueReminder
         $rawInProcessingPrefixIds = (string) \XF::options()->cav7ERInProcessingPrefixIds;
         $inProcessingPrefixIds = PositionIdList::parse($rawInProcessingPrefixIds);
 
+        // The prefixes that ride alongside a status without being one — S1, RTC,
+        // the "!!!" modifier. Nothing routes or suppresses on them; they exist
+        // solely so the drift record below can tell "a prefix this add-on has no
+        // opinion about" from "a prefix nobody has told this add-on about yet".
+        // Blank is a legitimate value and simply means every decoration shows up
+        // as drift, which is noisy rather than wrong, so there is no guard on it.
+        $decorativePrefixIds = PositionIdList::parse(
+            (string) \XF::options()->cav7ERDecorativePrefixIds
+        );
+
         // A prefix listed under BOTH type sets is a config error (story 21): a
         // thread of that prefix fail-safes to the union of both clerk sets so no
         // responsible clerk is silently dropped, but the misconfig is surfaced
@@ -150,11 +173,56 @@ class QueueReminder
                 $rawReenlistPrefixIds
             ));
         }
+        // A configured node id that names no node (issue #191). Log-only and
+        // deliberately without a return, because returning would change nothing: an
+        // id matching no node yields no threads and the run ends at the empty-queue
+        // return below regardless. Reporting IS the behaviour.
+        //
+        // Which is also why it earns its place. An empty scan is otherwise
+        // ambiguous — a queue that is genuinely clear reads identically to a node
+        // restructured away or mistyped — and silence is the right answer to only
+        // one of those. This is what makes an absence of threads mean something,
+        // and the precondition for ever recording "the last scan that completed".
+        //
+        // Guarded on $nodeId so it stays a pure log-only check: an unconfigured 0
+        // is the abort below's business, and asking about node 0 would report the
+        // same fault twice in different words.
+        //
+        // The type is checked, not just the row. "The node exists" is not the
+        // question — the question is whether it can hold threads, and a board
+        // carries plenty of nodes that cannot. Node 324 on the live board is a
+        // LinkForum named "Enlist" sitting directly beside 325 "Enlistment Papers"
+        // under the same parent, so a single mistyped digit lands on a node that
+        // exists, holds nothing, and would otherwise pass a row-existence check and
+        // scan silently forever — which is the exact fault this is here to catch.
+        // Categories and Pages behave the same way.
+        if ($nodeId)
+        {
+            $nodeType = $this->fetchNodeType($nodeId);
+            if ($nodeType !== 'Forum')
+            {
+                \XF::logError(sprintf(
+                    '[Cav7/EnlistmentReminder] Queue node id %d (cav7ERQueueNodeId) is %s, so this scan will find nothing and no application will ever be reminded. The id was most likely mistyped or the node restructured. An empty queue in a real forum is normal and is NOT reported, which is why this one is.',
+                    $nodeId,
+                    $nodeType === null
+                        ? 'not a node on this board'
+                        : sprintf('a %s, not a forum, and holds no threads', $nodeType)
+                ));
+            }
+        }
         // The log-only preamble ends here. Everything above only warns, so an admin
-        // holding an unconfigured queue node AND an overlap, or a blank type list,
-        // hears about both from this one run rather than fixing one, waiting an hour,
-        // and then learning about the other. Everything from here down either aborts or
+        // holding a dead queue node AND an overlap, or a blank type list, hears about
+        // both from this one run rather than fixing one, waiting an hour, and then
+        // learning about the other. Everything from here down either aborts or
         // queries.
+        //
+        // The node-existence check above is the one warning that queries, which is
+        // why it reads $nodeId where nothing else in the preamble does. It is placed
+        // here rather than below the not-configured abort on the rule stated at the
+        // end of this block: a log-only check goes ahead of the EARLIEST abort, not
+        // ahead of whichever one it happens to be mutually exclusive with. Arguing
+        // that a particular abort cannot swallow it would be exactly the reasoning
+        // that rule exists to make unnecessary.
         //
         // The node and bot aborts lead, and they sit this low deliberately. Placed at
         // the top, where an option-reading guard naturally wants to go, either one
@@ -168,11 +236,12 @@ class QueueReminder
         // the payoff at one warning per run: no two of the three can ever fire
         // together. Neither guard can mass-remind on its own — an unconfigured node
         // scans nothing and an unconfigured bot posts nothing — so neither has to run
-        // early to be safe, nothing in the preamble reads $nodeId or
-        // $botUserId, and no warning depends on either having been validated. The order
-        // is therefore free to put the reporting first. Keep every log-only check ahead
-        // of the earliest abort rather than ahead of whichever one happens to lead, so
-        // that reordering the aborts later cannot silently swallow a warning.
+        // early to be safe, no warning depends on either having been validated, and
+        // the only preamble check that reads $nodeId at all guards on it first. The
+        // order is therefore free to put the reporting first. Keep every log-only
+        // check ahead of the earliest abort rather than ahead of whichever one happens
+        // to lead, so that reordering the aborts later cannot silently swallow a
+        // warning.
         if (!$nodeId)
         {
             \XF::logError('[Cav7/EnlistmentReminder] Queue node id is not configured; nothing to scan.');
@@ -190,7 +259,7 @@ class QueueReminder
             // what stands between a blank option and a mass remind — deleting it
             // reaches that throw, which aborts the run before anything posts. What
             // it adds is the admin-facing message naming the option, and a stop
-            // before any query runs (issue #186). ProcessingStatus's own docblock
+            // before the queue is read (issue #186). ProcessingStatus's own docblock
             // states the same pairing from the seam's side.
             \XF::logError(sprintf(
                 '[Cav7/EnlistmentReminder] No in-processing prefix parsed from cav7ERInProcessingPrefixIds="%s"; skipping this run so applications already being worked are not reminded.',
@@ -251,6 +320,40 @@ class QueueReminder
             \XF::logError(
                 '[Cav7/EnlistmentReminder] SV/MultiPrefix is not active, so the thread prefix link table is no longer maintained; skipping this run rather than reading every application picked up since as un-actioned. Re-enable it, or disable this add-on.'
             );
+            return;
+        }
+
+        // A configured status prefix that no longer exists on the board (issue
+        // #191). This is the mirror of the type/status collision guard above and
+        // fails the same direction as a blank status option, except that nothing
+        // upstream refuses it: the option still parses, so every guard so far
+        // passes while no thread can carry the status any more.
+        //
+        // Deleting a thread prefix in the ACP is the route that gets here without
+        // anybody mistyping anything, and it takes two vendors to do it. XenForo
+        // core's ThreadPrefix._postDelete clears the forum association map only
+        // (AbstractPrefixMap::removePrefixAssociations), so xf_thread.prefix_id
+        // survives; SV/MultiPrefix's extension deletes every link row carrying the
+        // prefix. The threads therefore keep their TYPE prefix and its link row and
+        // lose only the mark that said a clerk had them in hand — which is exactly
+        // why the "no linked prefix at all" guard further down does not catch this.
+        // It only fires when a thread has NO surviving link, and the type link
+        // always survives.
+        //
+        // Checked against the in-processing set alone, deliberately. A stale TYPE
+        // prefix id routes its threads to unrecognized, which is already logged per
+        // thread; a stale decorative id suppresses nothing and costs nothing. The
+        // status set is the one whose staleness silently reads a worked queue as
+        // un-actioned and reminds all of it.
+        $missingStatusPrefixIds = array_values(
+            array_diff($inProcessingPrefixIds, $this->fetchLivePrefixIds())
+        );
+        if ($missingStatusPrefixIds)
+        {
+            \XF::logError(sprintf(
+                '[Cav7/EnlistmentReminder] In-processing prefix id(s) %s (cav7ERInProcessingPrefixIds) no longer exist as thread prefixes; skipping this run rather than reading every application that carried one as un-actioned. A prefix deleted in the ACP takes its thread links with it, so those applications now look untouched. Remove the id from the option, or recreate the prefix and re-apply it.',
+                implode(', ', $missingStatusPrefixIds)
+            ));
             return;
         }
 
@@ -324,6 +427,47 @@ class QueueReminder
             ));
             return;
         }
+        // Configuration that has fallen behind the workflow (issue #191). Nothing
+        // can VALIDATE this one: if RRD adds a status and starts using it, the
+        // prefix genuinely exists and the configured set is genuinely valid, so
+        // every check above passes while threads in the new status read as
+        // un-actioned and get chased. The only thing available is to say what was
+        // seen and let a maintainer notice.
+        //
+        // Which is why it is a diff against everything the add-on knows about
+        // rather than a list of what it saw. A record that fires on every healthy
+        // run is one an operator learns to filter, and then the single line that
+        // mattered arrives inside a pattern they have already trained themselves
+        // to skip. Reported at all only when non-empty, so on a board that has not
+        // drifted this writes nothing.
+        //
+        // Once per run, not once per thread: a new status arrives on many threads
+        // at once and the count says nothing the ids do not.
+        $accountedForPrefixIds = array_merge(
+            $inProcessingPrefixIds,
+            $standardPrefixIds,
+            $reenlistPrefixIds,
+            $decorativePrefixIds
+        );
+        $driftPrefixIds = [];
+        foreach ($prefixLinks as $row)
+        {
+            $prefixId = (int) ($row['prefix_id'] ?? 0);
+            if ($prefixId && !in_array($prefixId, $accountedForPrefixIds, true))
+            {
+                $driftPrefixIds[$prefixId] = true;
+            }
+        }
+        if ($driftPrefixIds)
+        {
+            $driftPrefixIds = array_keys($driftPrefixIds);
+            sort($driftPrefixIds);
+            \XF::logError(sprintf(
+                '[Cav7/EnlistmentReminder] Prefix id(s) %s are on queue threads but are configured neither as an in-processing status, nor as an enlistment type, nor as a decoration. A thread carrying one of these and no configured status reads as un-actioned and will be reminded; one that also carries a configured status is unaffected. If RRD has added a processing status, add it to cav7ERInProcessingPrefixIds; if it is a new decoration, add it to cav7ERDecorativePrefixIds. This is a notice, not a failure, and the run continues.',
+                implode(', ', $driftPrefixIds)
+            ));
+        }
+
         $inProcessing = ProcessingStatus::inProcessingThreadIds($prefixLinks, $inProcessingPrefixIds);
 
         $alreadyReminded = $this->fetchAlreadyReminded($threadIds);
@@ -500,6 +644,61 @@ class QueueReminder
         );
 
         return array_map('intval', $userIds);
+    }
+
+    /**
+     * The configured queue node's type, or null if no such node (issue #191).
+     * Asked about the one id rather than listing every node, since a board carries
+     * far more nodes than prefixes and only this one is ever in question.
+     *
+     * The TYPE rather than a bare existence check, because the caller's question is
+     * whether the node can hold threads, and existence does not answer it. The live
+     * board has 97 Categories, 3 LinkForums and a Page, none of which ever holds a
+     * thread; one of them, node 324, sits immediately beside the real queue node
+     * under the same parent.
+     *
+     * Deliberately uncaught, unlike fetchThreadPrefixLinks. That method catches
+     * because the answer it would otherwise fail to produce gets read as "nothing
+     * is handled", which mass-reminds — silence is the danger there, so it converts
+     * the throw into a logged abort. Here there is no such reading to protect
+     * against: a throw leaves remind() and is logged by XenForo's cron runner, so
+     * the fault is already loud. Catching would mean inventing an answer, and both
+     * available answers are wrong — "the node is missing" reports a fault that may
+     * not exist, "assume it is fine" silently skips the only check standing between
+     * a dead node and permanent quiet.
+     */
+    protected function fetchNodeType(int $nodeId): ?string
+    {
+        $nodeType = \XF::db()->fetchOne(
+            'SELECT node_type_id FROM xf_node WHERE node_id = ?',
+            [$nodeId]
+        );
+
+        return $nodeType === null || $nodeType === false ? null : (string) $nodeType;
+    }
+
+    /**
+     * Every prefix id that exists on the board, for checking configured ids still
+     * refer to something (issue #191).
+     *
+     * Unfiltered rather than asked "does id N exist" per configured id: the table
+     * is tiny (a few dozen rows on the live board), one read answers the whole
+     * question, and it keeps the set arithmetic in PHP where the caller can name
+     * every missing id in one message instead of stopping at the first.
+     *
+     * Uncaught for the same reason nodeExists() is: a throw is logged by XenForo's
+     * cron runner and is therefore already loud, while the two answers a catch
+     * could invent are both wrong. Returning [] would read every configured status
+     * as deleted and abort with a message naming ids that are fine; returning the
+     * configured set would skip the check silently. See nodeExists().
+     *
+     * @return int[]
+     */
+    protected function fetchLivePrefixIds(): array
+    {
+        return array_map('intval', \XF::db()->fetchAllColumn(
+            'SELECT prefix_id FROM xf_thread_prefix'
+        ));
     }
 
     /**

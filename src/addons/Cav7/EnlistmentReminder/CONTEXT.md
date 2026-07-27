@@ -61,8 +61,10 @@ The state a clerk has moved an application to, carried as a thread prefix from
 the set RRD's queue runs on: _In Progress_ (55), _Hold_ (53), _Approved_ (54).
 SV/MultiPrefix lets a thread hold several prefixes at once and stores them all in
 `xf_sv_thread_prefix_link`, alongside the **Enlistment type** prefix and the
-decorations that ride with a status (S1 66 and RTC 68 alongside Approved, "!!!"
-110 alongside In Progress). A processing status is the only signal that an
+_decorations_ that ride with a status (S1 66 and RTC 68 alongside Approved, "!!!"
+110 alongside In Progress) — listed in `cav7ERDecorativePrefixIds`, and named only
+so that a prefix the reminder has no opinion about can be told from one nobody has
+told it about yet. A processing status is the only signal that an
 application has been picked up. It is a fact about the thread, so unlike the
 authorship of a reply it cannot be withdrawn later by a roster change.
 The subset of those prefixes the reminder treats as "picked up" is the

@@ -76,7 +76,8 @@ All options live under **Admin CP → Options → Enlistment Reminder**:
 | Re-enlistment prefix IDs | Thread prefix IDs that mark a re-enlistment (default 58) |
 | Re-enlistment clerk position IDs | Roster positions alerted about un-actioned re-enlistments (default 579, 960, 1012) |
 | In-processing prefix IDs | Thread prefix IDs that mean a clerk has taken the application on (default 53, 54, 55 for Hold, Approved, In Progress) |
-| Reminder deadline (hours) | How long an application may sit with no processing status before it is reminded (default 24, minimum 1) |
+| Decorative prefix IDs | Thread prefix IDs that ride alongside a status without being one (default 66, 68, 110 for S1, RTC, "!!!"). Nothing routes or suppresses on them; they are listed so the add-on can tell a prefix it has no opinion about from one nobody has told it about yet |
+| Reminder deadline (hours) | How long an application may sit with no processing status before it is reminded (default 24, minimum 1, maximum 8760) |
 
 Do not put the enlistment type prefixes (57, 58) in the in-processing list: they
 are not processing statuses, and listing them would stop the reminder firing at
@@ -90,6 +91,10 @@ the add-on aborts the run and logs an error when any of these is true:
   nobody maintaining it, which is the one an admin is most likely to hit)
 - its prefix table cannot be read, or returns nothing at all for a non-empty queue
 - the in-processing list is empty, or parses to nothing
+- the in-processing list names a prefix that no longer exists. Deleting a thread
+  prefix in the ACP also deletes every thread's link to it, so the applications
+  that carried it keep their type prefix and lose only the mark saying a clerk had
+  them in hand — they read as untouched and would all be chased at once
 
 Two more aborts run the other way, and stop the add-on going silent rather than
 loud:
@@ -106,6 +111,25 @@ lists together, so the other type still routes and a collision on its ids is sti
 caught; only the emptied type goes unreminded, and it is skipped thread by thread
 as unrecognized. The run logs the blank option by name and carries on, so a fault
 confined to one type does not silence the other.
+
+Two more faults are reported without stopping the run, because reporting is all
+they need:
+
+- the queue node ID names no node. The scan finds nothing and the reminder is off
+  permanently, but an empty scan is otherwise indistinguishable from a queue that
+  is genuinely clear — so the node is checked, and only a node that does not exist
+  is reported. An empty queue in a real node stays silent.
+- a queue thread carries a prefix listed neither as an in-processing status, nor
+  as an enlistment type, nor as a decoration. Nothing can validate this one: if the
+  processing team adds a status and starts using it, the prefix is real and the
+  configuration is valid, while threads in that status read as un-actioned. The
+  unaccounted-for IDs are reported once per scan so the drift is visible. A board
+  that has not drifted reports nothing.
+
+The deadline is clamped at both ends rather than aborting, since an out-of-range
+value still leaves a queue that needs scanning. Too small a value would remind
+everything at once; too large a value would remind nothing, ever, with no other
+symptom. Either substitutes the default and says so.
 
 ## License
 
