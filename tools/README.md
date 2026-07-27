@@ -139,12 +139,17 @@ php tools/package-web-assets.php src/addons/Cav7/MilpacMention build/upload Cav7
 ### `validate-addon.php <addon-dir>` and `check-data-consistency.php <addon-dir>`
 
 The static checks CI runs in place of an install. `validate-addon.php` checks the
-`addon.json` shape, that every `_data/*.xml` is well-formed, and that
+`addon.json` shape, that `version_id` decodes to exactly what `version_string`
+says, that every `_data/*.xml` is well-formed, and that
 `_data/class_extensions.xml` holds its rows in the canonical order
 [ADR 0004](../docs/adr/0004-class-extension-order-is-case-folded.md) defines. It
 names the add-on and the two rows that are out of order relative to each other,
 and rewrites nothing: a file that fails is reconciled by re-exporting it, not by
-hand.
+hand. The version check is the one exception that does name a fix — it prints the
+`version_id` the declared `version_string` calls for, because `version_id` is
+what XenForo compares to decide a board needs this add-on's data and nothing
+hashes `_data`. The scheme is described in
+[docs/addon-format.md](../docs/addon-format.md).
 `check-data-consistency.php` cross-checks the `_output/` tree and the `_data/`
 bundle against each other and fails on drift, which catches either side not
 being re-exported after a change — including a data type that reached `_data/`
