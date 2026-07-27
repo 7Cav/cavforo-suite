@@ -51,6 +51,32 @@ _Avoid_: "mismatch" (reads as any role difference, including the self-assigned
 roles this excludes), and "drift" for the whole thing (keep it for the Discord-side
 origin alone if origins need naming).
 
+**Stale sync record**:
+A member's `xf_nf_discord_sync_log` row for one guild no longer describing a correct,
+successful sync: the group set it recorded disagrees with the member's groups now, or
+the row is inactive, or it carries an error phrase. It is the forum side's evidence
+of likely **divergence**, and only evidence — the roles themselves are not read, and a
+role write that failed returns before the row is touched at all, so a dropped write
+leaves a record that still looks settled. Note the vendor writes the error phrase and
+clears the active flag together, so an errored record is always an inactive one.
+_Avoid_: treating it as **divergence** itself (that is a statement about roles on
+Discord, which this never looks at), and reading "inactive" as "this member is not
+synced" — an inactive record is one of the strongest reasons to sync them.
+
+**Preserved role**:
+A Discord role the bot cannot move because Discord owns it: anything an integration
+created (flagged `managed` on the role) and the Nitro-booster role (which carries the
+`premium_subscriber` tag and is managed besides). Discord rejects a role write that
+would add or drop one, and rejects it whole rather than in part, so any set this addon
+sends must carry every preserved role the member already holds — otherwise the write
+fails entirely and the vendor swallows the refusal. A role can be preserved and
+**managed** at once: a user group may well grant a role Discord also owns, and where
+the two meet, preserved wins and the role stays.
+_Avoid_: reading "preserved" as the opposite of "**managed role**", which is the
+nearest trap in this glossary. They answer different questions — managed is "does a
+user group grant this?", preserved is "will Discord let the bot move it?" — and
+Discord's own `managed` flag means the second, not the first.
+
 **Reconciliation sweep**:
 The scheduled pass that finds the members needing correction and corrects only
 those, leaving everyone already in agreement untouched. It reconciles two distinct

@@ -68,7 +68,7 @@ There is more detail on the `_output/` and `_data/` split in [docs/addon-format.
 
 Shared scripts live in [`tools/`](tools/); [tools/README.md](tools/README.md) has the details.
 
-- Run an addon's tests: `tools/run-tests.sh <AddonId>`. These are standalone PHP scripts and need only `php`.
+- Run an addon's tests: `tools/run-tests.sh <AddonId>`. These are standalone PHP scripts and need only `php`, plus `pdo_sqlite` for DiscordSyncPatch, whose sweep test runs the addon's real SQL against an in-memory database rather than a fake that answers by query shape.
 - Build the **release build** from committed files, with no XenForo install: `tools/package-addon.sh <AddonId>`. CI and the release workflow use this, it produces the `upload/...` layout the admin panel installs from, and it is the only zip anyone should install a board from.
 - Build a **local build** for testing against a real install (needs a XenForo install): `tools/build.sh <AddonId>`. It wraps `xf-addon:build-release` (export to `_data/`, then package). Point it at your install with `XF_ROOT` or `XF_CMD`. It ships each addon's `tests/`, `docs/` and `CONTEXT.md` deliberately — see [ADR 0005](docs/adr/0005-the-release-build-is-the-distribution-channel.md).
 

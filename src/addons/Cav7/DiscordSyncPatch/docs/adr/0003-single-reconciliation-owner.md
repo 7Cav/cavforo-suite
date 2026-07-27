@@ -36,6 +36,18 @@ message, so the override runs wherever the entry fires. While this addon is
 installed the vendor's cron cannot reconcile roles, whatever its option says.
 Scheduled reconciliation has exactly one owner: the sweep.
 
+**Correction (2026-07-27, during implementation):** the decision above says the
+override "runs wherever the entry fires". That is not true, and the paragraph is left
+as written because this record is a point-in-time one.
+`XF\Admin\Controller\CronEntryController::actionRun` invokes
+`call_user_func([$entry->cron_class, $entry->cron_method])` on the raw class with no
+`extendClass`, so an admin pressing "Run" in the control panel reaches the vendor's
+own method. The decision stands as written — what it is about is a second reconciler
+running *on a schedule*, and a control-panel button is a deliberate human act, with
+the vendor's own undefined option still gating it. But the veto is not absolute, and
+anything verifying it must fire through the scheduled path or it is testing the
+vendor's early return instead.
+
 ## Consequences
 
 - There is one scheduled role reconciler, not a race between two. Nobody can turn a second,

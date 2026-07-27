@@ -43,26 +43,8 @@ class RoleClaim
             $claim[$roleId] = $roleId;
         }
 
-        foreach ($mappedRoleIds as $mappedRoleId) {
-            $parts = explode(':', (string) $mappedRoleId, 2);
-            if (count($parts) === 1) {
-                $mappedServerId = $defaultServerId;
-                $roleId = $parts[0];
-            } else {
-                [$mappedServerId, $roleId] = $parts;
-            }
-
-            // A bare prefix ("<serverId>:") names no role. The empty whole token is
-            // filtered upstream, but an empty role id after a valid prefix is not, so
-            // drop it here rather than record a phantom empty id.
-            if ($roleId === '') {
-                continue;
-            }
-
-            if ((int) $mappedServerId !== $serverId) {
-                continue;
-            }
-
+        // The prefix split lives in RoleScope, which the sweep's decisions share.
+        foreach (RoleScope::forServer($mappedRoleIds, $serverId, $defaultServerId) as $roleId) {
             $claim[$roleId] = $roleId;
         }
 
