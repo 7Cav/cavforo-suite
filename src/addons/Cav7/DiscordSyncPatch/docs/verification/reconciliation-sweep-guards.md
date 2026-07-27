@@ -16,6 +16,11 @@ Run against `~/srv/xenforo-dev` (XenForo 2.3.11, NF/Discord 2.12.0) on 2026-07-2
 for [#157](https://github.com/7Cav/cavforo-suite/issues/157), against a mirror of the
 live board: 3,175 sync log rows, 3,577 nfDiscord connected accounts, one guild.
 
+> **The Discord-side half was run on 2026-07-27 and is recorded in
+> [its own section below](#discord-side-pass-a-test-guild-and-a-fenced-live-guild).**
+> Everything this first pass lists as unreachable has since been reached. The section
+> below also corrects one number here: see [Scale observed](#scale-observed).
+
 ## What this pass cannot answer
 
 Everything Discord-side. The stack's bot token is deliberately blank, so the
@@ -23,6 +28,11 @@ integration returns before any API call. The bulk member fetch, Discord-side
 divergence detection, and the unlinked-holder strip are **not** exercised here and a
 green pass says nothing about them. They are confirmed against the real guild before
 release, and that list is in the add-on README.
+
+There is a second reason beyond the blank token, found while doing the Discord-side
+pass: the stack's `fpm` container sits on a Docker network marked `internal: true`, so
+it has no route off the machine at all. Filling in a real token is not sufficient;
+egress has to be granted deliberately and taken away again.
 
 The credentials the pass sets are dummy values, which is what makes the forum-side
 half reachable at all: with a token present the sweep gets past its first guard, and
@@ -99,8 +109,114 @@ alone. Those 10 are the members holding a connected account alongside a sync rec
 the vendor left inactive — the population a reconciler exists to retry, and the one
 NF/Discord's own cron excludes by filtering on `sync_log.active = 1`.
 
+> **This 10 is the forum-side half only.** It was the whole of what this pass could
+> see, because the Discord side was unreachable. Against the live guild the sweep
+> selects **131**, of which these 10 are a part; the remainder is Discord-side
+> divergence, which nothing before the pass below had ever measured. Do not quote the
+> 10 as the sweep's selection size.
+
 No row on this board carries an error phrase, and 463 connected accounts have no sync
 record at all; the scan leaves those alone, since they were never synced on this guild.
+
+## Discord-side pass: a test guild and a fenced live guild
+
+Run on 2026-07-27 against the same stack, for
+[#232](https://github.com/7Cav/cavforo-suite/pull/232). This is the pass that clears
+the six release blockers in the README's "Before a release, against the real guild"
+list.
+
+### Method: two guilds, and a bot that cannot write
+
+The dangerous path is `stripUnlinkedHolder()`, which replaces a member's role set for
+anyone the forum believes is unlinked. Its blast radius is whatever the link map says,
+and the stack's link map is a mirror of unknown age. So the pass never let mirror data
+and write capability meet on the live guild:
+
+- A **second bot application** holds the stack's credentials. The token is one global
+  option on the `nfDiscord` provider while the guild is per server row, so a stack can
+  be pointed anywhere the bot has been invited — and this bot was invited only to a
+  throwaway guild. That is a structural boundary, not a procedural one.
+- The **destructive checks ran in that throwaway guild**, at full write privilege,
+  against real Discord: real role hierarchy, real managed-role semantics, real
+  refusals, with a blast radius of the author's own alt accounts.
+- The **live guild was read with the same bot holding no `Manage Roles`** and a role at
+  position 1 of 217. Every `PATCH` it issued came back `403`, which is exactly what
+  makes the refusal path observable without moving a role.
+
+Egress was granted with `docker network connect bridge` for each run and removed
+after, so the compose file's documented `internal: true` backstop was borrowed against
+rather than edited.
+
+### What was checked, and what happened
+
+| # | Check | Where | Result |
+|---|---|---|---|
+| 1 | The member fetch pages the whole guild and terminates, reading a count that matches the guild's own | live | pass — 8,568 read, 8,568 reported, no partial-walk row |
+| 2 | A managed role hand-added to a member whose groups do not grant it is taken back off within one cycle, and their self-assigned roles survive | test | pass |
+| 3 | A member whose groups changed while their sync was failing is brought into line within one cycle | test | pass, record repaired itself |
+| 4 | An unlinked holder loses their managed roles and keeps every other role | test | pass, two holders |
+| 5 | The strip succeeds for a member holding a role Discord manages | test | pass, `HTTP 200` |
+| 5 | A deliberately bad set is reported as refused rather than as a strip | live | pass — 0 stripped, 80 refused |
+| 6 | Corrections the sweep makes appear in the corrected member's change log | test | pass |
+
+### Discord refuses a set that omits a managed role
+
+Probed directly before check 5, because the answer decides whether the fail-closed
+guard in `preservedRoleIds()` is load-bearing or decorative. A `PATCH` omitting a role
+Discord manages is refused **whole**: `403`, `{"message":"Missing Permissions","code":
+50013}`, member's roles unchanged. The same set with the managed role kept returns
+`200`.
+
+So the guard is load-bearing. A failed guild-roles read yields an empty preserved list,
+every booster then receives a set missing their booster role, Discord refuses each one
+entire, `Api::request()` turns that into `false`, and the strip is lost with nothing
+recorded. That is the failure the guard exists to prevent, now measured rather than
+argued.
+
+The subject was a bot's own integration role, not a Nitro booster: both carry
+`managed`, which is the property `preservedRoleIds()` keys on. No Nitro subscription is
+needed to answer this.
+
+Note `50013` is also what a genuine missing-permission failure returns, so a refusal
+count says *that* Discord refused, never *why*.
+
+### Scale observed on the live guild
+
+Measured with the sweep's two write leaves — `stripUnlinkedHolder()` and
+`queueCorrections()` — overridden to record rather than act, leaving the walk, the
+roles read and every decision as production code. The fenced run afterwards agreed with
+it exactly on both numbers, which is what makes the dry-run form worth trusting.
+
+| | |
+|---|---|
+| Guild members | 8,568 |
+| Connected accounts (mirror) | 3,577 |
+| Members the sweep would queue for correction | **131** |
+| Unlinked holders it would strip | **80** |
+| …of whom would be left holding nothing | **29** |
+
+The roles removed are mostly `Forum Registered` (73), `Active Members` (55), `Rank -
+RCT` and `Recruits` (33 each), with a long tail of unit, staff and rank roles including
+one `Rank - GEN` and one `Rank - COL`. Server nicknames on the affected accounts —
+`MAJ.McCloud.A RET` among them — and the 38 of 80 carrying no nickname at all both
+point at accumulated drift from departed members rather than a detection fault.
+
+**That list was computed from mirror link data and must not be acted on as-is.** The
+mirror is a snapshot of unknown age; anyone who linked after it was taken reads as
+unlinked. The same dry run has to be repeated against production before any strip, and
+the 80 read as a list, before the first unfenced run rather than after it.
+
+### What this pass still cannot answer
+
+A strip that *succeeds* on the live guild. The fence guaranteed every live `PATCH` was
+refused, so this code has still never written to the real guild. The mechanism is
+proven in the test guild against real Discord, and no further testing closes the gap —
+the first successful live strip is the production run itself.
+
+Rate limiting ([#233](https://github.com/7Cav/cavforo-suite/issues/233)) is likewise
+untouched. The walk took 10.4s over 9 pages and 80 refused patches took 28.5s without a
+`429`, so it does not trip at this scale; nothing was learned about what happens when
+it does.
 
 ## Re-running it
 

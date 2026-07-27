@@ -161,6 +161,32 @@ the role strips that handler drops rather than repairing it. And while the addon
 vetoes the vendor's `SyncUsersFromDiscord` cron, it does not touch, enable or
 reimplement the reverse-direction code that cron's option also gates.
 
+## Known gaps
+
+**Rate limiting is not handled**, and is tracked in
+[#233](https://github.com/7Cav/cavforo-suite/issues/233). The sweep's three
+`RateLimitedException` catches are unreachable in production: `assertNotRateLimited()`
+throws only when `isThrowOnErrors()` is true, and that flag defaults false and is never
+set. What a real 429 does instead depends on how it arrives. A live-guild pass walked
+8,568 members over 9 pages in 10.4s and issued 80 role patches in 28.5s without
+tripping one, so it does not bite at this guild's scale — which says nothing about what
+happens when it does.
+
+**The sweep does not check `nfDiscordEnableSync` before queueing a correction.** It
+guards two preconditions of exactly this class — absent credentials, and a server row
+with no guild id — because both make a queued correction incapable of succeeding. The
+integration's master sync switch is a third. With it off, the vendor's `dispatch()`
+never reaches `syncRoles()`: it spends a `getGuildMember` call, returns `true`, and the
+queue archives the row with `fail_count 0` and `error NULL`. A clean success that moved
+no role. The sweep would then find the same divergence on its next run, forever, with
+nothing in any log.
+
+It is a latent hole rather than an active one. Turning that option off stops every
+other NF/Discord path too — the resync button, the join flow, the event-driven sync —
+so a board in that state has bigger news than a churning cron, and the option is on in
+production. Unlike the two guarded preconditions, ordinary operation does not reach it.
+Worth knowing before someone toggles it while debugging something else.
+
 ## Reverting
 
 Disable the addon. Everything it adds is a class extension, a cron entry, a template
@@ -291,9 +317,19 @@ Items 5 to 10 were run for the 1.1.0 release and the result is recorded in
 
 ### Before a release, against the real guild
 
-Nothing above reaches Discord: a dev stack's bot token is blank, so the integration
-returns before any call and no green run says anything about these. They need the real
-guild and the `GUILD_MEMBERS` intent, and they are release blockers, not follow-ups.
+Nothing above reaches Discord: a dev stack's bot token is blank *and* its `fpm`
+container is on a network marked `internal: true`, so the integration returns before
+any call and no green run says anything about these. They need a real guild, the
+`GUILD_MEMBERS` intent, and egress granted deliberately. They are release blockers, not
+follow-ups.
+
+**All six were run on 2026-07-27 and passed**; the method and the numbers are in
+[docs/verification/reconciliation-sweep-guards.md](docs/verification/reconciliation-sweep-guards.md).
+Checks 2 to 6 ran in a throwaway guild at full write privilege, using a second bot
+application invited nowhere else — the token is one global option while the guild is
+per server row, so that is a structural boundary rather than a promise. Check 1 and the
+refusal half of check 5 ran against the live guild with that same bot holding no
+`Manage Roles`, so every patch it issued was refused and no role moved.
 
 1. The member fetch pages through the whole guild and terminates, reading a member
    count that matches the guild's own.

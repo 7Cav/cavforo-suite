@@ -228,11 +228,21 @@ class ReconciliationSweep
             // line — the only forum-side trace there is — assert something that did not
             // happen. The refusal to expect is Discord rejecting a role set that omits
             // a role it manages, which it rejects whole.
+            //
+            // The pointer to Discord's audit log is attached only when something was
+            // actually removed. A run where every strip was refused removes nothing,
+            // and sending an admin to an audit log that will not mention this run is
+            // the same mistake in prose that reporting a refusal as a strip was in
+            // arithmetic. A live-guild pass produced exactly that line: 0 stripped,
+            // 80 refused.
             \XF::logError(sprintf(
-                'Cav7/DiscordSyncPatch: the reconciliation sweep stripped forum-managed roles from %d guild member(s) on %s who hold no linked forum account, and had %d strip(s) refused by Discord. Discord\'s own server audit log records each removal.',
+                'Cav7/DiscordSyncPatch: the reconciliation sweep stripped forum-managed roles from %d guild member(s) on %s who hold no linked forum account, and had %d strip(s) refused by Discord.%s',
                 $stripped,
                 $guildId,
-                $refused
+                $refused,
+                $stripped > 0
+                    ? ' Discord\'s own server audit log records each removal.'
+                    : ''
             ));
         }
 
