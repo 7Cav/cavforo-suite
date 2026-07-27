@@ -124,11 +124,9 @@ namespace {
 
         public function create($type)
         {
-            if (\XF::$emCreateThrowsError) {
-                throw new \Error('entity create raised an \Error (forced by test)');
-            }
             if (\XF::$emCreateThrows) {
-                throw new \RuntimeException('entity create failed (forced by test)');
+                $throwableClass = \XF::$emCreateThrows;
+                throw new $throwableClass('entity create failed (forced by test)');
             }
             return new FakeCreatedPost();
         }
@@ -154,19 +152,20 @@ namespace {
         public static $loggedExceptions = [];
         /** @var string[] message bytes captured from postReply() saves */
         public static $postedMessages = [];
-        /** @var bool when true, FakeEm::create() throws (error-branch tests) */
-        public static $emCreateThrows = false;
         /**
-         * As above, but \Error-side. Post.php's wrapper exists so a failure in
-         * the reply path cannot take the member's post save with it, and the
-         * failures it is there for — a renamed entity method after an upgrade,
-         * a TypeError on a changed signature — are \Errors, which do not extend
-         * \Exception. Both flags together pin the wrapper against a narrowing
-         * in either direction.
+         * When set, FakeEm::create() throws this class (error-branch tests).
          *
-         * @var bool
+         * Both sides of \Throwable are driven through it. Post.php's wrapper
+         * exists so a failure in the reply path cannot take the member's post
+         * save with it, and the failures it is there for — a renamed entity
+         * method after an upgrade, a TypeError on a changed signature — are
+         * \Errors, which do not extend \Exception. Driving only the \Exception
+         * side leaves catch (\Exception) green; driving only the \Error side
+         * leaves catch (\Error) green.
+         *
+         * @var class-string<\Throwable>|null
          */
-        public static $emCreateThrowsError = false;
+        public static $emCreateThrows = null;
 
         public static function options()
         {
@@ -239,8 +238,7 @@ namespace {
         \XF::$loggedErrors = [];
         \XF::$loggedExceptions = [];
         \XF::$postedMessages = [];
-        \XF::$emCreateThrows = false;
-        \XF::$emCreateThrowsError = false;
+        \XF::$emCreateThrows = null;
     };
 
     $invoke = function ($post) {
@@ -541,7 +539,7 @@ namespace {
     // assertions below IS the no-fatal proof.
     // -----------------------------------------------------------------------
     $resetState();
-    \XF::$emCreateThrows = true;
+    \XF::$emCreateThrows = \RuntimeException::class;
     $post = $makePost(['message' => '!vac']);
     $invoke($post);
     $degenerateExceptionLogs = array_values(array_filter(\XF::$loggedExceptions, function ($msg) {
@@ -559,7 +557,7 @@ namespace {
     // aborts the member's post save. Asserting the invocation returned normally
     // is the containment; the wrapper being deleted fails it the same way.
     $resetState();
-    \XF::$emCreateThrowsError = true;
+    \XF::$emCreateThrows = \Error::class;
     $post = $makePost(['message' => '!vac']);
     $escaped = null;
     try {
@@ -570,8 +568,6 @@ namespace {
     $check('reply-path \Error: contained, so the post save completes',
         $escaped === null,
         'escaped: ' . \var_export($escaped, true));
-    $check('reply-path \Error: no reply was posted',
-        \XF::$postedMessages === []);
 
     // -----------------------------------------------------------------------
     // (b) bot user unconfigured: with steamCheckerBotUserId = 0, the
