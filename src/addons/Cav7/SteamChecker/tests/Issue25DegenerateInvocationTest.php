@@ -124,6 +124,9 @@ namespace {
 
         public function create($type)
         {
+            if (\XF::$emCreateThrowsError) {
+                throw new \Error('entity create raised an \Error (forced by test)');
+            }
             if (\XF::$emCreateThrows) {
                 throw new \RuntimeException('entity create failed (forced by test)');
             }
@@ -153,6 +156,17 @@ namespace {
         public static $postedMessages = [];
         /** @var bool when true, FakeEm::create() throws (error-branch tests) */
         public static $emCreateThrows = false;
+        /**
+         * As above, but \Error-side. Post.php's wrapper exists so a failure in
+         * the reply path cannot take the member's post save with it, and the
+         * failures it is there for — a renamed entity method after an upgrade,
+         * a TypeError on a changed signature — are \Errors, which do not extend
+         * \Exception. Both flags together pin the wrapper against a narrowing
+         * in either direction.
+         *
+         * @var bool
+         */
+        public static $emCreateThrowsError = false;
 
         public static function options()
         {
@@ -226,6 +240,7 @@ namespace {
         \XF::$loggedExceptions = [];
         \XF::$postedMessages = [];
         \XF::$emCreateThrows = false;
+        \XF::$emCreateThrowsError = false;
     };
 
     $invoke = function ($post) {
@@ -536,6 +551,26 @@ namespace {
         count($degenerateExceptionLogs) === 1
         && \XF::$loggedExceptions === $degenerateExceptionLogs);
     $check('reply-path throw: no reply was posted',
+        \XF::$postedMessages === []);
+
+    // (a2) the same containment, \Error-side. Case (a) drives a \RuntimeException,
+    // so it stays green if the wrapper is narrowed to catch (\Exception) — and a
+    // narrowed wrapper would let a reply-path \Error escape _postSave(), which
+    // aborts the member's post save. Asserting the invocation returned normally
+    // is the containment; the wrapper being deleted fails it the same way.
+    $resetState();
+    \XF::$emCreateThrowsError = true;
+    $post = $makePost(['message' => '!vac']);
+    $escaped = null;
+    try {
+        $invoke($post);
+    } catch (\Throwable $e) {
+        $escaped = \get_class($e) . ': ' . $e->getMessage();
+    }
+    $check('reply-path \Error: contained, so the post save completes',
+        $escaped === null,
+        'escaped: ' . \var_export($escaped, true));
+    $check('reply-path \Error: no reply was posted',
         \XF::$postedMessages === []);
 
     // -----------------------------------------------------------------------
