@@ -17,6 +17,7 @@
 
 namespace Cav7\DiscordSyncPatch\Tests;
 
+require __DIR__ . '/../RoleScope.php';
 require __DIR__ . '/../RoleClaim.php';
 
 use Cav7\DiscordSyncPatch\RoleClaim;
