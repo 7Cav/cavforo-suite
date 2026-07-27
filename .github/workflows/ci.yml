@@ -74,6 +74,11 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
+          # DiscordSyncPatch's sweep test runs the add-on's real SQL against an
+          # in-memory SQLite database, so the queries are covered by what they mean
+          # rather than by a fake that dispatches on their shape. Named explicitly
+          # rather than left to the runner's default build.
+          extensions: pdo_sqlite
           coverage: none
       - name: Run tests
         run: tools/run-tests.sh "$ADDON"

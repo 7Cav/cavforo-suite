@@ -305,6 +305,10 @@ guild and the `GUILD_MEMBERS` intent, and they are release blockers, not follow-
 5. The strip succeeds for a member holding the Nitro-booster role. This is the one
    that decides whether Discord refuses a role set omitting a role it manages; if it
    does, a set built without the booster role fails silently for every booster.
+   Run it both ways round: the sweep reads what `patchGuildMemberRoles` returns and
+   counts a refusal apart from a strip, so a deliberately bad set must be reported as
+   refused rather than as a strip. Nothing short of a real guild can show that — a
+   dev stack fails the guild-roles read first and never reaches the call.
 6. Corrections the sweep makes appear in the corrected member's change log.
 
 `tools/discord-resync-cooldown-check.sh` does 2 and 3 unattended, for both kinds of

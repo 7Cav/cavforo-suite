@@ -37,6 +37,8 @@ use NF\Discord\RateLimitedException;
  *    move, which is how they are recognised without naming any id.
  *  - getRoles() returns an empty array for a failed request as well as a successful
  *    one, so an empty result is read as failure — every guild has an @everyone role.
+ *    It also caches what it got for five minutes without distinguishing the two, which
+ *    is why this asks it not to read that cache.
  */
 class ReconciliationSweep
 {
@@ -132,7 +134,7 @@ class ReconciliationSweep
         $groupRoleIds = $this->mappedRoleIdsByGroup();
 
         $managedRoleIds = RoleScope::forServer(
-            array_merge(...array_values($groupRoleIds) ?: [[]]),
+            $this->allMappedRoleIds($groupRoleIds),
             $serverId,
             $defaultServerId
         );
@@ -172,6 +174,7 @@ class ReconciliationSweep
         $currentGroupIdsByUserId = $this->currentGroupIdsByUserId();
 
         $stripped = 0;
+        $refused = 0;
         foreach ($members as $member) {
             $discordId = (string) ($member['user']['id'] ?? '');
             if ($discordId === '') {
@@ -185,8 +188,19 @@ class ReconciliationSweep
                 // An unlinked holder. There is no forum user to run the vendor's
                 // per-user sync for — it bails with user_not_associated — so the roles
                 // are patched directly.
-                if ($this->stripUnlinkedHolder($api, $guildId, $discordId, $heldRoleIds, $managedRoleIds, $preservedRoleIds)) {
+                $outcome = $this->stripUnlinkedHolder(
+                    $api,
+                    $guildId,
+                    $discordId,
+                    $heldRoleIds,
+                    $managedRoleIds,
+                    $preservedRoleIds
+                );
+
+                if ($outcome === true) {
                     $stripped++;
+                } elseif ($outcome === false) {
+                    $refused++;
                 }
                 continue;
             }
@@ -202,16 +216,23 @@ class ReconciliationSweep
             }
         }
 
-        if ($stripped > 0) {
+        if ($stripped > 0 || $refused > 0) {
             // A durable line for the one correction that cannot be recorded against a
             // member. NF/Discord's own log only writes when its extended logging option
             // is on, and an admin asked months later why somebody lost their roles
             // needs an answer that does not depend on that having been enabled. One row
-            // per run rather than one per member, and only when roles actually moved.
+            // per run rather than one per member, and only when a call was made.
+            //
+            // Refusals are counted apart from strips rather than folded into them. A
+            // refused call moved no role, and reporting it as a strip would make this
+            // line — the only forum-side trace there is — assert something that did not
+            // happen. The refusal to expect is Discord rejecting a role set that omits
+            // a role it manages, which it rejects whole.
             \XF::logError(sprintf(
-                'Cav7/DiscordSyncPatch: the reconciliation sweep stripped forum-managed roles from %d guild member(s) on %s who hold no linked forum account. Discord\'s own server audit log records each removal.',
+                'Cav7/DiscordSyncPatch: the reconciliation sweep stripped forum-managed roles from %d guild member(s) on %s who hold no linked forum account, and had %d strip(s) refused by Discord. Discord\'s own server audit log records each removal.',
                 $stripped,
-                $guildId
+                $guildId,
+                $refused
             ));
         }
 
@@ -225,7 +246,11 @@ class ReconciliationSweep
      * @param string[] $managedRoleIds
      * @param string[] $preservedRoleIds
      *
-     * @return bool Whether roles were actually removed.
+     * @return bool|null True where Discord accepted the new role set, false where it
+     *                   refused it, and null where there was nothing to strip and no
+     *                   call was made. The three are counted differently: only the
+     *                   first is a correction, and the second must never be reported
+     *                   as one.
      */
     protected function stripUnlinkedHolder(
         Api $api,
@@ -234,7 +259,7 @@ class ReconciliationSweep
         array $heldRoleIds,
         array $managedRoleIds,
         array $preservedRoleIds
-    ): bool
+    ): ?bool
     {
         $keepRoleIds = ManagedRoleStrip::rolesToKeep($heldRoleIds, $managedRoleIds, $preservedRoleIds);
 
@@ -242,7 +267,7 @@ class ReconciliationSweep
         // patching them would rewrite thousands of members to exactly what they already
         // have, against a budget near sixty role writes a minute.
         if ($keepRoleIds === null) {
-            return false;
+            return null;
         }
 
         \NF\Discord\Helper::log('[Cav7\DiscordSyncPatch] Stripping managed roles from an unlinked holder', [
@@ -255,9 +280,21 @@ class ReconciliationSweep
 
         // patchGuildMemberRoles REPLACES the member's role set, which is why the
         // decision returns what they should be left holding rather than what to remove.
-        $api->patchGuildMemberRoles($discordId, $keepRoleIds);
+        //
+        // Its result is read rather than discarded. Api::request() returns false for
+        // every way this fails — a connect or server exception, a 4xx, a 401 or 403, a
+        // body it could not decode — and returns the member object or true otherwise.
+        // Discarding it would have the run report a strip for a call Discord refused,
+        // which is the one thing the per-run log line exists to be trusted about. The
+        // refusal to expect is a role set omitting a role Discord manages: it is
+        // rejected whole, and nothing else records that.
+        try {
+            $patched = $api->patchGuildMemberRoles($discordId, $keepRoleIds);
+        } catch (RateLimitedException $e) {
+            return false;
+        }
 
-        return true;
+        return $patched !== false;
     }
 
     /**
@@ -361,27 +398,33 @@ class ReconciliationSweep
             SELECT sync_log.user_id,
                    sync_log.user_group_ids,
                    sync_log.active,
-                   sync_log.user_error_phrase,
-                   user.user_group_id,
-                   user.secondary_group_ids
+                   sync_log.user_error_phrase
             FROM xf_nf_discord_sync_log AS sync_log
-            INNER JOIN xf_user AS user ON (user.user_id = sync_log.user_id)
-            INNER JOIN xf_user_connected_account AS account
-                ON (account.user_id = sync_log.user_id AND account.provider = ?)
             WHERE sync_log.guild_id = ?
-        ', ['nfDiscord', $guildId]);
+        ', [$guildId]);
+
+        // The linked members' groups, read once for the run. Presence in that map is
+        // itself the connected-account requirement — it is built from xf_user joined to
+        // the nfDiscord accounts — so this needs neither join of its own. A row whose
+        // member is missing from it belongs to someone who has unlinked or been
+        // deleted, and the unlinked-holder half covers them from the Discord side.
+        $currentGroupIdsByUserId = $this->currentGroupIdsByUserId();
 
         $divergent = [];
         foreach ($rows as $row) {
+            $userId = (int) $row['user_id'];
+            if (!isset($currentGroupIdsByUserId[$userId])) {
+                continue;
+            }
+
             $isStale = SyncRecordStaleness::isStale(
                 $this->splitList($row['user_group_ids']),
-                $this->currentGroupIds($row['user_group_id'], $row['secondary_group_ids']),
+                $currentGroupIdsByUserId[$userId],
                 (bool) $row['active'],
                 $row['user_error_phrase']
             );
 
             if ($isStale) {
-                $userId = (int) $row['user_id'];
                 $divergent[$userId] = $userId;
             }
         }
@@ -457,8 +500,13 @@ class ReconciliationSweep
      */
     protected function preservedRoleIds(Api $api): ?array
     {
+        // Read fresh, not from the vendor's cache. getRoles() saves whatever it got for
+        // five minutes INCLUDING the `?: []` it substitutes for a failed request, and
+        // serves that back without re-requesting — so one failed read would keep the
+        // guard below tripping on a cached empty rather than on Discord's answer. One
+        // request per guild per run is nothing against a budget near sixty a minute.
         try {
-            $roles = $api->getRoles(true);
+            $roles = $api->getRoles(false);
         } catch (RateLimitedException $e) {
             return null;
         }
@@ -505,6 +553,25 @@ class ReconciliationSweep
         }
 
         return $this->mappedRoleIdsByGroup = $byGroup;
+    }
+
+    /**
+     * Every role id any user group grants, on any server, flattened out of the
+     * per-group lists. RoleScope narrows them to the guild in hand.
+     *
+     * @param array<int, string[]> $groupRoleIds
+     * @return string[]
+     */
+    protected function allMappedRoleIds(array $groupRoleIds): array
+    {
+        $all = [];
+        foreach ($groupRoleIds as $roleIds) {
+            foreach ($roleIds as $roleId) {
+                $all[] = $roleId;
+            }
+        }
+
+        return $all;
     }
 
     /**

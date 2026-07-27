@@ -30,11 +30,11 @@ answers at the same roles, back and forth.
 ## Decision
 
 Class-extend `NF\Discord\Cron\SyncUsersFromDiscord` and override `syncUsers()` to do
-nothing, never calling the parent. XenForo's scheduled path resolves a cron entry's
-class through `extendClass` before invoking it (`XF\Job\Cron`), the same seam this
-addon already uses for the sync message, so every scheduled firing runs the override.
-While this addon is installed the vendor's cron cannot reconcile roles on a schedule,
-whatever its option says. Scheduled reconciliation has exactly one owner: the sweep.
+nothing, never calling the parent. XenForo resolves a cron entry's class through
+`extendClass` before invoking it, the same seam this addon already uses for the sync
+message, so the override runs wherever the entry fires. While this addon is
+installed the vendor's cron cannot reconcile roles, whatever its option says.
+Scheduled reconciliation has exactly one owner: the sweep.
 
 **Correction (2026-07-27, during implementation):** this ADR previously said the
 override "runs wherever the entry fires", which is not true.

@@ -46,5 +46,11 @@
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "328d6b684bd23d5ccb47a6a83f7ffa83"
+    },
+    "cron_entry.cav7DSPReconcile.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "fd7ea97c532e288117a25f8a27536127"
     }
 }

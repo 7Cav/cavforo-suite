@@ -63,6 +63,20 @@ _Avoid_: treating it as **divergence** itself (that is a statement about roles o
 Discord, which this never looks at), and reading "inactive" as "this member is not
 synced" — an inactive record is one of the strongest reasons to sync them.
 
+**Preserved role**:
+A Discord role the bot cannot move because Discord owns it: anything an integration
+created (flagged `managed` on the role) and the Nitro-booster role (which carries the
+`premium_subscriber` tag and is managed besides). Discord rejects a role write that
+would add or drop one, and rejects it whole rather than in part, so any set this addon
+sends must carry every preserved role the member already holds — otherwise the write
+fails entirely and the vendor swallows the refusal. A role can be preserved and
+**managed** at once: a user group may well grant a role Discord also owns, and where
+the two meet, preserved wins and the role stays.
+_Avoid_: reading "preserved" as the opposite of "**managed role**", which is the
+nearest trap in this glossary. They answer different questions — managed is "does a
+user group grant this?", preserved is "will Discord let the bot move it?" — and
+Discord's own `managed` flag means the second, not the first.
+
 **Reconciliation sweep**:
 The scheduled pass that finds the members needing correction and corrects only
 those, leaving everyone already in agreement untouched. It reconciles two distinct

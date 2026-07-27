@@ -8,4 +8,5 @@
   <phrase title="cav7_discord_resync_pending" version_id="1000070" version_string="1.0.0"><![CDATA[A Discord sync is already queued for your account.]]></phrase>
   <phrase title="cav7_discord_resync_queued" version_id="1000070" version_string="1.0.0"><![CDATA[Your Discord resync is queued. It will run when the queue gets to it.]]></phrase>
   <phrase title="cav7_discord_resync_unavailable" version_id="1000070" version_string="1.0.0"><![CDATA[Your Discord resync could not be queued. Nothing will run, so ask a member of staff to take a look.]]></phrase>
+  <phrase title="cron_entry.cav7DSPReconcile" version_id="1010070" version_string="1.1.0"><![CDATA[Reconcile Discord roles against forum groups]]></phrase>
 </phrases>

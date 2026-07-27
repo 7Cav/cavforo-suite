@@ -28,6 +28,14 @@ The credentials the pass sets are dummy values, which is what makes the forum-si
 half reachable at all: with a token present the sweep gets past its first guard, and
 the Discord calls beyond it fail — which is itself one of the paths worth seeing.
 
+Whether a refused strip is reported as a strip cannot be reached here either, and not
+only because the token is blank. With a dummy token every Discord call fails, and the
+guild-roles read fails first: the sweep logs that it could not read them and returns
+before the member walk, so the strip is never called at all. That the sweep now reads
+`patchGuildMemberRoles`'s result rather than discarding it is argued from the vendor's
+source — `Api::request()` returns `false` on every failure path — and confirmed on the
+live guild alongside the booster check, not here.
+
 ## Method
 
 The sweep is driven headlessly through `XF\Cli\App` with `start(true)`, then observed
@@ -53,7 +61,9 @@ by re-reading each thing it touched and asserting the original value is back.
 | 7 | A member whose groups agree, active and error-free, is not corrected | pass |
 | 8 | The vendor's cron queues nothing when vetoed, with its option forced to read true | pass, 0 rows |
 | 9 | The same call queues rows when made past the override | pass, 100 rows |
-| 10 | Every value the pass changed is back as it was afterwards | pass |
+| 10 | A member whose sync log carries an error phrase is selected, and is left alone again once it is cleared | pass |
+| 11 | The cron entry appears on the cron admin page, named, and firing it the way the Run button does runs the sweep | pass, after a fix |
+| 12 | Every value the pass changed is back as it was afterwards | pass |
 
 Check 9 is what makes check 8 mean anything. `nfDiscordEnableReverseSync` is defined
 nowhere in the vendor's data, so it reads false and the vendor's cron returns early on
@@ -63,6 +73,24 @@ rows, a veto that had stopped working would have read as a pass.
 Check 8 fires through `XF::extendClass(...)`, which is what the scheduled path does.
 It does **not** cover the control panel's "Run" button, which calls the raw class —
 see the correction note in ADR-0003.
+
+Check 10 had to manufacture its own subject. No row on this board carries an error
+phrase, so the pass put one on a member the scan was leaving alone, showed the scan
+then selected them, cleared it, and showed the scan left them alone again. Without
+that last step the check would pass just as well against a scan that selected
+everybody.
+
+Check 11 found a real defect rather than confirming one. The cron entry was
+registered and active but shipped no `cron_entry.cav7DSPReconcile` phrase, so the
+admin page listed it under its raw phrase key while every sibling add-on's entry has
+a name. The phrase was added, the two data trees re-derived, and the check re-run
+against the rebuilt add-on. The "Run" button's call shape — `call_user_func` on the
+raw class — is what the pass fired, since that is the button this check is about;
+the scheduled path is check 8's business.
+
+Check 11 also re-imported the add-on's data on the stack, which is an install action
+rather than a board mutation, so it is not in the restore above and the new phrase is
+still there.
 
 ## Scale observed
 
