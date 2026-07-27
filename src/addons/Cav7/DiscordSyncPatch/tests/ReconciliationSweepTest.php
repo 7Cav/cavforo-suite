@@ -33,6 +33,21 @@
  * it does not certify against it. Collation and type-affinity differences are the
  * dev stack's business.
  *
+ * ---------------------------------------------------------------------------
+ * What this file deliberately does not cover
+ * ---------------------------------------------------------------------------
+ * Rate limiting. The sweep catches `RateLimitedException`, but nothing raises it on
+ * the Api this addon builds: `assertNotRateLimited()` throws only when
+ * `isThrowOnErrors()` is true, that flag defaults to false, and the sweep never sets
+ * it — `Api::factory($guildId, false)` passes `$assertConfigured`, not a throw flag.
+ * A stub that threw would prove the catch runs and nothing about production. See the
+ * open finding recorded against #157.
+ *
+ * Whether a refused strip is reported as a refusal rather than as a strip. Its only
+ * observable is the wording of a log line, and an assertion on prose reports that
+ * someone edited a sentence. It is confirmed on the live guild beside the booster
+ * check — see the addon README's pre-release list.
+ *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
  * Run:
@@ -75,8 +90,6 @@ namespace NF\Discord {
         public static array $patches = [];
         /** @var array<string, mixed>|null the integration's credentials */
         public static $configuration = ['token' => 'stub'];
-        /** @var int|null 1-based member-list call to rate-limit, if any */
-        public static ?int $rateLimitOnCall = null;
         /** @var int|null 1-based member-list call to answer unreadably, if any */
         public static ?int $unreadableOnCall = null;
         /** @var int member-list calls made so far */
@@ -104,10 +117,6 @@ namespace NF\Discord {
         public function get(string $path = '', array $data = [], array $options = [])
         {
             self::$memberCalls++;
-
-            if (self::$rateLimitOnCall === self::$memberCalls) {
-                throw new RateLimitedException('rate limited');
-            }
 
             // What the vendor hands back when the endpoint refuses — a revoked
             // GUILD_MEMBERS intent being the way that happens in practice.
@@ -339,9 +348,6 @@ namespace {
         public static $time = 1700000000;
         /** @var FakeDb */
         public static $db;
-        /** @var string[] messages passed to logError, counted but never asserted on */
-        public static array $loggedErrors = [];
-
         public static function db()
         {
             return self::$db;
@@ -354,7 +360,8 @@ namespace {
 
         public static function logError($message): void
         {
-            self::$loggedErrors[] = (string) $message;
+            // Accepted and dropped. The sweep's log lines are prose, and an assertion
+            // on prose reports that someone edited a sentence.
         }
     }
 }
@@ -442,7 +449,6 @@ namespace Cav7\DiscordSyncPatch\Tests {
             ['id' => MANAGED_ROLE, 'managed' => false, 'tags' => []],
         ];
         Api::$guildMembers = [];
-        Api::$rateLimitOnCall = null;
         Api::$unreadableOnCall = null;
         Api::$memberCalls = 0;
 
@@ -455,7 +461,6 @@ namespace Cav7\DiscordSyncPatch\Tests {
             'NF\Discord\Repository\Sync' => new FakeSyncRepository(),
         ];
 
-        \XF::$loggedErrors = [];
         \XF::$db = new FakeDb();
 
         // One user group, granting two roles on this guild in the vendor's stored
@@ -663,7 +668,7 @@ namespace Cav7\DiscordSyncPatch\Tests {
 
     freshStack();
     Api::$guildMembers = guildOfTwoPages();
-    Api::$rateLimitOnCall = 2;
+    Api::$unreadableOnCall = 2;
 
     (new ReconciliationSweep())->run();
 
@@ -671,16 +676,10 @@ namespace Cav7\DiscordSyncPatch\Tests {
     sort($patchedIds, SORT_STRING);
 
     check(
-        'a rate limit part-way through keeps the members already read',
+        'a page that cannot be read keeps the members already walked past',
         $patchedIds === ['1384909947564724500', '581229370245644289'],
         'patched ' . implode(', ', $patchedIds)
             . ' — throwing the partial page away costs a whole cycle of corrections'
-    );
-
-    check(
-        'the walk stops at the rate limit rather than hammering the endpoint',
-        Api::$memberCalls === 2,
-        'made ' . Api::$memberCalls . ' member requests'
     );
 
     // The forum-side half costs one query and no Discord budget. It has to stand on
