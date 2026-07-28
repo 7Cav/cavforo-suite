@@ -4,6 +4,8 @@
 
 Accepted
 
+**Note (2026-07-27):** the release-tag paragraph below says the directory path and `version_id` both stay stable. That is true of the path and wrong of `version_id`, and always was — only the path fixes the derived `addon_id` and namespace. `version_id` has to rise on every release, because it is what a board compares to decide whether to import the addon's data. See [docs/addon-format.md](../addon-format.md#addonjson). The decision itself — per-addon release tags — stands (#227).
+
 ## Context
 
 The 7Cav XenForo addons lived in seven separate repositories, each with a different directory layout and its own (or no) build and release tooling. We are bringing them into one repo so they are easier to maintain and so contributors can add new addons by following a single pattern.
