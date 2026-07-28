@@ -163,14 +163,26 @@ reimplement the reverse-direction code that cron's option also gates.
 
 ## Known gaps
 
-**Rate limiting is not handled**, and is tracked in
-[#233](https://github.com/7Cav/cavforo-suite/issues/233). The sweep's three
-`RateLimitedException` catches are unreachable in production: `assertNotRateLimited()`
-throws only when `isThrowOnErrors()` is true, and that flag defaults false and is never
-set. What a real 429 does instead depends on how it arrives. A live-guild pass walked
-8,568 members over 9 pages in 10.4s and issued 80 role patches in 28.5s without
-tripping one, so it does not bite at this guild's scale — which says nothing about what
-happens when it does.
+**A throttled read is detected and reported, but not paced around.** The sweep tells a
+throttled read from a refused one and names which it was, so a `429` no longer reads as
+a revoked privileged intent. What it does not do is stop: a throttle part-way through
+the strip leaves the remaining patches to be issued anyway, each earning its own `429`
+— up to 79 more, at the blast radius the live pass measured. Discord escalates against
+a client that does that, and past a threshold the ban lands on the whole bot rather
+than this cron. See
+[#249](https://github.com/7Cav/cavforo-suite/issues/249).
+
+A live-guild pass walked 8,568 members over 9 pages in 10.4s and issued 80 role patches
+in 28.5s without tripping a rate limit, so it does not bite at this guild's present
+scale.
+
+**A connect failure straight after a throttled call reads as a throttle.** The vendor
+records the retry-after per call but does not clear it on the path a connect or server
+exception takes, so the previous call's value stands. Only the strip loop can reach it
+— a throttled page ends the member walk, so there is no following call to misattribute
+— and the cost is one miscounted strip in a log line, not a wrong role. Left rather
+than worked around, because inventing a reset means guessing at vendor internals. See
+[#248](https://github.com/7Cav/cavforo-suite/issues/248).
 
 **The sweep does not check `nfDiscordEnableSync` before queueing a correction.** It
 guards two preconditions of exactly this class — absent credentials, and a server row
