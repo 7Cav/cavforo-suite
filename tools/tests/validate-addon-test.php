@@ -14,6 +14,12 @@
  * export produces still validated, and the drift only surfaced as churn the
  * next time somebody re-exported. Two committed files had drifted that way.
  *
+ * Case 7 pins the description length check (issue #221). The gap that one
+ * guards: the admin add-on list renders a description through
+ * snippet(..., 200), so anything longer is trimmed mid-sentence and the rest is
+ * never shown to an administrator. Nothing read the field at all, and four
+ * committed manifests were over the cap, the worst at 405 characters.
+ *
  * Case 6 pins the version_id / version_string agreement check (issue #217).
  * The gap that one guards: version_id is what XenForo compares to decide a
  * board needs this addon's data, nothing hashes _data, and nothing tied the
@@ -52,21 +58,31 @@ $tool = dirname(__DIR__) . '/validate-addon.php';
  * $versionId and $versionString default to an agreeing pair, so fixtures aimed
  * at other checks do not trip the version-agreement one. 1000070 is 1.0.0 in
  * XenForo's scheme; see XF's own upgrade file 1000170-101.php for 1.0.1.
+ *
+ * $description is written only when it is not null, so the default fixture
+ * carries no description key at all — the shape XenForo's own validate-json
+ * accepts, since it lists description as optional. Anything else is written
+ * through as given, including a non-string, which case 7 needs.
  */
 function makeFixture(
     string $base,
     string $name,
     ?array $rows,
     int $versionId = 1000070,
-    string $versionString = '1.0.0'
+    string $versionString = '1.0.0',
+    mixed $description = null
 ): string {
     $dir = "$base/$name";
     mkdir("$dir/_data", 0777, true);
-    file_put_contents("$dir/addon.json", json_encode([
+    $json = [
         'title' => $name,
         'version_id' => $versionId,
         'version_string' => $versionString,
-    ], JSON_PRETTY_PRINT));
+    ];
+    if ($description !== null) {
+        $json['description'] = $description;
+    }
+    file_put_contents("$dir/addon.json", json_encode($json, JSON_PRETTY_PRINT));
 
     if ($rows === null) {
         return $dir;
@@ -293,6 +309,58 @@ try {
     $dir = makeFixture($base, 'ShortString', [], 1020070, '1.2');
     [$code, $out] = runTool($tool, $dir);
     check('a version_string with a component missing fails cleanly', $code === 1, $out);
+
+    // --- Case 7: description length (issue #221) --------------------------
+    // The gap that one guards: the admin add-on list renders a description
+    // through snippet(..., 200), so a longer one is the only description an
+    // administrator ever sees, cut off mid-sentence. Four committed manifests
+    // were over, the worst at 405 characters. Nothing read the field at all.
+    $dir = makeFixture($base, 'LongDescription', [], 1000070, '1.0.0', str_repeat('a', 201));
+    [$code, $out] = runTool($tool, $dir);
+    check('a description one character over the cap is refused', $code !== 0, $out);
+    check(
+        'the failure names the length of the offending description',
+        str_contains($out, '201'),
+        $out
+    );
+
+    // The cap is inclusive: XenForo trims only once the description is longer
+    // than 200, so 200 itself has to pass. This is the check an off-by-one
+    // dies on, and the reason the pair is here rather than one loose "long
+    // descriptions are refused".
+    $dir = makeFixture($base, 'CapExactly', [], 1000070, '1.0.0', str_repeat('a', 200));
+    [$code, $out] = runTool($tool, $dir);
+    check('a description of exactly the cap passes', $code === 0, $out);
+
+    // The cap is 200 characters, not 200 bytes: XenForo measures with
+    // XF\Util\Str::strlen(), which is mb_strlen() in UTF-8. 100 em dashes and
+    // 100 letters is 200 characters in 400 bytes, so a byte count refuses a
+    // description XenForo renders whole. Em dashes are not hypothetical here —
+    // this repo's prose is full of them.
+    $multibyte = str_repeat("\u{2014}", 100) . str_repeat('a', 100);
+    $dir = makeFixture($base, 'CapMultibyte', [], 1000070, '1.0.0', $multibyte);
+    [$code, $out] = runTool($tool, $dir);
+    check('a multibyte description of exactly the cap passes', $code === 0, $out);
+
+    // XenForo lists description among validate-json's optional keys and
+    // defaults it to '' when absent, so a manifest without one is a shape both
+    // XenForo and this repo accept. Every other fixture in this file already
+    // has that shape; this states it, so the rule cannot quietly become a
+    // requirement for the key.
+    $dir = makeFixture($base, 'NoDescription', []);
+    [$code, $out] = runTool($tool, $dir);
+    check('an addon.json with no description passes', $code === 0, $out);
+
+    // A description that is not a string has no length to check, so leaving it
+    // alone would be a hole in the rule above: any length would pass by
+    // changing type. It is refused instead — deliberately stricter than
+    // XenForo, whose validate-json type-checks extra_urls and require but not
+    // description. Exit 1 is the tool's clean-failure contract (2 is usage);
+    // measuring the length without a type guard raises a TypeError and exits
+    // 255, which is why this asserts the code rather than just non-zero.
+    $dir = makeFixture($base, 'ArrayDescription', [], 1000070, '1.0.0', ['a', 'b']);
+    [$code, $out] = runTool($tool, $dir);
+    check('a description that is not a string fails cleanly', $code === 1, $out);
 } finally {
     rmrf($base);
 }

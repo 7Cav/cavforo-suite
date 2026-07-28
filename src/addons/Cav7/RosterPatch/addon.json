@@ -1,7 +1,7 @@
 {
     "legacy_addon_id": "",
     "title": "7Cav - Roster Patches",
-    "description": "Companion add-on that patches behavioural gaps in NF/Rosters through class extensions, without modifying the vendor add-on. Fixes so far: a position's group grants are re-applied to its current holders when the position's group list is edited; and award and service-record dates are stored and shown as fixed calendar days, so the day a staffer enters is the day every viewer sees whatever their timezone.",
+    "description": "Patches NF/Rosters through class extensions, without modifying the vendor add-on. Fixes position group edits not reaching existing holders, and award and service-record dates shifting by timezone.",
     "version_id": 1010170,
     "version_string": "1.1.1",
     "dev": "Cav7",
