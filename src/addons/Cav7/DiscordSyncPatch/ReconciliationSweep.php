@@ -65,6 +65,13 @@ class ReconciliationSweep
     protected const STRIP_NOT_NEEDED = 'not needed';
 
     /**
+     * A holder the run would have patched had it not already spent its bound. Counted
+     * apart from the three above because it is the only one for which no call was
+     * made: a refusal and a throttle are Discord's answers, and this is the run's own.
+     */
+    protected const STRIP_NOT_ATTEMPTED = 'not attempted';
+
+    /**
      * A bound on the member walk, not a page budget. MemberCursor stops on a short
      * page, so this only fires if Discord keeps returning full pages — a cursor that
      * stopped advancing. At the maximum page size it allows a guild far larger than
@@ -73,6 +80,24 @@ class ReconciliationSweep
      * notices.
      */
     protected const MAX_MEMBER_PAGES = 100;
+
+    /**
+     * Issue #249 — a bound on how many strip CALLS one run will make on one guild.
+     *
+     * Attempts rather than strips, and the distinction is the same one the outcome
+     * constants above draw: Discord decides whether a call strips anybody, and a run
+     * that spent this bound having every call refused stripped nobody. What the bound
+     * governs is the spending.
+     *
+     * Sits above the eighty the live guild accumulated over six years, so the first
+     * real run clears that backlog in one pass, and far below what an anomaly
+     * produces. The anomalies are forum-side rather than Discord-side — the README's
+     * sweep section has the two worth knowing about.
+     *
+     * MAX_MEMBER_PAGES bounds the walk for the same reason. Neither is a rate limit —
+     * they are the difference between a bad run and an unbounded one.
+     */
+    public const MAX_STRIP_ATTEMPTS_PER_GUILD = 100;
 
     /**
      * How long a queued row still counts as work in flight. Matched to the vendor's
@@ -248,7 +273,10 @@ class ReconciliationSweep
             self::STRIP_REFUSED => 0,
             self::STRIP_THROTTLED => 0,
             self::STRIP_NOT_NEEDED => 0,
+            self::STRIP_NOT_ATTEMPTED => 0,
         ];
+
+        $stripAttempts = 0;
 
         foreach ($members as $member) {
             $discordId = (string) ($member['user']['id'] ?? '');
@@ -263,14 +291,36 @@ class ReconciliationSweep
                 // An unlinked holder. There is no forum user to run the vendor's
                 // per-user sync for — it bails with user_not_associated — so the roles
                 // are patched directly.
-                $outcomes[$this->stripUnlinkedHolder(
+                if ($stripAttempts >= self::MAX_STRIP_ATTEMPTS_PER_GUILD) {
+                    // Counted only for the holders a call would actually have been
+                    // made for. The same decision the strip itself rests on answers
+                    // that, and asking it costs nothing: most of a guild holds no
+                    // managed role, and counting those would report thousands left
+                    // behind on a run with nothing to do for any of them.
+                    if (ManagedRoleStrip::rolesToKeep($heldRoleIds, $managedRoleIds, $immovableRoleIds) !== null) {
+                        $outcomes[self::STRIP_NOT_ATTEMPTED]++;
+                    }
+
+                    continue;
+                }
+
+                $outcome = $this->stripUnlinkedHolder(
                     $api,
                     $guildId,
                     $discordId,
                     $heldRoleIds,
                     $managedRoleIds,
                     $immovableRoleIds
-                )]++;
+                );
+                $outcomes[$outcome]++;
+
+                // Only a call counts against the bound. Most of a guild holds no
+                // managed role at all, and those cost nothing — spending the budget on
+                // them would have the cap fire on a run that never patched anybody.
+                if ($outcome !== self::STRIP_NOT_NEEDED) {
+                    $stripAttempts++;
+                }
+
                 continue;
             }
 
@@ -288,6 +338,7 @@ class ReconciliationSweep
         $stripped = $outcomes[self::STRIP_DONE];
         $refused = $outcomes[self::STRIP_REFUSED];
         $throttled = $outcomes[self::STRIP_THROTTLED];
+        $notAttempted = $outcomes[self::STRIP_NOT_ATTEMPTED];
 
         if ($stripped > 0 || $refused > 0 || $throttled > 0) {
             // A durable line for the one correction that cannot be recorded against a
@@ -315,8 +366,15 @@ class ReconciliationSweep
             // the same mistake in prose that reporting a refusal as a strip was in
             // arithmetic. A live-guild pass produced exactly that line: 0 stripped,
             // 80 refused.
+            // Holders left unattempted are named for the same reason again, one step
+            // further out. A run that stopped at its bound and said only what it
+            // stripped is indistinguishable from a guild that had nothing else to
+            // strip — and since the whole reason to bound the batch is that nobody
+            // knew it was large, that silence hides exactly the event worth seeing.
+            // The bound is named alongside the count, because it is the thing an admin
+            // would have to go and look up to make sense of the number.
             \XF::logError(sprintf(
-                'Cav7/DiscordSyncPatch: the reconciliation sweep stripped forum-managed roles from %d guild member(s) on %s who hold no linked forum account, and Discord refused %d strip(s).%s%s',
+                'Cav7/DiscordSyncPatch: the reconciliation sweep stripped forum-managed roles from %d guild member(s) on %s who hold no linked forum account, and Discord refused %d strip(s).%s%s%s',
                 $stripped,
                 $guildId,
                 $refused,
@@ -325,6 +383,17 @@ class ReconciliationSweep
                 // run with nothing to retry, is a sentence that describes no event.
                 $throttled > 0
                     ? sprintf(' It was rate-limited on %d more, which the next run will attempt again.', $throttled)
+                    : '',
+                // Attempts, not strips, for the same reason the counts above are kept
+                // apart: a run that spent the whole bound having every call refused
+                // stripped nobody, and a clause saying it stripped a hundred would be
+                // the arithmetic this line exists not to do.
+                $notAttempted > 0
+                    ? sprintf(
+                        ' It stopped after its bound of %d strip attempt(s) per guild per run, leaving %d more unlinked holder(s) for the next run.',
+                        self::MAX_STRIP_ATTEMPTS_PER_GUILD,
+                        $notAttempted
+                    )
                     : '',
                 $stripped > 0
                     ? ' Discord\'s own server audit log records each removal.'
@@ -486,7 +555,9 @@ class ReconciliationSweep
      *
      * It is also only ever a 429. The vendor's header-derived branches in
      * `isRateLimited()` never fire, so there is no pre-emptive "nearly out of budget"
-     * signal here and nothing to pace against — see issue #249.
+     * signal here and nothing to pace against. What bounds a run's spend is
+     * MAX_STRIP_ATTEMPTS_PER_GUILD, which does not wait to be told it is going too
+     * fast.
      *
      * All of this was measured rather than reasoned about, in
      * docs/verification/reconciliation-sweep-guards.md, which is where the evidence

@@ -138,6 +138,22 @@ fire it at all. The sweep is the backstop. It strips managed roles and nothing e
 self-assigned, game and Nitro-booster roles all stay — and it never removes anyone
 from the guild, whatever the vendor's disconnect-kick option says.
 
+**One run makes at most 100 strip calls per guild**, and its log line says when it
+stopped at that bound and how many unlinked holders it left for the next run. Calls
+rather than strips, because Discord decides whether a call removes anything: a run that
+spent the whole bound having every call refused stripped nobody.
+
+Drift does not build a batch that size — the live guild's 80 were six years of it,
+mostly from a race condition since fixed. Two things do. A user group can be pointed at
+a role hundreds of members already hold, which brings every one of them inside the
+addon at once, and most of the guild holds no link to justify keeping it. A mass unlink
+is the same shape and worse, because then every strip is wrong. The bound is what makes
+either visible while it is still 100 calls rather than after all of them
+([#249](https://github.com/7Cav/cavforo-suite/issues/249)).
+
+It bounds the calls only: the run still walks to the end of the member list, because
+deciding which linked members have diverged costs no Discord calls at all.
+
 It also vetoes NF/Discord's own scheduled reconciler, so nothing else is driving the
 same roles on a schedule. That cron is dormant today, gated behind an option the
 vendor defines nowhere, but defining it is one row and the veto does not depend on
@@ -172,12 +188,10 @@ reimplement the reverse-direction code that cron's option also gates.
 
 **A throttled read is detected and reported, but not paced around.** The sweep tells a
 throttled read from a refused one and names which it was, so a `429` no longer reads as
-a revoked privileged intent. What it does not do is stop: a throttle part-way through
-the strip leaves the remaining patches to be issued anyway, each earning its own `429`
-— up to 79 more, at the blast radius the live pass measured. Discord escalates against
-a client that does that, and past a threshold the ban lands on the whole bot rather
-than this cron. See
-[#249](https://github.com/7Cav/cavforo-suite/issues/249).
+a revoked privileged intent. What it does not do is stop early: a throttle part-way
+through the strip leaves the rest of that run's calls to be made anyway, each earning
+its own `429`. What limits the damage is the per-run call bound above, not any response
+to the throttle itself — so the worst case is the bound rather than the whole guild.
 
 A live-guild pass walked 8,568 members over 9 pages in 10.4s and issued 80 role patches
 in 28.5s without tripping a rate limit, so it does not bite at this guild's present
