@@ -59,7 +59,9 @@ jobs:
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
           zip=$(tools/package-addon.sh "$ADDON" --out "Cav7-$ADDON-v$VERSION.zip")
-          sha256sum "$zip" > "$zip.sha256"
+          # Not `sha256sum "$zip"` — see tools/checksum-release-zip.sh for why
+          # the sidecar must not name the path the zip was built at.
+          tools/checksum-release-zip.sh "$zip"
           echo "zip=$zip" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub release
