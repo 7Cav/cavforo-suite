@@ -14,7 +14,8 @@
  * run() is the only public entry, and the only one Cron\Reconcile calls. The
  * assertions are on what a caller can see: the role sets Discord is actually sent,
  * and the members queued for correction. Never on a path string, a cursor value, a
- * query, or the wording of a log line.
+ * query, or the wording of a log line — including in the three scenarios that compare
+ * two reports, which is a different thing and has its own section below.
  *
  * ---------------------------------------------------------------------------
  * On the SQLite database below — READ THIS BEFORE "FIXING" A QUERY
@@ -34,16 +35,33 @@
  * dev stack's business.
  *
  * ---------------------------------------------------------------------------
+ * On the three throttle scenarios — READ THIS BEFORE ASSERTING ON A LOG LINE
+ * ---------------------------------------------------------------------------
+ * A throttled read and a refused one differ in nothing a caller can see except the
+ * report the sweep writes, so those three scenarios are the only ones here that look
+ * at a log line at all. They never read one for its wording. Each runs the same
+ * fixture twice, changing one input — which way the call fails — and asserts the two
+ * reports DIFFER. Rewording either cause keeps them green; only collapsing the two
+ * back into one report turns them red.
+ *
+ * That works only while the two runs are otherwise identical, so each scenario first
+ * asserts they are: same number of reports, same corrections queued, same patches
+ * attempted. Without that pin an incidental difference — a member count, a guild id,
+ * a different closing sentence — would satisfy the inequality on its own and the
+ * scenario would pass with the causes still collapsed. The member-page pair throttles
+ * on call ONE for the same reason: nothing is read either way, so there is no count
+ * and no partial-page trailer left free to vary. Do not "improve" it to call two.
+ *
+ * Earlier versions of this file covered none of this, because the sweep caught
+ * `RateLimitedException` and nothing could raise it — a stub that threw would have
+ * proved the catch ran and nothing about production. The stub below instead models
+ * what a real 429 was measured to do, and that measurement is the authority for it:
+ * docs/verification/reconciliation-sweep-guards.md. Change the stub only against that
+ * document, or these scenarios go back to testing a fiction.
+ *
+ * ---------------------------------------------------------------------------
  * What this file deliberately does not cover
  * ---------------------------------------------------------------------------
- * Rate limiting. The sweep catches `RateLimitedException`, but nothing raises it on
- * the Api this addon builds: `assertNotRateLimited()` throws only when
- * `isThrowOnErrors()` is true, that flag defaults to false, and the sweep never sets
- * it — `Api::factory($guildId, false)` passes `$assertConfigured`, not a throw flag.
- * A stub that threw would prove the catch runs and nothing about production, so the
- * gap is left open and named rather than papered over: see #233, which also carries
- * what a real 429 does instead.
- *
  * Whether a refused strip is reported as a refusal rather than as a strip. Its only
  * observable is the wording of a log line, and an assertion on prose reports that
  * someone edited a sentence. It is confirmed on the live guild beside the booster
@@ -95,6 +113,16 @@ namespace NF\Discord {
         public static ?int $unreadableOnCall = null;
         /** @var int member-list calls made so far */
         public static int $memberCalls = 0;
+        /** @var int|null 1-based member-list call to answer with a rate limit, if any */
+        public static ?int $rateLimitedOnCall = null;
+        /** @var bool whether the roles read is rate-limited */
+        public static bool $rateLimitedRoles = false;
+        /** @var bool whether every role patch is rate-limited */
+        public static bool $rateLimitedPatches = false;
+        /** @var bool whether Discord refuses every role patch */
+        public static bool $patchesRefused = false;
+        /** @var int|null what getRetryAfter() reports about the call just made */
+        public static ?int $retryAfter = null;
 
         public static function getDiscordConfiguration()
         {
@@ -110,14 +138,49 @@ namespace NF\Discord {
             return new self();
         }
 
+        /**
+         * The retry-after the vendor records about the call just made, which is the
+         * only way a throttled read is distinguishable from a refused one. Both hand
+         * back the same `false`.
+         */
+        public function getRetryAfter(): ?int
+        {
+            return self::$retryAfter;
+        }
+
         public function getRoles(bool $cache = false): array
         {
+            // A throttled roles read hands back exactly what an empty guild would.
+            // getRoles() substitutes [] for a failed request — `$this->get(...) ?: []`
+            // — so the rate limit is invisible in the return value.
+            if (self::$rateLimitedRoles) {
+                self::$retryAfter = \XF::$time + 60;
+
+                return [];
+            }
+            self::$retryAfter = null;
+
             return self::$guildRoles ?? [];
         }
 
         public function get(string $path = '', array $data = [], array $options = [])
         {
             self::$memberCalls++;
+
+            // A rate-limited read, as the vendor actually delivers one. Discord answers
+            // 429, Guzzle throws ClientException, and request() catches it, records the
+            // retry-after and returns false — the same false a refused endpoint gives.
+            // Measured against a real XenForo with a mocked transport; the method and
+            // the numbers are in docs/verification/reconciliation-sweep-guards.md.
+            if (self::$rateLimitedOnCall === self::$memberCalls) {
+                self::$retryAfter = \XF::$time + 60;
+
+                return false;
+            }
+
+            // Every other answer clears it, because the vendor records the retry-after
+            // per call rather than latching it.
+            self::$retryAfter = null;
 
             // What the vendor hands back when the endpoint refuses — a revoked
             // GUILD_MEMBERS intent being the way that happens in practice.
@@ -161,7 +224,14 @@ namespace NF\Discord {
         {
             self::$patches[] = [$userId, array_values($groups)];
 
-            return true;
+            if (self::$rateLimitedPatches) {
+                self::$retryAfter = \XF::$time + 60;
+
+                return false;
+            }
+            self::$retryAfter = null;
+
+            return self::$patchesRefused ? false : true;
         }
     }
 }
@@ -359,10 +429,15 @@ namespace {
             return new FakeEntityManager();
         }
 
+        /** @var string[] what the sweep reported this run */
+        public static array $errors = [];
+
         public static function logError($message): void
         {
-            // Accepted and dropped. The sweep's log lines are prose, and an assertion
-            // on prose reports that someone edited a sentence.
+            // Collected, but never read for its wording. The two throttle scenarios
+            // compare one run's report against another's and assert only that they
+            // differ, so rewording either cause keeps them green — see those sections.
+            self::$errors[] = $message;
         }
     }
 }
@@ -438,6 +513,55 @@ namespace Cav7\DiscordSyncPatch\Tests {
     }
 
     /**
+     * One linked member whose sync record no longer describes their groups, so the
+     * forum-side half of the run has something to correct whatever Discord does.
+     *
+     * The throttle scenarios compare two runs' outcomes for equality before comparing
+     * their reports for difference, and two empty outcomes would pin nothing.
+     */
+    function staleMember(FakeDb $db, int $userId, string $discordId): void
+    {
+        $db->insert('xf_user', [
+            ['user_id' => $userId, 'user_group_id' => 2, 'secondary_group_ids' => '3'],
+        ]);
+        $db->insert('xf_user_connected_account', [
+            ['user_id' => $userId, 'provider' => 'nfDiscord', 'provider_key' => $discordId],
+        ]);
+        $db->insert('xf_nf_discord_sync_log', [
+            ['user_id' => $userId, 'guild_id' => GUILD_ID, 'user_group_ids' => '2', 'active' => 1, 'user_error_phrase' => ''],
+        ]);
+    }
+
+    /**
+     * The members queued for correction, as a set. Sorted, because the order the sweep
+     * happens to walk them in is not a behaviour anything should depend on.
+     *
+     * @return int[]
+     */
+    function queuedUserIds(): array
+    {
+        $ids = array_map(static fn (array $q): int => $q['user_id'], FakeSyncRepository::$queued);
+        sort($ids);
+
+        return $ids;
+    }
+
+    /**
+     * The members Discord was asked to patch, as a set. Every call is recorded whether
+     * Discord accepted it, refused it or throttled it, so this is what was attempted
+     * rather than what succeeded.
+     *
+     * @return string[]
+     */
+    function patchedDiscordIds(): array
+    {
+        $ids = array_map(static fn (array $patch): string => $patch[0], Api::$patches);
+        sort($ids, SORT_STRING);
+
+        return $ids;
+    }
+
+    /**
      * Resets every stub and returns the database, ready for fixtures.
      */
     function freshStack(): FakeDb
@@ -452,6 +576,13 @@ namespace Cav7\DiscordSyncPatch\Tests {
         Api::$guildMembers = [];
         Api::$unreadableOnCall = null;
         Api::$memberCalls = 0;
+        Api::$rateLimitedOnCall = null;
+        Api::$rateLimitedRoles = false;
+        Api::$rateLimitedPatches = false;
+        Api::$patchesRefused = false;
+        Api::$retryAfter = null;
+
+        \XF::$errors = [];
 
         FakeServerRepository::$serverMap = [SERVER_ID => GUILD_ID];
         FakeServerRepository::$defaultServerId = SERVER_ID;
@@ -710,6 +841,198 @@ namespace Cav7\DiscordSyncPatch\Tests {
         'the forum-side half still corrects its members when Discord cannot be read',
         array_map(static fn (array $q): int => $q['user_id'], FakeSyncRepository::$queued) === [7],
         'the database scan needs no Discord budget and must not fail with the fetch'
+    );
+
+    // -----------------------------------------------------------------------
+    // A throttled read is not a refused one.
+    // -----------------------------------------------------------------------
+    //
+    // Both reach the sweep as the same `false`. Discord answers 429, Guzzle throws
+    // ClientException, and the vendor catches it, records the retry-after and returns
+    // what a revoked GUILD_MEMBERS intent returns. Only the retry-after tells them
+    // apart, and they are different operator problems: one clears itself by the next
+    // quarter-hour, the other needs the bot's intents fixed and will not.
+    //
+    // The two runs differ in one input — which way member-page call 1 fails. Nothing
+    // is read either way, so both reports carry the same member count, the same guild
+    // and the same closing sentence, and the cause is the only thing left free. That
+    // the runs are otherwise alike is asserted rather than assumed, below.
+    //
+    // The assertion is an inequality. Rewording either cause keeps it green; only
+    // collapsing the two back into one report turns it red.
+
+    $db = freshStack();
+    Api::$guildMembers = guildOfTwoPages();
+    Api::$rateLimitedOnCall = 1;
+    staleMember($db, 7, '1384909947564740007');
+
+    (new ReconciliationSweep())->run();
+
+    $throttledReports = \XF::$errors;
+    $throttledQueued = queuedUserIds();
+    $throttledPatched = patchedDiscordIds();
+
+    $db = freshStack();
+    Api::$guildMembers = guildOfTwoPages();
+    Api::$unreadableOnCall = 1;
+    staleMember($db, 7, '1384909947564740007');
+
+    (new ReconciliationSweep())->run();
+
+    $refusedReports = \XF::$errors;
+
+    check(
+        'a throttled first page and a refused one are alike in everything but the cause',
+        count($throttledReports) === 1
+            && count($refusedReports) === 1
+            && $throttledQueued === queuedUserIds()
+            && $throttledQueued === [7]
+            && $throttledPatched === patchedDiscordIds()
+            && $throttledPatched === [],
+        'reports ' . count($throttledReports) . '/' . count($refusedReports)
+            . ', queued ' . json_encode($throttledQueued) . '/' . json_encode(queuedUserIds())
+            . ' — the next check is only meaningful while the two runs agree on all of this'
+    );
+
+    check(
+        'a throttled member page is not reported as a refused endpoint',
+        $throttledReports[0] !== $refusedReports[0],
+        'both reported: ' . json_encode($throttledReports[0] ?? null)
+            . ' — a throttle that reads as a revoked intent sends an admin to fix'
+            . ' something that is not broken, and the throttle clears itself unnoticed'
+    );
+
+    // A throttle part-way through is a partial read, not a failed one. The members
+    // already walked past are still reconciled and the rest wait for the next run —
+    // the same bargain every other partial exit makes. Naming the cause is worth
+    // nothing if buying that name costs a cycle of corrections, which is what
+    // returning early with nothing would do.
+
+    $db = freshStack();
+    Api::$guildMembers = guildOfTwoPages();
+    Api::$rateLimitedOnCall = 2;
+    staleMember($db, 7, '1384909947564740007');
+
+    (new ReconciliationSweep())->run();
+
+    $expectedHolders = ['581229370245644289', '1384909947564724500'];
+    sort($expectedHolders, SORT_STRING);
+
+    check(
+        'a throttled walk still strips the unlinked holders it read before the throttle',
+        patchedDiscordIds() === $expectedHolders,
+        'patched ' . json_encode(patchedDiscordIds())
+            . ' — discarding the page already read costs a whole cycle of corrections'
+    );
+
+    check(
+        'a throttled walk still corrects the members the forum-side half found',
+        queuedUserIds() === [7],
+        'queued ' . json_encode(queuedUserIds())
+            . ' — the database scan needs no Discord budget and must not fail with the walk'
+    );
+
+    // The same distinction on the roles read, which happens before the walk and
+    // decides whether the Discord side runs at all.
+    //
+    // getRoles() substitutes [] for a failed request, so a throttled read and a guild
+    // that somehow reported no roles arrive identically. Both are refused — an empty
+    // list cannot be taken at face value when every guild has an @everyone role — but
+    // an admin told only "could not read the roles" has no way to know whether the
+    // next run will fix it by itself.
+    //
+    // Neither run reads a member or patches anybody, so each reports exactly one line
+    // carrying nothing but the guild id, and the cause is the only free variable.
+
+    $db = freshStack();
+    Api::$rateLimitedRoles = true;
+    Api::$guildMembers = guildOfTwoPages();
+    staleMember($db, 7, '1384909947564740007');
+
+    (new ReconciliationSweep())->run();
+
+    $throttledReports = \XF::$errors;
+    $throttledQueued = queuedUserIds();
+
+    $db = freshStack();
+    Api::$guildRoles = [];
+    Api::$guildMembers = guildOfTwoPages();
+    staleMember($db, 7, '1384909947564740007');
+
+    (new ReconciliationSweep())->run();
+
+    $emptyReports = \XF::$errors;
+
+    check(
+        'a throttled roles read and an empty one are alike in everything but the cause',
+        count($throttledReports) === 1
+            && count($emptyReports) === 1
+            && $throttledQueued === queuedUserIds()
+            && $throttledQueued === [7]
+            && patchedDiscordIds() === [],
+        'reports ' . count($throttledReports) . '/' . count($emptyReports)
+            . ', queued ' . json_encode($throttledQueued) . '/' . json_encode(queuedUserIds())
+            . ' — the next check is only meaningful while the two runs agree on all of this'
+    );
+
+    check(
+        'a throttled roles read is not reported as a guild that returned no roles',
+        $throttledReports[0] !== $emptyReports[0],
+        'both reported: ' . json_encode($throttledReports[0] ?? null)
+            . ' — one clears itself by the next run and the other never will'
+    );
+
+    // And on the strip, which is where a throttle is likeliest to be met: the live
+    // guild's run issued one roles read and nine member pages against eighty patches.
+    //
+    // A refused strip and a throttled one both moved no role, and both come back as
+    // the same false. They mean opposite things about the next run. A refusal is
+    // Discord rejecting a role set whole — the run will make the same call and be
+    // refused again — while a throttle means the same call would have worked with
+    // more room. Folding them together makes the per-run line, the only forum-side
+    // trace a strip leaves at all, report a permissions problem the guild may not have.
+    //
+    // Both runs walk the whole guild and attempt the same patches, so neither reports
+    // a partial walk and the strip line is the only thing either logs.
+
+    $db = freshStack();
+    Api::$guildMembers = guildOfTwoPages();
+    Api::$rateLimitedPatches = true;
+    staleMember($db, 7, '1384909947564740007');
+
+    (new ReconciliationSweep())->run();
+
+    $throttledReports = \XF::$errors;
+    $throttledAttempts = patchedDiscordIds();
+    $throttledQueued = queuedUserIds();
+
+    $db = freshStack();
+    Api::$guildMembers = guildOfTwoPages();
+    Api::$patchesRefused = true;
+    staleMember($db, 7, '1384909947564740007');
+
+    (new ReconciliationSweep())->run();
+
+    $refusedReports = \XF::$errors;
+
+    check(
+        'a throttled strip and a refused one are alike in everything but the cause',
+        count($throttledReports) === 1
+            && count($refusedReports) === 1
+            && $throttledAttempts === patchedDiscordIds()
+            && count($throttledAttempts) === 3
+            && $throttledQueued === queuedUserIds(),
+        'reports ' . count($throttledReports) . '/' . count($refusedReports)
+            . ', attempted ' . json_encode($throttledAttempts) . '/' . json_encode(patchedDiscordIds())
+            . ' — the next check is only meaningful while the two runs agree on all of this'
+    );
+
+    check(
+        'a throttled strip is not reported as one Discord refused',
+        $throttledReports[0] !== $refusedReports[0],
+        'both reported: ' . json_encode($throttledReports[0] ?? null)
+            . ' — a refusal will happen again next run and a throttle will not,'
+            . ' and this line is the only forum-side trace a strip leaves'
     );
 
     if ($failures > 0) {

@@ -109,3 +109,24 @@ Discord side, and their correct end state is simply no managed roles at all.
 _Avoid_: "**divergence**" (that presumes a link and a group set to reconcile
 against, neither of which an unlinked holder has), and naming the member an
 "orphaned role" (the member is not the role).
+
+**Throttled read**:
+A call Discord declined for pacing rather than on its merits — the guild is fine, the
+bot's permissions are fine, and the same call would have been served with more room.
+It is temporary by definition: the next **reconciliation sweep** run is fifteen minutes
+later and makes the same call again. What makes the term worth having is that it is
+invisible in the result, since a throttled call and a **refused read** both come back
+from NF/Discord as the same `false`; telling them apart takes a second question. Which
+question is an implementation detail and has changed once already, so define nothing in
+terms of it.
+_Avoid_: "rate limit" for the event (that is the rule being applied, not what happened
+to this call), and "failed read" (which is what conflating the two costs).
+
+**Refused read**:
+A call Discord declined on its merits — a missing permission, a revoked privileged
+intent, a role set it rejects whole. It says something is wrong with the guild, the
+bot or the request, and the next run will be refused in exactly the same way until
+somebody changes one of them. The opposite of a **throttled read** in the only sense
+that matters operationally: waiting fixes a throttle and never fixes a refusal.
+_Avoid_: "error" (too broad — it covers both of these and a connection that never
+reached Discord at all), and "rejected" for the throttle case.

@@ -3,7 +3,6 @@
 namespace Cav7\DiscordSyncPatch;
 
 use NF\Discord\Api;
-use NF\Discord\RateLimitedException;
 
 /**
  * Issue #157 — the reconciliation sweep: finds the members whose Discord roles have
@@ -39,11 +38,25 @@ use NF\Discord\RateLimitedException;
  *    one, so an empty result is read as failure — every guild has an @everyone role.
  *    It also caches what it got for five minutes without distinguishing the two, which
  *    is why this asks it not to read that cache.
+ *  - A Discord 429 reaches this addon as an ordinary `false` — not as an exception,
+ *    and not as a decoded error body. What follows from that is in wasThrottled()
+ *    below; the evidence is in docs/verification/reconciliation-sweep-guards.md.
  */
 class ReconciliationSweep
 {
     /** Discord's maximum page size for the guild member list. */
     public const MEMBER_PAGE_LIMIT = 1000;
+
+    /**
+     * What one unlinked holder's strip did. Every failed call hands this addon the
+     * same `false`, so without telling them apart the per-run log line — the only
+     * forum-side trace a strip leaves — reports a permissions problem for a guild
+     * that may only have been busy.
+     */
+    protected const STRIP_DONE = 'stripped';
+    protected const STRIP_REFUSED = 'refused';
+    protected const STRIP_THROTTLED = 'throttled';
+    protected const STRIP_NOT_NEEDED = 'not needed';
 
     /**
      * A bound on the member walk, not a page budget. MemberCursor stops on a short
@@ -155,9 +168,16 @@ class ReconciliationSweep
         // protected roles as an input, and both are unsafe with a wrong answer.
         $preservedRoleIds = $this->preservedRoleIds($api);
         if ($preservedRoleIds === null) {
+            // Both causes refuse the same way, and getRoles() hides the difference by
+            // substituting [] for a failed request. Which one it was decides whether
+            // an admin has anything to do: a throttle is gone by the next run, an
+            // empty answer from a guild that must have an @everyone role is not.
             \XF::logError(sprintf(
-                'Cav7/DiscordSyncPatch: the reconciliation sweep could not read guild %s roles, so it did not check Discord-side divergence or unlinked holders this run. Acting without them would send role sets missing the roles Discord manages itself, which Discord refuses and the integration discards silently.',
-                $guildId
+                'Cav7/DiscordSyncPatch: the reconciliation sweep could not read guild %s roles, because %s, so it did not check Discord-side divergence or unlinked holders this run. Acting without them would send role sets missing the roles Discord manages itself, which Discord refuses and the integration discards silently.',
+                $guildId,
+                $this->wasThrottled($api)
+                    ? 'Discord rate-limited the bot'
+                    : 'the read came back with no roles at all, and every guild has at least an @everyone role'
             ));
 
             return $divergentUserIds;
@@ -173,8 +193,13 @@ class ReconciliationSweep
         $linkedUserIdsByDiscordId = $this->linkedUserIdsByDiscordId();
         $currentGroupIdsByUserId = $this->currentGroupIdsByUserId();
 
-        $stripped = 0;
-        $refused = 0;
+        $outcomes = [
+            self::STRIP_DONE => 0,
+            self::STRIP_REFUSED => 0,
+            self::STRIP_THROTTLED => 0,
+            self::STRIP_NOT_NEEDED => 0,
+        ];
+
         foreach ($members as $member) {
             $discordId = (string) ($member['user']['id'] ?? '');
             if ($discordId === '') {
@@ -188,20 +213,14 @@ class ReconciliationSweep
                 // An unlinked holder. There is no forum user to run the vendor's
                 // per-user sync for — it bails with user_not_associated — so the roles
                 // are patched directly.
-                $outcome = $this->stripUnlinkedHolder(
+                $outcomes[$this->stripUnlinkedHolder(
                     $api,
                     $guildId,
                     $discordId,
                     $heldRoleIds,
                     $managedRoleIds,
                     $preservedRoleIds
-                );
-
-                if ($outcome === true) {
-                    $stripped++;
-                } elseif ($outcome === false) {
-                    $refused++;
-                }
+                )]++;
                 continue;
             }
 
@@ -216,7 +235,11 @@ class ReconciliationSweep
             }
         }
 
-        if ($stripped > 0 || $refused > 0) {
+        $stripped = $outcomes[self::STRIP_DONE];
+        $refused = $outcomes[self::STRIP_REFUSED];
+        $throttled = $outcomes[self::STRIP_THROTTLED];
+
+        if ($stripped > 0 || $refused > 0 || $throttled > 0) {
             // A durable line for the one correction that cannot be recorded against a
             // member. NF/Discord's own log only writes when its extended logging option
             // is on, and an admin asked months later why somebody lost their roles
@@ -229,6 +252,13 @@ class ReconciliationSweep
             // happen. The refusal to expect is Discord rejecting a role set that omits
             // a role it manages, which it rejects whole.
             //
+            // Throttled calls are counted apart from refusals for the same reason one
+            // step down. Both moved no role, but a refusal will happen again on the
+            // next run and a throttle will not, so folding them together points an
+            // admin at permissions the guild may not have a problem with. This is
+            // where a throttle is likeliest: the live pass issued eighty patches
+            // against ten reads.
+            //
             // The pointer to Discord's audit log is attached only when something was
             // actually removed. A run where every strip was refused removes nothing,
             // and sending an admin to an audit log that will not mention this run is
@@ -236,10 +266,16 @@ class ReconciliationSweep
             // arithmetic. A live-guild pass produced exactly that line: 0 stripped,
             // 80 refused.
             \XF::logError(sprintf(
-                'Cav7/DiscordSyncPatch: the reconciliation sweep stripped forum-managed roles from %d guild member(s) on %s who hold no linked forum account, and had %d strip(s) refused by Discord.%s',
+                'Cav7/DiscordSyncPatch: the reconciliation sweep stripped forum-managed roles from %d guild member(s) on %s who hold no linked forum account, and Discord refused %d strip(s).%s%s',
                 $stripped,
                 $guildId,
                 $refused,
+                // Attached only when there were any, for the same reason the audit-log
+                // pointer is: a clause about what the next run will retry, printed on a
+                // run with nothing to retry, is a sentence that describes no event.
+                $throttled > 0
+                    ? sprintf(' It was rate-limited on %d more, which the next run will attempt again.', $throttled)
+                    : '',
                 $stripped > 0
                     ? ' Discord\'s own server audit log records each removal.'
                     : ''
@@ -256,11 +292,9 @@ class ReconciliationSweep
      * @param string[] $managedRoleIds
      * @param string[] $preservedRoleIds
      *
-     * @return bool|null True where Discord accepted the new role set, false where it
-     *                   refused it, and null where there was nothing to strip and no
-     *                   call was made. The three are counted differently: only the
-     *                   first is a correction, and the second must never be reported
-     *                   as one.
+     * @return string One of the STRIP_ constants. They are counted apart because they
+     *                mean different things: only STRIP_DONE is a correction, and the
+     *                other two must never be reported as one.
      */
     protected function stripUnlinkedHolder(
         Api $api,
@@ -269,7 +303,7 @@ class ReconciliationSweep
         array $heldRoleIds,
         array $managedRoleIds,
         array $preservedRoleIds
-    ): ?bool
+    ): string
     {
         $keepRoleIds = ManagedRoleStrip::rolesToKeep($heldRoleIds, $managedRoleIds, $preservedRoleIds);
 
@@ -277,7 +311,7 @@ class ReconciliationSweep
         // patching them would rewrite thousands of members to exactly what they already
         // have, against a budget near sixty role writes a minute.
         if ($keepRoleIds === null) {
-            return null;
+            return self::STRIP_NOT_NEEDED;
         }
 
         \NF\Discord\Helper::log('[Cav7\DiscordSyncPatch] Stripping managed roles from an unlinked holder', [
@@ -298,13 +332,16 @@ class ReconciliationSweep
         // which is the one thing the per-run log line exists to be trusted about. The
         // refusal to expect is a role set omitting a role Discord manages: it is
         // rejected whole, and nothing else records that.
-        try {
-            $patched = $api->patchGuildMemberRoles($discordId, $keepRoleIds);
-        } catch (RateLimitedException $e) {
-            return false;
+        $patched = $api->patchGuildMemberRoles($discordId, $keepRoleIds);
+
+        if ($patched !== false) {
+            return self::STRIP_DONE;
         }
 
-        return $patched !== false;
+        // A refusal and a throttle are both `false` and both moved no role, but they
+        // say opposite things about the next run: Discord will refuse the same role
+        // set again, and would have served the same throttled call given more room.
+        return $this->wasThrottled($api) ? self::STRIP_THROTTLED : self::STRIP_REFUSED;
     }
 
     /**
@@ -332,10 +369,15 @@ class ReconciliationSweep
             // The query goes in the PATH. Passed as the vendor's data argument it would
             // be json-encoded into the body of a GET and Discord would receive a request
             // carrying no parameters at all — the first page, forever.
-            try {
-                $result = $api->get('guilds/:guildId/members?' . http_build_query($query));
-            } catch (RateLimitedException $e) {
-                return $this->reportPartialWalk($guildId, $members, 'Discord rate-limited the bot part-way through');
+            $result = $api->get('guilds/:guildId/members?' . http_build_query($query));
+
+            // A throttled read comes back as the same false a refused one does, so the
+            // retry-after is asked for before the result is judged. Read first because
+            // it is the more specific answer: every throttled read is also unreadable,
+            // and only this tells an admin the difference between waiting and fixing
+            // the bot's intents.
+            if ($this->wasThrottled($api)) {
+                return $this->reportPartialWalk($guildId, $members, 'Discord rate-limited the bot');
             }
 
             if (!is_array($result)) {
@@ -367,6 +409,45 @@ class ReconciliationSweep
             $members,
             sprintf('the walk hit its %d-page bound with Discord still returning full pages', self::MAX_MEMBER_PAGES)
         );
+    }
+
+    /**
+     * Whether Discord refused the call just made for pacing rather than on its merits.
+     *
+     * Every way a call can fail hands this addon the same `false`, so without this a
+     * throttle is indistinguishable from a revoked intent or a missing permission —
+     * one clears itself by the next quarter-hour and the others never will.
+     *
+     * The signal is the retry-after, not an exception. `RateLimitedException` cannot
+     * reach this addon: `assertNotRateLimited()` throws only when `isThrowOnErrors()`
+     * is true, that flag defaults to false, and nothing here sets it.
+     * `Api::factory($guildId, false)` passes `$assertConfigured`, not a throw flag —
+     * the easy misreading, and the one that had three unreachable catches in this file
+     * until #233. What that method always does, throwing or not, is record the
+     * retry-after.
+     *
+     * Ask immediately after the call it is about. The vendor writes it per call rather
+     * than latching it, so it describes the last call and nothing else — but only on
+     * the paths that reach `assertNotRateLimited()`. Three return before it do and
+     * leave the previous call's value standing: a connect or server exception, a 204,
+     * and the {304, 400, 401, 403} arm. Only the first is reachable here, since Guzzle
+     * turns a real 4xx into an exception and neither endpoint answers 204 or 304. So a
+     * connection that fails straight after a throttled call reads as throttled — see
+     * issue #248, left alone rather than worked around, because inventing a reset means
+     * guessing at internals this cannot see. The walk cannot reach even that: a
+     * throttled page ends it, so there is no following call to misattribute.
+     *
+     * It is also only ever a 429. The vendor's header-derived branches in
+     * `isRateLimited()` never fire, so there is no pre-emptive "nearly out of budget"
+     * signal here and nothing to pace against — see issue #249.
+     *
+     * All of this was measured rather than reasoned about, in
+     * docs/verification/reconciliation-sweep-guards.md, which is where the evidence
+     * lives and the place to re-run after a vendor upgrade.
+     */
+    protected function wasThrottled(Api $api): bool
+    {
+        return $api->getRetryAfter() !== null;
     }
 
     /**
@@ -515,11 +596,7 @@ class ReconciliationSweep
         // serves that back without re-requesting — so one failed read would keep the
         // guard below tripping on a cached empty rather than on Discord's answer. One
         // request per guild per run is nothing against a budget near sixty a minute.
-        try {
-            $roles = $api->getRoles(false);
-        } catch (RateLimitedException $e) {
-            return null;
-        }
+        $roles = $api->getRoles(false);
 
         if (!$roles) {
             return null;

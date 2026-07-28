@@ -218,6 +218,102 @@ untouched. The walk took 10.4s over 9 pages and 80 refused patches took 28.5s wi
 `429`, so it does not trip at this scale; nothing was learned about what happens when
 it does.
 
+> **What a `429` does was settled on 2026-07-28 without waiting for one**, in
+> [the pass below](#what-a-429-actually-does-through-the-vendors-api).
+
+## What a `429` actually does through the vendor's Api
+
+Run against `~/srv/xenforo-dev` (XenForo 2.3.11, NF/Discord 2.12.0) on 2026-07-28, for
+[#233](https://github.com/7Cav/cavforo-suite/issues/233).
+
+#233 was filed with two candidate answers and no way to choose between them, on the
+assumption that only a real throttled guild could decide it. It could not: a `429` is a
+response, and a response can be handed to the vendor's own code without Discord being
+involved at all.
+
+### Method: a real XenForo, the real `Api`, a mocked transport
+
+The point is to leave everything that decides the outcome in place. So this drives
+`NF\Discord\Api::get()` — not a copy of it — on a booted `XF\Cli\App`, and swaps only
+the transport underneath:
+
+1. Boot `XF\Cli\App` against the stack.
+2. Replace the container's `http` entry with a subclass of `XF\SubContainer\Http`
+   whose `createClient()` calls the **real** `applyDefaultClientOptions()`, so the
+   Guzzle client is built from the identical option array production builds, then adds
+   a `GuzzleHttp\Handler\MockHandler` at the bottom of the stack. Every middleware
+   above it — `http_errors` above all — still runs.
+3. Serve a canned response and call `Api::factory('123456789', false)->get(...)`.
+4. Print what `get()` returned and what `getRetryAfter()` reports.
+
+Nothing leaves the machine, which is just as well: the `fpm` container has no route
+off it. `MockHandler` is what makes a `429` available on demand rather than waited for.
+
+### What was checked, and what happened
+
+| Canned response | `get()` returned | `getRetryAfter()` |
+|---|---|---|
+| `429` + Discord's rate-limit body and headers | `false` (bool) | `1785215358` |
+| `403 Missing Access` | `false` (bool) | `NULL` |
+| `200` + one member record | `array` (decoded) | `NULL` |
+
+Then the same `Api` object across a `429`, a `403` and a `200` in sequence:
+`1785215358`, then `NULL`, then `NULL`.
+
+### What it settles
+
+**A `429` arrives as a `ClientException`, and the vendor turns it into `false`.**
+Guzzle 7 throws on `4xx`; `request()` catches it, calls `assertNotRateLimited()` (which
+records the retry-after and does not throw, because `throwOnErrors` is false), and
+returns `false`. The vendor's `'defaults' => ['exceptions' => false]` is a Guzzle 5
+spelling and Guzzle 7 ignores it — inferred from the config spelling when #233 was
+filed, and now observed.
+
+**The second candidate shape cannot happen.** #233's worse case had the `429` body
+decoded and returned as an array, which the sweep would have iterated as a page of
+members and read as a short page — silent truncation, a run reporting a complete guild
+having read part of it. `get()` returned a bool, never an array, so nothing reaches
+`json_decode`. The two acceptance criteria written against that shape were dropped
+rather than guarded, since a test could only have stubbed a vendor behaviour the vendor
+does not have.
+
+Nothing else on the board can reintroduce it: `xf_code_event_listener` carries no
+`http_client_options` or `http_client_config` listener that could disable
+`http_errors`, and `xf_class_extension` carries no extension of `NF\Discord\Api` that
+could set `throwOnErrors`.
+
+**The retry-after is the signal, and it is honest about a refusal.** A `403` clears it,
+because a real `403` also arrives as a `ClientException` and so also reaches
+`assertNotRateLimited()`. That makes `request()`'s early return for `{400, 401, 403}`
+unreachable in practice — only its `304` arm is live.
+
+**It is only ever a `429`.** `isRateLimited()`'s header-derived branches never fire:
+each tests `count($headers) > 1` on a single-valued header, and then takes
+`min($positive, 0)`. So the status code is the whole of it, there is no pre-emptive
+"nearly out of budget" signal, and `getRetryAfter()` means "that response was a `429`"
+and nothing more. Note it returns an absolute timestamp rather than a delay, despite
+the name.
+
+### What it does not settle
+
+Whether Discord always delivers throttling as an HTTP `429`. This proves what XenForo,
+Guzzle and the vendor do with a `429` response object; an edge-level ban could arrive
+as a `403` or a dropped connection and would read here as a refusal. Nothing in this
+method reaches that, and a real throttled guild would be needed to.
+
+It also surfaced one thing it could not fix, and the sequence above is what shows it.
+`retryAfter` is cleared at the top of `assertNotRateLimited()`, so only the calls that
+reach it clear the previous one. Reading `request()`, **three** returns come earlier:
+the `ServerException | ConnectException` branch, the `204` arm, and the
+`{304, 400, 401, 403}` arm.
+
+Only the first is reachable by this add-on's calls — Guzzle turns a real `4xx` into an
+exception, so that arm is dead as noted above, and neither endpoint the sweep uses
+answers `204` or `304`. But it means a connect failure straight after a throttled call
+still reports the previous call's value. See
+[#248](https://github.com/7Cav/cavforo-suite/issues/248), which carries the same
+inventory — a fix designed off "one path" would be designed off a wrong reading.
+
 ## Re-running it
 
 The script is not committed — it mutates a board and its value is in the recorded
@@ -225,3 +321,11 @@ result, not in re-running it unchanged. What it does is the numbered list above,
 order, with the restore proven at the end. The setup it needs is the one the README
 already describes for the resync button: credentials filled in, and a server row that
 is both active and carries a guild id.
+
+The `429` pass is the exception and is worth re-running, because it is the one check
+here that reads vendor behaviour rather than ours — and vendor behaviour is exactly
+what moves under an upgrade without anything in this repo noticing. It writes nothing,
+needs no credentials and touches no guild: the four numbered steps in its method are
+the whole of it, and the table is what to compare against. Re-run it after a XenForo,
+Guzzle or NF/Discord upgrade. A `get()` that starts returning an array where the table
+says `false` is the silent-truncation shape arriving after all.
