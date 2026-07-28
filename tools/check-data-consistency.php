@@ -53,6 +53,18 @@
  * missing from, since 0 and false are both legitimate values — and so is a
  * value in a shape no export writes, which is refused rather than cast into
  * one of those two.
+ *
+ * The identity columns are held to that same standard before they are used to
+ * match anything. Each must name a class on each side: a from_class or to_class
+ * that is absent, JSON null or empty fails, named by the column and the side it
+ * is missing from. Those three are one condition because they are one claim —
+ * _data omits an attribute if and only if its value is '', so an omitted
+ * attribute and an empty one cannot be told apart there by construction, and
+ * XenForo marks both columns required on XF\Entity\ClassExtension, so no row it
+ * would persist reaches either state. Checking identity only after using it as a
+ * key is what let a row with no identity through: both sides read a column that
+ * names nothing as '', '' matched '', the two compared columns agreed, and the
+ * run exited 0 saying content matches on a row identifying nothing (issue #200).
  * (docs/adr/0003-canonical-class-extension-order.md rests on the same pair
  * identity: it fixes the row order of a committed _data file as a byte
  * comparison of from_class then to_class, and leaves execute_order out of that
@@ -418,7 +430,27 @@ foreach ($typeDirs as $typeDir) {
         // without them a duplicated row on either side would hide a missing one.
         $dataByPair = [];
         $mismatches = [];
+        $recordNumber = 0;
         foreach ($records as $record) {
+            // The _output side of this test is below; the reasoning is written
+            // out there. The standard has to be the same on both, or the check
+            // is strict about identity in one tree and not the other. There is
+            // no file name to name the offender by on this side, so the record
+            // is named by its position among the <extension> elements — the
+            // pair that would otherwise identify it is the thing that is gone.
+            $recordNumber++;
+            $identityAbsent = false;
+            foreach (['from_class', 'to_class'] as $idField) {
+                if (!isset($record[$idField]) || (string) $record[$idField] === '') {
+                    $mismatches[] = "_data <extension> #$recordNumber: "
+                        . $describeMissing($idField, false, true);
+                    $identityAbsent = true;
+                }
+            }
+            if ($identityAbsent) {
+                continue;
+            }
+
             $from = (string) $record['from_class'];
             $to = (string) $record['to_class'];
             $key = $pairKey($from, $to);
@@ -437,8 +469,34 @@ foreach ($typeDirs as $typeDir) {
                 $mismatches[] = "$itemName: not readable as a JSON object";
                 continue;
             }
-            $from = (string) ($decoded['from_class'] ?? '');
-            $to = (string) ($decoded['to_class'] ?? '');
+            // The identity columns, held to the standard the compared columns
+            // are already held to. A row has to name both classes, and reading
+            // them straight through a cast turns a column that names nothing
+            // into the empty string — which is a key like any other, matching
+            // whatever else lost the same column. Settling that before the pair
+            // is built is what stops a row identifying nothing from matching
+            // another one, and what makes the report say the column is not
+            // there rather than blaming a class name for failing to match.
+            //
+            // Absent, JSON null and '' are one condition rather than three,
+            // because they are one claim: the column names no class. `?? ''`
+            // collapses the first two onto the third, and the same rule reads
+            // the _data side above, where the exporter's own omit-iff-empty
+            // makes an absent attribute and an empty one indistinguishable by
+            // construction.
+            $identityAbsent = false;
+            foreach (['from_class', 'to_class'] as $idField) {
+                if (($decoded[$idField] ?? '') === '') {
+                    $mismatches[] = "$itemName: " . $describeMissing($idField, true, false);
+                    $identityAbsent = true;
+                }
+            }
+            if ($identityAbsent) {
+                continue;
+            }
+
+            $from = (string) $decoded['from_class'];
+            $to = (string) $decoded['to_class'];
             $key = $pairKey($from, $to);
             if (!isset($dataByPair[$key])) {
                 $mismatches[] = "$itemName: " . $describePair($from, $to)
