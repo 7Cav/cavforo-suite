@@ -34,6 +34,14 @@
  * message and never printed the problems it had already found. No manifest in
  * the suite has ever had a component of more than two digits.
  *
+ * Case 9 pins the required keys against a value that is present but unusable
+ * (issue #229). The gap that one guards: presence was tested with
+ * array_key_exists, which a null satisfies, while the checks on the value were
+ * guarded by isset(), which a null skips — so a null reached neither, and
+ * `{"title":null,"version_id":null,"version_string":null}` validated clean and
+ * exited 0. title was the worse half, carrying no type check at all. No
+ * manifest in the suite has ever held a null.
+ *
  * Run:
  *   php tools/tests/validate-addon-test.php
  *
@@ -59,6 +67,27 @@ function check(string $label, bool $ok, string $detail = ''): void
 $tool = dirname(__DIR__) . '/validate-addon.php';
 
 /**
+ * Build a throwaway fixture addon under $base whose addon.json holds exactly
+ * $json and which carries no _data tree at all.
+ *
+ * makeFixture() below cannot express the manifests case 9 needs: it derives
+ * title from the fixture name and declares its version parameters int and
+ * string, so a null or wrong-typed required key has nowhere to go, and an
+ * omitted one cannot be written either. Taking the decoded manifest whole
+ * keeps all three shapes — a null value, a value of the wrong type, and an
+ * absent key — expressible as plain PHP, without loosening the types the
+ * other cases rely on. makeFixture() builds on this for the manifest half.
+ */
+function makeManifestFixture(string $base, string $name, array $json): string
+{
+    $dir = "$base/$name";
+    mkdir($dir, 0777, true);
+    file_put_contents("$dir/addon.json", json_encode($json, JSON_PRETTY_PRINT));
+
+    return $dir;
+}
+
+/**
  * Build a throwaway fixture addon under $base holding a valid addon.json and a
  * _data/class_extensions.xml with $rows, each row a [from_class, to_class] pair.
  * Passing null for $rows writes no class_extensions.xml at all.
@@ -80,8 +109,6 @@ function makeFixture(
     string $versionString = '1.0.0',
     mixed $description = null
 ): string {
-    $dir = "$base/$name";
-    mkdir("$dir/_data", 0777, true);
     $json = [
         'title' => $name,
         'version_id' => $versionId,
@@ -90,7 +117,8 @@ function makeFixture(
     if ($description !== null) {
         $json['description'] = $description;
     }
-    file_put_contents("$dir/addon.json", json_encode($json, JSON_PRETTY_PRINT));
+    $dir = makeManifestFixture($base, $name, $json);
+    mkdir("$dir/_data", 0777, true);
 
     if ($rows === null) {
         return $dir;
@@ -432,6 +460,95 @@ try {
     check(
         'the largest version the numbering can express still names its version_id',
         str_contains($out, '99999970'),
+        $out
+    );
+    // --- Case 9: a required key present but null (issue #229) -------------
+    // The gap that one guards: presence is tested with array_key_exists, which
+    // a null satisfies, while every check on the value was guarded by isset(),
+    // which a null skips. A null therefore fell between the two and reached no
+    // check at all. title was worse still — it had no type check in the first
+    // place, so any value of any type passed.
+    //
+    // Each case asserts the exit code and that the output names the key the
+    // author has to go and fix. Exit 1 is the tool's clean-failure contract; 2
+    // is usage and 255 a PHP fatal. The key name is the field being refused
+    // rather than prose about it, so rewording these errors does not reach
+    // this test.
+    //
+    // Deliberately not pinned: which of the two messages a null title draws.
+    // A missing key and a wrong-typed one need different fixes and so print
+    // differently, but that distinction exists only in the authored sentence,
+    // and pinning the fragment would make wording the contract. It is covered
+    // by review, not by this test.
+    $version = ['version_id' => 1000170, 'version_string' => '1.0.1'];
+
+    $dir = makeManifestFixture($base, 'NullTitle', ['title' => null] + $version);
+    [$code, $out] = runTool($tool, $dir);
+    check('a null title fails cleanly', $code === 1, $out);
+    check('a null title names the key at fault', str_contains($out, 'title'), $out);
+
+    // An empty title is refused too, which is deliberately stricter than
+    // XenForo: its validate-json type-checks title with is_string(), which ''
+    // satisfies, and AddOn::prepareJsonFile() defaults the key to '' outright.
+    // Same reasoning as the description type check above — a rule that a title
+    // has to be a usable string is evaded by supplying an unusable one, and an
+    // add-on the admin panel lists under a blank name is not a thing anyone
+    // means to ship.
+    $dir = makeManifestFixture($base, 'EmptyTitle', ['title' => ''] + $version);
+    [$code, $out] = runTool($tool, $dir);
+    check('an empty title fails cleanly', $code === 1, $out);
+    check('an empty title names the key at fault', str_contains($out, 'title'), $out);
+
+    // null is not the only value that reaches no check: before this case the
+    // key had no type check at all, so an integer passed as readily. This is
+    // what holds the rule at "must be a string" rather than "must not be null".
+    $dir = makeManifestFixture($base, 'IntegerTitle', ['title' => 7] + $version);
+    [$code, $out] = runTool($tool, $dir);
+    check('a title that is not a string fails cleanly', $code === 1, $out);
+
+    // The rule is a type rule, not a rule about what a title contains: a title
+    // of spaces is accepted. Refusing it would be a content rule, which
+    // #229 puts out of scope. Stated so that the boundary cannot drift
+    // without a test saying so.
+    $dir = makeManifestFixture($base, 'SpacesTitle', ['title' => '   '] + $version);
+    [$code, $out] = runTool($tool, $dir);
+    check('a title of whitespace is accepted', $code === 0, $out);
+
+    // The new type check fires only when the key is there, so it must not
+    // become the only thing standing between a manifest and a missing title.
+    // This is the half of #229's contract a fix aimed at null alone would
+    // quietly drop.
+    $dir = makeManifestFixture($base, 'NoTitle', $version);
+    [$code, $out] = runTool($tool, $dir);
+    check('a manifest with no title fails cleanly', $code === 1, $out);
+    check('a missing title names the key at fault', str_contains($out, 'title'), $out);
+
+    // The version fields had type checks all along, but reached them through
+    // isset(), so a null skipped them exactly as it skipped title's absent
+    // one — case 6's agreement check included, which is guarded the same way.
+    // A null version_id is the failure #217 was raised over, reached by
+    // another route: XF\AddOn\AddOn::isJsonVersionNewer() compares it with >,
+    // which is false against any installed id, so the board never takes the
+    // upgrade.
+    $dir = makeManifestFixture($base, 'NullVersionId', [
+        'title' => 'Cav7 - Null Version Id',
+        'version_id' => null,
+        'version_string' => '1.0.1',
+    ]);
+    [$code, $out] = runTool($tool, $dir);
+    check('a null version_id fails cleanly', $code === 1, $out);
+    check('a null version_id names the key at fault', str_contains($out, 'version_id'), $out);
+
+    $dir = makeManifestFixture($base, 'NullVersionString', [
+        'title' => 'Cav7 - Null Version String',
+        'version_id' => 1000170,
+        'version_string' => null,
+    ]);
+    [$code, $out] = runTool($tool, $dir);
+    check('a null version_string fails cleanly', $code === 1, $out);
+    check(
+        'a null version_string names the key at fault',
+        str_contains($out, 'version_string'),
         $out
     );
 } finally {
