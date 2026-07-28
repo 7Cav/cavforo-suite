@@ -54,16 +54,22 @@
  * value in a shape no export writes, which is refused rather than cast into
  * one of those two.
  *
- * The identity columns are held to that same standard before they are used to
- * match anything. Each must name a class on each side: a from_class or to_class
- * that is absent, JSON null or empty fails, named by the column and the side it
- * is missing from. Those three are one condition because they are one claim —
- * _data omits an attribute if and only if its value is '', so an omitted
- * attribute and an empty one cannot be told apart there by construction, and
- * XenForo marks both columns required on XF\Entity\ClassExtension, so no row it
- * would persist reaches either state. Checking identity only after using it as a
- * key is what let a row with no identity through: both sides read a column that
- * names nothing as '', '' matched '', the two compared columns agreed, and the
+ * The identity columns are held to that same standard, in both halves, before
+ * they are used to match anything. Each must name a class on each side: absent,
+ * JSON null or empty is a mismatch named by the column and the side it is
+ * missing from, and a value in a shape no export writes is refused rather than
+ * cast, exactly as for the two compared columns. The first three are one
+ * condition because they are one claim — _data omits an attribute if and only if
+ * its value is '', so an omitted attribute and an empty one cannot be told apart
+ * there by construction, and XenForo marks both columns required on
+ * XF\Entity\ClassExtension, so no row it would persist reaches any of them. The
+ * shape half is not decoration: (string) false is '', so refusing emptiness
+ * while casting whatever else turns up walks the column straight back to the
+ * empty identity the check exists to catch.
+ *
+ * Checking identity only after using it as a key is what let a row with no
+ * identity through: both sides read a column that names nothing as '', '' is a
+ * key like any other so '' matched '', the two compared columns agreed, and the
  * run exited 0 saying content matches on a row identifying nothing (issue #200).
  * (docs/adr/0003-canonical-class-extension-order.md rests on the same pair
  * identity: it fixes the row order of a committed _data file as a byte
@@ -391,6 +397,28 @@ foreach ($typeDirs as $typeDir) {
             return "$field missing from " . implode(' and ', $sides);
         };
 
+        // Whether an identity column names a class, as one rule both trees are
+        // read through. Writing the test twice is how the two sides drifted
+        // apart once already: each looked right beside its own tree, and only
+        // one of them refused a shape no export writes.
+        //
+        // 'missing' — absent, JSON null and '' are one answer because they are
+        // one claim. _data omits an attribute if and only if its value is '',
+        // so it cannot tell those apart by construction, and XenForo marks both
+        // columns required on XF\Entity\ClassExtension, so no row it persists
+        // reaches any of them.
+        // 'shape'   — anything else, refused rather than cast, for the reason
+        // the compared columns refuse one: (string) false is '', so casting
+        // walks a column that names nothing right back to the empty identity
+        // this check exists to catch. Only _output can answer this, since _data
+        // arrives from the XML parser as a string either way.
+        $identityFault = static function ($raw): ?string {
+            if ($raw === null || $raw === '') {
+                return 'missing';
+            }
+            return is_string($raw) ? null : 'shape';
+        };
+
         // The two content-checked fields are one comparison, so they are written
         // once: each side declares the shapes its export actually writes, and
         // anything else is refused rather than cast. Casting was how a value
@@ -441,7 +469,8 @@ foreach ($typeDirs as $typeDir) {
             $recordNumber++;
             $identityAbsent = false;
             foreach (['from_class', 'to_class'] as $idField) {
-                if (!isset($record[$idField]) || (string) $record[$idField] === '') {
+                $raw = isset($record[$idField]) ? (string) $record[$idField] : null;
+                if ($identityFault($raw) !== null) {
                     $mismatches[] = "_data <extension> #$recordNumber: "
                         . $describeMissing($idField, false, true);
                     $identityAbsent = true;
@@ -486,8 +515,14 @@ foreach ($typeDirs as $typeDir) {
             // construction.
             $identityAbsent = false;
             foreach (['from_class', 'to_class'] as $idField) {
-                if (($decoded[$idField] ?? '') === '') {
+                $fault = $identityFault($decoded[$idField] ?? null);
+                if ($fault === 'missing') {
                     $mismatches[] = "$itemName: " . $describeMissing($idField, true, false);
+                    $identityAbsent = true;
+                } elseif ($fault === 'shape') {
+                    $mismatches[] = "$itemName: $idField _output="
+                        . json_encode($decoded[$idField])
+                        . ' is not a value any export writes';
                     $identityAbsent = true;
                 }
             }
