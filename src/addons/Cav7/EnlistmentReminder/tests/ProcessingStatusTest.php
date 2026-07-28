@@ -65,6 +65,26 @@ function linkRows(array $prefixesByThread): array
     return $rows;
 }
 
+/**
+ * What the given status says about every thread in the fixture, as
+ * thread_id => bool. Asking about all of them, rather than only the ones a case
+ * changes, is what makes a rule that stopped consulting the configured set fail
+ * here instead of passing on the half nobody looked at.
+ *
+ * @return array<int,bool>
+ */
+function answersFor(ProcessingStatus $status, array $threadIds): array
+{
+    $answers = [];
+    foreach ($threadIds as $threadId) {
+        $answers[$threadId] = $status->has($threadId);
+    }
+    return $answers;
+}
+
+/** The threads the $rows fixture below describes, in ascending order. */
+const FIXTURE_THREADS = [901, 902, 903, 904, 905, 907];
+
 // Thread 906 is absent on purpose: it stands for the mis-prefixed thread that has
 // no link rows at all, and a thread with no rows can only be represented by not
 // being in the fixture.
@@ -77,66 +97,65 @@ $rows = linkRows([
     907 => [55, 57, 110],     // In Progress with the "!!!" modifier
 ]);
 
-$statuses = ProcessingStatus::inProcessingThreadIds($rows, $inProcessing);
+$statuses = ProcessingStatus::fromPrefixLinks($rows, $inProcessing);
 
 // --- the trap: a type prefix alone is NOT a processing status --------------
 check(
     'a thread carrying only the Enlistment type prefix is not in processing',
-    !isset($statuses[901]),
+    !$statuses->has(901),
     'a "has any linked prefix" test would read the whole queue as handled and suppress every reminder'
 );
 check(
     'a thread carrying only the Re-Enlistment type prefix is not in processing',
-    !isset($statuses[902])
+    !$statuses->has(902)
 );
 // Documentation, not coverage: a thread with no rows cannot be in the fixture, so
-// there is no mutation of this seam that makes 906 appear and this check cannot
-// fail. It is here to state the shape of the answer. The real behaviour for a
-// mis-prefixed thread is on the scanner side, where the absent thread still gets a
-// fact built for it and the type routing skips it — exercised against a live board
-// rather than in CI.
+// there is no mutation of this seam that makes 906 answer true and this check
+// cannot fail. It is here to state the shape of the answer. The real behaviour for
+// a mis-prefixed thread is on the scanner side, where the absent thread still gets
+// a fact built for it and the type routing skips it — exercised against a live
+// board rather than in CI.
 check(
-    'a thread with no link rows at all is absent from the result, so it reads as not in processing',
-    !isset($statuses[906]),
+    'a thread with no link rows at all reads as not in processing',
+    !$statuses->has(906),
     'the mis-prefixed thread must stay remindable, and be skipped later by the type routing'
 );
 
 // --- each configured status suppresses -------------------------------------
-check('an In Progress thread is in processing', isset($statuses[903]));
-check('a Hold thread is in processing', isset($statuses[904]));
-check('an Approved thread is in processing', isset($statuses[905]));
+check('an In Progress thread is in processing', $statuses->has(903));
+check('a Hold thread is in processing', $statuses->has(904));
+check('an Approved thread is in processing', $statuses->has(905));
 
 // --- modifiers alongside a status do not change the answer -----------------
 check(
     'the S1 and RTC modifiers alongside Approved keep the thread in processing',
-    isset($statuses[905]),
+    $statuses->has(905),
     'they are out of scope as separate suppressors; only the configured set decides'
 );
 check(
     'the "!!!" modifier alongside In Progress keeps the thread in processing',
-    isset($statuses[907])
+    $statuses->has(907)
 );
 
 // --- a modifier on its own is not a status ---------------------------------
 // S1 (66), RTC (68) and "!!!" (110) are deliberately NOT in the configured set.
 // A thread carrying one with no Hold/Approved/In Progress is still un-actioned.
-$modifierOnly = ProcessingStatus::inProcessingThreadIds(
+$modifierOnly = ProcessingStatus::fromPrefixLinks(
     linkRows([910 => [57, 66], 911 => [57, 110]]),
     $inProcessing
 );
 check(
     'an unconfigured modifier alone does not suppress a reminder',
-    $modifierOnly === [],
-    'got: ' . implode(', ', array_keys($modifierOnly))
+    !$modifierOnly->has(910) && !$modifierOnly->has(911)
 );
 
 // --- the configured set is what decides, not a hard-coded list -------------
 // Reconfiguring to In Progress only must leave Hold and Approved remindable.
-$inProgressOnly = ProcessingStatus::inProcessingThreadIds($rows, [55]);
+$narrowed = answersFor(ProcessingStatus::fromPrefixLinks($rows, [55]), FIXTURE_THREADS);
 check(
-    'narrowing the configured set narrows the suppression',
-    array_keys($inProgressOnly) === [903, 907],
-    'got: ' . implode(', ', array_keys($inProgressOnly))
+    'narrowing the configured set to In Progress leaves Hold and Approved remindable',
+    $narrowed === [901 => false, 902 => false, 903 => true, 904 => false, 905 => false, 907 => true],
+    'in processing: ' . implode(', ', array_keys(array_filter($narrowed)))
 );
 
 // --- an empty configured set is REFUSED, not answered -----------------------
@@ -147,7 +166,7 @@ check(
 // lands in the error log, which is what that guard chooses anyway.
 $refusedEmptySet = false;
 try {
-    ProcessingStatus::inProcessingThreadIds($rows, []);
+    ProcessingStatus::fromPrefixLinks($rows, []);
 } catch (\InvalidArgumentException $e) {
     $refusedEmptySet = true;
 }
@@ -160,7 +179,7 @@ check(
 // blank-option case an admin actually produces.
 $refusedJunkSet = false;
 try {
-    ProcessingStatus::inProcessingThreadIds($rows, ['', 'abc', '0']);
+    ProcessingStatus::fromPrefixLinks($rows, ['', 'abc', '0']);
 } catch (\InvalidArgumentException $e) {
     $refusedJunkSet = true;
 }
@@ -169,9 +188,11 @@ check(
     $refusedJunkSet,
     'the emptiness that matters is post-normalize, not the raw array'
 );
+// 903 carries In Progress in the fixture above, so it is the thread that would
+// answer true if anything but the rows decided the answer.
 check(
     'no link rows at all marks no thread as in processing',
-    ProcessingStatus::inProcessingThreadIds([], $inProcessing) === []
+    !ProcessingStatus::fromPrefixLinks([], $inProcessing)->has(903)
 );
 
 // --- id hygiene -------------------------------------------------------------
@@ -180,10 +201,10 @@ check(
 // match against a junk entry in the configured set.
 check(
     'string link ids match int configured ids',
-    isset(ProcessingStatus::inProcessingThreadIds(
+    ProcessingStatus::fromPrefixLinks(
         [['thread_id' => '920', 'prefix_id' => '54']],
         [54]
-    )[920])
+    )->has(920)
 );
 // The other direction of the same declaration, which nothing above exercised: the
 // seam takes `int[]|string[]` for the CONFIGURED set, and every fixture so far has
@@ -191,37 +212,41 @@ check(
 // ever passes PositionIdList::parse's ints, so this is the declared contract's unused
 // half rather than a reachable fault — but it is declared, and normalize on the
 // configured side is the whole reason it holds.
+$stringAnswers = answersFor(
+    ProcessingStatus::fromPrefixLinks($rows, ['53', '54', '55']),
+    FIXTURE_THREADS
+);
 check(
     'a string-typed configured set marks exactly the threads its int twin does',
-    array_keys(ProcessingStatus::inProcessingThreadIds($rows, ['53', '54', '55'])) === [903, 904, 905, 907],
-    'got: ' . implode(', ', array_keys(ProcessingStatus::inProcessingThreadIds($rows, ['53', '54', '55'])))
+    $stringAnswers === [901 => false, 902 => false, 903 => true, 904 => true, 905 => true, 907 => true],
+    'in processing: ' . implode(', ', array_keys(array_filter($stringAnswers)))
 );
 check(
     'a zero prefix id never matches, even against a zero in the configured set',
-    ProcessingStatus::inProcessingThreadIds(
+    !ProcessingStatus::fromPrefixLinks(
         [['thread_id' => 921, 'prefix_id' => 0]],
         [0, 54]
-    ) === [],
+    )->has(921),
     'prefix_id 0 is "no prefix"; treating it as a status would suppress every unprefixed thread'
 );
 // The thread id gets the same treatment as the prefix id. A row with a real status
-// but a missing or zero thread_id would otherwise put key 0 into a map the seam
-// declares as thread_id => true, and a caller reading array_keys() would see a
-// thread that does not exist.
+// but a missing or zero thread_id must not make thread 0 answer true: the scanner
+// asks about the thread ids it read off the queue, and a phantom 0 is a thread
+// that does not exist.
 check(
-    'a row with a matching status but no usable thread id is dropped, not keyed as 0',
-    ProcessingStatus::inProcessingThreadIds(
+    'a row with a matching status but no usable thread id does not make thread 0 in processing',
+    !ProcessingStatus::fromPrefixLinks(
         [['thread_id' => 0, 'prefix_id' => 54], ['prefix_id' => 55]],
         $inProcessing
-    ) === [],
-    'the result is declared thread_id => true, so a 0 key contradicts the seam\'s own hygiene rule'
+    )->has(0)
+);
+$fromMixedRows = ProcessingStatus::fromPrefixLinks(
+    [['thread_id' => 0, 'prefix_id' => 54], ['thread_id' => 930, 'prefix_id' => 54]],
+    $inProcessing
 );
 check(
     'a usable row alongside an unusable one still lands',
-    array_keys(ProcessingStatus::inProcessingThreadIds(
-        [['thread_id' => 0, 'prefix_id' => 54], ['thread_id' => 930, 'prefix_id' => 54]],
-        $inProcessing
-    )) === [930]
+    $fromMixedRows->has(930) && !$fromMixedRows->has(0)
 );
 
 if ($failures > 0) {

@@ -30,24 +30,30 @@ namespace Cav7\EnlistmentReminder;
  * flag. Reply authorship plays no part, and neither does sticky status — a
  * thread is pinned only once it is Approved, which is far too late to serve as
  * a trigger.
+ *
+ * The processing status arrives as the ProcessingStatus that seam minted, not as
+ * a boolean the caller computed (issue #192). ProcessingStatus is the one home
+ * for why that distinction is worth a type.
  */
 final class ReminderDecision
 {
     /**
      * Whether one queue thread should be reminded now.
      *
-     * @param int  $now             current unix time (\XF::$time)
-     * @param int  $deadlineSeconds reminder deadline as a span in seconds, positive
-     * @param int  $opTimestamp     the OP's post_date
-     * @param bool $inProcessing    whether the thread carries an in-processing prefix
-     * @param bool $alreadyReminded whether the marker table already holds this thread
+     * @param int              $now             current unix time (\XF::$time)
+     * @param int              $deadlineSeconds reminder deadline as a span in seconds, positive
+     * @param int              $opTimestamp     the OP's post_date
+     * @param int              $threadId        the thread being decided over
+     * @param ProcessingStatus $processing      which threads a clerk has taken on
+     * @param bool             $alreadyReminded whether the marker table already holds this thread
      * @throws \InvalidArgumentException on a non-positive deadline
      */
     public static function shouldRemind(
         int $now,
         int $deadlineSeconds,
         int $opTimestamp,
-        bool $inProcessing,
+        int $threadId,
+        ProcessingStatus $processing,
         bool $alreadyReminded
     ): bool {
         self::assertPositiveDeadline($deadlineSeconds);
@@ -63,11 +69,8 @@ final class ReminderDecision
         }
 
         // A processing status prefix means a clerk has taken the application on,
-        // so it is never reminded. Membership in the CONFIGURED set is what the
-        // caller must hand in here: every valid queue thread also carries its
-        // Enlistment/Re-Enlistment type prefix, so a "has any prefix" test would
-        // suppress the whole queue for good. See ProcessingStatus.
-        if ($inProcessing) {
+        // so it is never reminded.
+        if ($processing->has($threadId)) {
             return false;
         }
 
@@ -82,23 +85,25 @@ final class ReminderDecision
      *   [
      *     'thread_id'        => int,
      *     'op_timestamp'     => int,
-     *     'in_processing'    => bool,
      *     'already_reminded' => bool,
      *   ]
      *
-     * A missing 'in_processing' defaults to false — "no processing status", so
-     * remindable. Defaulting the other way would quietly silence the whole queue
-     * the moment a caller stopped supplying the fact, which is exactly the
-     * failure mode #186 warns about.
+     * The processing status is NOT one of the per-thread facts (issue #192). It
+     * arrives once, as the set ProcessingStatus minted from the prefix-link rows,
+     * so a thread the caller says nothing about is simply one the set never
+     * marked: un-actioned, and remindable. There is no "the fact was omitted"
+     * state left to choose a default for.
      *
      * @param array<int,array<string,mixed>> $threads
+     * @param ProcessingStatus               $processing which threads a clerk has taken on
      * @return int[] thread ids to remind
      * @throws \InvalidArgumentException on a non-positive deadline
      */
     public static function selectThreadsToRemind(
         int $now,
         int $deadlineSeconds,
-        array $threads
+        array $threads,
+        ProcessingStatus $processing
     ): array {
         // Checked here too, not just per thread, so an empty batch cannot slip a
         // bad deadline past unremarked.
@@ -106,15 +111,17 @@ final class ReminderDecision
 
         $toRemind = [];
         foreach ($threads as $thread) {
+            $threadId = (int) $thread['thread_id'];
             $remind = self::shouldRemind(
                 $now,
                 $deadlineSeconds,
                 (int) $thread['op_timestamp'],
-                (bool) ($thread['in_processing'] ?? false),
+                $threadId,
+                $processing,
                 (bool) ($thread['already_reminded'] ?? false)
             );
             if ($remind) {
-                $toRemind[] = (int) $thread['thread_id'];
+                $toRemind[] = $threadId;
             }
         }
 

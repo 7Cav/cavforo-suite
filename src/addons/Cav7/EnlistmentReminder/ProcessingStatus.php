@@ -4,9 +4,18 @@ namespace Cav7\EnlistmentReminder;
 
 /**
  * Reads a processing status off a queue thread's prefixes (issue #186) — the one
- * fact ReminderDecision now uses to tell a started application from an
- * un-actioned one. Another pure seam of the add-on, a twin of PositionIdList and
+ * fact ReminderDecision uses to tell a started application from an un-actioned
+ * one. Another pure seam of the add-on, a twin of PositionIdList and
  * EnlistmentRouting, so the rule runs for real in plain PHP with no XenForo.
+ *
+ * It is also the VALUE that fact travels in (issue #192). The constructor is
+ * private and fromPrefixLinks is the only way in, so every ProcessingStatus in
+ * existence was built by the membership rule below. A caller cannot hand the
+ * decision rule its own idea of which threads are being worked, because it cannot
+ * make one of these; the rule is not a convention the wiring is trusted to follow
+ * but the only door there is. Before this, the fact reached the decision as a
+ * plain bool per thread, and what kept the wiring honest was a regex over the
+ * scanner's source text.
  *
  * RRD works the queue through a status prefix state machine supplied by the
  * SV/MultiPrefix add-on, which stores every prefix a thread carries in its own
@@ -36,14 +45,42 @@ namespace Cav7\EnlistmentReminder;
 final class ProcessingStatus
 {
     /**
-     * The subset of the given prefix-link rows whose threads carry at least one
-     * configured in-processing prefix, as a thread_id => true map for O(1)
-     * lookup while building the reminder facts.
+     * The threads carrying a status, as a thread_id => true map for O(1) lookup
+     * while the decision runs. Not `readonly`: the add-on declares a PHP 8.0
+     * floor and that keyword arrived in 8.1. Nothing writes to it after
+     * construction.
      *
-     * A thread absent from the result carries no processing status — either it
-     * has only its type prefix, or (a mis-prefixed thread) no linked prefix at
-     * all. Both are remindable as far as this rule is concerned; the type
-     * routing is what later skips a thread whose prefix marks no enlistment.
+     * @var array<int,true>
+     */
+    private array $threadIds;
+
+    /** @param array<int,true> $threadIds */
+    private function __construct(array $threadIds)
+    {
+        $this->threadIds = $threadIds;
+    }
+
+    /**
+     * Whether this thread carries one of the configured in-processing prefixes.
+     *
+     * A thread the rule never marked answers false, which covers both the thread
+     * holding only its type prefix and the mis-prefixed thread with no linked
+     * prefix at all. Both are remindable as far as this rule is concerned; the
+     * type routing is what later skips a thread whose prefix marks no enlistment.
+     */
+    public function has(int $threadId): bool
+    {
+        return isset($this->threadIds[$threadId]);
+    }
+
+    /**
+     * Read the processing status of every thread in the given prefix-link rows:
+     * the threads carrying at least one configured in-processing prefix are the
+     * ones has() answers true for.
+     *
+     * The only way to obtain a ProcessingStatus, so every one in existence was
+     * built by the rule below rather than by a caller's own idea of what "being
+     * processed" means.
      *
      * Both sides end up as ints so they compare under in_array's strict test: the
      * configured set through PositionIdList::normalize, each row's ids through a
@@ -55,29 +92,29 @@ final class ProcessingStatus
      * compare.
      *
      * Rows with no usable thread id are dropped along with rows whose prefix is
-     * not a status, so the result really is keyed by thread id as declared and
-     * never grows a 0 key.
+     * not a status, so thread 0 — a thread that does not exist — never reads as
+     * being worked.
      *
      * @param array<int,array<string,mixed>> $prefixLinkRows rows of ['thread_id' => .., 'prefix_id' => ..]
      * @param int[]|string[]                 $inProcessingPrefixIds the configured status set, non-empty
-     * @return array<int,true> thread_id => true
      * @throws \InvalidArgumentException when the configured set normalises to nothing
      */
-    public static function inProcessingThreadIds(array $prefixLinkRows, array $inProcessingPrefixIds): array
+    public static function fromPrefixLinks(array $prefixLinkRows, array $inProcessingPrefixIds): self
     {
         $statusIds = PositionIdList::normalize($inProcessingPrefixIds);
         if (!$statusIds)
         {
-            // Answering this would be worse than refusing it. [] reads to every
-            // caller as "no thread is being worked", i.e. remind every
-            // past-deadline application, which is the regression #186 exists to
-            // fix; the only thing standing between that and the queue would be a
-            // guard in another class. QueueReminder still owns the friendly path
-            // and aborts with an admin-facing message before it gets here. This is
-            // the backstop for the next caller: thrown from cron it aborts the run
-            // and lands in the error log, which is what that guard chooses anyway.
+            // Answering this would be worse than refusing it. A set that marks
+            // nothing reads to every caller as "no thread is being worked", i.e.
+            // remind every past-deadline application, which is the regression #186
+            // exists to fix; the only thing standing between that and the queue
+            // would be a guard in another class. QueueReminder still owns the
+            // friendly path and aborts with an admin-facing message before it gets
+            // here. This is the backstop for the next caller: thrown from cron it
+            // aborts the run and lands in the error log, which is what that guard
+            // chooses anyway.
             throw new \InvalidArgumentException(
-                'inProcessingThreadIds needs a non-empty configured status set; with none, no thread can read as handled and every past-deadline application would be reminded.'
+                'ProcessingStatus needs a non-empty configured status set; with none, no thread can read as handled and every past-deadline application would be reminded.'
             );
         }
 
@@ -92,6 +129,6 @@ final class ProcessingStatus
             }
         }
 
-        return $inProcessing;
+        return new self($inProcessing);
     }
 }
