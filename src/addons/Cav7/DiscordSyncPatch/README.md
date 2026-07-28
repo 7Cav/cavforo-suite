@@ -104,10 +104,17 @@ is gone. Why that ships rather than getting a mechanism of its own is in
 
 ## The reconciliation sweep
 
-A cron entry runs every quarter-hour and puts right the members who have quietly
-fallen out of step, without touching anyone who has not. The interval is the only
-knob and it lives on the XenForo cron admin page, so the addon still ships no
-options.
+A cron entry puts right the members who have quietly fallen out of step, without
+touching anyone who has not. Once running it fires every quarter-hour. Whether it
+runs at all, and how often, are the only knobs and both live on the XenForo cron
+admin page, so the addon still ships no options.
+
+**It ships disabled.** A fresh install lands the entry inactive, so nothing sweeps
+until an admin turns it on — one toggle on that same cron admin page. The toggle then
+sticks: XenForo treats a cron entry's active flag as admin-owned once the row exists,
+so later upgrades re-import the schedule and leave the flag alone. Why the default is
+off, and why that mechanism is what makes shipping it off safe, are in
+[ADR-0008](docs/adr/0008-the-sweep-ships-disabled.md).
 
 It looks in two places, because the two kinds of divergence leave different traces.
 A group change the sync never applied is visible in the forum's own records: the
@@ -323,8 +330,10 @@ CI cannot see any of them, and each one fails silently in production if it break
    vendor's own early return is indistinguishable from the veto, so confirm the same
    call queues rows when made past the override.
 10. The cron entry appears on the cron admin page, and the sweep runs when it fires.
+11. A fresh install lands that entry **inactive**, and an entry an admin has enabled is
+    still enabled after the add-on's data is imported again.
 
-Items 5 to 10 were run for the 1.1.0 release and the result is recorded in
+Items 5 to 11 were run for the 1.1.0 release and the result is recorded in
 [docs/verification/reconciliation-sweep-guards.md](docs/verification/reconciliation-sweep-guards.md).
 
 ### Before a release, against the real guild

@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <cron>
-  <entry entry_id="cav7DSPReconcile" cron_class="Cav7\DiscordSyncPatch\Cron\Reconcile" cron_method="run" active="1"><![CDATA[{"day_type":"dom","dom":[-1],"hours":[-1],"minutes":[0,15,30,45]}]]></entry>
+  <entry entry_id="cav7DSPReconcile" cron_class="Cav7\DiscordSyncPatch\Cron\Reconcile" cron_method="run" active="0"><![CDATA[{"day_type":"dom","dom":[-1],"hours":[-1],"minutes":[0,15,30,45]}]]></entry>
 </cron>
