@@ -125,10 +125,18 @@ function inferVersionStringFromId(string $versionId): string
  * The inverse: the version_id a version_string calls for, or null when the
  * string is not in a shape XenForo's numbering can express.
  *
- * Callers must confirm the result decodes back to the string before showing it
- * as a remedy — the arithmetic silently overflows into the next field once a
- * component outgrows its digits (a patch of 100, a major of 100), and a remedy
- * that does not round-trip is worse than none.
+ * A component outside the 0-99 each of major, minor and patch runs over is one
+ * of the shapes refused here (issue #228); docs/addon-format.md is where that
+ * range and the reason for it live. It used to be carried into the
+ * neighbouring component by the arithmetic below instead, which at a large
+ * enough value overflowed the sum into a float and killed the process on the
+ * way out of this function's ?int return.
+ *
+ * Callers must still confirm the result decodes back to the string before
+ * showing it as a remedy. The bound does not make every accepted string
+ * round-trip: XenForo's numbering cannot express a major of 0 at all, and a
+ * remedy that does not decode back to what the author wrote is worse than
+ * none.
  */
 function versionIdFromString(string $versionString): ?int
 {
@@ -142,6 +150,18 @@ function versionIdFromString(string $versionString): ?int
     $stableBuild = $m[4] ?? '';
     $state = $m[5] ?? '';
     $build = intval($m[6] ?? 0);
+
+    // Major, minor and patch each run 0-99 (docs/addon-format.md), so a larger
+    // value is not one the numbering can carry back: the component parsed, but
+    // it is outside the range. Refusing it here is what stops the arithmetic
+    // below from folding it into the neighbouring component, and it bounds
+    // that arithmetic as a side effect — the largest version it can now be
+    // handed is 99.99.99, so it cannot overflow into a float.
+    foreach ([$major, $minor, $patch] as $component) {
+        if (intval($component) > 99) {
+            return null;
+        }
+    }
 
     switch ($state) {
         case 'Alpha':

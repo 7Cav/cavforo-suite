@@ -26,6 +26,14 @@
  * integer to the human version — so an addon could ship data under a version_id
  * that decoded to a version nobody released. Four committed manifests had.
  *
+ * Case 8 pins the bound on how large a version component may be (issue #228).
+ * The gap that one guards: the encoding side read each component as an
+ * unbounded run of digits, so a component large enough to carry the sum past
+ * PHP_INT_MAX made it a float, and returning that from an ?int declaration
+ * raised a TypeError. The tool exited 255 in the middle of composing an error
+ * message and never printed the problems it had already found. No manifest in
+ * the suite has ever had a component of more than two digits.
+ *
  * Run:
  *   php tools/tests/validate-addon-test.php
  *
@@ -361,6 +369,71 @@ try {
     $dir = makeFixture($base, 'ArrayDescription', [], 1000070, '1.0.0', ['a', 'b']);
     [$code, $out] = runTool($tool, $dir);
     check('a description that is not a string fails cleanly', $code === 1, $out);
+
+    // --- Case 8: a version component too large to encode (issue #228) ------
+    // The gap that one guards: versionIdFromString() read each component as an
+    // unbounded run of digits and then multiplied the major by 1000000, so a
+    // component large enough to carry the sum past PHP_INT_MAX promoted it to
+    // float, and returning a float from the function's ?int declaration raised
+    // a TypeError. The tool died at exit 255 part-way through composing an
+    // error message, before printing anything it had already found: an author
+    // saw a PHP stack trace where the list of problems in their manifest
+    // should have been.
+    //
+    // 9223372036855 is the first major that overflows — PHP_INT_MAX divided by
+    // the major's multiplier, rounded up. The one below it encodes without
+    // complaint.
+    //
+    // The description is the load-bearing half of this fixture. It is a second,
+    // unrelated defect, collected before the version check runs, so finding it
+    // in the output is what shows validation carried on rather than aborting.
+    // It is asserted through the character count the tool computes from the
+    // fixture, not through the sentence around it, so rewording that error
+    // does not reach this test.
+    $dir = makeFixture($base, 'MajorTooLarge', [], 1030070, '9223372036855.2.0', str_repeat('a', 201));
+    [$code, $out] = runTool($tool, $dir);
+    check('a major too large to encode fails cleanly', $code === 1, $out);
+    check(
+        'a major too large to encode does not discard what the run already found',
+        str_contains($out, '201'),
+        $out
+    );
+
+    // The same overflow is reachable through the minor and patch positions,
+    // each at its own threshold, because each is multiplied by a different
+    // power of ten: 922337203685478 is the first minor whose own term passes
+    // PHP_INT_MAX, and 92233720368547759 the first such patch. A bound placed
+    // on the major alone leaves both of these still killing the run, which is
+    // what these two cases exist to catch — they are not a component matrix.
+    $dir = makeFixture($base, 'MinorTooLarge', [], 1030070, '1.922337203685478.0');
+    [$code, $out] = runTool($tool, $dir);
+    check('a minor too large to encode fails cleanly', $code === 1, $out);
+
+    $dir = makeFixture($base, 'PatchTooLarge', [], 1030070, '1.2.92233720368547759');
+    [$code, $out] = runTool($tool, $dir);
+    check('a patch too large to encode fails cleanly', $code === 1, $out);
+
+    // A regression pin on the bound's boundary rather than evidence of the
+    // defect above: this passed before the bound existed too. 99.99.99 is the
+    // largest version the numbering can express, so it is where an off-by-one
+    // lands — a bound written >= 99 refuses a version that is perfectly legal.
+    //
+    // The pin has to reach the bound through a *disagreeing* pair, which is
+    // why this looks like UnschemeWithRemedy above rather than a happy path.
+    // An agreeing pair never calls versionIdFromString() at all: a verdict
+    // comes from decoding version_id, and the bound lives on the encoding
+    // side, which runs only to name a remedy. Asserting that 99.99.99 is
+    // accepted alongside its own version_id pins the decoder, not the bound,
+    // and survives the off-by-one untouched — confirmed by mutating the bound
+    // and watching that shape stay green while this one turns red. 99999970 is
+    // 99.99.99 stable.
+    $dir = makeFixture($base, 'LargestExpressible', [], 12345, '99.99.99');
+    [$code, $out] = runTool($tool, $dir);
+    check(
+        'the largest version the numbering can express still names its version_id',
+        str_contains($out, '99999970'),
+        $out
+    );
 } finally {
     rmrf($base);
 }
