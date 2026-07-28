@@ -154,6 +154,22 @@ namespace NF\Discord {
             return self::$retryAfter;
         }
 
+        /**
+         * Cav7's Api extension, which the sweep asks for once per guild. This stub
+         * stands in for what factory() returns — the extension over the vendor — so it
+         * models the composite already: every call below writes the retry-after it
+         * caused and nothing else.
+         *
+         * That the sweep asks at all is NOT covered here. Its only observable is the
+         * wording of the per-run log line, and two runs compared for difference would
+         * be satisfied by any per-run detail that line ever grows. It is checked on the
+         * dev stack instead; issue #248 and
+         * docs/verification/reconciliation-sweep-guards.md.
+         */
+        public function setRetryAfterPerCall(bool $perCall): void
+        {
+        }
+
         public function getRoles(bool $cache = false): array
         {
             // A throttled roles read hands back exactly what an empty guild would.

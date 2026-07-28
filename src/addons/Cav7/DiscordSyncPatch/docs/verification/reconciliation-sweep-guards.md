@@ -357,6 +357,104 @@ still reports the previous call's value. See
 [#248](https://github.com/7Cav/cavforo-suite/issues/248), which carries the same
 inventory — a fix designed off "one path" would be designed off a wrong reading.
 
+> **Measured and closed on 2026-07-28**, in [the pass below](#a-connect-failure-after-a-throttled-call-248).
+> That pass also corrects the scope of the paragraph above: a Discord **5xx** shares
+> the `ServerException | ConnectException` branch, so the window is not only dropped
+> connections, and a 5xx during a throttling episode is the likelier of the two.
+
+## A connect failure after a throttled call (#248)
+
+Run against `~/srv/xenforo-dev` (XenForo 2.3.11, NF/Discord 2.12.0, Guzzle 7.8.2) on
+2026-07-28, for [#248](https://github.com/7Cav/cavforo-suite/issues/248).
+
+The pass above established the branch inventory by reading `request()`. This one
+measures the consequence, and then measures the fix. It is where three things live
+that CI cannot see: whether the override behaves this way over the **real** vendor
+parent, whether the class-extension row imports and resolves, and whether
+`ReconciliationSweep` asks for the fresh signal at all.
+
+### Method
+
+The `429` pass's harness, extended. A booted `XF\Cli\App`, the container's `http`
+entry replaced with a subclass of `XF\SubContainer\Http` whose `createClient()` calls
+the real `applyDefaultClientOptions()` and then puts a `GuzzleHttp\Handler\MockHandler`
+at the bottom of the stack. Everything above the transport is production: XenForo,
+Guzzle's `http_errors`, the vendor `Api`, Cav7's extension, and the sweep.
+
+Two things the `429` pass did not have to get right, both of which produced a
+convincing wrong answer first:
+
+- **One `MockHandler` shared by every client.** `Api::request()` builds a fresh client
+  per call, so a queue seeded per client serves answer one to every request and then
+  runs dry.
+- **The class-extension row toggled in a *separate process* from the run observing
+  it.** XF resolves extensions when the app boots, so a row switched off mid-run
+  leaves every later `factory()` still handing back the extension. Done in-process it
+  prints two identical lines and reads as a null result.
+
+`reconcileGuild()` is invoked directly by reflection, so no server map is needed. One
+user group's `nfd_server_group_ids` is borrowed to make a role managed, on server id
+`4248` — every one of the board's 241 real mappings is server-prefixed and no server
+is `4248`, so nothing else lands in scope. It is put back at the end, from a
+`register_shutdown_function` rather than a `finally`: XF's CLI error handler prints
+and exits, and an earlier version of this probe left the board mutated that way.
+
+> **Do not delete the `classExtensions` registry key to force a refresh.** XF's
+> fallback for a missing entry writes an **empty array** rather than re-deriving from
+> the table (`XF/App.php:1842`), which silently disables every class extension on the
+> board — not just this add-on's — until something rebuilds it. Doing that here took
+> the whole stack's extensions out until
+> `\XF::repository('XF:ClassExtension')->rebuildExtensionCache()` put them back.
+
+### What was checked, and what happened
+
+Upgrading the add-on to 1.1.1 with dev mode **off**, so the import reads `_data`:
+
+| # | Check | Result |
+|---|---|---|
+| 1 | The class extension row imports on upgrade | pass, `NF\Discord\Api` → `Cav7\DiscordSyncPatch\NF\Discord\Api`, `active = 1` |
+| 2 | `Api::factory()` returns the composite | pass, `Cav7\DiscordSyncPatch\NF\Discord\Api` |
+| 3 | A `429` then a connect failure, per-call signal **off** | retry-after `1785263037`, then **`1785263037`** — the previous call's, as read from `request()` |
+| 4 | The same sequence, per-call signal **on** | retry-after `1785263037`, then **`NULL`** |
+| 5 | The real sweep, one guild, patch one throttled and patch two unable to connect | `refused 1 strip(s) … rate-limited on 1 more` |
+| 6 | The same run with the sweep's request for the fresh signal removed | `refused 0 strip(s) … rate-limited on 2 more` |
+| 7 | The same run with the class-extension row inactive | fatal at call **0**, before any Discord call |
+| 8 | Every value the pass changed is back as it was | pass, re-read after the restore rather than assumed |
+
+Check 3 is what makes check 4 mean anything, and check 6 is what makes check 5 mean
+anything. Without 6, a green line in 5 says nothing about which of the row, the
+override or the sweep's request is carrying the result — all three have to be present,
+and 6 removes only the last of them.
+
+### What it settles
+
+**The window is real, and it is the vendor's.** Check 3 shows the retry-after
+surviving a connect failure on a real `Api`, not a modelled one.
+
+**The fix closes it end to end.** Checks 5 and 6 are the same run differing only in
+whether `reconcileGuild()` asks: two calls that moved no role are reported as one
+throttle and one refusal rather than as two throttles.
+
+**A deactivated row fails loudly, not silently.** Check 7 fatals on the missing method
+before the sweep makes a single Discord call, so a board that lost the row gets a
+broken cron rather than a cron quietly back to mis-reporting. That is the better of
+the two failures and it is why the sweep calls the method directly rather than
+guarding with `method_exists`.
+
+### What it does not settle
+
+Nothing here reaches a real throttled guild. Every `429` is a canned response.
+
+Nor is any of it measured for a vendor method spending more than one request. The
+reset sits in `request()`, so the signal after such a method describes its **last**
+request — an earlier throttle inside the same method would be forgotten.
+`getCurrentGuildMember()` is the only multi-request method the sweep uses, and reading
+the vendor's source it cannot reach that: `getCurrentUser()` failing makes it return
+`false` before the second request (`Api.php:216-224`). That is **read, not measured**,
+and it is the kind of claim this document exists because reading gets wrong — an
+earlier draft of this section asserted the opposite outcome for a sequence that cannot
+occur. If it matters after a vendor upgrade, measure it rather than re-reading.
+
 ## What role hierarchy actually blocks
 
 Run against the throwaway guild on 2026-07-28, for
@@ -441,6 +539,21 @@ needs no credentials and touches no guild: the four numbered steps in its method
 the whole of it, and the table is what to compare against. Re-run it after a XenForo,
 Guzzle or NF/Discord upgrade. A `get()` that starts returning an array where the table
 says `false` is the silent-truncation shape arriving after all.
+
+[The #248 pass](#a-connect-failure-after-a-throttled-call-248) is the other one to
+re-run after a vendor upgrade, and for a sharper reason: it is the authority for the
+stub parent in `tests/ThrottleSignalFreshnessTest.php`. That test models
+`request()`'s branches by hand, so if NF/Discord ever clears the retry-after on the
+`ServerException | ConnectException` branch itself, the test stays **green while
+proving nothing** — it would be certifying an override that had become a no-op. No
+assertion can catch that, and one pinning "the parent does not clear" would go red
+when the vendor fixed their own bug, which is a change detector on our model rather
+than a test of ours. Re-running check 3 is what catches it: a `NULL` where the table
+says `1785263037` means the stub has to be rewritten or the override retired.
+
+Checks 5 to 7 are the only place three things are checked at all — that the row
+imports and resolves, that the override works over the real parent, and that the sweep
+asks. CI sees none of them.
 
 [The shipped-default pass](#the-shipped-default-the-entry-installs-disabled) is worth
 re-running for the same reason, and is cheap: it needs no credentials, no guild and no

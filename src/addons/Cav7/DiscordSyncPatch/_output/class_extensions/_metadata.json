@@ -2,6 +2,9 @@
     "NF-Discord-ApiMessage-SyncUser_Cav7-DiscordSyncPatch-NF-Discord-ApiMessage-SyncUser.json": {
         "hash": "7441eb97616f7fac9b79dc0fbe421dd1"
     },
+    "NF-Discord-Api_Cav7-DiscordSyncPatch-NF-Discord-Api.json": {
+        "hash": "ed2d31eadaf98b63c4cb2e87fa5ccd6c"
+    },
     "NF-Discord-Cron-SyncUsersFromDiscord_Cav7-DiscordSyncPatch-NF-Discord-Cron-SyncUsersFromDiscord.json": {
         "hash": "d7e2a9d093ebc86f50f541b29d45efb4"
     },

@@ -183,13 +183,17 @@ A live-guild pass walked 8,568 members over 9 pages in 10.4s and issued 80 role 
 in 28.5s without tripping a rate limit, so it does not bite at this guild's present
 scale.
 
-**A connect failure straight after a throttled call reads as a throttle.** The vendor
-records the retry-after per call but does not clear it on the path a connect or server
-exception takes, so the previous call's value stands. Only the strip loop can reach it
-— a throttled page ends the member walk, so there is no following call to misattribute
-— and the cost is one miscounted strip in a log line, not a wrong role. Left rather
-than worked around, because inventing a reset means guessing at vendor internals. See
-[#248](https://github.com/7Cav/cavforo-suite/issues/248).
+**The throttle signal is only as fresh as the last request that wrote it.** The vendor
+records the retry-after per call but does not clear it on the path a connect failure or
+a Discord 5xx takes, so the previous call's value used to stand — a 429 partway through
+a guild was reported again by every following failure until one reached the vendor's
+own reset, which the per-run log line counted as that many throttled strips. Closed in
+1.1.1 by an `NF\Discord\Api` extension that clears the field before delegating, asked
+for once per guild by the sweep ([#248](https://github.com/7Cav/cavforo-suite/issues/248)).
+Two things follow that are worth knowing: the extension is **load-bearing**, and a
+board that deactivated its class-extension row gets a cron that fatals rather than one
+quietly back to mis-reporting; and the reset is per HTTP request, so a vendor method
+spending several would report its last.
 
 **The sweep does not check `nfDiscordEnableSync` before queueing a correction.** It
 guards two preconditions of exactly this class — absent credentials, and a server row
@@ -249,6 +253,13 @@ action name out of a route's action prefix, the signature and the atomicity of
 so a core upgrade can break it as readily as a vendor one. They are listed in the docblocks of
 `NF/Discord/ApiMessage/SyncUser.php` and `XF/Pub/Controller/Account.php`.
 
+`NF/Discord/Api.php` carries its own, and they are the sharpest here because they are
+about a vendor **field** rather than a method: that `Api::request()` is what every call
+goes through, that `$retryAfter` keeps that name and stays writable by a subclass, and
+that `assertNotRateLimited()` is the only other thing that writes it. A vendor upgrade
+that moves any of the three leaves the override compiling and doing nothing. What
+catches that is re-running the pass named below, not CI.
+
 One of them is a rule a new caller has to know before writing the call, so it is
 stated here rather than in the docblock of an action they have no reason to open.
 
@@ -298,7 +309,7 @@ plain unit with no XenForo dependency:
 | `RoleReach` | which roles Discord will not let this bot move | its own tests |
 
 That is the whole of what CI covers here. Everything that needs a live stack — the
-three class-extension registrations, the method overrides, the cron entry, the resync
+four class-extension registrations, the method overrides, the cron entry, the resync
 action with its preconditions and guards, the sweep's own guards, and the template
 modification and phrases that put the button on the page — is checked on a dev stack
 using the list below.
@@ -341,8 +352,18 @@ CI cannot see any of them, and each one fails silently in production if it break
     only one side passes whichever member matches it, so run both and confirm each goes
     red on its own when the other side's filter is removed.
 
+13. The `NF\Discord\Api` extension still does its job. Three things fail silently and
+    none is visible to CI: that the class-extension row imports and is **active**, that
+    `Api::factory()` therefore returns the composite, and that clearing `$retryAfter`
+    before delegating still has an effect over the vendor's own `request()`. The last
+    is the one an upgrade moves. Its check is also the authority for the hand-written
+    parent in `tests/ThrottleSignalFreshnessTest.php`: if the vendor ever clears on the
+    `ServerException | ConnectException` branch itself, that test stays **green while
+    proving nothing**, and only re-running this catches it.
+
 Items 5 to 11 were run for the 1.1.0 release and the result is recorded in
 [docs/verification/reconciliation-sweep-guards.md](docs/verification/reconciliation-sweep-guards.md).
+Item 13 was run for 1.1.1 and is recorded in the same file.
 
 ### Before a release, against the real guild
 
@@ -411,7 +432,7 @@ refusals and never reaches the queueing call.
 |---|---|
 | Addon ID | `Cav7/DiscordSyncPatch` |
 | Namespace | `Cav7\DiscordSyncPatch` |
-| Version | 1.1.0 (`1010070`) |
+| Version | 1.1.1 (`1010170`) |
 | Developer | Cav7 |
 
 ## License
