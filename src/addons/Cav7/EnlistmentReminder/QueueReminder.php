@@ -468,7 +468,7 @@ class QueueReminder
             ));
         }
 
-        $inProcessing = ProcessingStatus::inProcessingThreadIds($prefixLinks, $inProcessingPrefixIds);
+        $processing = ProcessingStatus::fromPrefixLinks($prefixLinks, $inProcessingPrefixIds);
 
         $alreadyReminded = $this->fetchAlreadyReminded($threadIds);
         // Issue #82: the note's presence is the fallback "already reminded" signal
@@ -498,9 +498,6 @@ class QueueReminder
             $facts[] = [
                 'thread_id'        => $threadId,
                 'op_timestamp'     => (int) $thread['post_date'],
-                // Carries one of the configured status prefixes, so a clerk has
-                // taken it on and it is not un-actioned (issue #186).
-                'in_processing'    => isset($inProcessing[$threadId]),
                 // Reminded when the marker has it OR the bot has already left its
                 // note (issue #82). The note gates the whole reminder — note and
                 // clerk alert both — so a broken marker write cannot re-post to the
@@ -509,10 +506,14 @@ class QueueReminder
             ];
         }
 
+        // The processing status goes in as the set ProcessingStatus minted, so
+        // "this application is being worked" is a fact this method cannot compute
+        // for itself (issue #192; see ProcessingStatus for why that matters).
         $toRemind = ReminderDecision::selectThreadsToRemind(
             \XF::$time,
             $deadlineHours * 3600,
-            $facts
+            $facts,
+            $processing
         );
 
         foreach ($toRemind as $threadId)

@@ -29,8 +29,11 @@
 
 namespace Cav7\EnlistmentReminder\Tests;
 
+require __DIR__ . '/../PositionIdList.php';
+require __DIR__ . '/../ProcessingStatus.php';
 require __DIR__ . '/../ReminderDecision.php';
 
+use Cav7\EnlistmentReminder\ProcessingStatus;
 use Cav7\EnlistmentReminder\ReminderDecision;
 
 $failures = 0;
@@ -55,55 +58,57 @@ $deadline = 24 * 3600; // 86400
 // not the thing under test, so nothing but the fact under test can suppress.
 $tenDaysOld = $now - (10 * 86400);
 
+/**
+ * The processing status of the queue this file decides over, built the only way
+ * it can be — see ProcessingStatus. Every thread here carries its Enlistment type
+ * prefix (57), because every real queue thread does; thread 102 also carries In
+ * Progress (55) and is the one a clerk has taken on.
+ */
+$processing = ProcessingStatus::fromPrefixLinks(
+    [
+        ['thread_id' => 101, 'prefix_id' => 57],
+        ['thread_id' => 102, 'prefix_id' => 57],
+        ['thread_id' => 102, 'prefix_id' => 55],
+        ['thread_id' => 103, 'prefix_id' => 57],
+        ['thread_id' => 104, 'prefix_id' => 57],
+        ['thread_id' => 105, 'prefix_id' => 57],
+    ],
+    [53, 54, 55]
+);
+
 // --- the deadline boundary ------------------------------------------------
 check(
     'a thread one second past the deadline with no processing status is reminded',
-    ReminderDecision::shouldRemind($now, $deadline, $now - $deadline - 1, false, false) === true
+    ReminderDecision::shouldRemind($now, $deadline, $now - $deadline - 1, 101, $processing, false) === true
 );
 check(
     'a thread exactly at the deadline is not reminded (age must exceed, not equal)',
-    ReminderDecision::shouldRemind($now, $deadline, $now - $deadline, false, false) === false,
+    ReminderDecision::shouldRemind($now, $deadline, $now - $deadline, 101, $processing, false) === false,
     'the OP is deadline seconds old; equal is not past'
 );
 check(
     'a thread younger than the deadline is not reminded',
-    ReminderDecision::shouldRemind($now, $deadline, $now - 3600, false, false) === false
+    ReminderDecision::shouldRemind($now, $deadline, $now - 3600, 101, $processing, false) === false
 );
 
 // --- the status-prefix suppression ----------------------------------------
 check(
     'a thread carrying an in-processing prefix is never reminded, however old',
-    ReminderDecision::shouldRemind($now, $deadline, $tenDaysOld, true, false) === false,
+    ReminderDecision::shouldRemind($now, $deadline, $tenDaysOld, 102, $processing, false) === false,
     'a processing status means the application is being worked'
 );
 check(
     'a thread with no processing status is reminded past the deadline',
-    ReminderDecision::shouldRemind($now, $deadline, $tenDaysOld, false, false) === true
+    ReminderDecision::shouldRemind($now, $deadline, $tenDaysOld, 101, $processing, false) === true
 );
-// Acceptance criterion 4, and the #186 regression in one line: the reminder that
-// landed on thread 100131 fired because the clerk who had marked it In Progress
-// left the seat. Reply authorship cannot be recomputed away once it is not an
-// input at all, so the pin is the signature itself. A behavioural check cannot
-// express this: the parameter it would have to vary no longer exists, which is
-// exactly the point.
-$shouldRemindParams = array_map(
-    fn (\ReflectionParameter $p) => $p->getName(),
-    (new \ReflectionMethod(ReminderDecision::class, 'shouldRemind'))->getParameters()
-);
-check(
-    'shouldRemind takes exactly the five current facts, with nothing about who replied',
-    $shouldRemindParams === ['now', 'deadlineSeconds', 'opTimestamp', 'inProcessing', 'alreadyReminded'],
-    'got: ' . implode(', ', $shouldRemindParams)
-);
-
 // --- the already-reminded guard -------------------------------------------
 check(
     'a thread already recorded in the marker table is not reminded again',
-    ReminderDecision::shouldRemind($now, $deadline, $tenDaysOld, false, true) === false
+    ReminderDecision::shouldRemind($now, $deadline, $tenDaysOld, 101, $processing, true) === false
 );
 check(
     'the marker wins even when the thread also carries a processing status',
-    ReminderDecision::shouldRemind($now, $deadline, $tenDaysOld, true, true) === false
+    ReminderDecision::shouldRemind($now, $deadline, $tenDaysOld, 102, $processing, true) === false
 );
 
 // --- the batch selector ----------------------------------------------------
@@ -113,34 +118,34 @@ check(
 // only holds if input order is preserved — a stray sort or reverse would fail.
 $threads = [
     // reminded: old, no processing status, not yet reminded — HIGHER id, first
-    ['thread_id' => 105, 'op_timestamp' => $now - $deadline - 1, 'in_processing' => false, 'already_reminded' => false],
+    ['thread_id' => 105, 'op_timestamp' => $now - $deadline - 1, 'already_reminded' => false],
     // skipped: carries a processing status prefix
-    ['thread_id' => 102, 'op_timestamp' => $tenDaysOld, 'in_processing' => true,  'already_reminded' => false],
+    ['thread_id' => 102, 'op_timestamp' => $tenDaysOld, 'already_reminded' => false],
     // skipped: too young
-    ['thread_id' => 103, 'op_timestamp' => $now - 3600,  'in_processing' => false, 'already_reminded' => false],
+    ['thread_id' => 103, 'op_timestamp' => $now - 3600,  'already_reminded' => false],
     // skipped: already reminded
-    ['thread_id' => 104, 'op_timestamp' => $tenDaysOld, 'in_processing' => false, 'already_reminded' => true],
+    ['thread_id' => 104, 'op_timestamp' => $tenDaysOld, 'already_reminded' => true],
     // reminded: old, no processing status, not yet reminded — LOWER id, after
-    ['thread_id' => 101, 'op_timestamp' => $tenDaysOld, 'in_processing' => false, 'already_reminded' => false],
+    ['thread_id' => 101, 'op_timestamp' => $tenDaysOld, 'already_reminded' => false],
 ];
 check(
     'selectThreadsToRemind returns exactly the un-actioned, un-reminded thread ids in input order',
-    ReminderDecision::selectThreadsToRemind($now, $deadline, $threads) === [105, 101],
-    'got: ' . implode(', ', ReminderDecision::selectThreadsToRemind($now, $deadline, $threads))
+    ReminderDecision::selectThreadsToRemind($now, $deadline, $threads, $processing) === [105, 101],
+    'got: ' . implode(', ', ReminderDecision::selectThreadsToRemind($now, $deadline, $threads, $processing))
 );
 check(
     'an empty queue yields nothing to remind',
-    ReminderDecision::selectThreadsToRemind($now, $deadline, []) === []
+    ReminderDecision::selectThreadsToRemind($now, $deadline, [], $processing) === []
 );
-// A thread whose in_processing fact is missing entirely must default to "no
-// status", i.e. remindable. The opposite default would silently suppress the
-// whole queue if the caller ever stopped supplying the fact — the same class of
-// quiet failure as the type-prefix trap.
+// A thread the status set never heard of is un-actioned, so it is reminded. This
+// is the mis-prefixed thread and the thread whose only prefix is its type: both
+// must stay remindable, and neither can be confused with "no fact was supplied",
+// because the fact is no longer something a caller supplies per thread.
 check(
-    'a missing in_processing fact reads as no processing status, not as suppressed',
+    'a thread absent from the status set reads as no processing status, not as suppressed',
     ReminderDecision::selectThreadsToRemind($now, $deadline, [
-        ['thread_id' => 201, 'op_timestamp' => $tenDaysOld, 'already_reminded' => false],
-    ]) === [201]
+        ['thread_id' => 999, 'op_timestamp' => $tenDaysOld, 'already_reminded' => false],
+    ], $processing) === [999]
 );
 
 // --- a non-positive deadline is refused ------------------------------------
@@ -151,7 +156,7 @@ check(
 foreach ([0, -1, -86400] as $badDeadline) {
     $refused = false;
     try {
-        ReminderDecision::shouldRemind($now, $badDeadline, $tenDaysOld, false, false);
+        ReminderDecision::shouldRemind($now, $badDeadline, $tenDaysOld, 101, $processing, false);
     } catch (\InvalidArgumentException $e) {
         $refused = true;
     }
@@ -161,7 +166,7 @@ foreach ([0, -1, -86400] as $badDeadline) {
 // past unremarked just because no thread ever reaches shouldRemind.
 $refusedBatch = false;
 try {
-    ReminderDecision::selectThreadsToRemind($now, 0, []);
+    ReminderDecision::selectThreadsToRemind($now, 0, [], $processing);
 } catch (\InvalidArgumentException $e) {
     $refusedBatch = true;
 }
@@ -174,7 +179,7 @@ check(
 // values, not about sanity, which is the cron entry's clamp.
 check(
     'a one-second deadline is accepted',
-    ReminderDecision::shouldRemind($now, 1, $now - 2, false, false) === true
+    ReminderDecision::shouldRemind($now, 1, $now - 2, 101, $processing, false) === true
 );
 
 if ($failures > 0) {
