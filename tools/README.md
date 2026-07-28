@@ -140,7 +140,8 @@ php tools/package-web-assets.php src/addons/Cav7/MilpacMention build/upload Cav7
 
 The static checks CI runs in place of an install. `validate-addon.php` checks the
 `addon.json` shape, that `version_id` decodes to exactly what `version_string`
-says, that every `_data/*.xml` is well-formed, and that
+says, that `description` is no longer than the 200 characters the admin add-on
+list renders whole, that every `_data/*.xml` is well-formed, and that
 `_data/class_extensions.xml` holds its rows in the canonical order
 [ADR 0004](../docs/adr/0004-class-extension-order-is-case-folded.md) defines. It
 names the add-on and the two rows that are out of order relative to each other,

@@ -12,6 +12,20 @@
  * the manifest shape and the XML, not the export itself.
  */
 
+/**
+ * The longest description the admin add-on list renders whole. XenForo's
+ * addon_list_macros passes it through snippet(..., 200), which trims anything
+ * longer at a word boundary and appends an ellipsis. The cap is inclusive —
+ * 200 characters render whole, 201 is the first length that trims — and it is
+ * counted in characters, not bytes: XF\Str\Formatter measures with
+ * XF\Util\Str::strlen(), which is mb_strlen() in UTF-8.
+ *
+ * This is XenForo's number, not ours, and it was read off a booted install
+ * rather than counted by hand. CI has no XenForo, so nothing here can catch it
+ * changing in a future release: the check can only stay self-consistent.
+ */
+const DESCRIPTION_MAX_LENGTH = 200;
+
 $dir = $argv[1] ?? '';
 if ($dir === '' || !is_dir($dir)) {
     fwrite(STDERR, "usage: php tools/validate-addon.php <addon-dir>\n");
@@ -191,6 +205,28 @@ if (!is_file($jsonPath)) {
         }
         if (isset($json['version_string']) && !is_string($json['version_string'])) {
             $errors[] = 'addon.json version_string must be a string';
+        }
+
+        // Why the cap exists and what it is: DESCRIPTION_MAX_LENGTH above, and
+        // docs/addon-format.md. Issue #221.
+        //
+        // The key is optional and null counts as absent, matching XenForo:
+        // validate-json lists description among its optional keys, and the
+        // add-on list renders a falsy one as an empty cell. A description set
+        // to something other than a string is refused, which is stricter than
+        // XenForo — it type-checks extra_urls and require and leaves this one
+        // alone — because otherwise the cap is evaded by changing type.
+        if (isset($json['description'])) {
+            if (!is_string($json['description'])) {
+                $errors[] = 'addon.json description must be a string';
+            } else {
+                $length = mb_strlen($json['description']);
+                if ($length > DESCRIPTION_MAX_LENGTH) {
+                    $errors[] = "addon.json description is $length characters; the admin add-on "
+                        . 'list trims it at ' . DESCRIPTION_MAX_LENGTH
+                        . ', so it must be no longer than that';
+                }
+            }
         }
 
         // version_id is what XenForo compares to decide a board needs this
