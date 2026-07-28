@@ -8,6 +8,11 @@
  * @noinspection PhpMultipleClassesDeclarationsInOneFile
  */
 
+namespace Cav7\DiscordSyncPatch\NF\Discord
+{
+	class XFCP_Api extends \NF\Discord\Api {}
+}
+
 namespace Cav7\DiscordSyncPatch\NF\Discord\ApiMessage
 {
 	class XFCP_SyncUser extends \NF\Discord\ApiMessage\SyncUser {}

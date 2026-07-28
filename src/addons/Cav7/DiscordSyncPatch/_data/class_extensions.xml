@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <class_extensions>
+  <extension from_class="NF\Discord\Api" to_class="Cav7\DiscordSyncPatch\NF\Discord\Api" execute_order="10" active="1"/>
   <extension from_class="NF\Discord\ApiMessage\SyncUser" to_class="Cav7\DiscordSyncPatch\NF\Discord\ApiMessage\SyncUser" execute_order="10" active="1"/>
   <extension from_class="NF\Discord\Cron\SyncUsersFromDiscord" to_class="Cav7\DiscordSyncPatch\NF\Discord\Cron\SyncUsersFromDiscord" execute_order="10" active="1"/>
   <extension from_class="XF\Pub\Controller\AccountController" to_class="Cav7\DiscordSyncPatch\XF\Pub\Controller\Account" execute_order="10" active="1"/>

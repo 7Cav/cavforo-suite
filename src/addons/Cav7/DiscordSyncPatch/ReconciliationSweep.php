@@ -150,6 +150,19 @@ class ReconciliationSweep
             return [];
         }
 
+        // Asked for once, here, rather than before each call below. Every decision
+        // this method makes about a failed call rests on wasThrottled(), and the
+        // vendor leaves the previous call's retry-after standing on the branch a
+        // dropped connection and a Discord 5xx both take — so without this a 429
+        // partway through a guild is reported again by every following call until one
+        // reaches the vendor's own reset. Issue #248; what the flag does and why it is
+        // opt-in is on the extension.
+        //
+        // factory() returns the extended class, so this is the addon's own Api. If the
+        // class extension were ever deactivated this would fatal rather than quietly
+        // mis-report, which is the better of the two failures.
+        $api->setRetryAfterPerCall(true);
+
         $groupRoleIds = $this->mappedRoleIdsByGroup();
 
         $managedRoleIds = RoleScope::forServer(
@@ -463,16 +476,13 @@ class ReconciliationSweep
      * until #233. What that method always does, throwing or not, is record the
      * retry-after.
      *
-     * Ask immediately after the call it is about. The vendor writes it per call rather
-     * than latching it, so it describes the last call and nothing else — but only on
-     * the paths that reach `assertNotRateLimited()`. Three return before it do and
-     * leave the previous call's value standing: a connect or server exception, a 204,
-     * and the {304, 400, 401, 403} arm. Only the first is reachable here, since Guzzle
-     * turns a real 4xx into an exception and neither endpoint answers 204 or 304. So a
-     * connection that fails straight after a throttled call reads as throttled — see
-     * issue #248, left alone rather than worked around, because inventing a reset means
-     * guessing at internals this cannot see. The walk cannot reach even that: a
-     * throttled page ends it, so there is no following call to misattribute.
+     * Ask immediately after the call it is about, and only of an Api that has been
+     * asked for a per-call retry-after — which reconcileGuild() does, once, for exactly
+     * this method's sake. The vendor writes the field per call but does not clear it on
+     * every path out of request(), so before #248 a 429 partway through a guild was
+     * read again by every following connect failure or Discord 5xx until one reached
+     * the vendor's own reset. Which paths, and why the fix is opt-in, are on
+     * Cav7\DiscordSyncPatch\NF\Discord\Api rather than restated here.
      *
      * It is also only ever a 429. The vendor's header-derived branches in
      * `isRateLimited()` never fire, so there is no pre-emptive "nearly out of budget"
