@@ -29,8 +29,10 @@ picked up with no change here. Takes no arguments. CI runs this in its own job.
 The constraint on these is **no XenForo**, not "only `php`". Most need nothing
 but `php`; `package-addon-test.php` runs the real packaging script, so it also
 needs the `bash`, `git` and `zip` that script needs, plus PHP's `zip` extension
-to read the archive back. A host missing any of those cannot build a release
-either, so the test fails there rather than skipping — a skip reads as a pass.
+to read the archive back, and `checksum-release-zip-test.php` needs the `bash`
+and `sha256sum` that its script needs. A host missing any of those cannot build
+or verify a release either, so the test fails there rather than skipping — a
+skip reads as a pass.
 
 ```
 tools/run-tools-tests.sh
@@ -134,6 +136,28 @@ skipped.
 
 ```
 php tools/package-web-assets.php src/addons/Cav7/MilpacMention build/upload Cav7/MilpacMention
+```
+
+### `checksum-release-zip.sh <file>`
+
+Writes the `.sha256` sidecar published beside a release zip, next to the
+artifact. The release workflow calls it after `package-addon.sh` and uploads
+both files.
+
+The entry names the artifact file alone rather than the path the script was
+given. `sha256sum` writes back whatever path it is handed, so checksumming an
+absolute path — which is what `package-addon.sh` prints — bakes the build
+machine's directory layout into a file whose only job is to be checked
+somewhere else, where that directory does not exist and `sha256sum -c` fails on
+"No such file or directory" without ever comparing a digest. Naming it
+relatively from the artifact's own directory, rather than trusting the caller's
+working directory to be the right one, is what keeps that out of the sidecar.
+`tools/tests/checksum-release-zip-test.php` pins the name and the digest
+separately, and verifies a pair after moving it away from the directory it was
+built in.
+
+```
+tools/checksum-release-zip.sh Cav7-SteamChecker-v1.1.4.zip
 ```
 
 ### `validate-addon.php <addon-dir>` and `check-data-consistency.php <addon-dir>`
