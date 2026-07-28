@@ -62,6 +62,27 @@
  * walk silent about it too, and this report the only thing between a half-written
  * file and a clean run.
  *
+ * Cases 30 to 35 carry the same standard to the columns that do the matching
+ * (issue #200). The check was strict about the two columns it compared and read
+ * the two that identify the row through a cast, so a column naming no class
+ * arrived as '' — a key like any other. Case 35 is the shape that bought, and
+ * the acceptance criterion the rest only imply: a row identifying nothing on
+ * each side, which used to identify the other and exit 0 reporting content
+ * matches. Cases 30, 31 and 32 pin the report — one column, both columns, and
+ * the _data side — since before this the run failed while naming an empty class
+ * that matched nothing, sending a maintainer after a corrupted value rather than
+ * an absent one.
+ *
+ * Cases 33 and 34 are the two ways a column can name no class while looking like
+ * it does, and they are why the rule is "names a class" rather than "is there".
+ * 33: present but empty. Absent, JSON null and '' are one claim, since _data
+ * omits an attribute if and only if its value is '', so a check written around
+ * isset() alone passes a hand-edited from_class="" while looking correct.
+ * 34: a shape no export writes. (string) false is '', so a guard that tests for
+ * emptiness without testing shape hands the pair the very empty identity it was
+ * put there to reject — the compared columns have refused unwritten shapes since
+ * #57 and identity was not held to that half of the standard.
+ *
  * Run:
  *   php tools/tests/check-data-consistency-test.php
  *
@@ -722,7 +743,7 @@ try {
     // cron_entries is one of the two entries in the tool's $dataFileFor map:
     // items live in _output/cron_entries/ while the records are in _data/cron.xml.
     // Lose the mapping and the tool looks for a _data/cron_entries.xml that never
-    // exists. Case 35 covers the other entry, admin_permissions.
+    // exists. Case 41 covers the other entry, admin_permissions.
     $cronOk = makeTypeFixture(
         $base,
         'cron-ok',
@@ -1002,7 +1023,189 @@ try {
         $out
     );
 
-    // --- 30. a _data type holding records that was never exported -------------
+    // --- 30. from_class missing from an _output item --------------------------
+    // The identity columns held to the same standard as the two the check
+    // compares (issue #200). This row already failed before that, but as a pair
+    // that matched nothing: from_class was read with a cast that turns absence
+    // into the empty string, so the report blamed a corrupted class name for a
+    // column that is not there. The exit code is not the finding here — the
+    // words are, since they are what tells a maintainer which half of a
+    // hand-edited file to repair.
+    $outFromMissing = makeFixture(
+        $base,
+        'output-from-class-missing',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => '1'],
+        ],
+        [
+            $fileA => ['to_class' => $toA, 'execute_order' => 10, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $outFromMissing);
+    check('an _output item with no from_class fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the absent _output from_class is reported as absent, not as an empty value',
+        str_contains($out, "$fileA: from_class missing from _output"),
+        $out
+    );
+
+    // --- 31. an _output item with no identity at all --------------------------
+    // One item, neither column. Both have to be named: a report that stops at
+    // the first leaves a maintainer repairing half the row and running again to
+    // find the rest. The _data side here is a whole record, so what this pins is
+    // the report — case 35 is the both-sides shape the check used to call clean.
+    $outNoIdentity = makeFixture(
+        $base,
+        'output-no-identity',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => '1'],
+        ],
+        [
+            $fileA => ['execute_order' => 10, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $outNoIdentity);
+    check('an _output item with no identity at all fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'an item missing both identity columns names both',
+        str_contains($out, "$fileA: from_class missing from _output")
+            && str_contains($out, "$fileA: to_class missing from _output"),
+        $out
+    );
+    check(
+        'a row that identifies nothing is never reported as matching content',
+        !str_contains($out, 'content matches'),
+        $out
+    );
+
+    // --- 32. an identity column missing from a _data record -------------------
+    // The same rule on the other side. _data omits an attribute if and only if
+    // its value is the empty string, so an absent from_class is a positive claim
+    // that the row extends nothing — not an unknown, and not something to key a
+    // lookup on. The assertion names the column and the side and leaves the
+    // sentence around them alone; the negative pins the defect itself, which was
+    // an absent column rendered back as a class named ''.
+    $dataFromMissing = makeFixture(
+        $base,
+        'data-from-class-missing',
+        [
+            ['from_class' => null, 'to_class' => $toA, 'active' => '1'],
+        ],
+        [
+            $fileA => ['from_class' => $fromA, 'to_class' => $toA, 'execute_order' => 10, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $dataFromMissing);
+    check('a _data <extension> with no from_class fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the absent _data from_class names the column and the side it is absent from',
+        str_contains($out, 'from_class missing from _data'),
+        $out
+    );
+    check(
+        'no side of the report renders the absent column as a class named nothing',
+        !str_contains($out, "from_class ''"),
+        $out
+    );
+
+    // --- 33. an identity column present but holding nothing -------------------
+    // The rule is that a row's identity exists, not merely that the column does.
+    // XenForo marks from_class and to_class required on XF\Entity\ClassExtension,
+    // each with its own error phrase, so it will not persist a row whose identity
+    // is empty — and the extension cache writes `class X extends <from_class> {}`,
+    // which an empty value turns into a syntax error rather than a wrong result.
+    // Absence and emptiness are one claim rather than two: _data omits an
+    // attribute if and only if its value is '', so an omitted from_class and one
+    // written as from_class="" say exactly the same thing, and they are reported
+    // in the same words. A check that asked only whether the column was there
+    // would pass this fixture, which is the whole reason it is here.
+    $emptyIdentity = makeFixture(
+        $base,
+        'empty-identity',
+        [
+            ['from_class' => '', 'to_class' => $toA, 'active' => '1'],
+        ],
+        [
+            $fileA => ['from_class' => '', 'to_class' => $toA, 'execute_order' => 10, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $emptyIdentity);
+    check('an identity column present but empty fails on both sides', $code !== 0, "exit=$code\n$out");
+    check(
+        'an empty _output from_class is refused in the same words as an absent one',
+        str_contains($out, "$fileA: from_class missing from _output"),
+        $out
+    );
+    check(
+        'an empty _data from_class is refused in the same words as an absent one',
+        str_contains($out, 'from_class missing from _data'),
+        $out
+    );
+
+    // --- 34. identity in a shape no export writes -----------------------------
+    // The other half of the standard the compared columns are held to: a value
+    // whose shape no export produces is refused rather than cast. Identity was
+    // checked for emptiness but not for shape, so a JSON false cleared the guard
+    // and then cast to '' one line later — arriving at the pair as the very
+    // thing the guard exists to reject, and reported as a class named ''. _output
+    // holds a class name as a JSON string or the export did not write it.
+    $outIdentityShape = makeFixture(
+        $base,
+        'output-identity-shape',
+        [
+            ['from_class' => $fromA, 'to_class' => $toA, 'active' => '1'],
+        ],
+        [
+            $fileA => ['from_class' => false, 'to_class' => $toA, 'execute_order' => 10, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $outIdentityShape);
+    check('an _output from_class in a shape no export writes fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'the refused identity shape is not cast into a class named nothing',
+        !str_contains($out, "from_class ''"),
+        $out
+    );
+    check(
+        'the refused identity shape is named as the shape it is',
+        str_contains($out, "$fileA: from_class _output=false is not a value any export writes"),
+        $out
+    );
+
+    // --- 35. neither side names a class ---------------------------------------
+    // Acceptance criterion 3 of #200, pinned directly rather than left to be
+    // inferred: two rows that identify nothing must not identify each other. It
+    // holds because each side is settled before the pair is built, so neither row
+    // ever reaches the match — and the negative below is what pins that. Report
+    // the absence and then go on to match anyway and this row keys '' again,
+    // which is the whole defect wearing a different message.
+    $noIdentityEitherSide = makeFixture(
+        $base,
+        'no-identity-either-side',
+        [
+            ['from_class' => null, 'to_class' => null, 'active' => '1'],
+        ],
+        [
+            $fileA => ['execute_order' => 10, 'active' => true],
+        ]
+    );
+    [$code, $out] = runTool($tool, $noIdentityEitherSide);
+    check('a row identifying nothing on each side fails', $code !== 0, "exit=$code\n$out");
+    check(
+        'each side is named for the columns it is missing',
+        str_contains($out, "$fileA: from_class missing from _output")
+            && str_contains($out, "$fileA: to_class missing from _output")
+            && str_contains($out, 'from_class missing from _data')
+            && str_contains($out, 'to_class missing from _data'),
+        $out
+    );
+    check(
+        'neither row reaches the match, so neither is reported as an unmatched pair',
+        !str_contains($out, 'has no matching'),
+        $out
+    );
+
+    // --- 36. a _data type holding records that was never exported -------------
     // The walk starts from _output, so a _data type with no _output/<type>/ at
     // all was never reached and passed silently. This is the first-record case:
     // _data carries a file for every type whether or not it holds records, but
@@ -1029,9 +1232,9 @@ try {
         $out
     );
 
-    // --- 31. the same shape with an empty _data file --------------------------
+    // --- 37. the same shape with an empty _data file --------------------------
     // Every addon commits all 27 _data files and most hold no rows, so an empty
-    // file with no _output dir is the normal state of an unused type. If case 30
+    // file with no _output dir is the normal state of an unused type. If case 36
     // fired on absence rather than on records, every addon in the repo would
     // fail with two dozen findings apiece.
     $emptyUnexported = makeTypeFixture(
@@ -1051,7 +1254,7 @@ try {
         $out
     );
 
-    // --- 32. no _output tree at all, with records still in _data --------------
+    // --- 38. no _output tree at all, with records still in _data --------------
     // The old short-circuit printed SKIP and exited 0 before looking at _data,
     // so an addon that lost its whole export tree passed. Losing every type at
     // once is the same mistake as losing one, and reads as a clean run.
@@ -1067,7 +1270,7 @@ try {
         $out
     );
 
-    // --- 33. no _output tree, and nothing in _data to miss --------------------
+    // --- 39. no _output tree, and nothing in _data to miss --------------------
     // A code-only addon still commits its empty _data files. There is genuinely
     // nothing to cross-check, so it stays a SKIP rather than becoming noise.
     $codeOnly = "$base/code-only";
@@ -1082,7 +1285,7 @@ try {
         $out
     );
 
-    // --- 34. neither tree at all ---------------------------------------------
+    // --- 40. neither tree at all ---------------------------------------------
     // Cav7/Core's shape: it carries addon.json, so CI runs this check on it, but
     // it has no _data/ and no _output/. The _data-side pass must tolerate the
     // directory being absent rather than erroring on the glob.
@@ -1096,7 +1299,7 @@ try {
         $out
     );
 
-    // --- 35. the second type whose _data file is not named after its dir ------
+    // --- 41. the second type whose _data file is not named after its dir ------
     // admin permissions export to _output/admin_permissions/ while their records
     // live in _data/admin_permission.xml, singular. The map carried only the
     // cron pairing, so a correctly exported admin permission was told its _data
@@ -1123,7 +1326,7 @@ try {
         $out
     );
 
-    // --- 36. the same pairing seen from the _data side ------------------------
+    // --- 42. the same pairing seen from the _data side ------------------------
     // The _data-side pass has to resolve the pairing the other way to name the
     // directory it expected. Getting this wrong points the reader at an
     // _output/admin_permission/ that XenForo never writes.
@@ -1149,7 +1352,7 @@ try {
         $out
     );
 
-    // --- 37. the cron pairing from the _data side ----------------------------
+    // --- 43. the cron pairing from the _data side ----------------------------
     // Case 18 covers cron in the _output direction only. Both non-identity
     // pairings have to resolve from _data too, or the report names a directory
     // XenForo never writes and sends the reader looking for the wrong thing.
@@ -1170,7 +1373,7 @@ try {
         $out
     );
 
-    // --- 38. a _data file no _output dir claims, whose dir exists anyway ------
+    // --- 44. a _data file no _output dir claims, whose dir exists anyway ------
     // Only a file XenForo never writes gets here: one named after an _output
     // directory rather than after its own container tag. Reporting it as
     // "_output/cron_entries/ is missing" would name a directory sitting on disk,
@@ -1194,7 +1397,7 @@ try {
         $out
     );
 
-    // --- 39. an unreadable _data file that no _output dir claims --------------
+    // --- 45. an unreadable _data file that no _output dir claims --------------
     // The _output-driven pass already fails on a _data file it cannot parse. The
     // _data-side pass reaches files the other one never opens, and records that
     // cannot be counted cannot be cleared, so it refuses them the same way
