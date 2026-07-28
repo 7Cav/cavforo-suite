@@ -357,6 +357,69 @@ still reports the previous call's value. See
 [#248](https://github.com/7Cav/cavforo-suite/issues/248), which carries the same
 inventory — a fix designed off "one path" would be designed off a wrong reading.
 
+## What role hierarchy actually blocks
+
+Run against the throwaway guild on 2026-07-28, for
+[#242](https://github.com/7Cav/cavforo-suite/issues/242).
+
+#242 reported that the sweep retries forever against "someone who has a role above the
+bot". The fix designed for it rests entirely on one sentence read out of Discord's
+permissions page — *"A bot can grant roles to other users that are of a lower position
+than its own highest role"* — taken to mean the constraint is on the roles **moved**,
+not on the member holding them. If that reading were wrong the fix would be wrong in the
+worst available way: those roles would be excluded, the retries and the log would stop,
+and the members would go on uncorrected with every run reporting clean. So it was
+measured before any code was written.
+
+### Method: real Discord, no XenForo
+
+The premise is about Discord alone, so this needs neither the stack nor the vendor —
+four raw HTTPS calls with the throwaway bot's token. The bot sat at position 11 of 13.
+`M1` held `Cutie` at position 12, above it. The in-reach role was **created by the bot**
+rather than borrowed: a role a bot creates lands below its own highest, so the fixture
+needs no drag from a human. An explicit `User-Agent` is set throughout, because
+Discord answers urllib's default with a bare `403` that would read here as a hierarchy
+refusal and fake a pass on every probe at once.
+
+### What was checked, and what happened
+
+| | Call | Result |
+|---|---|---|
+| P0 | `M1` → `[Cutie, scratch]` — keeps the out-of-reach role, **adds** an in-reach one | `200` |
+| P1 | `M1` → `[Cutie]` — keeps it, **drops** the in-reach one | `200` |
+| P2 | `M1` → `[scratch]` — drops the out-of-reach role | `403`, `code 50013` |
+| P3 | `M2` → `[Cutie]` — adds an out-of-reach role to someone else | `403`, `code 50013` |
+
+`M1` was re-read afterwards and matched what it started with, `M2` was untouched, and
+the scratch role was deleted (`204`).
+
+### What it settles
+
+**Hierarchy constrains the roles moved, never the member holding them.** `M1`'s highest
+role was above the bot's throughout, and their roles were still rewritten twice — once
+adding, once dropping — because the out-of-reach role stayed in the set. Discord's own
+docs list the target-hierarchy rule for *kick, ban and edit nickname* only, and role
+assignment is not among them. So there is no such thing as a member this add-on cannot
+reach; there are only roles.
+
+That is what makes the exclusion a real partial correction rather than a way of giving
+up: keep the immovable role, and everything else in the same call still moves.
+
+**A refusal still says nothing about its cause.** P2 and P3 return the same `50013` the
+omitted-managed-role refusal returns, so a refusal count cannot distinguish hierarchy
+from a missing permission — which is why the reach test is made **before** the call
+rather than inferred from its failure.
+
+### What it does not settle
+
+Roles at exactly the bot's own position. Discord breaks that tie *"by id"* without
+stating the direction, so no probe here can generalise, and `RoleReach` reads a tie as
+out of reach instead: that error leaves a role unenforced and says so, where the
+opposite one sends a write Discord refuses whole.
+
+Nor does it say anything about the add-on's own wiring — only about what Discord does.
+The wiring is the dev-stack list in the README, items 12 and 7.
+
 ## Re-running it
 
 The script is not committed — it mutates a board and its value is in the recorded
@@ -365,6 +428,11 @@ result, not in re-running it unchanged. What it does is the numbered list in
 with the restore proven at the end. The setup it needs is the one the README already
 describes for the resync button: credentials filled in, and a server row that is both
 active and carries a guild id.
+
+The hierarchy pass above is worth re-running for the same reason and is nearly free: it
+writes only to a throwaway guild, restores what it touched, and needs no stack at all.
+`docs/agents` has no copy of the script for the same reason the others are not
+committed — the four calls in its table are the whole of it.
 
 The `429` pass is the exception and is worth re-running, because it is the one check
 here that reads vendor behaviour rather than ours — and vendor behaviour is exactly

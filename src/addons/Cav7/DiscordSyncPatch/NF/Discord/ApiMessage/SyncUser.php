@@ -3,6 +3,7 @@
 namespace Cav7\DiscordSyncPatch\NF\Discord\ApiMessage;
 
 use Cav7\DiscordSyncPatch\RoleClaim;
+use Cav7\DiscordSyncPatch\RoleReach;
 
 /**
  * Issue #148 — two overrides on the vendor's per-user sync message: an eviction at
@@ -42,6 +43,14 @@ use Cav7\DiscordSyncPatch\RoleClaim;
  */
 class SyncUser extends XFCP_SyncUser
 {
+    /**
+     * Immovable roles for this message's guild, or null before they are read. Not
+     * static: see immovableRoleIds().
+     *
+     * @var string[]|null
+     */
+    protected ?array $cav7ImmovableRoleIds = null;
+
     public function dispatch(): bool
     {
         // Scoped to the two entity types this path reads: the member and the
@@ -62,6 +71,89 @@ class SyncUser extends XFCP_SyncUser
         $this->applyRoleClaim();
 
         return parent::syncRoles();
+    }
+
+    /**
+     * Issue #242 — the third override, and the one that keeps a role Discord will not
+     * let this bot move out of the set it sends.
+     *
+     * The vendor calls this on BOTH sides of the arithmetic in syncRoles(): once on the
+     * claim, deciding what may be taken away, and once on the roles the member's groups
+     * grant, deciding what to ask for. One filter therefore closes both directions.
+     * Dropping an immovable role from the claim leaves it in $existingRoles, so it
+     * survives into the set sent; dropping one from the granted side stops the sync
+     * asking for a role Discord refuses to add.
+     *
+     * Either way round, the refusal is whole — Discord rejects the entire call, the
+     * vendor's withApiThrow() turns it into a ClientException, and the queue logs it and
+     * retries until the message is archived, at which point the next sweep queues it
+     * again. That is #242's louder half, and it happens on a group change with no sweep
+     * involved at all.
+     *
+     * This also closes the same hole for preserved roles, which RoleClaim never knew
+     * about: group-map a role Discord manages and the sync breaks in exactly this way.
+     */
+    protected function filterSyncableGroups(array $roleIds): array
+    {
+        $roleIds = parent::filterSyncableGroups($roleIds);
+
+        $immovableRoleIds = $this->immovableRoleIds();
+        if (!$immovableRoleIds) {
+            return $roleIds;
+        }
+
+        return array_values(array_diff($roleIds, $immovableRoleIds));
+    }
+
+    /**
+     * The roles this bot cannot move on the guild being synced.
+     *
+     * Memoized on this message, not on the class. A message is deserialized per queue
+     * record and the guild id is set on the Api immediately before it dispatches, so an
+     * instance is one message on one guild and this lifetime cannot outlive its guild.
+     * A per-process cache keyed on anything would be faster and would have a cross-guild
+     * failure mode no test here could reach — the kind of fault this whole change exists
+     * to stop shipping. The saving is three calls per message; it is not worth it.
+     *
+     * Fails open, and deliberately in both directions. If the guild's roles cannot be
+     * read, no filtering happens and the sync behaves exactly as it did before this
+     * override existed; if only the bot's own record is unreadable, preserved roles are
+     * still filtered and out-of-reach ones are not. Neither degrades anything that was
+     * working — the members affected are the ones already failing.
+     *
+     * @return string[]
+     */
+    protected function immovableRoleIds(): array
+    {
+        if ($this->cav7ImmovableRoleIds !== null) {
+            return $this->cav7ImmovableRoleIds;
+        }
+
+        $api = $this->api();
+
+        $guildId = $api->getGuildId();
+        if (!$guildId) {
+            return $this->cav7ImmovableRoleIds = [];
+        }
+
+        // Not the vendor's five-minute cache. getRoles() saves the `?: []` it
+        // substitutes for a failed request just as readily as a real answer, and with
+        // fail-open semantics a cached empty means "filter nothing" — which would put
+        // #242 back for up to five minutes across a burst of messages.
+        $roles = $api->getRoles(false);
+        if (!$roles) {
+            return $this->cav7ImmovableRoleIds = [];
+        }
+
+        // Null where the bot's own position could not be read, which RoleReach reads
+        // as "apply only the reason that does not depend on position". The sweep hands
+        // it the same null for the same reason.
+        $member = $api->getCurrentGuildMember();
+        $botRoleIds = is_array($member) && is_array($member['roles'] ?? null)
+            ? array_map('strval', $member['roles'])
+            : null;
+
+        return $this->cav7ImmovableRoleIds = RoleReach::immovable($roles, $botRoleIds, $guildId);
     }
 
     /**

@@ -44,9 +44,12 @@ only, and never changes which roles a group hands out.
 A member's **managed role**s on Discord disagreeing with the roles their current
 forum groups grant: a managed role they hold that no group grants them, or one a
 group grants that they do not hold. Only managed roles count, so a self-assigned
-interest or game role is never a divergence, however it got there. The condition
-is the same whether it arose from a group change the sync never applied or from a
-hand edit made in Discord.
+interest or game role is never a divergence, however it got there. Roles the bot
+cannot move — **preserved role**s and **out-of-reach role**s — do not count either,
+in either direction: a disagreement about one describes work no correction could
+carry out, and left in it survives every correction and re-selects the member on
+every run. The condition is the same whether it arose from a group change the sync
+never applied or from a hand edit made in Discord.
 _Avoid_: "mismatch" (reads as any role difference, including the self-assigned
 roles this excludes), and "drift" for the whole thing (keep it for the Discord-side
 origin alone if origins need naming).
@@ -75,7 +78,27 @@ the two meet, preserved wins and the role stays.
 _Avoid_: reading "preserved" as the opposite of "**managed role**", which is the
 nearest trap in this glossary. They answer different questions — managed is "does a
 user group grant this?", preserved is "will Discord let the bot move it?" — and
-Discord's own `managed` flag means the second, not the first.
+Discord's own `managed` flag means the second, not the first. Note a role the bot
+merely sits below is not preserved but an **out-of-reach role**: same treatment,
+different remedy.
+
+**Out-of-reach role**:
+A Discord role the bot cannot move because of where it sits — at or above the highest
+position the bot's own roles reach. Discord refuses any write that would add or remove
+one, and refuses it whole, so a set that drops one loses every other change with it.
+That is the same shape a **preserved role** produces and takes the same treatment: keep
+it in any set sent, and judge no **divergence** on it in either direction. What
+separates the two is what an admin should do about it — a preserved role is permanent
+and correct, an out-of-reach role is a misconfiguration one drag in the role list
+fixes, so this one is reported and that one never is. Position alone decides it, since
+Administrator does not bypass the hierarchy, and a role level with the bot counts as
+out of reach: Discord breaks that tie on an id ordering its own docs do not state.
+Together with **preserved role**s these are the guild's _immovable_ roles, which is the
+only thing the strip and the divergence judgement ask about: the two reasons differ in
+what an admin should do, never in what a correction may do.
+_Avoid_: "role above the bot" for the whole thing (a role level with it counts too),
+and calling the *member* out of reach — Discord's target-hierarchy rule covers kicks,
+bans and nicknames, not role writes, so the member's own top role blocks nothing here.
 
 **Reconciliation sweep**:
 The scheduled pass that finds the members needing correction and corrects only
