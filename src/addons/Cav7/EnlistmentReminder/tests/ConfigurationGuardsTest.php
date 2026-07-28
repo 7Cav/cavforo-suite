@@ -1,13 +1,19 @@
 <?php
 
 /**
- * Issue #191 — configuration that is present but no longer refers to anything.
+ * The configuration guards that stand between a misconfigured board and an
+ * add-on that has quietly stopped working.
  *
- * The add-on already refuses to run when configuration is ABSENT: a list that
- * parses to nothing, an unreadable vendor prefix table, a status set colliding
- * with a type prefix, no seated clerk. What it never checked is configuration
- * that still parses but has gone stale, which fails in whichever direction is
- * worse for the situation and leaves nothing in the log either way.
+ * Two families, filed separately and covered together because they are the same
+ * shape of fault with the same failure surface:
+ *
+ *  - Configuration that is ABSENT or self-CONTRADICTORY (issue #208) — a list
+ *    that parses to nothing, a status set colliding with a type prefix, no
+ *    seated clerk, the vendor prefix add-on switched off, a link table that
+ *    cannot be read or that comes back empty.
+ *  - Configuration that still parses but has gone STALE (issue #191) — an id
+ *    that no longer refers to anything, which fails in whichever direction is
+ *    worse for the situation and leaves nothing in the log either way.
  *
  * These tests drive the real cron entry point — Cron\ScanQueue::run() — so
  * ScanQueue, QueueReminder, EnlistmentRouting, ProcessingStatus, PositionIdList
@@ -20,9 +26,9 @@
  * WHAT THESE ASSERT, AND WHAT THEY DELIBERATELY DO NOT
  *
  * Only what an operator could observe from outside a cron run: which threads got
- * the applicant-visible note, which clerks were alerted, which markers were
- * written, and which IDS were named in the error log. Never which guard fired,
- * never which branch produced a line.
+ * the reminder note, which clerks were alerted, which markers were
+ * written, and which IDENTIFIERS were named in the error log. Never which guard
+ * fired, never which branch produced a line, never which table was touched.
  *
  * In particular:
  *  - No assertion depends on the ORDER records were emitted in. remind()'s
@@ -35,16 +41,47 @@
  *    behaviour is intact. Where de-duplication IS the specified behaviour (the
  *    drift record is emitted once per run however many threads carry the id),
  *    the count is scoped to that id.
- *  - No assertion names an option key. The stale id alone proves the fault
- *    surfaced; naming the ACP handle as well would couple these tests to the
- *    current config key for nothing.
- *  - No assertion pins message wording. Ids are data; sentences are prose, and
- *    fixing a typo must not turn this file red.
+ *  - No assertion pins message wording. Identifiers are data; sentences are
+ *    prose, and fixing a typo must not turn this file red. This is checkable
+ *    rather than aspirational: strip every authored sentence out of remind()'s
+ *    log messages, keeping only the sprintf placeholders and the option keys,
+ *    and this file stays green. It was run that way while these were written.
+ *  - No assertion observes which TABLES a run read. That is choreography, not
+ *    behaviour: it reports how the scan is arranged rather than what an
+ *    operator gets, and it stays true under a rewrite that changes neither.
+ *
+ * An ACP option key IS allowed as an identifier, which reverses this file's
+ * earlier rule. Several faults carry no id at all — a blank list has no value to
+ * name — and for those the option key is the only handle an operator can act on,
+ * so a test that refuses it can assert nothing but "something was logged".
+ * Renaming an option is a real change that breaks live boards, not a tidy-up, so
+ * the key is configuration contract in a way a sentence is not. Match it as a
+ * bare substring and assert nothing about the words around it.
+ *
+ * WHAT IS NOT COVERED HERE, AND WHY
+ *
+ * Two guards in remind() have no behavioural seam. Both were confirmed by
+ * deleting the guard outright and finding every test in this file still green:
+ *
+ *  - The unconfigured BOT USER abort. Without it the run reaches the note step,
+ *    fails to resolve the user, reports, and reminds nobody — the same outcome
+ *    and the same log the guard produces. It exists to say that once instead of
+ *    once per thread, and log volume is not assertable here without counting
+ *    records, which the rule above forbids.
+ *  - The early return on a prefix-link read FAILURE. `null` is falsy, so the
+ *    empty-result guard immediately below catches the same value and aborts
+ *    anyway, and the exception was already logged inside fetchThreadPrefixLinks.
+ *    The read-failure scenario below therefore covers that CATCH — that a failed
+ *    read stays diagnosable at the log boundary — and not the guard.
+ *
+ * Neither is a defect to fix by widening what this file observes. They are
+ * recorded so the gap is visible rather than papered over with a test that
+ * passes for the wrong reason.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
  * Run:
- *   php tests/StaleConfigurationTest.php
+ *   php tests/ConfigurationGuardsTest.php
  */
 
 // ---------------------------------------------------------------------------
@@ -96,9 +133,21 @@ namespace Cav7\EnlistmentReminder\Tests {
 
         public bool $multiPrefixActive = true;
 
+        /**
+         * A failure to inject into the vendor link-table read: the message the
+         * database throws with, or null for a table that reads normally.
+         *
+         * The only way to reach fetchThreadPrefixLinks' catch, and the only
+         * stub state that exists to drive a code path rather than to describe
+         * a board. The message carries a token the test itself chose, so the
+         * read-failure scenario can prove the failure stayed diagnosable at the
+         * log boundary without asserting one word of production wording.
+         */
+        public ?string $linkReadFailure = null;
+
         // --- what a run did, as an operator could see it ---------------------
 
-        /** thread ids the applicant-visible note was posted into. */
+        /** thread ids the reminder note was posted into. */
         public array $noted = [];
 
         /** thread_id => user ids alerted. */
@@ -260,6 +309,13 @@ namespace {
             }
 
             if (str_contains($sql, 'xf_sv_thread_prefix_link')) {
+                if ($board->linkReadFailure !== null) {
+                    // Renamed by a vendor release, permissions revoked, dropped
+                    // under an add-on that is still active — the read itself
+                    // throws, rather than returning nothing.
+                    throw new \RuntimeException($board->linkReadFailure);
+                }
+
                 return $board->linkRows($this->inList($sql));
             }
 
@@ -349,7 +405,7 @@ namespace {
         public function __construct(public int $user_id, public string $username) {}
     }
 
-    /** Records the applicant-visible note at the moment it is saved. */
+    /** Records the reminder note at the moment it is saved. */
     class FakePost
     {
         public $thread_id, $user_id, $username, $post_date, $message, $message_state, $ip_id, $position;
@@ -416,6 +472,13 @@ namespace Cav7\EnlistmentReminder\Tests {
     const NOW = 1800000000;
     const HOUR = 3600;
 
+    /**
+     * A token this file invents and injects into the failing database read, so
+     * the read-failure scenario can recognise its own failure in the log. Chosen
+     * to be findable as a standalone number and to appear nowhere else.
+     */
+    const READ_FAILURE_TOKEN = 990001;
+
     $failures = 0;
 
     function check(string $label, bool $ok, string $detail = ''): void
@@ -444,6 +507,22 @@ namespace Cav7\EnlistmentReminder\Tests {
             103 => ['node_id' => 325, 'post_date' => NOW - 70 * HOUR, 'prefix_id' => 57, 'links' => [57, 55]],
         ];
         $board->seats = [579 => [9001], 580 => [9002], 751 => [9003], 960 => [9004], 1012 => [9005]];
+
+        return $board;
+    }
+
+    /**
+     * The healthy queue plus one un-actioned RE-ENLISTMENT, so a run has an
+     * application of each type to succeed or fail on independently. Needed by
+     * the one-blank-list scenarios: with only standard applications, starving
+     * the re-enlistment side is unobservable.
+     */
+    function mixedTypeBoard(): Board
+    {
+        $board = healthyBoard();
+        $board->threads[104] = [
+            'node_id' => 325, 'post_date' => NOW - 80 * HOUR, 'prefix_id' => 58, 'links' => [58],
+        ];
 
         return $board;
     }
@@ -500,6 +579,27 @@ namespace Cav7\EnlistmentReminder\Tests {
         }
 
         return $count;
+    }
+
+    /**
+     * Whether any record names this ACP option key or vendor add-on id — the two
+     * stable identifiers an operator can act on when a fault carries no id.
+     *
+     * The identifier of last resort, for the faults that carry no id of their
+     * own: a blank list has no value to name, so without this the only available
+     * assertion is "something was logged", which passes for any fault at all.
+     * Matched as a bare substring, so nothing about the surrounding sentence is
+     * pinned. See this file's header for why an option key counts as contract.
+     */
+    function someRecordNamesOptionOrAddOnId(string $handle): bool
+    {
+        foreach (\XF::$logged as $message) {
+            if (str_contains($message, $handle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Every record, joined, for failure output only — never asserted on. */
@@ -669,6 +769,213 @@ namespace Cav7\EnlistmentReminder\Tests {
         'reminded: ' . implode(',', $board->noted)
     );
     check('and nothing is reported, because no status prefix went missing', \XF::$logged === [], records());
+
+    // === #208: a type prefix configured as an in-processing status ==========
+    // The worst fault the add-on has, and the quietest. Every valid queue thread
+    // carries its type prefix in the same link table the status is read from, so
+    // one type id typed into the status option reads the WHOLE queue as handled.
+    // Without the guard nothing is reminded and nothing is logged: the add-on is
+    // indistinguishable from an add-on with no work to do. So the assertion that
+    // matters is not "nothing happened" — that is true either way — but that the
+    // operator is told, and told which prefix did it.
+    echo "\n--- #208: a type prefix listed as an in-processing status ---\n";
+    $board = healthyBoard();
+    scan($board, ['cav7ERInProcessingPrefixIds' => '53,54,55,57']);
+    check(
+        'no application is reminded',
+        nothingHappened($board),
+        'reminded: ' . implode(',', $board->noted) . '; marked: ' . implode(',', $board->marked)
+    );
+    check('and the colliding prefix id is named', someRecordNames(57), records());
+
+    // === #208: both enlistment-type prefix lists blank ======================
+    // Nothing can route as an enlistment of either type, and the collision guard
+    // above has nothing left to intersect against, so the run stops. What makes
+    // this worth a test is not that it stops — without the guard nothing is
+    // reminded either — but WHERE it points the operator. Un-guarded, the run
+    // reaches per-thread routing and blames each application's prefix in turn,
+    // sending someone to look at a thread when the fault is two empty textboxes.
+    echo "\n--- #208: neither type-prefix list is configured ---\n";
+    $board = healthyBoard();
+    scan($board, ['cav7ERStandardPrefixIds' => '', 'cav7ERReenlistPrefixIds' => '']);
+    check('no application is reminded', nothingHappened($board), records());
+    check('the standard type option is named', someRecordNamesOptionOrAddOnId('cav7ERStandardPrefixIds'), records());
+    check('the re-enlistment type option is named', someRecordNamesOptionOrAddOnId('cav7ERReenlistPrefixIds'), records());
+    check('and no individual application is blamed instead', !someRecordNames(101), records());
+
+    // === #208: exactly ONE type-prefix list blank ===========================
+    // The asymmetry worth protecting. Both blank aborts; one blank must NOT,
+    // because the other type still routes and still deserves its reminders. So
+    // the run continues on the healthy half and the blank option is named.
+    //
+    // Covered in both directions, and that is not duplication for symmetry's
+    // sake: these are two separate statements in remind(), and deleting either
+    // one leaves the other's test green. The realistic slip is a copy-paste that
+    // leaves both testing the same list, which one direction alone would miss.
+    //
+    // Each direction needs a board carrying one application of EACH type, so the
+    // healthy half has something to remind and the starved half has something to
+    // fail to route.
+    echo "\n--- #208: no standard type prefix configured ---\n";
+    $board = mixedTypeBoard();
+    scan($board, ['cav7ERStandardPrefixIds' => '']);
+    check(
+        'the re-enlistment is still reminded, because its half is healthy',
+        $board->noted === [104],
+        'reminded: ' . implode(',', $board->noted)
+    );
+    check('the blank option is named', someRecordNamesOptionOrAddOnId('cav7ERStandardPrefixIds'), records());
+    check(
+        'and the standard application that can no longer route is named',
+        someRecordNames(101),
+        records()
+    );
+
+    echo "\n--- #208: no re-enlistment type prefix configured ---\n";
+    $board = mixedTypeBoard();
+    scan($board, ['cav7ERReenlistPrefixIds' => '']);
+    check(
+        'the standard enlistment is still reminded',
+        $board->noted === [101],
+        'reminded: ' . implode(',', $board->noted)
+    );
+    check('the blank option is named', someRecordNamesOptionOrAddOnId('cav7ERReenlistPrefixIds'), records());
+    check(
+        'and the re-enlistment that can no longer route is named',
+        someRecordNames(104),
+        records()
+    );
+
+    // === #208: the queue node is not configured at all ======================
+    // A board where nobody has filled the option in. Un-guarded, the scan asks
+    // the database about node 0, finds nothing, and returns in silence — which
+    // is indistinguishable from a queue that is genuinely clear. The guard's
+    // whole product is that the run SAYS something, so that is what is asserted.
+    //
+    // Deliberately no assertion about WHICH option, because the message does not
+    // name one — see this file's header on option keys as identifiers. Adding
+    // the name to the message would allow a stronger test, but that is a change
+    // to production behaviour and out of scope for coverage work.
+    echo "\n--- #208: no queue node configured ---\n";
+    $board = healthyBoard();
+    scan($board, ['cav7ERQueueNodeId' => 0]);
+    check('no application is reminded', nothingHappened($board), records());
+    check('and the run does not fall silent', \XF::$logged !== [], records());
+
+    // === #208: the in-processing status list is blank =======================
+    // Nothing could read as handled, so every application in the queue would be
+    // chased. ProcessingStatus refuses that input outright, so this guard is not
+    // what stands between a blank option and a mass remind — delete it and the
+    // run aborts on that refusal instead, loudly but from the wrong place and
+    // without naming the box to edit. What the guard adds is the admin-facing
+    // message, and the option key is the only identifier the fault has.
+    echo "\n--- #208: no in-processing status configured ---\n";
+    $board = healthyBoard();
+    scan($board, ['cav7ERInProcessingPrefixIds' => '']);
+    check('no application is reminded', nothingHappened($board), records());
+    check(
+        'and the option to fix is named',
+        someRecordNamesOptionOrAddOnId('cav7ERInProcessingPrefixIds'),
+        records()
+    );
+
+    // === #208: no configured clerk position has a seated holder =============
+    // A reminder that can reach nobody. Un-guarded the run gets all the way to
+    // per-thread routing and complains once per remindable application, every
+    // hour, about threads that are perfectly fine — so the operator is sent to
+    // look at applications when the fault is a position list. Say it once,
+    // against the option, and stop: which is why "no application is named" is
+    // the assertion that carries this one.
+    echo "\n--- #208: no clerk is seated in any configured position ---\n";
+    $board = healthyBoard();
+    $board->seats = [];
+    scan($board);
+    check('no application is reminded', nothingHappened($board), records());
+    check(
+        'a clerk-position option is named',
+        someRecordNamesOptionOrAddOnId('cav7ERStandardClerkPositionIds'),
+        records()
+    );
+    check('and no individual application is blamed', !someRecordNames(101), records());
+
+    // === #208: the vendor add-on supplying prefix links is switched off =====
+    // Disabled rather than uninstalled, so its link table and every stale row in
+    // it are still there and still readable. XenForo checks `require` only on
+    // install and upgrade, so nothing else notices. Un-guarded the scan reads
+    // that abandoned table as current and reminds against it — the fault is not
+    // silence here but a wrong answer delivered confidently, so "nothing is
+    // reminded" is the assertion that matters.
+    echo "\n--- #208: SV/MultiPrefix disabled but still installed ---\n";
+    $board = healthyBoard();
+    $board->multiPrefixActive = false;
+    scan($board);
+    check(
+        'no application is reminded off the abandoned table',
+        nothingHappened($board),
+        'reminded: ' . implode(',', $board->noted)
+    );
+    check('and the vendor add-on is named', someRecordNamesOptionOrAddOnId('SV/MultiPrefix'), records());
+
+    // === #208: the vendor link table cannot be read =========================
+    // This covers the CATCH in fetchThreadPrefixLinks, not the guard in remind()
+    // that reads its null return — see this file's header. The guard's early
+    // return is redundant with the empty-result guard below it, so deleting it
+    // changes nothing; the catch is the part that carries a contract.
+    //
+    // That contract is not "some warning happened". It is that the underlying
+    // failure stays diagnosable at the operator-facing log boundary: an operator
+    // told only "a read failed" cannot tell a renamed table from revoked
+    // permissions. The token below is the test's own, so proving it surfaced
+    // pins no exception type and no production sentence.
+    echo "\n--- #208: the prefix link table throws on read ---\n";
+    $board = healthyBoard();
+    $board->linkReadFailure = 'injected read failure ' . READ_FAILURE_TOKEN;
+    scan($board);
+    check('no application is reminded', nothingHappened($board), records());
+    check(
+        'and the underlying failure is still diagnosable from the log',
+        someRecordNames(READ_FAILURE_TOKEN),
+        records()
+    );
+
+    // === #208: the vendor link table reads clean but holds nothing ==========
+    // A different fault from the one above and the more dangerous of the two:
+    // the query works, so nothing errors anywhere. Every valid queue thread
+    // carries at least its type prefix in this table, so no rows at all across a
+    // non-empty queue means the table is not being populated — and reading that
+    // as "no application is being worked" would chase the entire queue.
+    echo "\n--- #208: the prefix link table returns no rows ---\n";
+    $board = healthyBoard();
+    foreach ($board->threads as $threadId => $thread) {
+        $board->threads[$threadId]['links'] = [];
+    }
+    scan($board);
+    check(
+        'the whole queue is not reminded',
+        nothingHappened($board),
+        'reminded: ' . implode(',', $board->noted)
+    );
+    check('and the run reports what it saw', \XF::$logged !== [], records());
+    // Deliberately NOT asserted here: that this was reported as an empty read
+    // rather than as a failed one. This board injects no failure, so a check for
+    // the read-failure token could never fail whatever production did — vacuous,
+    // not strict. The two faults are separated only by which sentence is logged,
+    // and pinning a sentence is the change detector this file refuses to be.
+
+    // === #208: one prefix listed under both enlistment types ================
+    // Ambiguous routing rather than a stoppage: route() fail-safes to the union
+    // of both clerk sets so no responsible clerk is dropped, and the run carries
+    // on. Both halves are asserted — silently widening the audience with nothing
+    // logged, and aborting a run that should have continued, are both wrong.
+    echo "\n--- #208: a prefix configured under both types ---\n";
+    $board = healthyBoard();
+    scan($board, ['cav7ERStandardPrefixIds' => '57,58']);
+    check('the ambiguous prefix id is named', someRecordNames(58), records());
+    check(
+        'and the run carries on and still reminds',
+        $board->noted === [101],
+        'reminded: ' . implode(',', $board->noted)
+    );
 
     // === Summary ============================================================
     if ($failures > 0) {
