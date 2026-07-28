@@ -295,6 +295,7 @@ plain unit with no XenForo dependency:
 | `ManagedRoleStrip` | what an unlinked holder should be left holding | its own tests |
 | `MemberCursor` | where the guild member walk goes next, and when it stops | its own tests |
 | `RoleScope` | which of the configured roles belong to the guild in hand | `RoleClaim`'s tests, through its caller |
+| `RoleReach` | which roles Discord will not let this bot move | its own tests |
 
 That is the whole of what CI covers here. Everything that needs a live stack — the
 three class-extension registrations, the method overrides, the cron entry, the resync
@@ -332,6 +333,13 @@ CI cannot see any of them, and each one fails silently in production if it break
 10. The cron entry appears on the cron admin page, and the sweep runs when it fires.
 11. A fresh install lands that entry **inactive**, and an entry an admin has enabled is
     still enabled after the add-on's data is imported again.
+12. The per-user sync keeps an out-of-reach role, on **both** sides of its arithmetic,
+    which needs two separate members (#242). One **holds** a role above the bot that no
+    group grants: that role must survive and their reachable roles must
+    still be corrected. One is in a group **granting** a role above the bot which they
+    do not hold: their sync must succeed and simply not ask for it. A fix applied to
+    only one side passes whichever member matches it, so run both and confirm each goes
+    red on its own when the other side's filter is removed.
 
 Items 5 to 11 were run for the 1.1.0 release and the result is recorded in
 [docs/verification/reconciliation-sweep-guards.md](docs/verification/reconciliation-sweep-guards.md).
@@ -344,11 +352,13 @@ any call and no green run says anything about these. They need a real guild, the
 `GUILD_MEMBERS` intent, and egress granted deliberately. They are release blockers, not
 follow-ups.
 
-**All six were run on 2026-07-27 and passed**; the method and the numbers are in
+**Items 1 to 6 were run on 2026-07-27 and passed**; the method and the numbers are in
 [docs/verification/reconciliation-sweep-guards.md](docs/verification/reconciliation-sweep-guards.md).
 Checks 2 to 6 ran in a throwaway guild at full write privilege, using a second bot
 application invited nowhere else — the token is one global option while the guild is
-per server row, so that is a structural boundary rather than a promise. Check 1 and the
+per server row, so that is a structural boundary rather than a promise. The Discord
+behaviour item 7 rests on was measured separately on 2026-07-28 and is recorded in the
+same file. Check 1 and the
 refusal half of check 5 ran against the live guild with that same bot holding no
 `Manage Roles`, so every patch it issued was refused and no role moved.
 
@@ -367,6 +377,13 @@ refusal half of check 5 ran against the live guild with that same bot holding no
    refused rather than as a strip. Nothing short of a real guild can show that — a
    dev stack fails the guild-roles read first and never reaches the call.
 6. Corrections the sweep makes appear in the corrected member's change log.
+7. An out-of-reach role is reported rather than retried, and the printed remedy works
+   (#242). Position a managed role above the bot's own role, run the sweep, and confirm
+   the run names that role. Then **carry out the remedy the line prints** — move the
+   bot's role above it — and re-read the affected member **from Discord**, confirming
+   their managed roles now match what their groups grant. That the report stops naming
+   them is not the check: stale or memoized state satisfies that without any role
+   having moved.
 
 `tools/discord-resync-cooldown-check.sh` does 2 and 3 unattended, for both kinds of
 member. It builds its own user group, its own members and its own credentials, lets

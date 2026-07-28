@@ -14,8 +14,11 @@
  * run() is the only public entry, and the only one Cron\Reconcile calls. The
  * assertions are on what a caller can see: the role sets Discord is actually sent,
  * and the members queued for correction. Never on a path string, a cursor value, a
- * query, or the wording of a log line — including in the three scenarios that compare
- * two reports, which is a different thing and has its own section below.
+ * query, or the wording of a log line — including in the scenarios that read a report
+ * at all, which do it in two ways, neither of them prose. The three throttle scenarios
+ * compare two reports for difference and have their own section below. The #242
+ * scenarios match role IDS inside a report, or count reports; ids are data, so a
+ * reword keeps them and dropping them fails.
  *
  * ---------------------------------------------------------------------------
  * On the SQLite database below — READ THIS BEFORE "FIXING" A QUERY
@@ -35,13 +38,12 @@
  * dev stack's business.
  *
  * ---------------------------------------------------------------------------
- * On the three throttle scenarios — READ THIS BEFORE ASSERTING ON A LOG LINE
+ * On reading a report at all — READ THIS BEFORE ASSERTING ON A LOG LINE
  * ---------------------------------------------------------------------------
  * A throttled read and a refused one differ in nothing a caller can see except the
- * report the sweep writes, so those three scenarios are the only ones here that look
- * at a log line at all. They never read one for its wording. Each runs the same
- * fixture twice, changing one input — which way the call fails — and asserts the two
- * reports DIFFER. Rewording either cause keeps them green; only collapsing the two
+ * report the sweep writes, so those three scenarios have to look at one. They never
+ * read it for its wording: each runs the same fixture twice, changing one input —
+ * which way the call fails — and asserts the two reports DIFFER. Rewording either cause keeps them green; only collapsing the two
  * back into one report turns them red.
  *
  * That works only while the two runs are otherwise identical, so each scenario first
@@ -123,6 +125,10 @@ namespace NF\Discord {
         public static bool $patchesRefused = false;
         /** @var int|null what getRetryAfter() reports about the call just made */
         public static ?int $retryAfter = null;
+        /** @var string[] the roles the bot itself holds on the guild */
+        public static array $botRoleIds = [];
+        /** @var bool whether the bot's own guild member record is unreadable */
+        public static bool $currentMemberUnreadable = false;
 
         public static function getDiscordConfiguration()
         {
@@ -161,6 +167,22 @@ namespace NF\Discord {
             self::$retryAfter = null;
 
             return self::$guildRoles ?? [];
+        }
+
+        /**
+         * The bot's own guild member record, which is where its role positions — and
+         * so everything it can reach — come from. The vendor spends two calls on this
+         * because bots may not read 'users/@me/guilds/{id}/member'; what matters here
+         * is only that a failure comes back as the same falsy answer every other
+         * failure does.
+         */
+        public function getCurrentGuildMember(?string $guildId = null)
+        {
+            if (self::$currentMemberUnreadable) {
+                return false;
+            }
+
+            return ['user' => ['id' => '1244685263242788928'], 'roles' => self::$botRoleIds];
         }
 
         public function get(string $path = '', array $data = [], array $options = [])
@@ -445,6 +467,7 @@ namespace {
 namespace Cav7\DiscordSyncPatch\Tests {
 
     require __DIR__ . '/../MemberCursor.php';
+    require __DIR__ . '/../RoleReach.php';
     require __DIR__ . '/../RoleScope.php';
     require __DIR__ . '/../RoleDivergence.php';
     require __DIR__ . '/../ManagedRoleStrip.php';
@@ -472,6 +495,12 @@ namespace Cav7\DiscordSyncPatch\Tests {
     const MANAGED_ROLE = '111111111111111111';
     const UNMANAGED_ROLE = '888888888888888888';
     const PRESERVED_ROLE = '999999999999999999';
+
+    // The bot's own role, and one sitting above it. Positions are what decide reach,
+    // so every role in the fixture carries one and the bot holds BOT_ROLE — a bot
+    // holding nothing reaches nothing, and every role on the guild would be immovable.
+    const BOT_ROLE = '222222222222222222';
+    const OUT_OF_REACH_ROLE = '333333333333333333';
 
     /**
      * A guild member as Discord reports one.
@@ -569,10 +598,15 @@ namespace Cav7\DiscordSyncPatch\Tests {
         Api::$patches = [];
         Api::$configuration = ['token' => 'stub'];
         Api::$guildRoles = [
-            ['id' => PRESERVED_ROLE, 'managed' => true, 'tags' => ['premium_subscriber' => null]],
-            ['id' => UNMANAGED_ROLE, 'managed' => false, 'tags' => []],
-            ['id' => MANAGED_ROLE, 'managed' => false, 'tags' => []],
+            ['id' => GUILD_ID, 'position' => 0, 'managed' => false, 'tags' => []],
+            ['id' => UNMANAGED_ROLE, 'position' => 4, 'managed' => false, 'tags' => []],
+            ['id' => MANAGED_ROLE, 'position' => 5, 'managed' => false, 'tags' => []],
+            ['id' => PRESERVED_ROLE, 'position' => 6, 'managed' => true, 'tags' => ['premium_subscriber' => null]],
+            ['id' => BOT_ROLE, 'position' => 10, 'managed' => true, 'tags' => []],
+            ['id' => OUT_OF_REACH_ROLE, 'position' => 20, 'managed' => false, 'tags' => []],
         ];
+        Api::$botRoleIds = [BOT_ROLE];
+        Api::$currentMemberUnreadable = false;
         Api::$guildMembers = [];
         Api::$unreadableOnCall = null;
         Api::$memberCalls = 0;
@@ -702,6 +736,253 @@ namespace Cav7\DiscordSyncPatch\Tests {
         'patched: ' . implode(', ', array_keys($sent))
             . ' — most of the guild holds no managed role, and patching them spends the'
             . ' whole rate budget writing back what was already there'
+    );
+
+    // -----------------------------------------------------------------------
+    // A role the bot cannot reach survives the strip.
+    // -----------------------------------------------------------------------
+    //
+    // Issue #242. A bot may only add or remove roles below its own highest one, and
+    // patchGuildMemberRoles replaces the whole set — so a set that omits a role sitting
+    // above the bot is asking Discord to REMOVE it, which Discord refuses whole. The
+    // strip then moves nothing, the member is still holding what they were, and the
+    // next run tries the identical call.
+    //
+    // Keeping that role is what makes the rest of the write land: measured on a real
+    // guild, a member whose top role is above the bot takes a 200 as long as that role
+    // stays in the set. So the reachable managed role must still come off in the same
+    // call. Asserting only that the out-of-reach role survives would pass just as well
+    // against a sweep that had given up on the member entirely.
+
+    freshStack();
+
+    // A second group makes the out-of-reach role a managed one, with nobody in it:
+    // managed is a property of the configuration, never of a member.
+    \XF::$db->insert('xf_user_group', [
+        ['user_group_id' => 4, 'nfd_server_group_ids' => SERVER_ID . ':' . OUT_OF_REACH_ROLE],
+    ]);
+
+    Api::$guildMembers = [
+        '1384909947564740001' => member(
+            '1384909947564740001',
+            [MANAGED_ROLE, OUT_OF_REACH_ROLE, UNMANAGED_ROLE]
+        ),
+    ];
+
+    (new ReconciliationSweep())->run();
+
+    $sentToHolder = Api::$patches[0][1] ?? null;
+    if (is_array($sentToHolder)) {
+        sort($sentToHolder, SORT_STRING);
+    }
+    $keptByHolder = [OUT_OF_REACH_ROLE, UNMANAGED_ROLE];
+    sort($keptByHolder, SORT_STRING);
+
+    check(
+        'a role above the bot survives the strip while the reachable managed role comes off',
+        $sentToHolder === $keptByHolder,
+        'sent ' . json_encode($sentToHolder) . ' — dropping the out-of-reach role makes'
+            . ' Discord refuse the whole call, so the reachable role is not stripped either'
+    );
+
+    // -----------------------------------------------------------------------
+    // A disagreement no correction could carry out is not a divergence.
+    // -----------------------------------------------------------------------
+    //
+    // Issue #242's other half. A group granting a role above the bot leaves every
+    // member of that group permanently short of it: the sync asks Discord to add a role
+    // it will not add, the write is refused whole, the record is never updated, and the
+    // next run selects them again. Queueing a correction that cannot land is the loop.
+    //
+    // The control member is what makes this mean anything. A sweep that had stopped
+    // queueing anybody at all would satisfy the first check on its own.
+
+    freshStack();
+
+    \XF::$db->insert('xf_user_group', [
+        ['user_group_id' => 4, 'nfd_server_group_ids' => SERVER_ID . ':' . OUT_OF_REACH_ROLE],
+        ['user_group_id' => 5, 'nfd_server_group_ids' => SERVER_ID . ':' . MANAGED_ROLE],
+    ]);
+
+    // Both records agree with their member's groups, are active and carry no error, so
+    // the forum-side scan leaves both alone and what happens next is Discord-side only.
+    \XF::$db->insert('xf_user', [
+        ['user_id' => 501, 'user_group_id' => 4, 'secondary_group_ids' => ''],
+        ['user_id' => 502, 'user_group_id' => 5, 'secondary_group_ids' => ''],
+    ]);
+    \XF::$db->insert('xf_user_connected_account', [
+        ['user_id' => 501, 'provider' => 'nfDiscord', 'provider_key' => '1384909947564750001'],
+        ['user_id' => 502, 'provider' => 'nfDiscord', 'provider_key' => '1384909947564750002'],
+    ]);
+    \XF::$db->insert('xf_nf_discord_sync_log', [
+        ['user_id' => 501, 'guild_id' => GUILD_ID, 'user_group_ids' => '4', 'active' => 1, 'user_error_phrase' => ''],
+        ['user_id' => 502, 'guild_id' => GUILD_ID, 'user_group_ids' => '5', 'active' => 1, 'user_error_phrase' => ''],
+    ]);
+
+    // Neither holds what their group grants. For 501 that role is above the bot, so
+    // nothing can be done about it; for 502 it is reachable and must still be fixed.
+    Api::$guildMembers = [
+        '1384909947564750001' => member('1384909947564750001', []),
+        '1384909947564750002' => member('1384909947564750002', []),
+    ];
+
+    (new ReconciliationSweep())->run();
+
+    check(
+        'a member short only of a role above the bot is not queued',
+        !in_array(501, queuedUserIds(), true),
+        'queued ' . json_encode(queuedUserIds()) . ' — the correction cannot land, so'
+            . ' queueing it re-queues them every quarter-hour for good'
+    );
+
+    check(
+        'a member short of a reachable role is still queued',
+        in_array(502, queuedUserIds(), true),
+        'queued ' . json_encode(queuedUserIds()) . ' — without this the check above'
+            . ' passes against a sweep that queues nobody'
+    );
+
+    // -----------------------------------------------------------------------
+    // The bot's own position cannot be read.
+    // -----------------------------------------------------------------------
+    //
+    // This fails OPEN, unlike the guild-roles read beside it, and the asymmetry is the
+    // point. A wrong-empty preserved set breaks writes that would otherwise have
+    // worked — every booster gets a set missing their booster role. A wrong-empty
+    // out-of-reach set can only fail for the members who were already failing, so
+    // abandoning the guild over it would trade everyone's correction for a subset's.
+    //
+    // Run twice against a fixture holding no out-of-reach role at all, so the two runs
+    // must agree on every outcome and differ only in what was reported. Equality is the
+    // fail-open assertion: a fail-closed sweep patches nothing and queues nothing.
+
+    $reconciledWith = static function (bool $unreadable): array {
+        freshStack();
+        Api::$currentMemberUnreadable = $unreadable;
+
+        // Divergent on the DISCORD side only — their record agrees with their groups,
+        // so the forum-side scan leaves them alone. A member the forum-side half picks
+        // up would be queued whether this failed open or closed, and would pin nothing.
+        \XF::$db->insert('xf_user_group', [
+            ['user_group_id' => 5, 'nfd_server_group_ids' => SERVER_ID . ':' . MANAGED_ROLE],
+        ]);
+        \XF::$db->insert('xf_user', [
+            ['user_id' => 601, 'user_group_id' => 5, 'secondary_group_ids' => ''],
+        ]);
+        \XF::$db->insert('xf_user_connected_account', [
+            ['user_id' => 601, 'provider' => 'nfDiscord', 'provider_key' => '1384909947564760001'],
+        ]);
+        \XF::$db->insert('xf_nf_discord_sync_log', [
+            ['user_id' => 601, 'guild_id' => GUILD_ID, 'user_group_ids' => '5', 'active' => 1, 'user_error_phrase' => ''],
+        ]);
+
+        Api::$guildMembers = [
+            '1384909947564760001' => member('1384909947564760001', []),
+            '1384909947564760002' => member('1384909947564760002', [MANAGED_ROLE, UNMANAGED_ROLE]),
+        ];
+
+        (new ReconciliationSweep())->run();
+
+        return [
+            'patches' => Api::$patches,
+            'queued' => queuedUserIds(),
+            'reports' => count(\XF::$errors),
+        ];
+    };
+
+    $readable = $reconciledWith(false);
+    $unreadable = $reconciledWith(true);
+
+    check(
+        'the guild is still reconciled when the bot cannot read its own position',
+        $unreadable['patches'] === $readable['patches'] && $unreadable['patches'] !== [],
+        'patched ' . json_encode($unreadable['patches']) . ' against ' . json_encode($readable['patches'])
+            . ' — failing closed here abandons every member over a read that concerns a few'
+    );
+
+    check(
+        'the correction is still queued when the bot cannot read its own position',
+        $unreadable['queued'] === $readable['queued'] && $unreadable['queued'] !== [],
+        'queued ' . json_encode($unreadable['queued']) . ' against ' . json_encode($readable['queued'])
+    );
+
+    check(
+        'a run that could not read its own position says so',
+        $unreadable['reports'] === $readable['reports'] + 1,
+        $unreadable['reports'] . ' report(s) against ' . $readable['reports']
+            . ' — a run that silently reverted to the old behaviour is indistinguishable'
+            . ' from a healthy one, which is how this bug lasted'
+    );
+
+    // -----------------------------------------------------------------------
+    // What the run tells an admin about roles it cannot reach.
+    // -----------------------------------------------------------------------
+    //
+    // Excluding these roles silently would close #242 on every count — no doomed call,
+    // no permanent divergence, no repeated log — and leave the board quietly not
+    // enforcing a role a group explicitly grants, with every run reporting clean. So
+    // the run names them, because the ids are what the remedy acts on.
+    //
+    // The assertion is on the role IDS, which are data. It is not on the sentence
+    // around them: rewording keeps the ids, and dropping them fails. Two roles are out
+    // of reach here so that "every" is a claim — naming only the first goes red — and
+    // the count pins the aggregation at one line per guild per run rather than one per
+    // role, which is what makes the repetition affordable.
+
+    const SECOND_OUT_OF_REACH_ROLE = '444444444444444444';
+
+    $reportsNamingOutOfReach = static function (): array {
+        return array_values(array_filter(
+            \XF::$errors,
+            static fn (string $report): bool => str_contains($report, OUT_OF_REACH_ROLE)
+                || str_contains($report, SECOND_OUT_OF_REACH_ROLE)
+        ));
+    };
+
+    freshStack();
+    Api::$guildRoles[] = ['id' => SECOND_OUT_OF_REACH_ROLE, 'position' => 21, 'managed' => false, 'tags' => []];
+    \XF::$db->insert('xf_user_group', [
+        [
+            'user_group_id' => 4,
+            'nfd_server_group_ids' => SERVER_ID . ':' . OUT_OF_REACH_ROLE
+                . ',' . SERVER_ID . ':' . SECOND_OUT_OF_REACH_ROLE,
+        ],
+    ]);
+
+    (new ReconciliationSweep())->run();
+
+    $outOfReachReports = $reportsNamingOutOfReach();
+
+    check(
+        'the run names every managed role it cannot reach',
+        count($outOfReachReports) === 1
+            && str_contains($outOfReachReports[0], OUT_OF_REACH_ROLE)
+            && str_contains($outOfReachReports[0], SECOND_OUT_OF_REACH_ROLE),
+        json_encode($outOfReachReports) . ' — an admin cannot move a role the report'
+            . ' does not name, and one line per guild is what makes saying it every run affordable'
+    );
+
+    // The same guild with the bot above everything. Nothing is out of reach, so there
+    // is nothing to say — a report printed here would be describing no event.
+    freshStack();
+    Api::$botRoleIds = [BOT_ROLE];
+    Api::$guildRoles[] = ['id' => SECOND_OUT_OF_REACH_ROLE, 'position' => 1, 'managed' => false, 'tags' => []];
+    \XF::$db->insert('xf_user_group', [
+        ['user_group_id' => 4, 'nfd_server_group_ids' => SERVER_ID . ':' . SECOND_OUT_OF_REACH_ROLE],
+    ]);
+
+    (new ReconciliationSweep())->run();
+
+    // Asserted on the total, not on reports naming a role. This fixture has nothing
+    // else to report — the guild is empty, so no strip is attempted, and both reads
+    // succeed — so any line at all is a spurious one. Filtering by role id would let
+    // through the shape most likely to be written by accident: a report that fires
+    // unconditionally and names an empty list.
+    check(
+        'a guild with nothing out of reach is not reported at all',
+        \XF::$errors === [],
+        json_encode(\XF::$errors) . ' — a line every quarter-hour about a guild that is'
+            . ' fine is the noise this change exists to remove'
     );
 
     // -----------------------------------------------------------------------

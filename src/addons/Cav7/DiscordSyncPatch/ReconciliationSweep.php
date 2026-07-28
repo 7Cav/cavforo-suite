@@ -13,8 +13,9 @@ use NF\Discord\Api;
  * return. Every rule it rests on lives in a unit that runs without XenForo and is
  * covered by the ordinary test run: SyncRecordStaleness (the forum-side rule),
  * RoleDivergence (the Discord-side rule), ManagedRoleStrip (what an unlinked holder
- * keeps), MemberCursor (how the member fetch walks), and RoleScope (narrowing the
- * configured roles to one guild).
+ * keeps), MemberCursor (how the member fetch walks), RoleScope (narrowing the
+ * configured roles to one guild), and RoleReach (which roles Discord will not let this
+ * bot move).
  *
  * Four ways the vendor's queueing does nothing while reporting success are guarded
  * here, because a cron meets all of them every quarter-hour with nobody watching.
@@ -34,6 +35,11 @@ use NF\Discord\Api;
  *  - A role Discord manages itself is flagged `managed`, and the Nitro-booster role
  *    additionally carries the premium_subscriber tag. Either marks a role no bot can
  *    move, which is how they are recognised without naming any id.
+ *  - A bot may only add or remove roles below its own highest one, and the constraint
+ *    is on the roles MOVED rather than on the member holding them — a member whose top
+ *    role is above the bot still takes a 200 as long as that role stays in the set.
+ *    Administrator does not bypass it. Measured on a real guild for #242; the probe is
+ *    in docs/verification/reconciliation-sweep-guards.md.
  *  - getRoles() returns an empty array for a failed request as well as a successful
  *    one, so an empty result is read as failure — every guild has an @everyone role.
  *    It also caches what it got for five minutes without distinguishing the two, which
@@ -166,8 +172,8 @@ class ReconciliationSweep
         // Read first, and cheaper than the member walk, because nothing on the Discord
         // side can be decided safely without it. Both decisions below take the
         // protected roles as an input, and both are unsafe with a wrong answer.
-        $preservedRoleIds = $this->preservedRoleIds($api);
-        if ($preservedRoleIds === null) {
+        $guildRoles = $this->guildRoles($api);
+        if ($guildRoles === null) {
             // Both causes refuse the same way, and getRoles() hides the difference by
             // substituting [] for a failed request. Which one it was decides whether
             // an admin has anything to do: a throttle is gone by the next run, an
@@ -182,6 +188,37 @@ class ReconciliationSweep
 
             return $divergentUserIds;
         }
+
+        // Where the bot sits decides which roles it can move at all. Unlike the roles
+        // read above this fails OPEN, and the asymmetry is deliberate: a wrong-empty
+        // preserved set breaks writes that would otherwise have worked, while a
+        // wrong-empty out-of-reach set can only fail for the members already failing.
+        // Refusing the whole guild's reconciliation over it would trade everyone's
+        // correction for a subset's.
+        $botRoleIds = $this->botRoleIds($api);
+        if ($botRoleIds === null) {
+            \XF::logError(sprintf(
+                'Cav7/DiscordSyncPatch: the reconciliation sweep could not read its own guild member record on %s, because %s, so it could not tell which roles sit above it. It reconciled the guild anyway; any role at or above its own will be refused by Discord this run.',
+                $guildId,
+                $this->wasThrottled($api)
+                    ? 'Discord rate-limited the bot'
+                    : 'the read came back unusable'
+            ));
+        }
+
+        // What both decisions below actually want: every role no write of ours can
+        // move, whichever of the two reasons applies. Null is passed through rather
+        // than substituted with an empty array — a bot holding no role reaches nothing,
+        // so [] would make the whole guild immovable.
+        $immovableRoleIds = RoleReach::immovable($guildRoles, $botRoleIds, $guildId);
+
+        // Only the roles out of reach are worth telling an admin about, so they are
+        // asked for separately from the union above.
+        $outOfReachRoleIds = $botRoleIds === null
+            ? []
+            : RoleReach::outOfReach($guildRoles, $botRoleIds, $guildId);
+
+        $this->reportOutOfReach($guildId, array_intersect($outOfReachRoleIds, $managedRoleIds));
 
         $members = $this->fetchGuildMembers($api, $guildId);
         if ($members === null) {
@@ -219,7 +256,7 @@ class ReconciliationSweep
                     $discordId,
                     $heldRoleIds,
                     $managedRoleIds,
-                    $preservedRoleIds
+                    $immovableRoleIds
                 )]++;
                 continue;
             }
@@ -230,7 +267,7 @@ class ReconciliationSweep
                 $defaultServerId
             );
 
-            if (RoleDivergence::diverges($heldRoleIds, $grantedRoleIds, $managedRoleIds, $preservedRoleIds)) {
+            if (RoleDivergence::diverges($heldRoleIds, $grantedRoleIds, $managedRoleIds, $immovableRoleIds)) {
                 $divergentUserIds[$userId] = $userId;
             }
         }
@@ -290,7 +327,7 @@ class ReconciliationSweep
      *
      * @param string[] $heldRoleIds
      * @param string[] $managedRoleIds
-     * @param string[] $preservedRoleIds
+     * @param string[] $immovableRoleIds
      *
      * @return string One of the STRIP_ constants. They are counted apart because they
      *                mean different things: only STRIP_DONE is a correction, and the
@@ -302,10 +339,10 @@ class ReconciliationSweep
         string $discordId,
         array $heldRoleIds,
         array $managedRoleIds,
-        array $preservedRoleIds
+        array $immovableRoleIds
     ): string
     {
-        $keepRoleIds = ManagedRoleStrip::rolesToKeep($heldRoleIds, $managedRoleIds, $preservedRoleIds);
+        $keepRoleIds = ManagedRoleStrip::rolesToKeep($heldRoleIds, $managedRoleIds, $immovableRoleIds);
 
         // null is not an empty set. Most of the guild holds no managed role at all, and
         // patching them would rewrite thousands of members to exactly what they already
@@ -573,9 +610,69 @@ class ReconciliationSweep
     }
 
     /**
-     * Roles Discord manages itself, which a bot can neither grant nor remove. Sending a
-     * role set that omits one makes Discord refuse the whole call, and the vendor
-     * swallows that refusal, so the strip would be lost with nothing recorded.
+     * The roles the bot itself holds on this guild, or null if that could not be read.
+     *
+     * Two calls, because bots may not read `users/@me/guilds/{id}/member` and the
+     * vendor works around it by finding the current user and then looking that id up
+     * as an ordinary guild member. One extra round trip per guild per run, against a
+     * budget near sixty a minute and a walk that already spends nine.
+     *
+     * Read here rather than picked out of the member walk deliberately. A partial walk
+     * is a normal outcome — a throttle, a revoked intent, the page bound — and taking
+     * the ceiling from it would make a decision input hostage to how far the walk got,
+     * leaving a run with members to judge and nothing to judge them against.
+     *
+     * @return string[]|null
+     */
+    protected function botRoleIds(Api $api): ?array
+    {
+        $member = $api->getCurrentGuildMember();
+
+        if (!is_array($member) || !isset($member['roles']) || !is_array($member['roles'])) {
+            return null;
+        }
+
+        return array_map('strval', $member['roles']);
+    }
+
+    /**
+     * Records the managed roles this bot cannot move, once per guild per run.
+     *
+     * Unlike a preserved role, which is permanent and correct, this is a
+     * misconfiguration: a user group grants a role the bot is positioned below, so that
+     * role is not being enforced for anybody and one drag in the role list fixes it.
+     * Excluding those roles silently would leave the board quietly not enforcing them
+     * with every run reporting clean — the failure this whole change exists to end.
+     *
+     * The ids are named because they are what the remedy acts on. The line repeats
+     * every run while the condition lasts, which is deliberate: it stops the moment the
+     * role is moved, and an admin reading the last hour of the error log needs to see a
+     * live problem rather than infer one from a silence.
+     *
+     * @param string[] $outOfReachManagedRoleIds
+     */
+    protected function reportOutOfReach(string $guildId, array $outOfReachManagedRoleIds): void
+    {
+        if (!$outOfReachManagedRoleIds) {
+            return;
+        }
+
+        \XF::logError(sprintf(
+            'Cav7/DiscordSyncPatch: on guild %s, %d role(s) a user group grants sit at or above this bot\'s own highest role, so Discord refuses to add or remove them and the sweep leaves them alone: %s. Move the bot\'s role above them in Server Settings > Roles and the next run will enforce them.',
+            $guildId,
+            count($outOfReachManagedRoleIds),
+            implode(', ', $outOfReachManagedRoleIds)
+        ));
+    }
+
+    /**
+     * The guild's roles, or null if they could not be read.
+     *
+     * Read because nothing on the Discord side can be decided without them: which roles
+     * Discord manages itself, and which sit at or above the bot, both come out of this
+     * one list. Sending a set that omits either kind makes Discord refuse the whole
+     * call, and the vendor swallows that refusal, so the write would be lost with
+     * nothing recorded.
      *
      * Fails closed. The vendor's getRoles() returns [] for a request that failed just
      * as readily as for one that succeeded — `$this->get(...) ?: []` — so an empty
@@ -587,9 +684,9 @@ class ReconciliationSweep
      * An empty list is unambiguous evidence of that failure rather than a guess, since
      * every guild carries at least the @everyone role.
      *
-     * @return string[]|null The protected role ids, or null if they could not be read.
+     * @return array<int, array>|null The guild's roles, or null if unreadable.
      */
-    protected function preservedRoleIds(Api $api): ?array
+    protected function guildRoles(Api $api): ?array
     {
         // Read fresh, not from the vendor's cache. getRoles() saves whatever it got for
         // five minutes INCLUDING the `?: []` it substitutes for a failed request, and
@@ -602,18 +699,7 @@ class ReconciliationSweep
             return null;
         }
 
-        $preserved = [];
-        foreach ($roles as $role) {
-            // `managed` covers every role an integration owns — a bot's own role as
-            // well as the Nitro-booster role, which carries the premium_subscriber tag
-            // and is managed besides. The tag is still read because it is the property
-            // the vendor itself keys on, and a role could in principle carry it alone.
-            if (!empty($role['managed']) || array_key_exists('premium_subscriber', $role['tags'] ?? [])) {
-                $preserved[] = (string) $role['id'];
-            }
-        }
-
-        return $preserved;
+        return $roles;
     }
 
     /**
