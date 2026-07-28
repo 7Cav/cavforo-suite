@@ -21,6 +21,12 @@ live board: 3,175 sync log rows, 3,577 nfDiscord connected accounts, one guild.
 > Everything this first pass lists as unreachable has since been reached. The section
 > below also corrects one number here: see [Scale observed](#scale-observed).
 
+> **The sweep ships disabled**, decided after this pass ran. What that does on install
+> and on upgrade was checked separately on 2026-07-28 and is recorded in
+> [The shipped default](#the-shipped-default-the-entry-installs-disabled). Every check
+> in the table below was run with the entry fired deliberately, so none of them depended
+> on the flag.
+
 ## What this pass cannot answer
 
 Everything Discord-side. The stack's bot token is deliberately blank, so the
@@ -117,6 +123,43 @@ NF/Discord's own cron excludes by filtering on `sync_log.active = 1`.
 
 No row on this board carries an error phrase, and 463 connected accounts have no sync
 record at all; the scan leaves those alone, since they were never synced on this guild.
+
+## The shipped default: the entry installs disabled
+
+Run on 2026-07-28 for [#237](https://github.com/7Cav/cavforo-suite/issues/237), on the
+same stack, against the build that ships `active="0"` in `_data/cron.xml`. Dev mode is
+off there, so `xf:addon-install` reads the `_data` tree — the path a board takes
+installing the release zip, not the `_output` tree a dev-mode board would import. The
+decision this checks is [ADR-0008](../adr/0008-the-sweep-ships-disabled.md), which is
+also where the mechanism behind check 2 is written down.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | After an uninstall and a fresh install, `xf_cron_entry.active` for `cav7DSPReconcile` is `0` | pass |
+| 2 | With that row set back to `1`, re-importing the add-on's data leaves it `1` | pass |
+| 3 | The stack is left holding the entry inactive, with the add-on's other data reinstalled | pass |
+
+Check 2 is the one worth having. It is what separates a shipped default from a switch
+the add-on holds: without it, shipping `0` would mean every upgrade quietly switching
+off a sweep the board had deliberately turned on, and check 1 alone cannot tell those
+two apart.
+
+Check 1 also left `next_run` at `2147483647` rather than at a quarter-hour boundary,
+which is XenForo's way of recording that an entry has no next run. Worth naming: an
+inactive entry is not one waiting quietly on a schedule.
+
+**How the board was put back.** Not to its pre-pass state, and the difference is the
+point. The uninstall in check 1 deleted the cron row the board was holding — the
+previous build's, at `active=1` — so there is no original row to restore; the install
+created a new one from the shipped data. What the reinstall did put back is everything
+else the add-on owns: its three class extensions, nine phrases and template
+modification, all imported again by the same install. The pass ends with the entry at
+`active=0`, which is what this build ships, and check 2's temporary `1` undone. That
+last step was made through the entity layer rather than by raw SQL, so `next_run`
+carries the `2147483647` sentinel a real install produces; a raw `UPDATE` sets the flag
+but leaves a stale past `next_run` behind, which reads as an entry that is merely
+overdue. Nothing outside this add-on's own rows was touched, so there is nothing else
+to unwind.
 
 ## Discord-side pass: a test guild and a fenced live guild
 
@@ -317,10 +360,11 @@ inventory — a fix designed off "one path" would be designed off a wrong readin
 ## Re-running it
 
 The script is not committed — it mutates a board and its value is in the recorded
-result, not in re-running it unchanged. What it does is the numbered list above, in
-order, with the restore proven at the end. The setup it needs is the one the README
-already describes for the resync button: credentials filled in, and a server row that
-is both active and carries a guild id.
+result, not in re-running it unchanged. What it does is the numbered list in
+[What was checked, and what happened](#what-was-checked-and-what-happened), in order,
+with the restore proven at the end. The setup it needs is the one the README already
+describes for the resync button: credentials filled in, and a server row that is both
+active and carries a guild id.
 
 The `429` pass is the exception and is worth re-running, because it is the one check
 here that reads vendor behaviour rather than ours — and vendor behaviour is exactly
@@ -329,3 +373,24 @@ needs no credentials and touches no guild: the four numbered steps in its method
 the whole of it, and the table is what to compare against. Re-run it after a XenForo,
 Guzzle or NF/Discord upgrade. A `get()` that starts returning an array where the table
 says `false` is the silent-truncation shape arriving after all.
+
+[The shipped-default pass](#the-shipped-default-the-entry-installs-disabled) is worth
+re-running for the same reason, and is cheap: it needs no credentials, no guild and no
+script, and it touches nothing but this add-on's own rows. On a stack with dev mode
+**off**, so the install reads `_data`:
+
+```
+php cmd.php xf:addon-uninstall Cav7/DiscordSyncPatch
+php cmd.php xf:addon-install Cav7/DiscordSyncPatch
+# check 1: read active for cav7DSPReconcile — expect 0, next_run 2147483647
+# set it to 1
+php cmd.php xf:addon-rebuild Cav7/DiscordSyncPatch
+# check 2: read it again — expect 1
+# then set it back to 0 through the entity layer, not by UPDATE, so next_run
+# returns to the sentinel; check 3 is re-reading both columns
+```
+
+Re-run it after a XenForo upgrade. What it depends on is XenForo's own
+`getMaintainedAttributes()` contract, and check 2 turning red would mean upgrades had
+started overwriting a flag admins own — the failure mode the default is only safe
+without.
