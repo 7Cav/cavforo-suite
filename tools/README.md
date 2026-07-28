@@ -139,7 +139,9 @@ php tools/package-web-assets.php src/addons/Cav7/MilpacMention build/upload Cav7
 ### `validate-addon.php <addon-dir>` and `check-data-consistency.php <addon-dir>`
 
 The static checks CI runs in place of an install. `validate-addon.php` checks the
-`addon.json` shape, that `version_id` decodes to exactly what `version_string`
+`addon.json` shape — including that each required key carries a usable value
+rather than merely being present, since a `null` is neither a title nor a
+version — that `version_id` decodes to exactly what `version_string`
 says, that `description` is no longer than the 200 characters the admin add-on
 list renders whole, that every `_data/*.xml` is well-formed, and that
 `_data/class_extensions.xml` holds its rows in the canonical order

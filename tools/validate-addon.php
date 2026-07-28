@@ -220,10 +220,15 @@ if (!is_file($jsonPath)) {
                 $errors[] = "addon.json has key '$key', which XenForo derives and must not be set";
             }
         }
-        if (isset($json['version_id']) && !is_int($json['version_id'])) {
+        if (array_key_exists('title', $json)
+            && (!is_string($json['title']) || $json['title'] === '')
+        ) {
+            $errors[] = 'addon.json title must be a non-empty string';
+        }
+        if (array_key_exists('version_id', $json) && !is_int($json['version_id'])) {
             $errors[] = 'addon.json version_id must be an integer';
         }
-        if (isset($json['version_string']) && !is_string($json['version_string'])) {
+        if (array_key_exists('version_string', $json) && !is_string($json['version_string'])) {
             $errors[] = 'addon.json version_string must be a string';
         }
 
