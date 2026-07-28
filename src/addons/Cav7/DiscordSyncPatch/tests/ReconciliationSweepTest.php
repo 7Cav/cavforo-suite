@@ -16,9 +16,9 @@
  * and the members queued for correction. Never on a path string, a cursor value, a
  * query, or the wording of a log line — including in the scenarios that read a report
  * at all, which do it in two ways, neither of them prose. The three throttle scenarios
- * compare two reports for difference and have their own section below. The #242
- * scenarios match role IDS inside a report, or count reports; ids are data, so a
- * reword keeps them and dropping them fails.
+ * and the #249 bound scenario compare two reports for difference and share the section
+ * below. The #242 scenarios match role IDS inside a report, or count reports; ids are
+ * data, so a reword keeps them and dropping them fails.
  *
  * ---------------------------------------------------------------------------
  * On the SQLite database below — READ THIS BEFORE "FIXING" A QUERY
@@ -41,10 +41,12 @@
  * On reading a report at all — READ THIS BEFORE ASSERTING ON A LOG LINE
  * ---------------------------------------------------------------------------
  * A throttled read and a refused one differ in nothing a caller can see except the
- * report the sweep writes, so those three scenarios have to look at one. They never
- * read it for its wording: each runs the same fixture twice, changing one input —
- * which way the call fails — and asserts the two reports DIFFER. Rewording either cause keeps them green; only collapsing the two
- * back into one report turns them red.
+ * report the sweep writes, so those three scenarios have to look at one. A run that
+ * stopped at its strip bound and one that ran out of holders are alike in the same
+ * way, so the #249 scenario joins them. None reads a report for its wording: each
+ * runs the same fixture twice, changing one input, and asserts the two reports
+ * DIFFER. Rewording either cause keeps them green; only collapsing the two back into
+ * one report turns them red.
  *
  * That works only while the two runs are otherwise identical, so each scenario first
  * asserts they are: same number of reports, same corrections queued, same patches
@@ -53,6 +55,11 @@
  * scenario would pass with the causes still collapsed. The member-page pair throttles
  * on call ONE for the same reason: nothing is read either way, so there is no count
  * and no partial-page trailer left free to vary. Do not "improve" it to call two.
+ *
+ * The #249 pair cannot avoid a count that way, because the thing it varies IS a
+ * population size. So it holds the guild the same size across both runs and pins that
+ * too, padding the smaller batch with members holding nothing this addon administers.
+ * Do not "simplify" it to two guilds of different sizes.
  *
  * Earlier versions of this file covered none of this, because the sweep caught
  * `RateLimitedException` and nothing could raise it — a stub that threw would have
@@ -558,6 +565,39 @@ namespace Cav7\DiscordSyncPatch\Tests {
     }
 
     /**
+     * A guild of unlinked members: $holders of them holding a managed role and so
+     * eligible for a strip, followed by $bystanders holding nothing this addon
+     * administers.
+     *
+     * The bound is about how many calls one run makes, not about how the members are
+     * spread across pages, so this stays under the page limit — one short page ends
+     * the walk immediately and the scenario is about the bound and nothing else.
+     *
+     * The bystanders sort after every holder, so they are only ever met once the bound
+     * is already spent. That is the whole point of them: they are the members a run
+     * would have made no call for anyway, and a run that counts them among the ones it
+     * left behind reports a backlog it does not have.
+     *
+     * @return array<string, array>
+     */
+    function guildOfUnlinkedHolders(int $holders, int $bystanders = 0): array
+    {
+        $members = [];
+
+        for ($i = 0; $i < $holders; $i++) {
+            $id = (string) (1384909947564730000 + $i);
+            $members[$id] = member($id, [MANAGED_ROLE, UNMANAGED_ROLE]);
+        }
+
+        for ($i = 0; $i < $bystanders; $i++) {
+            $id = (string) (1384909947564750000 + $i);
+            $members[$id] = member($id, [UNMANAGED_ROLE]);
+        }
+
+        return $members;
+    }
+
+    /**
      * One linked member whose sync record no longer describes their groups, so the
      * forum-side half of the run has something to correct whatever Discord does.
      *
@@ -568,6 +608,28 @@ namespace Cav7\DiscordSyncPatch\Tests {
     {
         $db->insert('xf_user', [
             ['user_id' => $userId, 'user_group_id' => 2, 'secondary_group_ids' => '3'],
+        ]);
+        $db->insert('xf_user_connected_account', [
+            ['user_id' => $userId, 'provider' => 'nfDiscord', 'provider_key' => $discordId],
+        ]);
+        $db->insert('xf_nf_discord_sync_log', [
+            ['user_id' => $userId, 'guild_id' => GUILD_ID, 'user_group_ids' => '2', 'active' => 1, 'user_error_phrase' => ''],
+        ]);
+    }
+
+    /**
+     * A linked member whose sync record still agrees with their groups, so the
+     * forum-side half of the run passes over them entirely.
+     *
+     * The opposite of staleMember(), and it exists for one reason: it leaves the
+     * Discord-side half of the member loop as the only thing that can queue them. A
+     * member the forum-side query would have caught anyway proves nothing about
+     * whether the loop kept walking.
+     */
+    function settledMember(FakeDb $db, int $userId, string $discordId): void
+    {
+        $db->insert('xf_user', [
+            ['user_id' => $userId, 'user_group_id' => 2, 'secondary_group_ids' => ''],
         ]);
         $db->insert('xf_user_connected_account', [
             ['user_id' => $userId, 'provider' => 'nfDiscord', 'provider_key' => $discordId],
@@ -1330,6 +1392,115 @@ namespace Cav7\DiscordSyncPatch\Tests {
         'both reported: ' . json_encode($throttledReports[0] ?? null)
             . ' — a refusal will happen again next run and a throttle will not,'
             . ' and this line is the only forum-side trace a strip leaves'
+    );
+
+    // -----------------------------------------------------------------------
+    // The bound on how many strip calls one run makes.
+    // -----------------------------------------------------------------------
+    //
+    // What makes this input large is never drift — the addon README's sweep section
+    // has the two anomalies that do. Both look exactly like an ordinary run until the
+    // calls have gone out, which is what the bound is for.
+    //
+    // Written against the constant rather than its value: the behaviour under test is
+    // that a bound exists and is honoured, not which number was picked.
+
+    freshStack();
+    Api::$guildMembers = guildOfUnlinkedHolders(ReconciliationSweep::MAX_STRIP_ATTEMPTS_PER_GUILD + 3);
+
+    (new ReconciliationSweep())->run();
+
+    check(
+        'a run with more unlinked holders than the bound makes exactly the bound in calls',
+        count(patchedDiscordIds()) === ReconciliationSweep::MAX_STRIP_ATTEMPTS_PER_GUILD,
+        'made ' . count(patchedDiscordIds()) . ' call(s) against a bound of '
+            . ReconciliationSweep::MAX_STRIP_ATTEMPTS_PER_GUILD
+            . ' — an unbounded loop spends every call before anyone can see the batch was large'
+    );
+
+    // The bound limits the calls, not the walk. The same loop also decides which
+    // linked members have diverged, and that costs no Discord calls at all — so a run
+    // that stopped iterating would trade the whole tail of its free forum-side
+    // detection for the calls it was trying to save.
+    //
+    // The member below can only be reached by that half: their sync record still
+    // agrees with their groups, so the forum-side query passes over them, and they
+    // sort after every holder that exhausted the bound. A bound implemented as a break
+    // leaves them uncorrected and nothing else in this file notices.
+
+    $db = freshStack();
+    $members = guildOfUnlinkedHolders(ReconciliationSweep::MAX_STRIP_ATTEMPTS_PER_GUILD + 3);
+    $pastTheCap = '1384909947564739999';
+    $members[$pastTheCap] = member($pastTheCap, [UNMANAGED_ROLE]);
+    Api::$guildMembers = $members;
+    settledMember($db, 7, $pastTheCap);
+
+    (new ReconciliationSweep())->run();
+
+    check(
+        'a linked member sitting past the bound is still queued for correction',
+        queuedUserIds() === [7],
+        'queued ' . json_encode(queuedUserIds())
+            . ' — divergence detection costs no Discord calls, so stopping the walk at'
+            . ' the bound spends nothing and loses the whole tail of the guild'
+    );
+
+    // A run that stopped at the bound and one that simply ran out of holders are both
+    // short runs that patched some members and stopped, and the per-run line is the
+    // only forum-side trace either leaves. Saying nothing about the bound makes the
+    // first read as the second — which is the reading the bound exists to prevent,
+    // since the reason to limit the batch is that nobody knew it was large.
+    //
+    // Read the way this file reads every report: two runs, one input changed, and the
+    // assertion is that they DIFFER. Both saturate the bound, so the stripped count,
+    // the refused count, the guild and both conditional clauses are identical by
+    // construction, and the number left behind is the only thing free to vary.
+    //
+    // The two guilds are the same SIZE — 103 holders and 7 bystanders against 110
+    // holders — which the pin below asserts rather than assumes. Varying the member
+    // count instead would satisfy the inequality on its own the moment anything
+    // member-derived entered the line, exactly as this file's header warns.
+    //
+    // Those 7 bystanders are also the only thing that can catch a run counting members
+    // it would never have called for: both guilds then report 10 left behind and the
+    // reports collapse. Without them every member past the bound is a holder and the
+    // over-count is invisible.
+
+    freshStack();
+    Api::$guildMembers = guildOfUnlinkedHolders(ReconciliationSweep::MAX_STRIP_ATTEMPTS_PER_GUILD + 3, 7);
+    $leftThreeWalked = count(Api::$guildMembers);
+
+    (new ReconciliationSweep())->run();
+
+    $leftThree = \XF::$errors;
+    $leftThreeAttempts = patchedDiscordIds();
+    $leftThreeQueued = queuedUserIds();
+
+    freshStack();
+    Api::$guildMembers = guildOfUnlinkedHolders(ReconciliationSweep::MAX_STRIP_ATTEMPTS_PER_GUILD + 10);
+
+    (new ReconciliationSweep())->run();
+
+    check(
+        'two bounded runs are alike in everything but how many holders they left',
+        count($leftThree) === 1
+            && count(\XF::$errors) === 1
+            && $leftThreeAttempts === patchedDiscordIds()
+            && count($leftThreeAttempts) === ReconciliationSweep::MAX_STRIP_ATTEMPTS_PER_GUILD
+            && $leftThreeQueued === queuedUserIds()
+            && $leftThreeWalked === count(Api::$guildMembers),
+        'reports ' . count($leftThree) . '/' . count(\XF::$errors)
+            . ', attempted ' . count($leftThreeAttempts) . '/' . count(patchedDiscordIds())
+            . ', walked ' . $leftThreeWalked . '/' . count(Api::$guildMembers)
+            . ' — the next check is only meaningful while the two runs agree on all of this'
+    );
+
+    check(
+        'a bounded run says how many holders it did not get to',
+        $leftThree[0] !== \XF::$errors[0],
+        'both reported: ' . json_encode($leftThree[0] ?? null)
+            . ' — a bounded run that reports only what it stripped is indistinguishable'
+            . ' from a guild that had nothing else to strip'
     );
 
     if ($failures > 0) {
