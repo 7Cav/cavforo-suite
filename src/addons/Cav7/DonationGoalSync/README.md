@@ -69,12 +69,24 @@ window and are dropped from the cycle entirely — they survive in
 `recurring_amount` as a lifetime figure but appear on no month's bar.
 
 `Siropu/Donations/Entity/Goal.php` overrides `canResetRecurringGoal()` for goals
-configured to reset on the 1st, so the threshold is **midnight on the 1st**.
-Any cron fire on the due day now satisfies it, and the cycle boundary agrees
-with the window the sync cron sums over, so the two can no longer disagree about
-which month a donation belongs to. The arithmetic is in `RecurringSchedule`,
-which also settles a month-overflow case the vendor walked into and fixes UTC
-internally rather than reading the board's `guestTimeZone`.
+configured to reset on the 1st, so the threshold is **midnight on the 1st**. Any
+cron fire on the due day now satisfies it, so the reset lands on the 1st instead
+of slipping to the 2nd and taking a day's donations out of both cycles. The
+arithmetic is in `RecurringSchedule`, which also settles a month-overflow case
+the vendor walked into and fixes UTC internally rather than reading the board's
+`guestTimeZone`.
+
+**One boundary is still not exact, deliberately.** The vendor's
+`resetRecurringGoal()` — which this add-on does not override — stores
+`\XF::$time` as the new cycle start, so the cycle begins at the moment the cron
+fired (about `00:30`) rather than at the midnight the threshold used. Donations
+made between midnight and the cron fire on the 1st are therefore counted in the
+outgoing month rather than the new one. Across this board's entire donation
+history that window contains **one donation, of $10**, against 328 donations
+totalling $4,634 made on a 1st overall — so the exposure is the half-hour, not
+the day the bug used to cost. Closing it would mean overriding a second vendor
+method to write the threshold instead of the clock; that has not been judged
+worth it.
 
 ### Why it does not use the board's timezone
 
