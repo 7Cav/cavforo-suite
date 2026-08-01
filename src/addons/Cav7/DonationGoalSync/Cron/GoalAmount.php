@@ -21,6 +21,22 @@ namespace Cav7\DonationGoalSync\Cron;
  * Designed to fail safe: if the Siropu add-on is missing/disabled, or its
  * schema no longer matches what we depend on, or no recurring goal can be
  * identified, the cron aborts WITHOUT writing anything.
+ *
+ * Re-check on a dev stack after a XenForo or Siropu Donations upgrade:
+ *
+ * - Siropu\Donations:Goal and Siropu\Donations:Donation still carry the nine
+ *   columns the guard ladder below requires. A rename makes this cron abort
+ *   silently, which looks identical to "nothing to do".
+ * - A donation whose donation_goal_id names a deleted goal is folded in by the
+ *   next run.
+ * - A donation against a DISABLED goal that still exists is not.
+ *
+ * Not covered by tests/: every branch of recomputeRecurringGoal() runs through
+ * \XF::app(), the entity manager and the vendor's entity structures. The
+ * orphan-sweep query and the guard ladder are both reachable from a stubbed \XF
+ * harness of the kind tests/GoalResetDecisionTest.php demonstrates; that work
+ * has not been done. Asserting on this file's source text instead would check
+ * nothing — see CONTRIBUTING.md, "What belongs in CI, and what does not".
  */
 class GoalAmount
 {

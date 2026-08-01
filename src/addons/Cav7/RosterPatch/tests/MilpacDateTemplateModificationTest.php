@@ -3,8 +3,10 @@
 /**
  * Runs the milpac date template modifications over date-cell markup written out
  * below, and asks what they do to it: after XenForo applies them, does the date
- * cell go through the UTC getter? RosterPatch's README ("The date cells are
- * matched by pattern") is where that question and its history live.
+ * cell go through the UTC getter? The two modifications match the date cell by
+ * shape rather than by one exact vendor spelling: see the block above the
+ * spellings loop for the regression that bought that, and the block above the
+ * nonMatches loop for where the shape deliberately stops.
  *
  * What this pins is the patterns — the shipped <find>/<replace>, read straight
  * out of _data/template_modifications.xml — against date-cell spellings written
@@ -18,7 +20,17 @@
  *     vendor tree, so an NF/Rosters release that moved or rewrote the date cell
  *     would leave every check here green while the board went back to per-viewer
  *     dates. Verifying the patterns against a real install is a dev-stack job,
- *     and the README says so.
+ *     to be re-run after an NF/Rosters upgrade or a style edit. The two copies
+ *     of nf_rosters_user_view come from different places there: a style's own
+ *     copy is readable through the admin control panel's template editor
+ *     (Appearance -> Templates), while the vendor's master copy is not on a
+ *     production board (XF\Entity\Style::canEdit() returns false for style_id 0
+ *     outside development mode, StyleRepository::createStyleTree() leaves master
+ *     out of the style selector, and the editor answers
+ *     templates_in_this_style_can_not_be_modified) — read that one out of
+ *     NF/Rosters' own _data/templates.xml instead. A style with no copy of its
+ *     own renders master, so its template list shows the vendor text, but that
+ *     is the style's entry and not master's.
  *   - applyModification() below is a hand-written mirror of
  *     XF\Repository\TemplateModificationRepository::applyTemplateModifications(),
  *     not a call into it. It is faithful for everything this add-on ships — see
@@ -349,8 +361,8 @@ foreach ($dateCells as $key => $cell) {
 // another: replace three spellings with byte copies of the vendor spelling and
 // the whitespace narrowing, the single-line narrowing and the trailing anchor
 // all stop being covered while the label list still reads as ten spellings.
-// nonMatches is the worse of the two to lose, being what the README points at as
-// the record of the patterns' deliberate limits.
+// nonMatches is the worse of the two to lose, being the only record left of the
+// patterns' deliberate limits.
 foreach ($dateCells as $key => $cell) {
     $signatures = [
         'spellings'  => array_map(
@@ -590,9 +602,29 @@ foreach ($dateCells as $key => $cell) {
 //
 // These four are limits, recorded rather than fixed, and widening a pattern to
 // cover one of them is a decision to take deliberately with the list in front
-// of you. The README ("What the patterns deliberately will not match") is where
-// that decision is argued: it carries the same list, the compiler output for
-// each, and why the limit stays.
+// of you.
+//
+// Not because a call-anchored replacement would produce invalid markup: put all
+// four through XenForo 2.3.11's own template compiler with the call swapped for
+// the getter and all four compile, the ternary to exactly the code you would
+// write by hand —
+// ($__vars['record']['record_date'] ? $__templater->escape($__templater->method(
+// $__vars['record'], 'getRecordDate', array())) : '-') — since {$…} is an
+// expression term inside {{ … }} the same way it is a variable in running text
+// (expression_part ::= var in the compiler's own grammar).
+//
+// The limit stays because a <find> is a regular expression over template text
+// rather than a parse of it, and these patterns swallow the format argument.
+// Anchored on the whole {{ … }} expression they only ever reach a cell that
+// renders a date, where losing the style's format is a cost the fix owns (see
+// the spellings block above). Anchored on the call they would reach every
+// date($record.record_date, …) in the template, including the ones where the
+// format is doing work: <xf:if is="date($record.record_date, 'Y') == 2020">
+// starts comparing '2020-03-04' against '2020', and
+// <div data-day="{{ date($record.record_date, 'D') }}"> starts emitting a full
+// date to whatever reads that attribute. Both spellings compile, so nothing
+// reports either. Widening a find means first reading the surrounding logic of
+// every expression it would newly take, and no one has.
 foreach ($dateCells as $key => $cell) {
     $mod = $mods[$key] ?? null;
     if ($mod === null) {

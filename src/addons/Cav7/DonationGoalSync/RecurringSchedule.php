@@ -8,8 +8,16 @@ namespace Cav7\DonationGoalSync;
  *
  * The threshold is a property of the calendar alone — the first instant of the
  * target month — so any cron fire on the due day satisfies it. The vendor
- * derived it from the previous reset's clock time instead, which is the bug
- * this replaces; the README has the account.
+ * derived it from the previous reset's clock time instead, seconds included,
+ * which is the bug this replaces.
+ *
+ * The zone is fixed to UTC here, and the board's guestTimeZone is deliberately
+ * not read. The vendor passes that option into a \DateTime built from a
+ * '@timestamp', a form in which PHP silently ignores the timezone argument, so
+ * it never reached the vendor's answer either. Honouring it would move the month
+ * boundary from UTC midnight to board-local midnight and change which cycle a
+ * donation near the boundary is counted in — a behaviour change on every board
+ * not already on UTC, not a restoration of something that broke.
  */
 class RecurringSchedule
 {

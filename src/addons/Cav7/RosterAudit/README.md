@@ -26,32 +26,17 @@ A daily cron prunes both stores. Retention is configurable (`cav7RAuditRetention
 
 For release builds, generate hashes first: `php cmd.php xf-addon:build-release Cav7/RosterAudit`.
 
-## Design notes
+## What to expect
 
-**Fail-open by design.** A failed audit write is logged to the XF error log and the roster operation proceeds. The alternative (blocking roster operations when the audit store is down) was rejected. The cost: a persistent failure, such as wrong permissions on `internal_data/cav7_roster_audit`, leaves changes unaudited until someone reads the error log. Check the error log as part of routine maintenance.
+**A failed audit write does not block the roster operation.** It is logged to the XF error log instead. A persistent failure, such as wrong permissions on `internal_data/cav7_roster_audit`, leaves changes unaudited until someone reads that log, so check it as part of routine maintenance.
 
-**Two stores, best-effort consistency.** The DB row is written first (the file payload needs the `log_id`), then the JSONL line. If the file write fails, the row is deleted. This runs inside the entity's save transaction, so a rollback after the hooks can still leave a file line without a row, and a crash can leave a row without a file line. The admin UI tolerates both and the repository logs each anomaly it encounters.
+**The two stores can disagree.** A crash, or a rollback of the save transaction after the entity hooks have run, can leave an index row without its detail line or a detail line without its row. The admin UI tolerates both and the repository logs each anomaly it encounters.
 
 **Image churn is excluded, not suppressed.** The image services stamp a timestamp column on every upload or removal (`award_image`, `rank_image`, `citation_date`, `uniform_date`). Those columns are excluded from update diffs, so image operations do not flood the log, but creates and deletes of the owning records are always recorded in full.
 
-**Position deletion is blocked while members hold it.** From NF/Rosters 2.1.5, deleting a position is destructive: the vendor removes every member whose primary position it is from the roster, together with their awards, service records, field values, and uniform, and scrubs the id from secondary holders. Those deletes run through entity hooks, so they are audited, but the loss is permanent (the vendor's delete dialog warns of this for the primary holders it removes). The Position entity extension refuses the delete while any member still holds the position, primary or secondary, so admins reassign members deliberately (each reassignment audited) before removing it. It is a deliberate policy layered on the vendor's softer warning, not a bug fix.
-
-(Through NF/Rosters 2.1.4 this add-on also added a missing `canManageAwards()`/`canManageRecords()` check to the vendor's profile award and service record save actions. 2.1.5 enforces those checks itself, so the shim was removed.)
+**A position cannot be deleted while members hold it.** The delete is refused while any member still holds the position, primary or secondary, because the vendor's delete would take those members off the roster along with their awards, service records, field values, and uniform. Reassign them first, and each reassignment is audited as a normal update.
 
 **Uninstall keeps the files.** Uninstalling drops the DB table but leaves the JSONL files in `internal_data/cav7_roster_audit`, since they are audit evidence. Delete them manually if they are no longer needed.
-
-## Layout
-
-```
-src/addons/Cav7/RosterAudit/
-  Entity/AuditLog.php           index-row entity
-  Entity/AuditableEntity.php    the audit engine (trait used by the extensions)
-  Repository/AuditLog.php       reads, batched pruning, file handling
-  Admin/Controller/AuditLog.php list + detail views
-  Cron/AuditLogPrune.php        daily retention prune
-  NF/Rosters/Entity/*.php       11 entity class extensions (audit hooks + position-delete guard)
-  _data/*.xml                   routes, phrases, templates, options, cron, extensions
-```
 
 ## License
 

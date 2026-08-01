@@ -14,8 +14,10 @@ use XF\App;
  * `Reconciliation`'s job and happens nowhere else.
  *
  * No CI coverage: every read here needs a live XenForo entity layer and
- * database, so it is checked by hand on a dev stack; what its absence from CI
- * costs is in the addon's README.
+ * database, so it is checked by hand on a dev stack. CI goes green on a
+ * refactor that breaks this check, so re-run
+ * `cav7-core:check-template-modifications` against a dev stack before
+ * releasing this addon, and again after any XenForo upgrade.
  */
 class BoardFacts
 {

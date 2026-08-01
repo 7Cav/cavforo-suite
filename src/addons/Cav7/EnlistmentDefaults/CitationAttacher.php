@@ -66,6 +66,18 @@ interface CitationImage
  * row) and the ORIGINAL failure is always the one re-thrown, so the error log
  * shows the real cause rather than a rollback hiccup. Keeping a grant
  * all-or-nothing per date means a later re-run retries that date cleanly.
+ *
+ * Re-check on a dev stack after an NF/Rosters upgrade, and drive it deliberately
+ * rather than waiting for it: move one JPG out of assets/puc-citations/, create a
+ * milpac, confirm there is NO award row for that date while the other dates and
+ * the enlistment record still apply and the milpac still saves, then put the file
+ * back. The vendor rejects a missing or unreadable source by THROWING —
+ * Service\AwardRecord\Image::validateImageForRecord() raises before it reaches any
+ * branch that returns false — and the award row is already saved by then. If the
+ * vendor ever swaps that throw for a plain false, or moves the validation, this
+ * rollback is what stops a citationless row surviving, and
+ * EnlistmentDecisions::pendingDates() matches on award_date, so a survivor makes
+ * that date look granted for good.
  */
 class CitationAttacher
 {

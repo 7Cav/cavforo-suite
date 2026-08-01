@@ -22,6 +22,14 @@ use Cav7\EnlistmentDefaults\RosterUserGateway;
  * the error log seam is what fails, nothing is recorded and the rest of the set
  * is lost; the milpac save survives even then. The note on the last-resort catch
  * below has the reasoning.
+ *
+ * Re-check on a dev stack after an NF/Rosters or XenForo upgrade: creating a
+ * milpac still grants the whole PUC set, each award carrying its citation image,
+ * and still writes the enlistment record. That is this extension still firing on
+ * insert, and the two vendor row factories RosterUserGateway calls —
+ * getNewAward() and getNewServiceRecord() — still being there. No test in this
+ * repo can see it: they all compare our code against our own expectations, and
+ * a break here is silent in production.
  */
 class RosterUser extends XFCP_RosterUser
 {

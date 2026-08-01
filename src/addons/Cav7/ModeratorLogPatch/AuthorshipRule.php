@@ -51,6 +51,13 @@ final class AuthorshipRule
      * and a custom-field change as `custom_fields_edit` (the field is
      * `custom_fields`).
      *
+     * Only a few of these names have an author rule of their own in any of the
+     * registered handlers, and this list is a strict superset of those few, so most
+     * of it is withheld here rather than underneath. A rule existing somewhere is
+     * also not a rule everywhere: XenForo withholds `attachment_deleted` from a
+     * post's author and not from a profile post's, and this list removes that
+     * asymmetry. Every other name in it is this addon's decision.
+     *
      * Three of the four poll names cannot in fact be produced by an author today:
      * the creator, editor and deleter services each guard their own log call with
      * `$content->User->user_id != \XF::visitor()->user_id`, and only the resetter

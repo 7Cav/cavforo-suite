@@ -29,6 +29,24 @@ use XF\Service\Thread\CreatorService;
  * addon exists to remove, and one no unit test can see. This command is the check
  * that can see it.
  *
+ * Run it on a dev stack after any XenForo, NF/Tickets or NF/Calendar upgrade.
+ * Every seam this addon sits on belongs to somebody else — both overridden methods,
+ * the abstract handler they are declared on, the resolved action names the rule keys
+ * on, and the aliasing that decides which class an extension lands on — and neither
+ * side of any of them is visible to a test that runs without XenForo and without the
+ * vendor code on the include path. Rename a handler, add a real `TicketHandler.php`,
+ * change the aliasable-namespace list, or resolve a handler in a different order, and
+ * CI notices none of it. Two of those seams have already bitten: the shared abstract
+ * handler is never resolved through the extension system, which is why the behaviour
+ * is a trait, and the ticket handlers' registered names have no files behind them.
+ *
+ * Checking by hand instead means four things, all of which this command covers:
+ * every registered content type resolves to a handler carrying the trait — the check
+ * most likely to break and the one CI is blindest to; a member with a moderation
+ * permission and no moderator record sticks a thread and a `stick` entry appears;
+ * that member edits their own post and nothing appears; and a member who holds a
+ * moderator record moderates their own content and logs exactly as they did before.
+ *
  * The coverage and rule phases hardcode no content types: the list comes off the
  * install, from the `moderator_log_handler_class` content-type field, and they name
  * no third-party class and no forum, member or category of ours either. The

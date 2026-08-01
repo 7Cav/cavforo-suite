@@ -24,6 +24,11 @@ class MemberMilpacTooltip
 	 * Resolves the milpac and hands it to the templater; the markup lives in the
 	 * cav7_milpac template so it stays escaped and themeable.
 	 *
+	 * Vendor assumption: the rank, roster and position relations the block renders
+	 * are already eager-loaded with the milpac by NF/Rosters, so the block costs one
+	 * extra query and no joins beyond what NF/Rosters loads anyway. Nothing breaks if
+	 * that changes — the block still renders, just with a query per relation it reads.
+	 *
 	 * @param string $content Existing callback content (unused; required by XF).
 	 * @param array  $params  [0] => \XF\Entity\User being shown.
 	 *

@@ -9,7 +9,7 @@ A starting point for a new addon in the suite. Copy this directory to `src/addon
 3. Rename the namespace `Cav7\AddonId` to `Cav7\<YourAddonId>` in every PHP file, including `Setup.php`.
 4. If the addon has no install logic (no tables, options, fields, or similar), delete `Setup.php`. XenForo only runs a setup class when one exists.
 5. Build and install it (see [CONTRIBUTING.md](../CONTRIBUTING.md)), then start developing.
-6. Replace this README with one describing your addon.
+6. Replace this README with one that answers what your addon is, how to run it, and how to use it — see [CONTRIBUTING.md](../CONTRIBUTING.md#what-goes-in-an-addon-readme).
 
 ## About the directories
 

@@ -72,8 +72,10 @@
  * ---------------------------------------------------------------------------
  * Whether a refused strip is reported as a refusal rather than as a strip. Its only
  * observable is the wording of a log line, and an assertion on prose reports that
- * someone edited a sentence. It is confirmed on the live guild beside the booster
- * check — see the addon README's pre-release list.
+ * someone edited a sentence. It is confirmed by hand against the real guild before a
+ * release, beside the check that a strip succeeds for a Nitro-booster holder: send a
+ * deliberately bad role set and confirm the run reports it refused rather than
+ * stripped. A dev stack fails the guild-roles read first and never reaches the call.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *

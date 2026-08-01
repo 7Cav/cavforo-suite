@@ -23,6 +23,10 @@ class Position extends XFCP_Position
 	 * changes. This does not touch positions whose list is unchanged but already
 	 * stale on the members (the backlog that built up before this hook existed);
 	 * the cav7-rosterpatch:sync-position-groups command reconciles those.
+	 *
+	 * Vendor drift to watch for: if an NF/Rosters release grows its own re-sync
+	 * on position save, this extension becomes redundant and can be dropped —
+	 * check for one when upgrading the vendor add-on.
 	 */
 	protected function _postSave(): void
 	{

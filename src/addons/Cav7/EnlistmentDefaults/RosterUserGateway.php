@@ -191,6 +191,14 @@ class RosterUserGateway implements EnlistmentGateway
         $record->save();
     }
 
+    /**
+     * Re-check on a dev stack after an NF/Rosters or XenForo upgrade: the entry
+     * a dropped grant leaves still names the milpac and the member, and still
+     * keeps the exception's class and stack trace. tests/FailureLoggingTest.php
+     * pins this against stand-ins for \XF and the vendor entities, so what the
+     * stack run adds is that the real relation_id, user_id and \XF::logException
+     * still behave the way those stand-ins model.
+     */
     public function logFailure(\Throwable $e, string $context): void
     {
         // The milpac identity is stamped here rather than threaded through the
@@ -210,6 +218,15 @@ class RosterUserGateway implements EnlistmentGateway
         ));
     }
 
+    /**
+     * Render the image service's rejection reason for the log entry.
+     *
+     * Re-check on a dev stack after an NF/Rosters upgrade: a rejection the
+     * service signals by RETURNING FALSE rather than throwing also leaves no
+     * award row behind, and its reason reaches the log entry. The reason arrives
+     * as an \XF\Phrase, which is rendered here; a vendor that returns a plain
+     * string instead still works, one that returns anything else does not.
+     */
     private function errorText($error): string
     {
         if ($error instanceof \XF\Phrase)

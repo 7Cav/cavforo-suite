@@ -53,6 +53,21 @@ use XF\Mvc\Reply\View;
  * controller harness — not because one is impossible; tests/FailureLoggingTest.php
  * pins the entity-level catches the same way and would be the pattern to follow.
  * See docs/adr/0003-a-prefill-rejection-stays-silent.md.
+ *
+ * Re-check on a dev stack after an NF/Rosters or XenForo upgrade. Nothing in CI
+ * reaches any of this:
+ *
+ * - The prefill still fills rank and position on a new milpac's add form, and
+ *   the values the recruiter submits are what save.
+ * - A roster field the prefill writes (joinDate, promoDate) that rejects the
+ *   value still leaves that one field blank, fills the other, renders the form,
+ *   and logs NOTHING — the silence ADR-0003 decided on. A vendor that starts
+ *   throwing out of XF\CustomField\Set::set() under ignoreInvalid would turn a
+ *   blank field into a logged, wholly-unfilled prefill. Drive it by capping a
+ *   field's max length below ten characters, opening the add form, then putting
+ *   the cap back.
+ * - The catch below still renders the add form when an \Error is raised inside
+ *   the prefill. Its breadth rests on this check alone.
  */
 class Roster extends XFCP_Roster
 {
