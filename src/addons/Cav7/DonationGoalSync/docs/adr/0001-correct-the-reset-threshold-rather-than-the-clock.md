@@ -91,11 +91,21 @@ is server-side validation in vendor territory and its own decision.
 - The threshold arithmetic lives in `RecurringSchedule`, a pure function with no
   XenForo dependency, so it is reachable by `tools/run-tests.sh`. The override
   itself is reachable over a stubbed `XFCP_Goal`. Neither needs an install.
-- Decision 3 has a cost: a request that begins before midnight on the 1st and
-  executes the cron after it will read the pre-midnight `\XF::$time` and defer
-  the reset by one cron cycle. Midnight alignment makes that a 24-hour slip
-  rather than a seconds one. It is judged acceptable against the coherence of the
-  read and the write agreeing, and is reversible in one line.
+- Decision 3 costs nothing at the current schedule, but it does add a
+  constraint. `\XF::$time` is frozen at request start, so in principle a request
+  beginning before midnight on the 1st and executing the cron after it would
+  read the pre-midnight value and defer the reset a full cycle — a 24-hour slip,
+  because of the midnight alignment.
+  That cannot happen as things stand. `canResetRecurringGoal()` has exactly one
+  caller, the vendor's `siropuDonationsRecurring` cron, and XenForo runs an entry
+  only once `\XF::$time` has reached its `next_run`. That entry is scheduled at
+  `00:30`, so the earliest `\XF::$time` this method can be reached with on the
+  1st is already half an hour past the threshold. The window is closed, not
+  merely narrow.
+  **The constraint is therefore on the schedule, not the code**: move that cron
+  to `00:00` and the margin disappears, at which point a request starting at
+  `23:59:5x` could defer a day. Anyone rescheduling it should read this first, or
+  switch the comparison back to the wall clock, which is a one-line change.
 - Decision 2 changes behaviour for a cycle start on the 29th to 31st, which the
   reported bug did not involve. A missed reset only pushes `start_date` to the
   2nd, so the board is unlikely to reach those days; the fix is preventative.
