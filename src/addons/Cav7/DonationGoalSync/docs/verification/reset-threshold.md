@@ -8,8 +8,8 @@ exported while being completely inert, and the only symptom is that the monthly
 reset quietly goes back to missing. Nothing without a XenForo install and the
 vendor add-on present can tell the two apart.
 
-Why the override exists at all, and the alternatives rejected:
-[ADR 0001](../adr/0001-correct-the-reset-threshold-rather-than-the-clock.md).
+Why the override exists at all: the add-on's [README](../../README.md), under
+"The monthly reset, and why it was missing".
 
 Run against `~/srv/xenforo-dev` (XenForo 2.3.11, Siropu Donations 1.6.1) on
 2026-08-01, for `Cav7/DonationGoalSync` 1.1.0.

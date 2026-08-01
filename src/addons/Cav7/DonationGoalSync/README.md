@@ -76,10 +76,24 @@ which month a donation belongs to. The arithmetic is in `RecurringSchedule`,
 which also settles a month-overflow case the vendor walked into and fixes UTC
 internally rather than reading the board's `guestTimeZone`.
 
-The full mechanism, the two further defects the replacement arithmetic settles,
-and the alternatives rejected — including why honouring `guestTimeZone` would be
-a behaviour change rather than a fix — are in
-[ADR 0001](docs/adr/0001-correct-the-reset-threshold-rather-than-the-clock.md).
+### Why it does not use the board's timezone
+
+This looks like a bug and is not one, so it is worth stating plainly before
+somebody fixes it.
+
+The vendor passes the board's `guestTimeZone` into a `DateTime` built from a
+`@timestamp`, and PHP **silently ignores the timezone argument in that form** —
+the object is UTC whatever you asked for. The comparison is then on absolute
+timestamps, which no timezone affects. Four zones were checked and produced a
+byte-identical threshold, so the option has no effect on this decision at all.
+
+Honouring it would therefore not restore some intended behaviour that had
+broken. It would move the month boundary from UTC midnight to board-local
+midnight, changing which cycle a donation near the boundary is counted in, on
+every board not already on UTC. That is a behaviour change, and it belongs to
+whoever wants that behaviour — not to a fix for the seconds race.
+`RecurringSchedule` fixes UTC explicitly and internally, which preserves the
+answers this board gets today.
 
 ## What it does not do
 

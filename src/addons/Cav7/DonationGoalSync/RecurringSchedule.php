@@ -7,9 +7,9 @@ namespace Cav7\DonationGoalSync;
  * next becomes due.
  *
  * The threshold is a property of the calendar alone — the first instant of the
- * target month — so any cron fire on the due day satisfies it. What the vendor
- * computed instead, and why all three of the differences here are deliberate:
- * docs/adr/0001-correct-the-reset-threshold-rather-than-the-clock.md.
+ * target month — so any cron fire on the due day satisfies it. The vendor
+ * derived it from the previous reset's clock time instead, which is the bug
+ * this replaces; the README has the account.
  */
 class RecurringSchedule
 {
