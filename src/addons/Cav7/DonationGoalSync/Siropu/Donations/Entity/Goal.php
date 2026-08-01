@@ -13,7 +13,17 @@ use Cav7\DonationGoalSync\RecurringSchedule;
  *
  * The vendor's own threshold inherited the time of day of the previous reset,
  * seconds included, so whether a month's reset happened depended on which
- * second the cron happened to fire at. The README has the full account.
+ * second the cron happened to fire at.
+ *
+ * Re-check on a dev stack after a XenForo or Siropu Donations upgrade:
+ *
+ * - get_class() on a goal entity must still report this class. An extension
+ *   whose from_class no longer names a real class stays active, valid and
+ *   exported while being completely inert, and the only symptom is that the
+ *   reset quietly goes back to missing.
+ * - Siropu's Cron\Goal::resetRecurringGoals() must still call
+ *   canResetRecurringGoal(). If the vendor inlines or renames the check, this
+ *   override is bypassed with no error.
  *
  * @see \Cav7\DonationGoalSync\RecurringSchedule for the arithmetic and its tests
  */

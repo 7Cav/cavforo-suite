@@ -58,11 +58,33 @@ There is more detail on the `_output/` and `_data/` split in [docs/addon-format.
 2. Rename the namespace from `Cav7\AddonId` to `Cav7\<YourAddonId>` in `addon.json` and every PHP file.
 3. Fill in `addon.json`: title, description, version, and any dependencies in `require`. The add-on id and namespace come from the directory path, so they do not go in the file.
 4. Install it (`php cmd.php xf-addon:install Cav7/<AddonId>`), then develop as above.
-5. Add a short `README.md` describing what the addon does and what it requires.
+5. Add a `README.md` — see [What goes in an addon README](#what-goes-in-an-addon-readme).
 6. Add a row for it to the addon catalog in the repo-root [README.md](README.md).
    That table is the one home for the list of addons, and CI fails when it and
    the addons that ship disagree — see `check-readme-catalog.php` in
    [tools/README.md](tools/README.md).
+
+### What goes in an addon README
+
+An addon's README answers three questions, for someone who has just met the addon:
+**what is this**, **how do I run it**, and **how do I use it**. Everything in it earns
+its place against one of those. Everything else already has a home:
+
+- Why a decision went the way it did → an ADR under the addon's `docs/adr/`.
+- What a term means → the addon's `CONTEXT.md`.
+- What the code assumes about a vendor's internals, and what breaks silently if the
+  vendor moves → the docblock of the class making the assumption.
+- What was checked, when, and what it proved → the commit, the issue, the test.
+- The addon's id, namespace and version → `addon.json`.
+
+A consequence a reader has to live with — a role the sync will take back off, a cron
+entry that installs disabled — is a usage fact and stays. The account of how it came to
+work that way is not, however hard-won. The forensic history of a bug belongs in the
+issue that reported it, and the README says only what the addon does about it now.
+
+Length is the symptom, not the rule. A README nobody finishes answers none of the three
+questions, so when a section grows past the answer, cut it back to the answer and link
+to wherever the rest already lives.
 
 ## Build, test, and release
 
@@ -80,7 +102,7 @@ CI tests the behaviour it can actually execute. A test calls the code with real 
 
 A seam that needs a live XenForo does not become testable by reading the source as text. Asserting that a file contains a call, a signature, a statement in a given order, or a variable spelled a certain way does not check the behaviour — it fails when the code is tidied and passes when the code is wrong, and it hides the fact that the seam was never covered. Do not add those.
 
-Vendor-coupled behaviour is verified by hand on a dev stack before a release: install the addon, exercise the feature, confirm the vendor has not moved underneath it. That is also the only check that can catch vendor drift, which no test in this repo can see — every one of them compares our code against our own expectations. Several addon READMEs carry the specific list to re-run after a XenForo or vendor upgrade.
+Vendor-coupled behaviour is verified by hand on a dev stack before a release: install the addon, exercise the feature, confirm the vendor has not moved underneath it. That is also the only check that can catch vendor drift, which no test in this repo can see — every one of them compares our code against our own expectations. Where a seam needs a specific check re-run after a XenForo or vendor upgrade, write that check beside the code it protects — the docblock of the class that makes the assumption, or of the test that cannot reach it — so whoever changes that code meets it. Not the addon README, which is written for someone installing the addon rather than maintaining it.
 
 Where a structural fact is genuinely worth enforcing and is the same for every addon — `_data`/`_output` agreement, `addon.json` shape, class-extension ordering — it lives in `tools/` and runs against all of them, rather than being restated per addon.
 

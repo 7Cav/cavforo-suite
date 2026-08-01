@@ -94,4 +94,5 @@ the bypass was wrong, and only the sentence quoted above depended on it.
   permission holder against a live stack, and CI cannot run it. That is the guard.
 - This addon now depends on `FloodCheckService::checkFlooding()`'s signature and its
   atomicity, where before it depended on `assertNotFlooding()`'s. Both are core, and
-  the swap is recorded with the other core assumptions in the README.
+  the swap is recorded with the other core assumptions in the docblock of
+  `XF/Pub/Controller/Account.php`.

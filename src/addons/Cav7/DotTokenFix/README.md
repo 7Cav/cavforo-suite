@@ -16,18 +16,6 @@ Injects a `pattern_replace` char filter into the ElasticSearch analyzer that spl
 - XenForo Enhanced Search (XFES), any version
 - ElasticSearch Essentials, any version
 
-Both add-on entries carry `*` as their floor, so they gate that the add-on is
-installed and pin no version. How a floor has to be written, and why one in the
-wrong numbering gates nothing, is in
-[`docs/addon-format.md`](../../../../docs/addon-format.md). The short of it here:
-XFES ships inside the XenForo package and tracks core's version, so the XenForo
-floor above already constrains it, and no ElasticSearch Essentials version is
-one this addon needs.
-
-Vendor-coupled behaviour is verified by hand on a dev stack rather than in CI.
-Re-check it after a XenForo upgrade, and whenever XFES or ElasticSearch Essentials
-moves.
-
 ## Installation
 
 1. Upload the `Cav7/DotTokenFix` directory to your XenForo `src/addons/` folder.

@@ -19,8 +19,10 @@ namespace Cav7\Core\TemplateModification;
  * would pin the shape of that handoff and break on a refactor that changed no
  * behaviour, while the bugs worth catching (a copy never enumerated, a join
  * that drops a style) live in the gathering it does not touch. Every shape
- * below is one produced against a real board on a dev stack; what its absence
- * from CI costs is in the addon's README.
+ * below is one produced against a real board on a dev stack. CI goes green on
+ * a refactor that breaks this check, so re-run
+ * `cav7-core:check-template-modifications` against a dev stack before
+ * releasing this addon, and again after any XenForo upgrade.
  */
 class Reconciliation
 {

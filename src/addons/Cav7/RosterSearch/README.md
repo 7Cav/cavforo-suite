@@ -33,15 +33,6 @@ A XenForo addon that adds a gamertag/Cav name search page to the [NF Rosters](ht
 |---|---|---|
 | `cav7RosterSearchButton` | `nf_rosters_roster_index` | Injects the "Gamertag Search" button into the page actions bar |
 
-## Addon Info
-
-| Field | Value |
-|---|---|
-| Addon ID | `Cav7/RosterSearch` |
-| Namespace | `Cav7\RosterSearch` |
-| Version | 1.2.0 (`1000200`) |
-| Developer | Cav7 |
-
 ## License
 
 See [LICENSE.md](LICENSE.md).

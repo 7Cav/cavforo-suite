@@ -13,8 +13,9 @@ use XF\Cli\Command\AbstractCommand;
  * Issue #171 — asks a live board whether this suite's template modifications
  * are actually in force, and names the ones that are not.
  *
- * Why this exists, what "in force" means, and what each shape tells the reader:
- * the addon's README. The check itself is `TemplateModification\BoardFacts`
+ * What the command answers and how to read its exits: the addon's README. What
+ * "in force" means and what each shape tells the reader: the suite's
+ * CONTEXT.md. The check itself is `TemplateModification\BoardFacts`
  * (what the board says) and `TemplateModification\Reconciliation` (which of
  * that is a failure). This is one of two thin callers, the other being
  * `Cron\CheckTemplateModifications`.
