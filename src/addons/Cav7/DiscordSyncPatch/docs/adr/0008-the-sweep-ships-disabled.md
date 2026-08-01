@@ -15,9 +15,8 @@ on a clock, without anyone asking.
 
 It is also the part with the widest blast radius. It reads the whole guild, queues
 corrections for members it finds divergent, and strips managed roles from unlinked
-holders. All of that is what it is for, and the pass recorded in
-[docs/verification/reconciliation-sweep-guards.md](../verification/reconciliation-sweep-guards.md)
-says it does it correctly. But "correct" and "wanted the moment the addon is
+holders. All of that is what it is for, and a dev-stack pass says it does it
+correctly. But "correct" and "wanted the moment the addon is
 installed, without being asked" are different claims, and only the second one is the
 install's to make.
 
@@ -37,8 +36,7 @@ upgrade, which re-imports the schedule and leaves the flag alone.
 That mechanism is what makes shipping `0` safe. Without it, a shipped `0` would mean
 every upgrade quietly switching off a sweep the board had deliberately turned on.
 Both halves — the fresh install landing inactive, and an enabled entry surviving a
-re-import — are checked on a dev stack and recorded in
-[the verification file](../verification/reconciliation-sweep-guards.md#the-shipped-default-the-entry-installs-disabled).
+re-import — are checked on a dev stack.
 
 ## Consequences
 

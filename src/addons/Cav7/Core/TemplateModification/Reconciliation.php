@@ -19,9 +19,8 @@ namespace Cav7\Core\TemplateModification;
  * would pin the shape of that handoff and break on a refactor that changed no
  * behaviour, while the bugs worth catching (a copy never enumerated, a join
  * that drops a style) live in the gathering it does not touch. Every shape
- * below is produced against a real board in
- * `docs/verification/template-modifications-in-force.md`; what its absence from
- * CI costs is in the addon's README.
+ * below is one produced against a real board on a dev stack; what its absence
+ * from CI costs is in the addon's README.
  */
 class Reconciliation
 {

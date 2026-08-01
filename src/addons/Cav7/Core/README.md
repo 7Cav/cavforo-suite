@@ -34,7 +34,7 @@ The same check runs daily from `cav7CoreTemplateModCheck` and writes each failur
 
 Everything the check does needs a live XenForo entity layer and database — the joins, the template-map resolution, the in-use-style filter. Only the read of an addon's shipped `_data` is unit-tested, and only for its refusal contract: a file that will not parse must be refused rather than read as "this addon ships nothing", because those two outcomes are exit 2 and a clean green run that checked nothing.
 
-The rest is verified by hand against a dev stack, and the pass is recorded in [docs/verification/template-modifications-in-force.md](docs/verification/template-modifications-in-force.md), including how each failure shape was produced. **CI will go green on a refactor that breaks this command.** Re-run that pass before releasing this addon, and after any XenForo upgrade.
+The rest is verified by hand against a dev stack. **CI will go green on a refactor that breaks this command.** Re-check it by hand before releasing this addon, and after any XenForo upgrade.
 
 ## The shared library
 

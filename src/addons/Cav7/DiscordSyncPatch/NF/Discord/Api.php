@@ -47,10 +47,8 @@ namespace Cav7\DiscordSyncPatch\NF\Discord;
  * overwritten by a later request. Vendor `Api.php:216-224`.
  *
  * Every branch named above was measured rather than reasoned about, against a real
- * XenForo and a mocked transport:
- * docs/verification/reconciliation-sweep-guards.md. That is the place to re-run
- * after a vendor upgrade, and the authority for the stub in
- * tests/ThrottleSignalFreshnessTest.php.
+ * XenForo and a mocked transport. Re-measure after a vendor upgrade: that same
+ * measurement is what the stub in tests/ThrottleSignalFreshnessTest.php models.
  */
 class Api extends XFCP_Api
 {

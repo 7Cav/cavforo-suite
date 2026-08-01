@@ -23,16 +23,14 @@
  * ---------------------------------------------------------------------------
  * NF\Discord\Api is not in this repo, so the parent is a stand-in. It is not a guess:
  * every branch it models was MEASURED against a real XenForo, the real Api and a
- * mocked transport, and the table is in
- * docs/verification/reconciliation-sweep-guards.md. That document is its authority.
+ * mocked transport.
  *
- * It follows from that authority that this file cannot detect the stub falling out of
- * step with a vendor upgrade — if NF/Discord ever clears on the connect branch
- * itself, the assertion below stays green while proving nothing. An assertion pinning
- * "the parent does not clear" would not help: it would go red when the vendor fixed
- * their own bug, which is a change detector on this model rather than a test of ours.
- * What catches that is re-running the probe in the verification document after a
- * vendor upgrade, which is what that document tells you to do.
+ * It follows that this file cannot detect the stub falling out of step with a vendor
+ * upgrade — if NF/Discord ever clears on the connect branch itself, the assertion
+ * below stays green while proving nothing. An assertion pinning "the parent does not
+ * clear" would not help: it would go red when the vendor fixed their own bug, which is
+ * a change detector on this model rather than a test of ours. What catches that is
+ * re-measuring against the real Api on a dev stack after a vendor upgrade.
  *
  * What is NOT covered here, and where it is covered instead:
  *

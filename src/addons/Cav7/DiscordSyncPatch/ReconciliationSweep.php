@@ -38,15 +38,14 @@ use NF\Discord\Api;
  *  - A bot may only add or remove roles below its own highest one, and the constraint
  *    is on the roles MOVED rather than on the member holding them — a member whose top
  *    role is above the bot still takes a 200 as long as that role stays in the set.
- *    Administrator does not bypass it. Measured on a real guild for #242; the probe is
- *    in docs/verification/reconciliation-sweep-guards.md.
+ *    Administrator does not bypass it. Measured on a real guild for #242.
  *  - getRoles() returns an empty array for a failed request as well as a successful
  *    one, so an empty result is read as failure — every guild has an @everyone role.
  *    It also caches what it got for five minutes without distinguishing the two, which
  *    is why this asks it not to read that cache.
  *  - A Discord 429 reaches this addon as an ordinary `false` — not as an exception,
  *    and not as a decoded error body. What follows from that is in wasThrottled()
- *    below; the evidence is in docs/verification/reconciliation-sweep-guards.md.
+ *    below.
  */
 class ReconciliationSweep
 {
@@ -559,9 +558,8 @@ class ReconciliationSweep
      * MAX_STRIP_ATTEMPTS_PER_GUILD, which does not wait to be told it is going too
      * fast.
      *
-     * All of this was measured rather than reasoned about, in
-     * docs/verification/reconciliation-sweep-guards.md, which is where the evidence
-     * lives and the place to re-run after a vendor upgrade.
+     * All of this was measured against a real XenForo and a mocked transport rather
+     * than reasoned about, and it is worth re-measuring after a vendor upgrade.
      */
     protected function wasThrottled(Api $api): bool
     {

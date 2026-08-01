@@ -7,8 +7,7 @@
  * A bot may only add or remove roles below its own highest one. Discord's constraint
  * is on the roles MOVED, never on the member holding them: a member whose top role is
  * above the bot still takes a 200 as long as that role stays in the set sent. That was
- * measured against real Discord rather than reasoned about, and the measurement is in
- * docs/verification/reconciliation-sweep-guards.md.
+ * measured against real Discord rather than reasoned about.
  *
  * The consequence is that an out-of-reach role behaves exactly like a preserved one —
  * keep it, and judge no divergence on it — which is why both come out of this class.

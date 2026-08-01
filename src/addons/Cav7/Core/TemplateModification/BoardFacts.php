@@ -14,8 +14,8 @@ use XF\App;
  * `Reconciliation`'s job and happens nowhere else.
  *
  * No CI coverage: every read here needs a live XenForo entity layer and
- * database. The standing pass is `docs/verification/template-modifications-in-force.md`
- * in this addon; what its absence from CI costs is in the addon's README.
+ * database, so it is checked by hand on a dev stack; what its absence from CI
+ * costs is in the addon's README.
  */
 class BoardFacts
 {
