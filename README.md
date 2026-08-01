@@ -26,6 +26,7 @@ Addons sit at `src/addons/Cav7/<AddonId>/`, mirroring a XenForo install's tree, 
 | `Cav7/MilpacMention` | Alerts a member when their milpac link is posted, as an `@`-mention would |
 | `Cav7/RosterPatch` | Behaviour fixes for NF/Rosters, kept out of the vendor addon |
 | `Cav7/ModeratorLogPatch` | Records a moderation action from whoever had permission to take it, not only from the few holding a moderator record |
+| `Cav7/DonationGoalSync` | Recomputes the recurring donation goal's received total from the donations table, folding in donations attached to no existing goal |
 
 The vendor prefix is `Cav7`, not `7Cav`, because a PHP namespace cannot start with a digit. The GitHub org is `7Cav`; the code vendor is `Cav7`.
 

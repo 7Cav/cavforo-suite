@@ -1,0 +1,163 @@
+# 7Cav - Donation Goal Sync
+
+Keeps the recurring donation goal's stored "received" amount honest. A cron
+recomputes `xf_siropu_donations_goal.donation_amount` from the donations table
+instead of trusting the running total the
+[Siropu Donations](https://xenforo.com/community/resources/donations.5069/)
+add-on maintains, so nobody has to open the goal form and correct the number by
+hand.
+
+It ships none of the vendor's code and changes no vendor file. It reads the
+vendor's entities through XenForo's entity manager and writes one column.
+
+## The problem it fixes
+
+Siropu Donations increments the goal's `donation_amount` as each donation
+completes. A donation that never gets attributed to the goal never reaches that
+counter, and the goal under-reports for the rest of the cycle. Two ways that
+happens on this board:
+
+- **`donation_goal_id = 0`** — the donate flow completed without attaching a
+  goal.
+- **A stale goal id** — legacy recurring PayPal subscriptions. The renewal IPN
+  clones the original subscription donation and reuses its goal id verbatim, so
+  a renewal against a goal that has since been deleted carries an id matching no
+  goal row.
+
+Both are money the board actually received against the current recurring drive,
+and neither shows on the progress bar.
+
+## What it does
+
+Every hour at `:00` and `:30`, `Cron/GoalAmount.php` sums the completed
+donations dated on or after the goal's cycle start and writes the total to
+`donation_amount` — but only when the recomputed figure differs from what is
+stored, so a steady state writes nothing.
+
+A donation counts toward the recurring goal when it is `status = 'completed'`,
+`donation_date >= start_date`, and either
+
+- its `donation_goal_id` is the recurring goal's, or
+- its `donation_goal_id` matches **no existing goal row** — the orphan case
+  above, covering both `0` and a deleted id.
+
+Donations attached to a goal row that still exists are left alone **even when
+that goal is disabled**, so a closed campaign — a Member-in-Need drive, say — is
+never swept into the recurring total. Goal ids are `AUTO_INCREMENT` and never
+reused, so a deleted id stays a permanent orphan and cannot later be reclaimed
+by an unrelated campaign.
+
+The recurring goal is identified by its `settings.recurring.enabled` flag among
+the enabled goals, not by a hardcoded id, so recreating the goal does not
+require a code change.
+
+## What it does not do
+
+**It never resets anything.** `start_date`, `recurring_amount`,
+`donation_count`, `last_donor_user_id` and `last_donation_id` are the vendor's
+to manage; the vendor's own `siropuDonationsRecurring` cron does the monthly
+reset. This add-on writes exactly one column, `donation_amount`, and reads
+`start_date` to know which window to sum.
+
+That division matters when the two disagree. This cron's window is defined by
+whatever `start_date` currently says. If the vendor's reset is late, the window
+is wrong, and this cron will faithfully compute and hold the wrong total —
+correctly, per its own contract. It is not a check on the vendor's reset and
+cannot substitute for one.
+
+**It grants and checks no permission**, adds no table, option, field, route,
+phrase or template. `Setup.php` exists only so XenForo has a setup class to
+call; it declares no install, upgrade or uninstall steps.
+
+## Fail-safe behaviour
+
+The cron aborts without writing when any of these hold:
+
+- `Siropu/Donations` is not in the active add-on cache.
+- Either vendor entity structure is missing, or has lost one of the columns the
+  query depends on (`donation_goal_id`, `start_date`, `donation_amount`,
+  `enabled`, `settings` on the goal; `donation_goal_id`,
+  `primary_currency_amount`, `donation_date`, `status` on the donation).
+- No enabled goal carries `settings.recurring.enabled`.
+- The goal's id or `start_date` is non-positive.
+- The computed sum is null, non-numeric, or negative.
+
+Table names are taken from the entity structures rather than spelled in the SQL,
+so a vendor table rename cannot silently point the query at the wrong place.
+
+Anything that still throws is caught, sent to the XenForo error log through
+`\XF::logException()`, and swallowed. A schema change or a transient database
+error therefore leaves the goal at its last good value rather than breaking the
+scheduled run — but a persistent fault is **silent apart from the error log**.
+Reading `xf_error_log` is how you find out; there is no other symptom beyond the
+goal total going stale.
+
+## If two recurring goals are enabled
+
+The add-on takes the first enabled goal whose `settings.recurring.enabled` is
+set, in whatever order the finder returns, and ignores the rest. The board has
+only ever had one, and the vendor's own reset cron has the same
+one-recurring-goal assumption, but nothing enforces it — enable a second and
+which one gets maintained is not defined.
+
+## Requirements
+
+- XenForo 2.3.0+
+- Siropu Donations 1.6.1+ (declared in `addon.json`; the floor is the version
+  this was written and verified against, not the earliest that would work)
+
+## Installation
+
+1. Copy `src/addons/Cav7/DonationGoalSync` into your XenForo installation at the
+   same path.
+2. Install it: `php cmd.php xf-addon:install Cav7/DonationGoalSync`.
+
+The cron entry `cav7DonationGoalSync` is created by the install and is active
+immediately. Note that XenForo runs cron entries off page views unless an
+external runner invokes `job.php`, so the actual fire time drifts within the
+scheduled minute.
+
+## Tests
+
+None. `tools/run-tests.sh DonationGoalSync` is a no-op.
+
+Every branch in `recomputeRecurringGoal()` runs through `\XF::app()`, the entity
+manager and the vendor's entity structures, so none of it is reachable from a
+plain `php` process the way this repo's other tests run. Asserting on the source
+text instead would check nothing — see
+[CONTRIBUTING.md](../../../../CONTRIBUTING.md#what-belongs-in-ci-and-what-does-not).
+The `_data`/`_output` agreement and the `addon.json` shape are covered repo-wide
+by `tools/check-data-consistency.php` and `tools/validate-addon.php`.
+
+This is an uncovered seam, stated rather than papered over. The orphan-sweep
+query and the guard ladder are the parts worth covering, and both are reachable
+from a stubbed `\XF` harness; that work has not been done.
+
+### Re-run on a dev stack after a XenForo or Siropu Donations upgrade
+
+1. Confirm `Siropu\Donations:Goal` and `Siropu\Donations:Donation` still carry
+   the nine columns listed under **Fail-safe behaviour**. A rename makes the
+   cron abort silently, which looks identical to "nothing to do".
+2. Make a donation with `donation_goal_id` set to a deleted goal id and confirm
+   the next run folds it in.
+3. Make a donation against a *disabled* goal that still exists and confirm the
+   next run does **not** fold it in.
+
+## Addon info
+
+| Field | Value |
+|---|---|
+| Addon ID | `Cav7/DonationGoalSync` |
+| Namespace | `Cav7\DonationGoalSync` |
+| Version | 1.0.0 (`1000070`) |
+| Developer | Cav7 |
+
+## License
+
+See [LICENSE](LICENSE).
+
+## Provenance
+
+Written directly on the 7Cav dev stack and exported into this repo from
+`src/addons/Cav7/DonationGoalSync` there. It was not imported from another
+repository, so it has no history before this commit.

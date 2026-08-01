@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cron>
+  <entry entry_id="cav7DonationGoalSync" cron_class="Cav7\DonationGoalSync\Cron\GoalAmount" cron_method="recomputeRecurringGoal" active="1"><![CDATA[{"day_type":"dow","dow":[-1],"hours":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23],"minutes":[0,30]}]]></entry>
+</cron>
