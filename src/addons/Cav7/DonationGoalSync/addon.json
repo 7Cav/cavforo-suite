@@ -1,8 +1,8 @@
 {
     "title": "7Cav - Donation Goal Sync",
-    "description": "Recomputes the recurring donation goal's stored received amount from completed donations on a schedule, folding in orphans whose goal id matches no goal row, so the total needs no manual edit.",
-    "version_id": 1000070,
-    "version_string": "1.0.0",
+    "description": "Recomputes the recurring donation goal's received total from completed donations, folding in orphans, and corrects the vendor's monthly reset so it cannot be missed by seconds.",
+    "version_id": 1010070,
+    "version_string": "1.1.0",
     "dev": "Cav7",
     "dev_url": "https://github.com/7Cav",
     "faq_url": "",

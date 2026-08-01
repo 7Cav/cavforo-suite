@@ -1,14 +1,16 @@
 # 7Cav - Donation Goal Sync
 
-Keeps the recurring donation goal's stored "received" amount honest. A cron
+Keeps the recurring donation goal honest, in two independent ways. A cron
 recomputes `xf_siropu_donations_goal.donation_amount` from the donations table
 instead of trusting the running total the
 [Siropu Donations](https://xenforo.com/community/resources/donations.5069/)
 add-on maintains, so nobody has to open the goal form and correct the number by
-hand.
+hand. And a class extension corrects the vendor's monthly reset, which
+otherwise misses roughly three months in four.
 
 It ships none of the vendor's code and changes no vendor file. It reads the
-vendor's entities through XenForo's entity manager and writes one column.
+vendor's entities through XenForo's entity manager, writes one column, and
+overrides one method.
 
 ## The problem it fixes
 
@@ -51,19 +53,45 @@ The recurring goal is identified by its `settings.recurring.enabled` flag among
 the enabled goals, not by a hardcoded id, so recreating the goal does not
 require a code change.
 
+## The monthly reset, and why it was missing
+
+The vendor's reset threshold inherited the *time of day* of the previous reset,
+down to the second, so a goal that last reset at `00:30:43` was not due again
+until `00:30:43` on the 1st. XenForo's cron fires at an arbitrary second within
+its scheduled minute, so whether a month's reset happened came down to which of
+two seconds was larger. On this board that was 17 chances in 60 — the reset
+missed roughly three months in four.
+
+A miss does not correct itself cleanly. The goal keeps accumulating into the
+previous cycle, so the progress bar shows two months added together, and when
+the reset lands a day late the donations made on the 1st fall outside the new
+window and are dropped from the cycle entirely — they survive in
+`recurring_amount` as a lifetime figure but appear on no month's bar.
+
+`Siropu/Donations/Entity/Goal.php` overrides `canResetRecurringGoal()` for goals
+configured to reset on the 1st, so the threshold is **midnight on the 1st**.
+Any cron fire on the due day now satisfies it, and the cycle boundary agrees
+with the window the sync cron sums over, so the two can no longer disagree about
+which month a donation belongs to. The arithmetic is in `RecurringSchedule`,
+which also settles a month-overflow case the vendor walked into and fixes UTC
+internally rather than reading the board's `guestTimeZone`.
+
+The full mechanism, the two further defects the replacement arithmetic settles,
+and the alternatives rejected — including why honouring `guestTimeZone` would be
+a behaviour change rather than a fix — are in
+[ADR 0001](docs/adr/0001-correct-the-reset-threshold-rather-than-the-clock.md).
+
 ## What it does not do
 
-**It never resets anything.** `start_date`, `recurring_amount`,
-`donation_count`, `last_donor_user_id` and `last_donation_id` are the vendor's
-to manage; the vendor's own `siropuDonationsRecurring` cron does the monthly
-reset. This add-on writes exactly one column, `donation_amount`, and reads
-`start_date` to know which window to sum.
+**It resets nothing itself.** `start_date`, `recurring_amount`,
+`donation_count`, `last_donor_user_id` and `last_donation_id` are still the
+vendor's to write, and the vendor's own `siropuDonationsRecurring` cron still
+performs the reset. This add-on changes only the vendor's answer to *"is it due
+yet?"*, and writes exactly one column of its own, `donation_amount`.
 
-That division matters when the two disagree. This cron's window is defined by
-whatever `start_date` currently says. If the vendor's reset is late, the window
-is wrong, and this cron will faithfully compute and hold the wrong total —
-correctly, per its own contract. It is not a check on the vendor's reset and
-cannot substitute for one.
+**It leaves goals on a rolling anniversary alone.** A goal that is not
+configured to reset on the 1st has no day boundary to race, so the question is
+handed straight back to the vendor. The override owns one configuration.
 
 **It grants and checks no permission**, adds no table, option, field, route,
 phrase or template. `Setup.php` exists only so XenForo has a setup class to
@@ -119,28 +147,51 @@ scheduled minute.
 
 ## Tests
 
-None. `tools/run-tests.sh DonationGoalSync` is a no-op.
+`tools/run-tests.sh DonationGoalSync`. Two files, both covering the reset fix.
 
-Every branch in `recomputeRecurringGoal()` runs through `\XF::app()`, the entity
-manager and the vendor's entity structures, so none of it is reachable from a
-plain `php` process the way this repo's other tests run. Asserting on the source
-text instead would check nothing — see
-[CONTRIBUTING.md](../../../../CONTRIBUTING.md#what-belongs-in-ci-and-what-does-not).
-The `_data`/`_output` agreement and the `addon.json` shape are covered repo-wide
-by `tools/check-data-consistency.php` and `tools/validate-addon.php`.
+- `tests/RecurringScheduleTest.php` exercises the threshold arithmetic as a pure
+  function, including two rows that probe the ambient timezone.
+- `tests/GoalResetDecisionTest.php` runs the class extension itself over a
+  stubbed `XFCP_Goal` and a pinned `\XF::$time`.
 
-This is an uncovered seam, stated rather than papered over. The orphan-sweep
-query and the guard ladder are the parts worth covering, and both are reachable
-from a stubbed `\XF` harness; that work has not been done.
+Each file's own docblock states what it pins and how it avoids pinning the wrong
+thing; that is not repeated here.
+
+What neither covers: the vendor's own seconds-preserving body, which lives in a
+file we neither ship nor can load without an install. These are a specification
+pin on the arithmetic that replaces it. The defect itself was confirmed
+separately, by mutation control against a live dev stack — recorded in
+[docs/verification/reset-threshold.md](docs/verification/reset-threshold.md).
+
+**`Cron/GoalAmount.php` remains uncovered.** Every branch of
+`recomputeRecurringGoal()` runs through `\XF::app()`, the entity manager and the
+vendor's entity structures. The orphan-sweep query and the guard ladder are both
+reachable from a stubbed `\XF` harness of the kind
+`GoalResetDecisionTest.php` now demonstrates; that work has not been done. Stated
+rather than papered over — asserting on source text instead would check nothing,
+per [CONTRIBUTING.md](../../../../CONTRIBUTING.md#what-belongs-in-ci-and-what-does-not).
+
+The `_data`/`_output` agreement, the `addon.json` shape and the class-extension
+row order are covered repo-wide by `tools/check-data-consistency.php` and
+`tools/validate-addon.php`.
 
 ### Re-run on a dev stack after a XenForo or Siropu Donations upgrade
 
-1. Confirm `Siropu\Donations:Goal` and `Siropu\Donations:Donation` still carry
+1. **Confirm the class extension still resolves.** `get_class()` on a goal
+   entity must report `Cav7\DonationGoalSync\Siropu\Donations\Entity\Goal`. This
+   is the check CI is blindest to and the one most likely to break: an extension
+   whose `from_class` no longer names a real class stays active, valid and
+   exported while being completely inert, and the only symptom is that the reset
+   quietly goes back to missing.
+2. **Confirm the vendor still calls `canResetRecurringGoal()`** from
+   `Cron\Goal::resetRecurringGoals()`. If the vendor inlines or renames the
+   check, the override is bypassed with no error.
+3. Confirm `Siropu\Donations:Goal` and `Siropu\Donations:Donation` still carry
    the nine columns listed under **Fail-safe behaviour**. A rename makes the
    cron abort silently, which looks identical to "nothing to do".
-2. Make a donation with `donation_goal_id` set to a deleted goal id and confirm
+4. Make a donation with `donation_goal_id` set to a deleted goal id and confirm
    the next run folds it in.
-3. Make a donation against a *disabled* goal that still exists and confirm the
+5. Make a donation against a *disabled* goal that still exists and confirm the
    next run does **not** fold it in.
 
 ## Addon info
@@ -149,7 +200,7 @@ from a stubbed `\XF` harness; that work has not been done.
 |---|---|
 | Addon ID | `Cav7/DonationGoalSync` |
 | Namespace | `Cav7\DonationGoalSync` |
-| Version | 1.0.0 (`1000070`) |
+| Version | 1.1.0 (`1010070`) |
 | Developer | Cav7 |
 
 ## License
