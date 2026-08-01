@@ -100,4 +100,3 @@ These stay with the addon, under `src/addons/Cav7/<AddonId>/`:
 - The addon's `README.md`.
 - The addon's `CONTEXT.md` (its domain glossary), if it has one.
 - The addon's own `docs/adr/`, including any ADRs it arrived with. This repo is multi-context; see [CONTEXT-MAP.md](../CONTEXT-MAP.md).
-- The addon's `docs/verification/`, if it has a seam CI cannot reach. One file per seam, recording a pass against a dev stack: the steps that produced each outcome, the output they produced, and how the board was put back. See [CONTRIBUTING.md](../CONTRIBUTING.md#what-belongs-in-ci-and-what-does-not) for when one of these is the right answer, and the addon's own README for when it is re-run.

@@ -64,9 +64,8 @@
  * Earlier versions of this file covered none of this, because the sweep caught
  * `RateLimitedException` and nothing could raise it — a stub that threw would have
  * proved the catch ran and nothing about production. The stub below instead models
- * what a real 429 was measured to do, and that measurement is the authority for it:
- * docs/verification/reconciliation-sweep-guards.md. Change the stub only against that
- * document, or these scenarios go back to testing a fiction.
+ * what a real 429 was measured to do. Change the stub only against a fresh
+ * measurement, or these scenarios go back to testing a fiction.
  *
  * ---------------------------------------------------------------------------
  * What this file deliberately does not cover
@@ -170,8 +169,7 @@ namespace NF\Discord {
          * That the sweep asks at all is NOT covered here. Its only observable is the
          * wording of the per-run log line, and two runs compared for difference would
          * be satisfied by any per-run detail that line ever grows. It is checked on the
-         * dev stack instead; issue #248 and
-         * docs/verification/reconciliation-sweep-guards.md.
+         * dev stack instead; issue #248.
          */
         public function setRetryAfterPerCall(bool $perCall): void
         {
@@ -215,8 +213,7 @@ namespace NF\Discord {
             // A rate-limited read, as the vendor actually delivers one. Discord answers
             // 429, Guzzle throws ClientException, and request() catches it, records the
             // retry-after and returns false — the same false a refused endpoint gives.
-            // Measured against a real XenForo with a mocked transport; the method and
-            // the numbers are in docs/verification/reconciliation-sweep-guards.md.
+            // Measured against a real XenForo with a mocked transport.
             if (self::$rateLimitedOnCall === self::$memberCalls) {
                 self::$retryAfter = \XF::$time + 60;
 

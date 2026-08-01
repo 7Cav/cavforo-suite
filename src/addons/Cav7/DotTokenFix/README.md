@@ -24,10 +24,8 @@ XFES ships inside the XenForo package and tracks core's version, so the XenForo
 floor above already constrains it, and no ElasticSearch Essentials version is
 one this addon needs.
 
-Vendor-coupled behaviour is verified by hand rather than in CI. The pass is
-recorded in
-[docs/verification/require-block-behaviour.md](docs/verification/require-block-behaviour.md).
-Re-run it after a XenForo upgrade, and whenever XFES or ElasticSearch Essentials
+Vendor-coupled behaviour is verified by hand on a dev stack rather than in CI.
+Re-check it after a XenForo upgrade, and whenever XFES or ElasticSearch Essentials
 moves.
 
 ## Installation

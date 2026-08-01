@@ -375,9 +375,7 @@ CI cannot see any of them, and each one fails silently in production if it break
     `ServerException | ConnectException` branch itself, that test stays **green while
     proving nothing**, and only re-running this catches it.
 
-Items 5 to 11 were run for the 1.1.0 release and the result is recorded in
-[docs/verification/reconciliation-sweep-guards.md](docs/verification/reconciliation-sweep-guards.md).
-Item 13 was run for 1.1.1 and is recorded in the same file.
+Items 5 to 11 were run for the 1.1.0 release and passed. Item 13 was run for 1.1.1.
 
 ### Before a release, against the real guild
 
@@ -387,13 +385,11 @@ any call and no green run says anything about these. They need a real guild, the
 `GUILD_MEMBERS` intent, and egress granted deliberately. They are release blockers, not
 follow-ups.
 
-**Items 1 to 6 were run on 2026-07-27 and passed**; the method and the numbers are in
-[docs/verification/reconciliation-sweep-guards.md](docs/verification/reconciliation-sweep-guards.md).
+**Items 1 to 6 were run on 2026-07-27 and passed.**
 Checks 2 to 6 ran in a throwaway guild at full write privilege, using a second bot
 application invited nowhere else — the token is one global option while the guild is
 per server row, so that is a structural boundary rather than a promise. The Discord
-behaviour item 7 rests on was measured separately on 2026-07-28 and is recorded in the
-same file. Check 1 and the
+behaviour item 7 rests on was measured separately on 2026-07-28. Check 1 and the
 refusal half of check 5 ran against the live guild with that same bot holding no
 `Manage Roles`, so every patch it issued was refused and no role moved.
 

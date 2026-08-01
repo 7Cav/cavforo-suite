@@ -11,8 +11,8 @@
  * nothing, which is the shape of silence the issue exists to remove.
  *
  * Only the refusal contract is covered here. Whether the returned modification
- * is in force on a board needs a live XenForo, and is verified on the dev stack
- * — see docs/verification/template-modifications-in-force.md.
+ * is in force on a board needs a live XenForo, and is verified by hand on the
+ * dev stack.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *

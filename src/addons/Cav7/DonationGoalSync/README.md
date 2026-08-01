@@ -186,8 +186,7 @@ thing; that is not repeated here.
 What neither covers: the vendor's own seconds-preserving body, which lives in a
 file we neither ship nor can load without an install. These are a specification
 pin on the arithmetic that replaces it. The defect itself was confirmed
-separately, by mutation control against a live dev stack — recorded in
-[docs/verification/reset-threshold.md](docs/verification/reset-threshold.md).
+separately, by mutation control against a live dev stack.
 
 **`Cron/GoalAmount.php` remains uncovered.** Every branch of
 `recomputeRecurringGoal()` runs through `\XF::app()`, the entity manager and the
