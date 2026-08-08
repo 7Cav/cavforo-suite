@@ -1,0 +1,289 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>PROTOTYPE — generated citation</title>
+<!--
+  THROWAWAY PROTOTYPE. No tests, no error handling, no abstractions.
+  Question: what does a citation GENERATED FROM TYPED TEXT look like, and must it
+  still read as a signed certificate?  (7Cav/cavforo-suite#262)
+
+  The background plate is composited from the REAL GIMP template BSM-YYMMDD.xcf,
+  using only its art layers (BACKGROUND + watermark + ribbon + two seals). Every
+  glyph you see is rendered from the CITATION object below at the template's own
+  layer geometry, read out of the .xcf:
+
+    layer                         box (WxH @ x,y)   font                      size
+    THE UNITED STATES ARMY        235x20  @ 202,138 Sitka Banner Bold         20px
+    TO ALL WHO SHALL SEE...       539x27  @  51,168 Sitka Banner              12px
+    BRONZE STAR [VALOR]           607x27  @  16,195 (inferred Times ~26px)
+    TO                             15x12  @ 312,227 Sitka Banner              12px
+    <rank + member name>          608x19  @  17,245 Times New Roman Bold      20px #3a3a3a
+    Insert citation text here #2  607x100 @  16,271 Times New Roman           10px*
+    GIVEN UNDER MY HAND ON...     610x12  @  15,377 Times New Roman           12px
+    <signatory>                   169x73  @ 236,392 *** a .png, not text ***
+
+    * the body size is a per-citation override (7372/1024 pt) off a 12px base —
+      i.e. the clerk shrinks it by hand until the prose fits. autofit() does that.
+
+  The signature block is used as the template's own bitmap, lifted from the
+  DO NOT EDIT layer — signature, rule and all three printed lines are one image.
+
+  Sitka Banner is a Windows font and is not installed here; it falls back to
+  Charter (Carter, same lineage). The SIGNATORY IS REAL — it is the template's
+  own. The member, operation and citation prose are fabricated.
+-->
+<style>
+  :root { --ink: #16161a; --ink-soft: #3a3a3a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #2b2b30; font-family: -apple-system, system-ui, sans-serif; }
+
+  .sheet {
+    position: relative; margin: 30px auto; overflow: hidden; color: var(--ink);
+    background: url('data:image/png;base64,{{PLATE}}') 0 0 / 100% 100% no-repeat;
+    box-shadow: 0 10px 40px rgba(0,0,0,.55);
+  }
+  .fld { position: absolute; text-align: center; }        /* every template field */
+  /* Every box in the .xcf is centred on the canvas midline (319.5-321 of 640), so
+     single-line fields just span the sheet and centre; only the preamble and the
+     prose actually wrap inside their box. */
+  .fld.one { left: 0 !important; width: 100% !important; white-space: nowrap; }
+  /* The prose box is fixed but the prose is not, so centre it vertically —
+     otherwise a short citation leaves a hole above the GIVEN line. */
+  .f-body { display: flex; align-items: center; }
+  .f-body > div { width: 100%; }
+
+  .serif  { font-family: 'Times New Roman', Times, serif; }
+  .banner { font-family: 'Sitka Banner', Charter, Georgia, serif; }
+
+  /* The signatory is not text — it is a 176x80 bitmap lifted from the template's
+     DO NOT EDIT layer, carrying the signature, the rule and all three printed
+     lines as one image. A generator needs one of these per signing officer. */
+  .sig { position: absolute; }
+
+  /* ---- A: faithful — the template's own 640x500 geometry, to the pixel ---- */
+  .v-faithful { width: 640px; height: 500px; }
+  .v-faithful .f-branch   { left:202px; top:138px; width:235px; font-size:20px; font-weight:bold; }
+  .v-faithful .f-preamble { left: 51px; top:168px; width:539px; font-size:12px; line-height:13.5px; }
+  .v-faithful .f-award    { left: 16px; top:193px; width:607px; font-size:26px; line-height:29px; }
+  .v-faithful .f-to       { left:312px; top:227px; width: 15px; font-size:12px; }
+  .v-faithful .f-member   { left: 17px; top:245px; width:608px; font-size:20px; font-weight:bold;
+                            color: var(--ink-soft); }
+  .v-faithful .f-body     { left: 16px; top:271px; width:607px; height:100px; }
+  .v-faithful .f-given    { left: 15px; top:377px; width:610px; font-size:12px; }
+  .v-faithful .sig        { left:233px; top:389px; }   /* the bitmap's own box */
+
+  /* ---- B: typeset — same idiom, canvas grown so the prose can breathe ----- */
+  /* Same art, re-laid out on a taller plate so the prose is not crushed. */
+  .v-typeset { width: 640px; height: 780px;
+               background-image: url('data:image/png;base64,{{PLATETALL}}'); }
+  .v-typeset .f-branch   { left:202px; top:138px; width:235px; font-size:20px; font-weight:bold; }
+  .v-typeset .f-preamble { left: 51px; top:168px; width:539px; font-size:12px; line-height:13.5px; }
+  .v-typeset .f-award    { left: 16px; top:193px; width:607px; font-size:26px; line-height:29px; }
+  .v-typeset .f-to       { left:312px; top:227px; width: 15px; font-size:12px; }
+  .v-typeset .f-member   { left: 17px; top:245px; width:608px; font-size:20px; font-weight:bold;
+                           color: var(--ink-soft); }
+  .v-typeset .f-body     { left: 70px; top:285px; width:500px; height:330px; text-align:justify;
+                           text-align-last:center; }
+  .v-typeset .f-given    { left: 15px; top:640px; width:610px; font-size:12px; }
+  .v-typeset .sig        { left:233px; top:660px; }
+
+  /* ---- C: page content — no certificate at all --------------------------- */
+  .v-page { width: 700px; margin: 30px auto; background: #fff; color: #141618;
+            font-family: -apple-system, system-ui, sans-serif; box-shadow: 0 10px 40px rgba(0,0,0,.55); }
+  .v-page .hdr { display:flex; gap:14px; align-items:center; padding:16px 26px;
+                 background:#2f3d2c; color:#f2f1e6; }
+  .v-page .hdr img { width:130px; }
+  .v-page .hdr h1 { margin:0 0 3px; font-size:21px; font-weight:650; }
+  .v-page .hdr .sub { font-size:13px; opacity:.82; }
+  .v-page .meta { display:grid; grid-template-columns:max-content 1fr; gap:6px 22px;
+                  padding:18px 26px; border-bottom:1px solid #e4e4e4; font-size:13.5px; }
+  .v-page .meta dt { color:#6a6a6a; }
+  .v-page .meta dd { margin:0; font-weight:550; }
+  .v-page .prose { padding:22px 26px; font-size:15px; line-height:1.68; }
+  .v-page .prose p { margin:0 0 1em; }
+  .v-page .prose p:last-child { margin:0; }
+  .v-page .foot { display:flex; align-items:center; gap:12px; padding:16px 26px 20px;
+                  border-top:1px solid #e4e4e4; font-size:13px; color:#3a3a3a; }
+  .v-page .foot .s { width:42px; height:42px; background-size:contain;
+                     background-repeat:no-repeat; background-position:center; }
+
+  /* ---- switcher + state readout ------------------------------------------ */
+  #bar { position:fixed; left:50%; transform:translateX(-50%); bottom:18px; z-index:99;
+         display:flex; gap:6px; padding:7px; border-radius:999px;
+         background:rgba(20,20,24,.94); box-shadow:0 6px 24px rgba(0,0,0,.5); }
+  #bar a { padding:7px 15px; border-radius:999px; text-decoration:none; font-size:13px; color:#cfcfd6; }
+  #bar a.on { background:#f2f1e6; color:#16161a; font-weight:600; }
+  #state { position:fixed; top:12px; left:12px; z-index:99; max-width:300px;
+           font:11px/1.55 ui-monospace, Menlo, monospace; color:#9a9aa4;
+           background:rgba(20,20,24,.9); padding:10px 12px; border-radius:8px; white-space:pre-wrap; }
+</style>
+
+<div id="mount"></div>
+<div id="state"></div>
+<nav id="bar"></nav>
+
+<script>
+// ===========================================================================
+// THE TYPED TEXT — the entire input. Everything else is the per-award plate.
+// ===========================================================================
+const CITATION = {
+  branch:     'THE UNITED STATES ARMY',
+  preamble:   'TO ALL WHO SHALL SEE THESE PRESENTS, GREETINGS;\n' +
+              'THIS IS TO CERTIFY THAT THE SECRETARY OF THE ARMY HAS AWARDED THE',
+  award:      'BRONZE STAR MEDAL WITH VALOR DEVICE',
+  rank:       'PRIVATE FIRST CLASS',
+  member:     'JOHN SANDWICH',
+  body:
+    'For a single act demonstrating extraordinary heroism and skill under dangerous conditions ' +
+    'while serving as Bear 1 in the 7th Cavalry Regiment during operation Midnight Snack near ' +
+    'the kitchen on 08AUG26. During an assault on hunger, there were audible threats coming from ' +
+    'the stomach and surrounding area. Private First Class John Sandwich along with Staff ' +
+    'Sergeant Deli Meats took the initiative to conduct a two man assault on the kitchen. This ' +
+    'assault led to the successful construction of a BLT sandwich which was a pivotal moment for ' +
+    'the night. Private First Class Sandwich swiftly navigated squeaky floors and limited ' +
+    'lighting, showing his skills as an infantryman to complete the objective with little regard ' +
+    'for his personal sleep schedule. Private First Class John Sandwich’s skills and heroic ' +
+    'actions reflect great credit upon himself and the 7th Cavalry Gaming Regiment.',
+  givenDay:   '8TH DAY OF AUGUST, 2026',
+  givenPlace: 'FORT HOOD, TEXAS',
+  // The certificate variants use the template's own signature BITMAP (see below).
+  // Only the page variant, which has no image to paste, needs these as text.
+  sigLines:   ['General Harm Kleinman', 'Commander', '7th Cavalry Regiment'],
+};
+
+const PLATE = 'data:image/png;base64,{{PLATE}}';
+const RIBBON = 'data:image/png;base64,{{RIBBON}}';
+const SEALL = 'data:image/png;base64,{{SEALL}}';
+const SEALR = 'data:image/png;base64,{{SEALR}}';
+const SIGBLOCK = 'data:image/png;base64,{{SIGBLOCK}}';
+
+const esc   = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const lines = t => t.split('\n').map(esc).join('<br>');
+const paras = t => t.split('\n').map(p => `<p style="margin:0">${esc(p)}</p>`).join('');
+const title = s => s.toLowerCase().replace(/\b[a-z]/g, m => m.toUpperCase());
+
+function certificate(cls, extras = '') {
+  const c = CITATION;
+  return `
+  <div class="sheet ${cls}">
+    <div class="fld one banner f-branch" id="branch">${esc(c.branch)}</div>
+    <div class="fld banner f-preamble">${lines(c.preamble)}</div>
+    <div class="fld one serif f-award"  id="award">${esc(c.award)}</div>
+    <div class="fld one banner f-to">TO</div>
+    <div class="fld one serif f-member" id="member">${esc(c.rank)} ${esc(c.member)}</div>
+    <div class="fld serif  f-body"   id="body">${paras(c.body)}</div>
+    <div class="fld one serif f-given" id="given">GIVEN UNDER MY HAND ON THIS ${esc(c.givenDay)} AT ${esc(c.givenPlace)}</div>
+    <img class="sig" src="${SIGBLOCK}" alt="${esc(c.sigLines.join(', '))}">
+    ${extras}
+  </div>`;
+}
+
+function pageContent() {
+  const c = CITATION;
+  return `
+  <article class="v-page">
+    <div class="hdr">
+      <img src="${RIBBON}" alt="">
+      <div>
+        <h1>${esc(title(c.award))}</h1>
+        <div class="sub">Awarded to ${esc(title(c.rank))} ${esc(title(c.member))}</div>
+      </div>
+    </div>
+    <dl class="meta">
+      <dt>Awarded</dt><dd>${esc(title(c.givenDay).replace(/\bOf\b/g, 'of'))}</dd>
+      <dt>Place</dt><dd>${esc(title(c.givenPlace))}</dd>
+      <dt>Authority</dt><dd>${esc(c.sigLines[0])}, ${esc(c.sigLines[1])}</dd>
+      <dt>Unit</dt><dd>${esc(c.sigLines[2])}</dd>
+    </dl>
+    <div class="prose">${c.body.split('\n').map(p => `<p>${esc(p)}</p>`).join('')}</div>
+    <div class="foot">
+      <div class="s" style="background-image:url(${SEALL})"></div>
+      <div class="s" style="background-image:url(${SEALR})"></div>
+      <div>Signed <strong>${esc(c.sigLines[0])}</strong> &middot; ${esc(c.sigLines[1])}, ${esc(c.sigLines[2])}</div>
+    </div>
+  </article>`;
+}
+
+// --- the job a clerk currently does by hand in GIMP -----------------------
+// Binary-search the largest font size at which the prose still fits its box.
+// The field has a fixed height, so scrollHeight reports the BOX. Measure an
+// inner wrapper instead — that is the height the prose actually wants.
+function autofitHeight(el, maxH, lo, hi, leading) {
+  const inner = document.createElement('div');
+  inner.innerHTML = el.innerHTML;
+  el.innerHTML = '';
+  el.appendChild(inner);
+  const measure = size => {
+    el.style.fontSize = size + 'px';
+    el.style.lineHeight = (size * leading) + 'px';
+    return inner.getBoundingClientRect().height;
+  };
+  const cap = hi;
+  let best = lo;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if (measure(mid) <= maxH) { best = mid; lo = mid; } else { hi = mid; }
+  }
+  measure(best);
+  // Report a clamp as a clamp: if we never found an upper bound that overflows,
+  // the prose fits comfortably and the design cap is what set the size.
+  return { size: best, capped: best >= cap - 0.01 };
+}
+// Long award names and long member names must shrink to stay on one line.
+// The field spans the sheet, so measure the inline text, not the box.
+function autofitWidth(el, maxW, max) {
+  const span = document.createElement('span');
+  span.innerHTML = el.innerHTML;
+  el.innerHTML = '';
+  el.appendChild(span);
+  let size = max;
+  el.style.whiteSpace = 'nowrap';
+  el.style.fontSize = size + 'px';
+  while (size > 6 && span.getBoundingClientRect().width > maxW) {
+    size -= 0.25;
+    el.style.fontSize = size + 'px';
+  }
+  return size;
+}
+
+const VARIANTS = {
+  faithful: {
+    label: 'A · Faithful (template geometry)',
+    render: () => certificate('v-faithful'),
+    fit: () => autofitHeight(document.getElementById('body'), 100, 4, 13, 1.16),
+  },
+  typeset: {
+    label: 'B · Typeset certificate',
+    render: () => certificate('v-typeset'),
+    fit: () => autofitHeight(document.getElementById('body'), 320, 6, 15, 1.62),
+  },
+  page: { label: 'C · Page content (no image)', render: pageContent, fit: () => null },
+};
+
+const key = new URLSearchParams(location.search).get('variant') || 'faithful';
+const v = VARIANTS[key] || VARIANTS.faithful;
+document.getElementById('mount').innerHTML = v.render();
+
+// Shrink-to-fit each single-line field to its own box width from the .xcf.
+const fitOne = (id, boxW, max) => {
+  const el = document.getElementById(id);
+  return el ? autofitWidth(el, boxW, max) : null;
+};
+const awardSize = fitOne('award', 607, 26);
+fitOne('member', 608, 20);
+fitOne('given', 610, 12);
+const bodySize = v.fit();
+
+document.getElementById('bar').innerHTML = Object.entries(VARIANTS)
+  .map(([k, o]) => `<a class="${k === key ? 'on' : ''}" href="?variant=${k}">${o.label}</a>`).join('');
+
+const sheet = document.querySelector('.sheet, .v-page');
+document.getElementById('state').textContent =
+  `variant     ${key}\n` +
+  `canvas      ${sheet.offsetWidth} x ${sheet.offsetHeight}\n` +
+  `award fit   ${awardSize ? awardSize.toFixed(2) + 'px (from 26px cap)' : 'n/a'}\n` +
+  `body fit    ${bodySize
+      ? bodySize.size.toFixed(2) + 'px ' + (bodySize.capped ? '(fits — design cap)' : '(shrunk to fit)')
+      : 'n/a — prose flows'}\n` +
+  `body        ${CITATION.body.length} chars / ${CITATION.body.split('\n').length} paras\n` +
+  `input       ${Object.keys(CITATION).length} text fields + 1 per-award plate`;
+</script>
