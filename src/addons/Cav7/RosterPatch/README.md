@@ -12,6 +12,12 @@ The vendor applies a position's extra user groups to a member only at the moment
 
 When a position's group list changes, this add-on re-applies it to every current holder (primary and secondary) through XenForo's own user-group-change service — the same path the vendor uses. Because that service diffs across all of a member's grants, it never strips a group the member still holds through another position, roster, or rank. An empty group list revokes the grant cleanly.
 
+**A member can only have one milpac.**
+
+NF/Rosters lets a member be added to a roster more than once, and lets a milpac be moved onto a roster the member is already on. A save that would leave a member holding a second milpac is refused, on the add and on the move alike, and the staffer sees an error saying so. The rule is one milpac per member across every roster, not one per roster, so adding a member who is already on a different roster is refused too.
+
+If a member already has two, every save of either is refused until one is deleted. A refused move or edit still applies the roster's group changes, because the vendor applies those before it saves, so the member's groups are worth checking if you hit that. Two adds landing at the same instant can still both get through, because the check and the insert are not atomic.
+
 **Award and service-record dates are fixed calendar days now.**
 
 An award or service record carries a date with no time of day. The vendor stored that day at whatever time it was saved and rendered it in each viewer's timezone, so the same entry could read a day early or a day late depending on who was looking, and a staffer outside UTC often saw the wrong day before they touched the form.

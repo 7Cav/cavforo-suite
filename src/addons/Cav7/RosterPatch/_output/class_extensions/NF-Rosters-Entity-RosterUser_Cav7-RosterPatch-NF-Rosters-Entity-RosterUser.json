@@ -1,0 +1,6 @@
+{
+    "from_class": "NF\\Rosters\\Entity\\RosterUser",
+    "to_class": "Cav7\\RosterPatch\\NF\\Rosters\\Entity\\RosterUser",
+    "execute_order": 10,
+    "active": true
+}
