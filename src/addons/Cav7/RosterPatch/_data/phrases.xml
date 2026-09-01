@@ -1,2 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<phrases/>
+<phrases>
+  <phrase title="cav7_rpatch_member_already_has_milpac" version_id="1020070" version_string="1.2.0"><![CDATA[This member already has a milpac.]]></phrase>
+</phrases>
