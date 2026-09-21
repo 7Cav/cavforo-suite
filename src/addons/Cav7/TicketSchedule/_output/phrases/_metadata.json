@@ -139,8 +139,8 @@
     },
     "cav7_ts_set_x_active_or_inactive.txt": {
         "global_cache": false,
-        "version_id": 0,
-        "version_string": "",
+        "version_id": 1000070,
+        "version_string": "1.0.0",
         "hash": "e9c6abdce24e2e83391a93692dffc760"
     },
     "cav7_ts_start_date.txt": {
