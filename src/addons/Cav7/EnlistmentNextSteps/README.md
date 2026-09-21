@@ -74,6 +74,9 @@ All triggering forms share the three phrases.
   everyone else the way the thread itself would. A recruit can reload or
   bookmark it as long as they can still view their thread.
 - The button links to the recruit's own thread. Nothing records the press.
+- The enlistment process image sits beside the paragraph at desktop widths
+  and below the button on a phone. A click opens it full size in the site
+  lightbox, since its small print is unreadable at column width.
 - A triggering form whose submission produced no thread falls back to the
   vendor reply, since there is no thread for the page to lead to.
 

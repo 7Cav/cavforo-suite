@@ -1,20 +1,31 @@
 <xf:title>{{ phrase('cav7_ens_next_steps_title') }}</xf:title>
 
-<div class="block">
-	<div class="block-container">
-		<div class="block-body">
-			<div class="block-row">
+<xf:css src="cav7_ens_next_steps.less" />
+<xf:macro id="lightbox_macros::setup" arg-canViewAttachments="{{ true }}" />
+
+<xf:set var="$posterUrl" value="{{ base_url('styles/default/cav7/enlistment-next-steps/enlistment-process.png') }}" />
+
+<div class="block cav7Ens">
+	<div class="block-container cav7Ens-container">
+		<div class="cav7Ens-main">
+			<div class="cav7Ens-mark" aria-hidden="true"><xf:fa icon="fa-clipboard-check" /></div>
+			<div class="cav7Ens-body">
 				{{ phrase('cav7_ens_next_steps_body') }}
 			</div>
-			<div class="block-row">
-				<img src="{{ base_url('styles/default/cav7/enlistment-next-steps/enlistment-process.png') }}"
-					alt="Enlistment process"
-					width="512" height="1024"
-					style="max-width: 100%; height: auto;" />
-			</div>
-			<div class="block-row">
-				<xf:button href="{{ link('threads', $thread) }}" class="button--primary">{{ phrase('cav7_ens_next_steps_button') }}</xf:button>
+			<div class="cav7Ens-actions">
+				<xf:button href="{{ link('threads', $thread) }}" class="button--cta cav7Ens-cta" icon="confirm">{{ phrase('cav7_ens_next_steps_button') }}</xf:button>
 			</div>
 		</div>
+		<figure class="cav7Ens-figure" data-xf-init="lightbox">
+			<div class="js-lbContainer" data-lb-id="cav7-ens-{$thread.thread_id}">
+				<div class="cav7Ens-poster js-lbImage" data-src="{$posterUrl}" data-type="image" data-single-image="1">
+					<img src="{$posterUrl}"
+						alt="Enlistment process"
+						data-zoom-target="1"
+						width="512" height="1024" />
+					<span class="cav7Ens-zoom" aria-hidden="true"><xf:fa icon="fa-expand" /></span>
+				</div>
+			</div>
+		</figure>
 	</div>
 </div>
