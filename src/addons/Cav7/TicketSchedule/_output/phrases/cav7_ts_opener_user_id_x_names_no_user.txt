@@ -1,0 +1,1 @@
+The Ticket Schedule add-on is not configured. Set its options before saving a schedule.

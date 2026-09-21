@@ -1,0 +1,11 @@
+{
+    "parent_navigation_id": "nfTickets",
+    "display_order": 60,
+    "link": "ticket-schedules",
+    "icon": "fa-calendar-check",
+    "admin_permission_id": "nfTickets",
+    "debug_only": false,
+    "development_only": false,
+    "super_admin_only": false,
+    "hide_no_children": false
+}

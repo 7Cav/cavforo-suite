@@ -1,0 +1,11 @@
+{
+    "route_type": "admin",
+    "route_prefix": "ticket-schedules",
+    "sub_name": "",
+    "format": ":int<schedule_id>/",
+    "build_class": "",
+    "build_method": "",
+    "controller": "Cav7\\TicketSchedule\\Admin\\Controller\\Schedule",
+    "context": "cav7TicketSchedules",
+    "action_prefix": ""
+}

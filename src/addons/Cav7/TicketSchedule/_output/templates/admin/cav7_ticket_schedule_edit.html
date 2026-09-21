@@ -1,0 +1,75 @@
+<xf:set var="$unitLabels" value="{{ {
+	'yearly': phrase('cav7_ts_cadence_yearly'),
+	'monthly': phrase('cav7_ts_cadence_monthly'),
+	'weekly': phrase('cav7_ts_cadence_weekly'),
+	'days': phrase('cav7_ts_cadence_days')
+} }}" />
+
+<xf:if is="$schedule.isInsert()">
+	<xf:title>{{ phrase('cav7_ts_add_ticket_schedule') }}</xf:title>
+<xf:else />
+	<xf:title>{{ phrase('cav7_ts_ticket_schedule') }}: {$schedule.title}</xf:title>
+</xf:if>
+
+<xf:pageaction if="$schedule.isUpdate()">
+	<xf:button href="{{ link('ticket-schedules/delete', $schedule) }}" icon="delete" overlay="true" />
+</xf:pageaction>
+
+<xf:form action="{{ link('ticket-schedules/save', $schedule) }}" class="block" ajax="true">
+	<div class="block-container">
+		<div class="block-body">
+			<xf:textboxrow name="title" value="{$schedule.title}" maxlength="150"
+				label="{{ phrase('title') }}" />
+
+			<xf:textarearow name="message" value="{$schedule.message}" rows="8" autosize="true"
+				label="{{ phrase('cav7_ts_first_message') }}"
+				explain="{{ phrase('cav7_ts_first_message_explain') }}" />
+
+			<xf:selectrow name="ticket_category_id" value="{$schedule.ticket_category_id}"
+				label="{{ phrase('category') }}"
+				explain="{{ phrase('cav7_ts_category_explain') }}">
+				<xf:option value="0"></xf:option>
+				<xf:foreach loop="$categories" key="$categoryId" value="$categoryTitle">
+					<xf:option value="{$categoryId}">{$categoryTitle}</xf:option>
+				</xf:foreach>
+			</xf:selectrow>
+
+			<xf:formrow label="{{ phrase('cav7_ts_start_date') }}" rowtype="input">
+				<xf:dateinput name="start_date" value="{$schedule.start_date}" />
+			</xf:formrow>
+
+			<xf:radiorow name="cadence_unit" value="{$schedule.cadence_unit}"
+				label="{{ phrase('cav7_ts_cadence') }}">
+				<xf:foreach loop="$units" value="$unit">
+					<xf:if is="$unit == 'days'">
+						<xf:option value="{$unit}" data-hide="true" label="{$unitLabels.{$unit}}">
+							<xf:dependent>
+								<xf:numberbox name="cadence_every" value="{$schedule.cadence_every}" min="1" max="366" step="1" />
+								<div class="formRow-explain">{{ phrase('cav7_ts_every_n_days_explain') }}</div>
+							</xf:dependent>
+						</xf:option>
+					<xf:else />
+						<xf:option value="{$unit}" label="{$unitLabels.{$unit}}" />
+					</xf:if>
+				</xf:foreach>
+			</xf:radiorow>
+
+			<xf:checkboxrow>
+				<xf:option name="active" value="1" selected="{$schedule.active}" label="{{ phrase('active') }}" />
+			</xf:checkboxrow>
+
+			<xf:if is="$schedule.isUpdate()">
+				<xf:inforow label="{{ phrase('cav7_ts_due_date') }}">{$schedule.due_date}</xf:inforow>
+				<xf:inforow label="{{ phrase('cav7_ts_last_ticket') }}">
+					<xf:if is="$schedule.LastTicket">
+						<a href="{$schedule.LastTicket.getContentUrl()}" target="_blank">{$schedule.LastTicket.title}</a>
+						(<xf:date time="{$schedule.last_ticket_date}" />)
+					<xf:else />
+						{{ phrase('n_a') }}
+					</xf:if>
+				</xf:inforow>
+			</xf:if>
+		</div>
+		<xf:submitrow icon="save" sticky="true" />
+	</div>
+</xf:form>
