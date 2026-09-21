@@ -3,7 +3,6 @@
   <phrase title="admin_navigation.cav7TicketSchedules" version_id="1000070" version_string="1.0.0"><![CDATA[Ticket schedules]]></phrase>
   <phrase title="cav7_ts_add_ticket_schedule" version_id="1000070" version_string="1.0.0"><![CDATA[Add ticket schedule]]></phrase>
   <phrase title="cav7_ts_cadence" version_id="1000070" version_string="1.0.0"><![CDATA[Cadence]]></phrase>
-  <phrase title="cav7_ts_cadence_cannot_be_counted_from" version_id="1000070" version_string="1.0.0"><![CDATA[The start date and cadence cannot be counted from. The start date must be a real calendar day, and every N days must be between 1 and 366.]]></phrase>
   <phrase title="cav7_ts_cadence_days" version_id="1000070" version_string="1.0.0"><![CDATA[Every N days]]></phrase>
   <phrase title="cav7_ts_cadence_monthly" version_id="1000070" version_string="1.0.0"><![CDATA[Monthly]]></phrase>
   <phrase title="cav7_ts_cadence_weekly" version_id="1000070" version_string="1.0.0"><![CDATA[Weekly]]></phrase>

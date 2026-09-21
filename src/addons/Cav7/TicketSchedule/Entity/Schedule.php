@@ -82,7 +82,7 @@ class Schedule extends Entity
         try {
             $cadence = $this->getCadence();
         } catch (\InvalidArgumentException $e) {
-            $this->error(\XF::phrase('cav7_ts_cadence_cannot_be_counted_from'), 'start_date');
+            $this->error(\XF::phrase('please_enter_valid_date_format'), 'start_date');
             return;
         }
 
