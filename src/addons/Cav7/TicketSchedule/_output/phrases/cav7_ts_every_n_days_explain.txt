@@ -1,0 +1,1 @@
+Read only for "Every N days". 1 to 366.

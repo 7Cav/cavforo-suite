@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<phrases>
+  <phrase title="admin_navigation.cav7TicketSchedules" version_id="1000070" version_string="1.0.0"><![CDATA[Ticket schedules]]></phrase>
+  <phrase title="cav7_ts_active_explain" version_id="1000070" version_string="1.0.0"><![CDATA[An inactive schedule opens nothing. Setting it active again counts the due date from the start date, with no ticket for the time it was off.]]></phrase>
+  <phrase title="cav7_ts_add_ticket_schedule" version_id="1000070" version_string="1.0.0"><![CDATA[Add ticket schedule]]></phrase>
+  <phrase title="cav7_ts_cadence" version_id="1000070" version_string="1.0.0"><![CDATA[Cadence]]></phrase>
+  <phrase title="cav7_ts_cadence_cannot_be_counted_from" version_id="1000070" version_string="1.0.0"><![CDATA[The start date and cadence cannot be counted from. The start date must be a real calendar day, and every N days must be between 1 and 366.]]></phrase>
+  <phrase title="cav7_ts_cadence_days" version_id="1000070" version_string="1.0.0"><![CDATA[Every N days]]></phrase>
+  <phrase title="cav7_ts_cadence_monthly" version_id="1000070" version_string="1.0.0"><![CDATA[Monthly]]></phrase>
+  <phrase title="cav7_ts_cadence_weekly" version_id="1000070" version_string="1.0.0"><![CDATA[Weekly]]></phrase>
+  <phrase title="cav7_ts_cadence_yearly" version_id="1000070" version_string="1.0.0"><![CDATA[Yearly]]></phrase>
+  <phrase title="cav7_ts_category_explain" version_id="1000070" version_string="1.0.0"><![CDATA[Only categories that allow tickets to be opened are listed.]]></phrase>
+  <phrase title="cav7_ts_category_not_found" version_id="1000070" version_string="1.0.0"><![CDATA[The requested ticket category could not be found.]]></phrase>
+  <phrase title="cav7_ts_category_x_requires_a_prefix_and_has_no_default" version_id="1000070" version_string="1.0.0"><![CDATA[{category} requires a prefix and has no default prefix, so no scheduled ticket could ever be opened in it.]]></phrase>
+  <phrase title="cav7_ts_due_date" version_id="1000070" version_string="1.0.0"><![CDATA[Due date]]></phrase>
+  <phrase title="cav7_ts_every_n_days_explain" version_id="1000070" version_string="1.0.0"><![CDATA[Read only for "Every N days". 1 to 366.]]></phrase>
+  <phrase title="cav7_ts_every_x_days" version_id="1000070" version_string="1.0.0"><![CDATA[Every {n} days]]></phrase>
+  <phrase title="cav7_ts_first_message" version_id="1000070" version_string="1.0.0"><![CDATA[First message]]></phrase>
+  <phrase title="cav7_ts_first_message_explain" version_id="1000070" version_string="1.0.0"><![CDATA[The opening message of every ticket this schedule opens. BB code is rendered as in any ticket message.]]></phrase>
+  <phrase title="cav7_ts_inactive" version_id="1000070" version_string="1.0.0"><![CDATA[Inactive]]></phrase>
+  <phrase title="cav7_ts_last_ticket" version_id="1000070" version_string="1.0.0"><![CDATA[Last ticket]]></phrase>
+  <phrase title="cav7_ts_no_ticket_schedules_yet" version_id="1000070" version_string="1.0.0"><![CDATA[No ticket schedules have been written yet.]]></phrase>
+  <phrase title="cav7_ts_opener_user_id_x_names_no_user" version_id="1000070" version_string="1.0.0"><![CDATA[Opener user ID {id} names no user. Correct the option under Ticket Schedule before saving a schedule.]]></phrase>
+  <phrase title="cav7_ts_opener_x_may_not_open_a_ticket_in_category_y_because_z" version_id="1000070" version_string="1.0.0"><![CDATA[{opener} may not open a ticket in {category}: {reason}]]></phrase>
+  <phrase title="cav7_ts_schedule_not_found" version_id="1000070" version_string="1.0.0"><![CDATA[The requested ticket schedule could not be found.]]></phrase>
+  <phrase title="cav7_ts_start_date" version_id="1000070" version_string="1.0.0"><![CDATA[Start date]]></phrase>
+  <phrase title="cav7_ts_start_date_explain" version_id="1000070" version_string="1.0.0"><![CDATA[The day the cadence counts from. It may be in the past: every 1 March since 2019 has its next ticket on the next 1 March, not today. Monthly and yearly keep this day of the month; a shorter month uses its last day.]]></phrase>
+  <phrase title="cav7_ts_the_opener_has_no_create_permission_there" version_id="1000070" version_string="1.0.0"><![CDATA[the opener has no create permission there]]></phrase>
+  <phrase title="cav7_ts_ticket_schedule" version_id="1000070" version_string="1.0.0"><![CDATA[Ticket schedule]]></phrase>
+  <phrase title="cav7_ts_ticket_schedules" version_id="1000070" version_string="1.0.0"><![CDATA[Ticket schedules]]></phrase>
+  <phrase title="cron_entry.cav7TSOpenDueTickets" version_id="1000070" version_string="1.0.0"><![CDATA[Open the tickets whose schedule is due]]></phrase>
+  <phrase title="option.cav7TicketScheduleOpenerUserId" version_id="1000070" version_string="1.0.0"><![CDATA[Opener user ID]]></phrase>
+  <phrase title="option_explain.cav7TicketScheduleOpenerUserId" version_id="1000070" version_string="1.0.0"><![CDATA[The XenForo user every scheduled ticket is opened as. One user for the whole board. Default: 598, the bot user the suite already posts as. A save in the ticket schedule screens is refused while this names no user.]]></phrase>
+  <phrase title="option_group.cav7TicketSchedule" version_id="1000070" version_string="1.0.0"><![CDATA[Ticket Schedule]]></phrase>
+  <phrase title="option_group_description.cav7TicketSchedule" version_id="1000070" version_string="1.0.0"><![CDATA[Opens an NF/Tickets ticket on a calendar cadence, so recurring work such as a yearly review has a ticket waiting on the day. Schedules are written under Tickets.]]></phrase>
+</phrases>

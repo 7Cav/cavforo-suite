@@ -1,0 +1,62 @@
+<xf:title>{{ phrase('cav7_ts_ticket_schedules') }}</xf:title>
+
+<xf:pageaction>
+	<xf:button href="{{ link('ticket-schedules/add') }}" icon="add">{{ phrase('cav7_ts_add_ticket_schedule') }}</xf:button>
+</xf:pageaction>
+
+<xf:if is="$schedules is not empty">
+	<xf:form action="{{ link('ticket-schedules/toggle') }}" class="block" ajax="true">
+		<div class="block-container">
+			<div class="block-body">
+				<xf:datalist>
+					<xf:datarow rowtype="header">
+						<xf:cell>{{ phrase('title') }}</xf:cell>
+						<xf:cell>{{ phrase('category') }}</xf:cell>
+						<xf:cell>{{ phrase('cav7_ts_cadence') }}</xf:cell>
+						<xf:cell>{{ phrase('cav7_ts_due_date') }}</xf:cell>
+						<xf:cell>{{ phrase('cav7_ts_last_ticket') }}</xf:cell>
+						<xf:cell class="dataList-cell--min"></xf:cell>
+						<xf:cell class="dataList-cell--min"></xf:cell>
+					</xf:datarow>
+					<xf:foreach loop="$schedules" value="$schedule">
+						<xf:datarow
+							label="{$schedule.title}"
+							href="{{ link('ticket-schedules/edit', $schedule) }}"
+							delete="{{ link('ticket-schedules/delete', $schedule) }}">
+
+							<xf:cell>
+								<xf:if is="$schedule.Category">
+									{$schedule.Category.title}
+								<xf:else />
+									<span class="label label--red">{{ phrase('cav7_ts_category_not_found') }}</span>
+								</xf:if>
+							</xf:cell>
+							<xf:cell>
+								<xf:if is="$schedule.cadence_unit == 'days'">
+									{{ phrase('cav7_ts_every_x_days', {'n': $schedule.cadence_every}) }}
+								<xf:else />
+									{{ phrase('cav7_ts_cadence_' . $schedule.cadence_unit) }}
+								</xf:if>
+								<div class="u-muted">{{ phrase('cav7_ts_start_date') }}: {$schedule.start_date}</div>
+							</xf:cell>
+							<xf:cell>{$schedule.due_date}</xf:cell>
+							<xf:cell>
+								<xf:if is="$schedule.LastTicket">
+									<a href="{{ link('public:tickets', $schedule.LastTicket) }}" target="_blank">{$schedule.LastTicket.title}</a>
+									<div class="u-muted"><xf:date time="{$schedule.last_ticket_date}" /></div>
+								<xf:else />
+									&mdash;
+								</xf:if>
+							</xf:cell>
+							<xf:toggle name="active[{$schedule.schedule_id}]" selected="$schedule.active"
+								class="dataList-cell--separated" submit="true"
+								tooltip="{{ phrase('enable_disable_x', {'title': $schedule.title}) }}" />
+						</xf:datarow>
+					</xf:foreach>
+				</xf:datalist>
+			</div>
+		</div>
+	</xf:form>
+<xf:else />
+	<div class="blockMessage">{{ phrase('cav7_ts_no_ticket_schedules_yet') }}</div>
+</xf:if>

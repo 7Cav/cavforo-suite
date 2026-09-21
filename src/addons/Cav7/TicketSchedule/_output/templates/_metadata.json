@@ -1,0 +1,12 @@
+{
+    "admin/cav7_ticket_schedule_edit.html": {
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "523ef87bcb2bfabcec2968c816f5adb8"
+    },
+    "admin/cav7_ticket_schedule_list.html": {
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "1dc6e54b3ab91538c5651cd929f97f0d"
+    }
+}

@@ -1,0 +1,1 @@
+An inactive schedule opens nothing. Setting it active again counts the due date from the start date, with no ticket for the time it was off.

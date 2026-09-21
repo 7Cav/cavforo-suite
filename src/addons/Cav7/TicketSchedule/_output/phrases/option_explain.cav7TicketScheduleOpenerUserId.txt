@@ -1,0 +1,1 @@
+The XenForo user every scheduled ticket is opened as. One user for the whole board. Default: 598, the bot user the suite already posts as. A save in the ticket schedule screens is refused while this names no user.

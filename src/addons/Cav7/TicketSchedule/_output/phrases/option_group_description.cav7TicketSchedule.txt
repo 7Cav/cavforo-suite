@@ -1,0 +1,1 @@
+Opens an NF/Tickets ticket on a calendar cadence, so recurring work such as a yearly review has a ticket waiting on the day. Schedules are written under Tickets.

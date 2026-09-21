@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<routes>
+  <route route_type="admin" route_prefix="ticket-schedules" format=":int&lt;schedule_id&gt;/" controller="Cav7\TicketSchedule\Admin\Controller\Schedule" context="cav7TicketSchedules"/>
+</routes>

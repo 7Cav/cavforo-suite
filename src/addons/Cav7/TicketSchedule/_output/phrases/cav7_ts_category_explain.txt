@@ -1,0 +1,1 @@
+Only categories that allow tickets to be opened are listed.
