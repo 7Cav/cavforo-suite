@@ -10,8 +10,9 @@ Discord's webhook JSON to any `https` URL and renders the title and body from
 the tool's own templates. So a hook accepts exactly that request, at
 `ticket-webhooks/{id}/{token}` with a numeric id and a `[A-Za-z0-9_-]` token so
 a caller that validates Discord's URL pattern accepts it, and takes the same
-token as a bearer header too. Every tool with a Discord target is a caller with
-no adapter in our code, and the caller's templates decide what the ticket says.
+token as a bearer header too, with either credential enough on its own. Every
+tool with a Discord target is a caller with no adapter in our code, and the
+caller's templates decide what the ticket says.
 
 ## Considered options
 
@@ -24,11 +25,13 @@ no adapter in our code, and the caller's templates decide what the ticket says.
 
 ## Consequences
 
-- The secret rides in the URL path. That is a capability URL with the same
+- The token rides in the URL path. That is a capability URL with the same
   guessing space as a bearer header, but access logs record it, and XenForo's
-  error log captures the request URL on any entry logged during the request.
-  So the token is stored hashed and replaced rather than recovered, and the
-  hook controller logs by hook id, never by URL.
+  error log records the request URL on every entry, so an entry logged during
+  a path-form post carries the token. The token is stored hashed and replaced
+  rather than recovered, the controller names the hook in its own message, and
+  the error log is readable only by admins, who hold the rotate action. A
+  caller that can send a header instead keeps the token out of both logs.
 - The caller decides wording and batching. One post is one ticket, and the
   addon does not de-duplicate. A monitor's down and up notifications open two
   tickets.
