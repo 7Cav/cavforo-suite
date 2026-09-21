@@ -7,7 +7,8 @@ attaches through one XenForo class extension over the vendor's public form
 controller and ships none of the vendor's code. For **Enlistment queue** and
 **Processing Clerk**, see
 [Cav7/EnlistmentReminder's CONTEXT.md](../EnlistmentReminder/CONTEXT.md). For
-suite-wide terms, see the root [CONTEXT.md](../../../../CONTEXT.md).
+**milpac** and other suite-wide terms, see the root
+[CONTEXT.md](../../../../CONTEXT.md).
 
 ## Language
 
@@ -16,12 +17,12 @@ The page a recruit lands on after a **triggering form** is accepted: a title,
 RRD's paragraph on what happens next, the enlistment process image, and one
 "I Understand" button that goes to the recruit's own thread in the Enlistment
 queue. It opens for anyone the thread itself would open for, and for nobody
-else. Nothing records that the button was pressed, and no private message is
-sent about it.
+else. It is the whole of the confirmation: no toast precedes it, nothing
+records that the button was pressed, and no private message is sent about it.
 _Avoid_: confirmation page (Advanced Forms already has a per-form
 "confirmation email" and a "confirm" dialog for promotions; this page is
 neither), thank-you page (the vendor's "thanks" field is the toast this page
-replaces), landing page.
+replaces), receipt, landing page.
 
 **triggering form**:
 An Advanced Forms form whose accepted submission shows the **next-steps page**.
