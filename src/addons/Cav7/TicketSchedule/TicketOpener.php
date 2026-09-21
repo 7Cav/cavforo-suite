@@ -9,10 +9,16 @@ use Cav7\TicketSchedule\Entity\Schedule;
  * ticket schedule that is due, as the opener user, then moves the schedule's
  * due date past today.
  *
- * Ordering inside a run is deliberate. The due date advances only after the
- * ticket has saved. A crash between the two can open a duplicate on the next
- * run; the reverse order would lose a ticket on every failed open, which
- * contradicts the retry rule below. The duplicate is the cheaper failure.
+ * Ordering inside a run is deliberate. The due date advances and the ticket
+ * is recorded right after the ticket has saved, and the vendor's
+ * notifications go out after that. A crash between the save and the advance
+ * can open a duplicate on the next run; the reverse order would lose a ticket
+ * on every failed open, which contradicts the retry rule below. The duplicate
+ * is the cheaper failure. Notifications come last and fail on their own: a
+ * notifier that throws (a mailer, a third-party notifier extension) leaves the
+ * ticket standing, the due date moved on, and one error naming both. Sending
+ * them before the advance would open a ticket every hour for as long as the
+ * notifier kept failing.
  *
  * A schedule that cannot open its ticket leaves one error in the XenForo error
  * log naming it, keeps its due date, and is retried on the next hourly run. It
@@ -118,11 +124,33 @@ class TicketOpener
         }
 
         $ticket = $creator->save();
-        $creator->sendNotifications();
 
         $schedule->due_date = $schedule->getCadence()->advancePast($schedule->due_date, $today);
         $schedule->last_ticket_id = $ticket->ticket_id;
         $schedule->last_ticket_date = \XF::$time;
         $schedule->save();
+
+        try {
+            $this->sendNotifications($creator);
+        } catch (\Throwable $e) {
+            \XF::logException($e, false, sprintf(
+                '[Cav7/TicketSchedule] Schedule %d "%s" opened ticket %d but its notifications failed; the ticket stands and the due date has moved to %s: ',
+                $schedule->schedule_id,
+                $schedule->title,
+                $ticket->ticket_id,
+                $schedule->due_date
+            ));
+        }
+    }
+
+    /**
+     * The vendor's own notifications for a new ticket: the category's
+     * watchers, its notify addresses, and whatever notifier extensions other
+     * addons hang on it. A method of its own so a failure here is caught as
+     * "notifications failed", never as "the ticket could not open".
+     */
+    protected function sendNotifications(\NF\Tickets\Service\Ticket\Creator $creator): void
+    {
+        $creator->sendNotifications();
     }
 }

@@ -70,16 +70,21 @@ title or message does not.
 
 Every hour, for each active schedule whose due date is today or earlier in the
 board's timezone, the cron opens one ticket in the schedule's category as the
-opener, with the category's default prefix, priority and status, and sends the
-vendor's own notifications. Then it moves the due date past today and records
-the ticket. Several missed due dates, after an outage or a long spell inactive,
-yield one ticket, not one per missed date.
+opener, with the category's default prefix, priority and status. It then moves
+the due date past today, records the ticket, and sends the vendor's own
+notifications. Several missed due dates, after an outage or a long spell
+inactive, yield one ticket, not one per missed date.
 
 A ticket that cannot be opened, because the category has since been closed for
 opening or the opener has lost permission there, leaves one error in the
 XenForo error log naming the schedule. The due date is unchanged, so the next
 run retries. The schedule stays active and nobody else is told; reading the
 error log is how you find out.
+
+A ticket that opened but whose notifications failed, because a mailer or a
+notifier from another addon threw, leaves one error naming the schedule and
+the ticket. The ticket stands and the due date has moved on, so no second
+ticket opens for it.
 
 ## Tests
 
