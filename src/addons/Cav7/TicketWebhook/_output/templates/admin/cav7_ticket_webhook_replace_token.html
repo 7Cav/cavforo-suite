@@ -1,0 +1,10 @@
+<xf:title>{{ phrase('cav7_tw_replace_token') }}: {$hook.name}</xf:title>
+
+<xf:form action="{{ link('ticket-webhooks/replace-token', $hook) }}" class="block" ajax="true">
+	<div class="block-container">
+		<div class="block-body">
+			<div class="block-rowMessage">{{ phrase('cav7_tw_replace_token_x_explain', {'name': $hook.name}) }}</div>
+		</div>
+		<xf:submitrow icon="redo" sticky="true" submit="{{ phrase('cav7_tw_replace_token') }}" />
+	</div>
+</xf:form>

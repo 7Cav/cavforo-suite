@@ -1,0 +1,11 @@
+{
+    "route_type": "admin",
+    "route_prefix": "ticket-webhooks",
+    "sub_name": "",
+    "format": ":int<hook_id>/",
+    "build_class": "",
+    "build_method": "",
+    "controller": "Cav7\\TicketWebhook\\Admin\\Controller\\Hook",
+    "context": "cav7TicketWebhooks",
+    "action_prefix": ""
+}

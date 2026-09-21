@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<routes>
+  <route route_type="admin" route_prefix="ticket-webhooks" format=":int&lt;hook_id&gt;/" controller="Cav7\TicketWebhook\Admin\Controller\Hook" context="cav7TicketWebhooks"/>
+  <route route_type="public" route_prefix="ticket-webhooks" format=":int&lt;hook_id&gt;/:str&lt;token&gt;/" controller="Cav7\TicketWebhook\Pub\Controller\Hook"/>
+</routes>

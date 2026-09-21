@@ -1,0 +1,25 @@
+<xf:title>{{ phrase('cav7_tw_ticket_hook') }}: {$hook.name}</xf:title>
+
+<div class="block">
+	<div class="block-container">
+		<div class="block-body">
+			<div class="block-rowMessage block-rowMessage--important">
+				<strong>{{ phrase('cav7_tw_token_shown_once') }}</strong>
+			</div>
+			<xf:textboxrow name="_cav7_tw_url" value="{$url}"
+				inputclass="input--mono" readonly="true"
+				label="{{ phrase('cav7_tw_hook_url') }}"
+				explain="{{ phrase('cav7_tw_hook_url_explain') }}" />
+			<xf:textboxrow name="_cav7_tw_url_without_token" value="{$urlWithoutToken}"
+				inputclass="input--mono" readonly="true"
+				label="{{ phrase('cav7_tw_hook_url_without_token') }}"
+				explain="{{ phrase('cav7_tw_hook_url_without_token_explain') }}" />
+			<xf:textboxrow name="_cav7_tw_token" value="{$token}"
+				inputclass="input--mono" readonly="true"
+				label="{{ phrase('cav7_tw_token') }}" />
+		</div>
+		<div class="block-footer">
+			<a href="{{ link('ticket-webhooks') }}" class="button">{{ phrase('cav7_tw_done') }}</a>
+		</div>
+	</div>
+</div>

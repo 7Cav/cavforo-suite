@@ -1,0 +1,1 @@
+An inactive hook opens nothing, and a caller cannot tell it from a hook that does not exist.

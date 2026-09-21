@@ -1,0 +1,58 @@
+<xf:if is="$hook.isInsert()">
+	<xf:title>{{ phrase('cav7_tw_add_ticket_hook') }}</xf:title>
+<xf:else />
+	<xf:title>{{ phrase('cav7_tw_ticket_hook') }}: {$hook.name}</xf:title>
+</xf:if>
+
+<xf:pageaction if="$hook.isUpdate()">
+	<xf:button href="{{ link('ticket-webhooks/replace-token', $hook) }}" icon="redo" overlay="true">{{ phrase('cav7_tw_replace_token') }}</xf:button>
+	<xf:button href="{{ link('ticket-webhooks/delete', $hook) }}" icon="delete" overlay="true" />
+</xf:pageaction>
+
+<xf:form action="{{ link('ticket-webhooks/save', $hook) }}" class="block" ajax="true">
+	<div class="block-container">
+		<div class="block-body">
+			<xf:textboxrow name="name" value="{$hook.name}" maxlength="150"
+				label="{{ phrase('name') }}"
+				explain="{{ phrase('cav7_tw_name_explain') }}" />
+
+			<xf:selectrow name="ticket_category_id" value="{$hook.ticket_category_id}"
+				label="{{ phrase('category') }}"
+				explain="{{ phrase('cav7_tw_category_explain') }}">
+				<xf:option value="0"></xf:option>
+				<xf:foreach loop="$categories" key="$categoryId" value="$categoryTitle">
+					<xf:option value="{$categoryId}">{$categoryTitle}</xf:option>
+				</xf:foreach>
+			</xf:selectrow>
+
+			<xf:checkboxrow>
+				<xf:option name="active" value="1" selected="{$hook.active}" label="{{ phrase('cav7_tw_active') }}"
+					hint="{{ phrase('cav7_tw_active_explain') }}" />
+			</xf:checkboxrow>
+
+			<xf:if is="$hook.isInsert()">
+				<xf:inforow>{{ phrase('cav7_tw_token_shown_after_save') }}</xf:inforow>
+			<xf:else />
+				<xf:formrow label="{{ phrase('cav7_tw_hook_url') }}"
+					explain="{{ phrase('cav7_tw_token_not_shown_again') }}">
+					<code>{$urlWithoutToken}&lt;token&gt;/</code>
+				</xf:formrow>
+				<xf:formrow label="{{ phrase('cav7_tw_last_used') }}">
+					<xf:if is="$hook.last_used_date">
+						<xf:date time="{$hook.last_used_date}" />
+					<xf:else />
+						{{ phrase('never') }}
+					</xf:if>
+				</xf:formrow>
+				<xf:formrow label="{{ phrase('cav7_tw_last_ticket') }}">
+					<xf:if is="$hook.LastTicket">
+						<a href="{$hook.LastTicket.getContentUrl()}" target="_blank">{$hook.LastTicket.title}</a>
+					<xf:else />
+						{{ phrase('n_a') }}
+					</xf:if>
+				</xf:formrow>
+			</xf:if>
+		</div>
+		<xf:submitrow icon="save" sticky="true" />
+	</div>
+</xf:form>

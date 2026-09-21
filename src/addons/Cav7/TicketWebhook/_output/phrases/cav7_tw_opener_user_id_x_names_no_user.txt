@@ -1,0 +1,1 @@
+Opener user ID {id} names no user. Correct the option under Setup > Options > Ticket Webhook before saving a hook.

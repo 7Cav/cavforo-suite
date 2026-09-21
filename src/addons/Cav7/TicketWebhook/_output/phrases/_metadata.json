@@ -1,0 +1,200 @@
+{
+    "admin_navigation.cav7TicketWebhooks.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "5e67aacaba792d50f0df37b82e06e43b"
+    },
+    "cav7_tw_active.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "4d3d769b812b6faa6b76e1a8abaece2d"
+    },
+    "cav7_tw_active_explain.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "9970ac53f5dee889e29069bc241f7afc"
+    },
+    "cav7_tw_add_ticket_hook.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "e5a173ffff75637a31097cecf540d061"
+    },
+    "cav7_tw_category_explain.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "37a4f345e7835900ddd654e34a3e6ce6"
+    },
+    "cav7_tw_category_not_found.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "717c78f2068b544881db9d4210789ee8"
+    },
+    "cav7_tw_category_x_requires_a_prefix_and_has_no_default.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "8026fc47dee66a15f513ea932c8d2b73"
+    },
+    "cav7_tw_done.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "f92965e2c8a7afb3c1b9a5c09a263636"
+    },
+    "cav7_tw_hook_not_found.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "8337fd61932305c8a94b0b8d5a9c095a"
+    },
+    "cav7_tw_hook_url.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "0fc4c9316685ad7138b25eeaf4d89683"
+    },
+    "cav7_tw_hook_url_explain.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "bb2543fe2d1f634e0511ee7a8a757ba8"
+    },
+    "cav7_tw_hook_url_without_token.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "608d7c60978f4a8d8306d516a9540571"
+    },
+    "cav7_tw_hook_url_without_token_explain.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "0ee126ec868595355adc310b06235a8e"
+    },
+    "cav7_tw_last_ticket.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "162693d98b7d3a994ed4539e7377cd20"
+    },
+    "cav7_tw_last_used.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "135daaf0d59548436c6858c7f0798c45"
+    },
+    "cav7_tw_name_explain.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "74a93b8c0ed6f4e2fbed0c933ea3e57a"
+    },
+    "cav7_tw_no_ticket_hooks_yet.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "1a996d98e53c5073749ec55aae2ddfeb"
+    },
+    "cav7_tw_opener_user_id_x_names_no_user.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "63b4171b8d14c85ae81a26454c968feb"
+    },
+    "cav7_tw_opener_x_may_not_open_a_ticket_in_category_y_because_z.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "5badec25ea850ec2d0f3b1a9b9191322"
+    },
+    "cav7_tw_replace_token.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "7dae8249360f1aac4e97ed85fed8d850"
+    },
+    "cav7_tw_replace_token_x_explain.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "d7ebf3120c4ed3360dbe2bcb55b6f78e"
+    },
+    "cav7_tw_set_x_active_or_inactive.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "44827bf78c0e8141286a7182a581ac64"
+    },
+    "cav7_tw_the_opener_has_no_create_permission_there.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "1c9fa87c06a42b3e562055a3f573ebb7"
+    },
+    "cav7_tw_ticket_hook.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "d42e25a180c7caf0bc651d59981e1b43"
+    },
+    "cav7_tw_ticket_hooks.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "5e67aacaba792d50f0df37b82e06e43b"
+    },
+    "cav7_tw_token.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "459a6f79ad9b13cbcb5f692d2cc7a94d"
+    },
+    "cav7_tw_token_not_shown_again.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "9293ad8898490a39e71deefc1946998e"
+    },
+    "cav7_tw_token_shown_after_save.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "f62d45199d6536dab6161e6af9179e19"
+    },
+    "cav7_tw_token_shown_once.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "36f5bddaf85c53a560c86b4859ee43ee"
+    },
+    "option.cav7TicketWebhookOpenerUserId.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "941d3ab91e87e26d19bffd028580b049"
+    },
+    "option_explain.cav7TicketWebhookOpenerUserId.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "a884c0ac82c1c6925812e62a999051ee"
+    },
+    "option_group.cav7TicketWebhook.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "9ed43f89326d9b66cd3fb6eebd7a725f"
+    },
+    "option_group_description.cav7TicketWebhook.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "90f231acae195e4c2d9dcdac336d6eb1"
+    }
+}

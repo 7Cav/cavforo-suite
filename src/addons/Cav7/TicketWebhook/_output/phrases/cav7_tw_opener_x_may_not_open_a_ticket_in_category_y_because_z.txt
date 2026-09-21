@@ -1,0 +1,1 @@
+{opener} may not open a ticket in {category}: {reason}

@@ -1,0 +1,1 @@
+The token is generated when you save and shown once, with the URL to paste into the caller.
