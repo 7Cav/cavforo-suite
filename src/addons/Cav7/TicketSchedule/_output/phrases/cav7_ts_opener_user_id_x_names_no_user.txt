@@ -1,1 +1,1 @@
-Opener user ID {id} names no user. Correct the option under Ticket Schedule before saving a schedule.
+The Ticket Schedule add-on is not configured. Set its options before saving a schedule.

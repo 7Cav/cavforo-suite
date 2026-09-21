@@ -34,7 +34,7 @@
 				</xf:foreach>
 			</xf:selectrow>
 
-			<xf:formrow label="{{ phrase('cav7_ts_start_date') }}" explain="{{ phrase('cav7_ts_start_date_explain') }}" rowtype="input">
+			<xf:formrow label="{{ phrase('cav7_ts_start_date') }}" rowtype="input">
 				<xf:dateinput name="start_date" value="{$schedule.start_date}" />
 			</xf:formrow>
 
@@ -54,7 +54,7 @@
 				</xf:foreach>
 			</xf:radiorow>
 
-			<xf:checkboxrow explain="{{ phrase('cav7_ts_active_explain') }}">
+			<xf:checkboxrow>
 				<xf:option name="active" value="1" selected="{$schedule.active}" label="{{ phrase('active') }}" />
 			</xf:checkboxrow>
 

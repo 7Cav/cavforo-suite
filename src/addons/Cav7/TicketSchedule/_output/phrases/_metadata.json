@@ -5,12 +5,6 @@
         "version_string": "1.0.0",
         "hash": "45fbc0340dba187467142557d5cdebee"
     },
-    "cav7_ts_active_explain.txt": {
-        "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "f707b3e8b447ae9f9cfaf2301334f870"
-    },
     "cav7_ts_add_ticket_schedule.txt": {
         "global_cache": false,
         "version_id": 1000070,
@@ -69,7 +63,7 @@
         "global_cache": false,
         "version_id": 1000070,
         "version_string": "1.0.0",
-        "hash": "9d57316d18e29293dc34708ab1c0806d"
+        "hash": "8026fc47dee66a15f513ea932c8d2b73"
     },
     "cav7_ts_due_date.txt": {
         "global_cache": false,
@@ -81,7 +75,7 @@
         "global_cache": false,
         "version_id": 1000070,
         "version_string": "1.0.0",
-        "hash": "971a636e4babc5cfa43148b93a7093f7"
+        "hash": "4f675f013f335cc732d0e5299ce49383"
     },
     "cav7_ts_every_x_days.txt": {
         "global_cache": false,
@@ -99,7 +93,7 @@
         "global_cache": false,
         "version_id": 1000070,
         "version_string": "1.0.0",
-        "hash": "20e2963bce28cdf811ba51563c2422b0"
+        "hash": "d8021f6a7a67249a232c045ab207405f"
     },
     "cav7_ts_inactive.txt": {
         "global_cache": false,
@@ -123,7 +117,7 @@
         "global_cache": false,
         "version_id": 1000070,
         "version_string": "1.0.0",
-        "hash": "966ba90c3b45f02b756797834ae260e1"
+        "hash": "38d54648200c672d3171529333e6627c"
     },
     "cav7_ts_opener_x_may_not_open_a_ticket_in_category_y_because_z.txt": {
         "global_cache": false,
@@ -149,17 +143,11 @@
         "version_string": "1.0.0",
         "hash": "4d34f1097f6c8b9cee28bca8b78bbee9"
     },
-    "cav7_ts_start_date_explain.txt": {
-        "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "e2ebfce33338d0d10f9af67720f8cacb"
-    },
     "cav7_ts_the_opener_has_no_create_permission_there.txt": {
         "global_cache": false,
         "version_id": 1000070,
         "version_string": "1.0.0",
-        "hash": "8f96655318b1dc9d6a517d7a71316a57"
+        "hash": "9fbc58e82f719052b315ce83b0727961"
     },
     "cav7_ts_ticket_schedule.txt": {
         "global_cache": false,
@@ -189,7 +177,7 @@
         "global_cache": false,
         "version_id": 1000070,
         "version_string": "1.0.0",
-        "hash": "5f84b075c090e5272908b62e8834204a"
+        "hash": "3a00b0378ffdf3eabf91ec23a3604b26"
     },
     "option_group.cav7TicketSchedule.txt": {
         "global_cache": false,
@@ -201,6 +189,6 @@
         "global_cache": false,
         "version_id": 1000070,
         "version_string": "1.0.0",
-        "hash": "de3acd3ac59635e806d5d04121741592"
+        "hash": "59042354d7c6b0268aee6b89fbe7d24d"
     }
 }

@@ -1,1 +1,1 @@
-the opener has no create permission there
+the configured user has no permission to create tickets there

@@ -1,1 +1,0 @@
-The day the cadence counts from. It may be in the past: every 1 March since 2019 has its next ticket on the next 1 March, not today. Monthly and yearly keep this day of the month; a shorter month uses its last day.

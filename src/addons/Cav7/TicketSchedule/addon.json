@@ -1,7 +1,7 @@
 {
     "legacy_addon_id": "",
     "title": "7Cav - Ticket Schedule",
-    "description": "Opens an NF/Tickets ticket on a calendar cadence, so recurring work such as a yearly review has a ticket waiting on the day. Schedules are written and edited in the ACP.",
+    "description": "Opens an NF/Tickets ticket on a calendar cadence.",
     "version_id": 1000070,
     "version_string": "1.0.0",
     "dev": "Cav7",

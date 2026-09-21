@@ -1,1 +1,1 @@
-{category} requires a prefix and has no default prefix, so no scheduled ticket could ever be opened in it.
+{category} requires a prefix but has no default one. Set a default prefix on the category, or choose another category.
