@@ -9,7 +9,8 @@ hourly cron opens one ticket per due date as the board's opener user, and the
 category's staff are notified as they are for any other ticket.
 
 The terms this README uses (ticket schedule, cadence, start date, due date,
-inactive, opener) are defined in [CONTEXT.md](CONTEXT.md).
+inactive) are defined in [CONTEXT.md](CONTEXT.md). Opener is defined in the
+suite-wide [CONTEXT.md](../../../../CONTEXT.md).
 
 ## Requirements
 

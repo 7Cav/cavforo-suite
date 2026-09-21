@@ -44,6 +44,5 @@ yields one late ticket rather than a pile.
 _Avoid_: next run (the cron runs hourly regardless), fire date, trigger
 
 **opener**:
-The XenForo user a scheduled ticket is opened as. One user for the whole board,
-not one per schedule.
-_Avoid_: bot (names a use, not the role), author
+Defined in the suite-wide [CONTEXT.md](../../../../CONTEXT.md), since more
+than one addon opens tickets as one.

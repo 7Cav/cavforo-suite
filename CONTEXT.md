@@ -127,3 +127,9 @@ The two diagnoses behind a find that stopped matching. A _master mismatch_
 means the vendor's own markup moved, and every style inherits the problem. A
 _style mismatch_ means somebody edited that style's copy, and only the styles
 resolving to it are affected. Same symptom, different cause, different fix.
+
+**opener**:
+The XenForo user an addon opens an NF/Tickets ticket as when no member is
+opening it. One user for the whole board, set once per addon, not one per
+schedule or hook.
+_Avoid_: bot (names a use, not the role), author, service user
