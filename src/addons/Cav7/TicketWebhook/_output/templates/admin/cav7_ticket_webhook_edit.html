@@ -31,26 +31,26 @@
 			</xf:checkboxrow>
 
 			<xf:if is="$hook.isInsert()">
-				<xf:formrow rowtype="explain">{{ phrase('cav7_tw_token_shown_after_save') }}</xf:formrow>
+				<xf:inforow>{{ phrase('cav7_tw_token_shown_after_save') }}</xf:inforow>
 			<xf:else />
-				<xf:inforow label="{{ phrase('cav7_tw_hook_url') }}">
+				<xf:formrow label="{{ phrase('cav7_tw_hook_url') }}"
+					explain="{{ phrase('cav7_tw_token_not_shown_again') }}">
 					<code>{$urlWithoutToken}&lt;token&gt;/</code>
-					<div class="formRow-explain">{{ phrase('cav7_tw_token_not_shown_again') }}</div>
-				</xf:inforow>
-				<xf:inforow label="{{ phrase('cav7_tw_last_used') }}">
+				</xf:formrow>
+				<xf:formrow label="{{ phrase('cav7_tw_last_used') }}">
 					<xf:if is="$hook.last_used_date">
 						<xf:date time="{$hook.last_used_date}" />
 					<xf:else />
 						{{ phrase('never') }}
 					</xf:if>
-				</xf:inforow>
-				<xf:inforow label="{{ phrase('cav7_tw_last_ticket') }}">
+				</xf:formrow>
+				<xf:formrow label="{{ phrase('cav7_tw_last_ticket') }}">
 					<xf:if is="$hook.LastTicket">
 						<a href="{$hook.LastTicket.getContentUrl()}" target="_blank">{$hook.LastTicket.title}</a>
 					<xf:else />
 						{{ phrase('n_a') }}
 					</xf:if>
-				</xf:inforow>
+				</xf:formrow>
 			</xf:if>
 		</div>
 		<xf:submitrow icon="save" sticky="true" />
