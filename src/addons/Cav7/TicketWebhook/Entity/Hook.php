@@ -51,7 +51,7 @@ class Hook extends Entity
             'hook_id' => ['type' => self::UINT, 'autoIncrement' => true, 'nullable' => true],
             // 150 is the width of xf_nf_tickets_ticket.title, because the
             // name is the title of a post that carries none of its own.
-            'name' => ['type' => self::STR, 'required' => 'please_enter_valid_title', 'maxLength' => 150],
+            'name' => ['type' => self::STR, 'required' => 'please_enter_valid_name', 'maxLength' => 150],
             'ticket_category_id' => ['type' => self::UINT, 'required' => true],
             'active' => ['type' => self::BOOL, 'default' => true],
             'token_hash' => ['type' => self::BINARY, 'required' => true, 'maxLength' => 32],

@@ -16,9 +16,11 @@ namespace Cav7\TicketWebhook;
  * credential is enough on its own. Credentials are checked before the body,
  * so a probe with a wrong token learns nothing from what it sends.
  *
- * The body is Discord's webhook request. The title is the first embed title
- * the body carries, else the first non-blank line of `content`, else the
- * hook's name, cut to TITLE_MAX_LENGTH characters. The message is `content`,
+ * The body is Discord's webhook request. The title is the title of the first
+ * embed that has one (a wider reading than "the first embed's title", so a
+ * leading embed with no title does not hide a titled one behind it), else the
+ * first non-blank line of `content`, else the hook's name, cut to
+ * TITLE_MAX_LENGTH characters. The message is `content`,
  * then for each embed its `description`, its `url`, and its fields, name
  * before value; a field with an empty name is its value alone, which is how
  * WUD's Discord trigger sends its body by default. Text passes through as
@@ -130,12 +132,13 @@ final class HookPost
     }
 
     /**
-     * A body value as text: the string itself, or '' for anything that is not
-     * a string. Discord's fields are strings or absent; nothing else counts.
+     * A body value as text: the string itself, as typed, or '' for anything
+     * that is not a string or is only whitespace. Discord's fields are strings
+     * or absent; nothing else counts, and a blank one is no text at all.
      */
     private static function text($value): string
     {
-        return is_string($value) ? $value : '';
+        return is_string($value) && trim($value) !== '' ? $value : '';
     }
 
     /**

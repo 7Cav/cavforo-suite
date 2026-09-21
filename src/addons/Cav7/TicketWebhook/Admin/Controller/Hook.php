@@ -19,12 +19,18 @@ use XF\Mvc\Reply\AbstractReply;
  * ticket categories manages hooks too. The addon ships no admin permission
  * of its own.
  *
- * A token is shown once. Create and rotate both generate it, store its hash
+ * A token is shown once. Create and replace both generate it, store its hash
  * on the hook, park the token in the admin session, and redirect to the
  * token screen, which reads it out of the session and forgets it. Reloading
  * that screen shows nothing and goes back to the list. The ACP forms submit
  * over AJAX and can only redirect on success, which is why the token takes
  * the session rather than riding in the save's own reply.
+ *
+ * That parking is the one place the token exists outside the admin's
+ * screen: XenForo keeps the admin session in xf_session_admin, so the token
+ * sits there for the one redirect between the save and the screen, or until
+ * the session expires if the screen is never loaded. The hook itself holds
+ * only the hash.
  */
 class Hook extends \XF\Admin\Controller\AbstractController
 {
@@ -182,14 +188,14 @@ class Hook extends \XF\Admin\Controller\AbstractController
      * its hash, and goes to the screen that shows it once. The old token
      * stops working the moment the hash is written.
      */
-    public function actionRotate(ParameterBag $params): AbstractReply
+    public function actionReplaceToken(ParameterBag $params): AbstractReply
     {
         $hook = $this->assertHookExists($params->hook_id);
 
         if (!$this->isPost()) {
             return $this->view(
-                'Cav7\TicketWebhook:Hook\Rotate',
-                'cav7_ticket_webhook_rotate',
+                'Cav7\TicketWebhook:Hook\ReplaceToken',
+                'cav7_ticket_webhook_replace_token',
                 ['hook' => $hook]
             );
         }

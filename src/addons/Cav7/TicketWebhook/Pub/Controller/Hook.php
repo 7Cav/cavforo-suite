@@ -15,11 +15,15 @@ use XF\Mvc\Reply\AbstractReply;
  * hook, caller and token, and ADR-0001 for why the request is Discord's.
  *
  * Nothing of a browser session applies to a caller, so the stock pre-dispatch
- * checks (CSRF, two-step, policy acceptance, canonical URL, the board-closed
- * page, viewing permission for guests) are all skipped: the request runs as a
- * guest until the opener takes over, and every answer is one of the status
- * codes below with an empty body, so a strict caller and a probe both get
- * exactly what the spec on #288 lists.
+ * checks are all skipped: CSRF, two-step, policy acceptance, the canonical
+ * URL redirect, viewing permission for guests, the IP ban list, and the
+ * board-closed page. The last two are a choice, not an oversight. An IP ban
+ * is aimed at a person with a browser, and a hook's stop is its active
+ * toggle. A board closed for maintenance still takes an alert, because that
+ * is when a monitor is most likely to have something to say. The request
+ * runs as a guest until the opener takes over, and every answer is one of
+ * the status codes below with an empty body, so a strict caller and a probe
+ * both get exactly what the spec on #288 lists.
  *
  *   204  the ticket opened
  *   200  the ticket opened and the query carried wait=true; the body is

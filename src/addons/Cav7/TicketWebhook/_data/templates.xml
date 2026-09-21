@@ -7,7 +7,7 @@
 </xf:if>
 
 <xf:pageaction if="$hook.isUpdate()">
-	<xf:button href="{{ link('ticket-webhooks/rotate', $hook) }}" icon="redo" overlay="true">{{ phrase('cav7_tw_replace_token') }}</xf:button>
+	<xf:button href="{{ link('ticket-webhooks/replace-token', $hook) }}" icon="redo" overlay="true">{{ phrase('cav7_tw_replace_token') }}</xf:button>
 	<xf:button href="{{ link('ticket-webhooks/delete', $hook) }}" icon="delete" overlay="true" />
 </xf:pageaction>
 
@@ -118,9 +118,9 @@
 	<div class="blockMessage">{{ phrase('cav7_tw_no_ticket_hooks_yet') }}</div>
 </xf:if>
 ]]></template>
-  <template type="admin" title="cav7_ticket_webhook_rotate" version_id="1000070" version_string="1.0.0"><![CDATA[<xf:title>{{ phrase('cav7_tw_replace_token') }}: {$hook.name}</xf:title>
+  <template type="admin" title="cav7_ticket_webhook_replace_token" version_id="1000070" version_string="1.0.0"><![CDATA[<xf:title>{{ phrase('cav7_tw_replace_token') }}: {$hook.name}</xf:title>
 
-<xf:form action="{{ link('ticket-webhooks/rotate', $hook) }}" class="block" ajax="true">
+<xf:form action="{{ link('ticket-webhooks/replace-token', $hook) }}" class="block" ajax="true">
 	<div class="block-container">
 		<div class="block-body">
 			<div class="block-rowMessage">{{ phrase('cav7_tw_replace_token_x_explain', {'name': $hook.name}) }}</div>

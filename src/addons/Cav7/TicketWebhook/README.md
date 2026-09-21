@@ -93,9 +93,10 @@ The answers a caller gets, which are Discord's own where Discord has one:
 
 Every 403 and 500 leaves one entry in the XenForo error log naming the hook.
 A ticket that opened but whose notifications failed leaves one entry too, and
-the caller still hears success. XenForo's error log records the request URL,
-so an entry logged during a post with the token in the path carries the token;
-the log is admin-only, and admins hold **Replace token**.
+the caller still hears success. An entry logged during a post with the token
+in the path carries the token, because the error log records the request URL;
+what that costs and why it is accepted is in
+[ADR-0001](docs/adr/0001-inbound-hooks-speak-discord.md).
 
 ### WUD
 

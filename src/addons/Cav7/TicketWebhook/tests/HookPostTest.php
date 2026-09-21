@@ -128,6 +128,13 @@ check(
     post($hook, ['content' => '', 'embeds' => []])->outcome() === HookPost::BAD_REQUEST
 );
 
+// Whitespace is not text either. Accepting it hands the vendor an empty
+// message, which it refuses as a 500 that blames the hook.
+check(
+    'whitespace-only content and no embeds: bad request',
+    post($hook, ['content' => '   '])->outcome() === HookPost::BAD_REQUEST
+);
+
 // ---------------------------------------------------------------------------
 // The title of last resort is the hook's name.
 // ---------------------------------------------------------------------------

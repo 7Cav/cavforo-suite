@@ -19,8 +19,8 @@ class Setup extends AbstractSetup
      * install and dropped on uninstall. The tickets a hook opened live in
      * NF/Tickets' own tables and stay where they are.
      *
-     * token_hash is a raw SHA-256 digest, 32 bytes, as xf_cav7_api_key stores
-     * its key hashes. The token itself is never stored.
+     * token_hash is the 32 bytes Token::hash() returns. The token itself is
+     * never stored.
      */
     public function installStep1(): void
     {

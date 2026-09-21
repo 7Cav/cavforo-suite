@@ -5,7 +5,7 @@
 </xf:if>
 
 <xf:pageaction if="$hook.isUpdate()">
-	<xf:button href="{{ link('ticket-webhooks/rotate', $hook) }}" icon="redo" overlay="true">{{ phrase('cav7_tw_replace_token') }}</xf:button>
+	<xf:button href="{{ link('ticket-webhooks/replace-token', $hook) }}" icon="redo" overlay="true">{{ phrase('cav7_tw_replace_token') }}</xf:button>
 	<xf:button href="{{ link('ticket-webhooks/delete', $hook) }}" icon="delete" overlay="true" />
 </xf:pageaction>
 

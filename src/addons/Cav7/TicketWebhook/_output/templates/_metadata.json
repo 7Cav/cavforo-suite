@@ -2,17 +2,17 @@
     "admin/cav7_ticket_webhook_edit.html": {
         "version_id": 1000070,
         "version_string": "1.0.0",
-        "hash": "d094e5f9f6f4bc28c6ba966006c317dc"
+        "hash": "4b26f3da3518c78d2c7c589ce3ac4e80"
     },
     "admin/cav7_ticket_webhook_list.html": {
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "3d518a2526cff17e881f71167dba2d34"
     },
-    "admin/cav7_ticket_webhook_rotate.html": {
+    "admin/cav7_ticket_webhook_replace_token.html": {
         "version_id": 1000070,
         "version_string": "1.0.0",
-        "hash": "f69bd2270d00b7e17bf983b756c6529c"
+        "hash": "50e48ee143a08817fb879f0e5371626c"
     },
     "admin/cav7_ticket_webhook_token.html": {
         "version_id": 1000070,
