@@ -32,25 +32,21 @@
 								</xf:if>
 							</xf:cell>
 							<xf:cell>
-								<xf:if is="$schedule.cadence_unit == 'days'">
-									{{ phrase('cav7_ts_every_x_days', {'n': $schedule.cadence_every}) }}
-								<xf:else />
-									{{ phrase('cav7_ts_cadence_' . $schedule.cadence_unit) }}
-								</xf:if>
+								{$schedule.cadence_label}
 								<div class="u-muted">{{ phrase('cav7_ts_start_date') }}: {$schedule.start_date}</div>
 							</xf:cell>
 							<xf:cell>{$schedule.due_date}</xf:cell>
 							<xf:cell>
 								<xf:if is="$schedule.LastTicket">
-									<a href="{{ link('public:tickets', $schedule.LastTicket) }}" target="_blank">{$schedule.LastTicket.title}</a>
+									<a href="{$schedule.LastTicket.getContentUrl()}" target="_blank">{$schedule.LastTicket.title}</a>
 									<div class="u-muted"><xf:date time="{$schedule.last_ticket_date}" /></div>
 								<xf:else />
-									&mdash;
+									{{ phrase('n_a') }}
 								</xf:if>
 							</xf:cell>
 							<xf:toggle name="active[{$schedule.schedule_id}]" selected="$schedule.active"
 								class="dataList-cell--separated" submit="true"
-								tooltip="{{ phrase('enable_disable_x', {'title': $schedule.title}) }}" />
+								tooltip="{{ phrase('cav7_ts_set_x_active_or_inactive', {'title': $schedule.title}) }}" />
 						</xf:datarow>
 					</xf:foreach>
 				</xf:datalist>

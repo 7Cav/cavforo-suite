@@ -3,7 +3,6 @@
 namespace Cav7\TicketSchedule;
 
 use Cav7\TicketSchedule\Entity\Schedule;
-use XF\Entity\User;
 
 /**
  * The XenForo-coupled half of the addon: opens one NF/Tickets ticket for each
@@ -17,7 +16,7 @@ use XF\Entity\User;
  *
  * A schedule that cannot open its ticket leaves one error in the XenForo error
  * log naming it, keeps its due date, and is retried on the next hourly run. It
- * stays active and nobody else is told, which is the failure surface
+ * stays active and nobody else is told, which is the same failure handling
  * Cav7/EnlistmentReminder and Cav7/EnlistmentDefaults already use.
  *
  * What this assumes about NF/Tickets 2.11.1, read from its source. None of it
@@ -41,7 +40,10 @@ use XF\Entity\User;
  *   it cannot get that far.
  * - The Creator does not apply the category's `default_prefix_id`; the public
  *   form does, as a preselected input. It is set here so a category that
- *   requires a prefix accepts the ticket.
+ *   requires a prefix accepts the ticket. The public form's `isPrefixUsable()`
+ *   check is not repeated: the default is the category's own choice, not the
+ *   opener's, and `Ticket::_preSave` still drops a prefix that is not the
+ *   category's.
  */
 class TicketOpener
 {
@@ -54,29 +56,21 @@ class TicketOpener
         $repo = \XF::repository('Cav7\TicketSchedule:Schedule');
         $today = $repo->today();
 
-        $openerId = (int) (\XF::options()->cav7TicketScheduleOpenerUserId ?? 0);
-        /** @var User|null $opener */
-        $opener = $openerId ? \XF::em()->find('XF:User', $openerId) : null;
-        if (!$opener)
-        {
+        $opener = $repo->findOpener();
+        if (!$opener) {
             \XF::logError(sprintf(
                 '[Cav7/TicketSchedule] Opener user id %d names no user; no scheduled ticket can open until the option is corrected.',
-                $openerId
+                $repo->openerUserId()
             ));
             return;
         }
 
-        foreach ($repo->findDueSchedules($today)->fetch() as $schedule)
-        {
-            try
-            {
-                \XF::asVisitor($opener, function () use ($schedule, $today)
-                {
+        foreach ($repo->findDueSchedules($today)->fetch() as $schedule) {
+            try {
+                \XF::asVisitor($opener, function () use ($schedule, $today) {
                     $this->open($schedule, $today);
                 });
-            }
-            catch (\Throwable $e)
-            {
+            } catch (\Throwable $e) {
                 \XF::logException($e, false, sprintf(
                     '[Cav7/TicketSchedule] Schedule %d "%s" could not open its ticket; its due date %s is unchanged and the next run retries: ',
                     $schedule->schedule_id,
@@ -95,14 +89,12 @@ class TicketOpener
     protected function open(Schedule $schedule, string $today): void
     {
         $category = $schedule->Category;
-        if (!$category)
-        {
+        if (!$category) {
             throw new \RuntimeException('ticket category ' . $schedule->ticket_category_id . ' no longer exists');
         }
 
         $error = null;
-        if (!$category->canCreateTicket($error))
-        {
+        if (!$category->canCreateTicket($error)) {
             throw new \RuntimeException(sprintf(
                 'the opener may not open a ticket in category %d "%s": %s',
                 $category->ticket_category_id,
@@ -114,14 +106,12 @@ class TicketOpener
         /** @var \NF\Tickets\Service\Ticket\Creator $creator */
         $creator = \XF::service('NF\Tickets:Ticket\Creator', $category);
         $creator->logIp(false);
-        if ($category->default_prefix_id)
-        {
+        if ($category->default_prefix_id) {
             $creator->setPrefix($category->default_prefix_id);
         }
         $creator->setContent($schedule->title, $schedule->message);
 
-        if (!$creator->validate($errors))
-        {
+        if (!$creator->validate($errors)) {
             throw new \RuntimeException(
                 'the ticket creator refused it: ' . implode('; ', array_map('strval', $errors))
             );

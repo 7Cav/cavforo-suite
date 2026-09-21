@@ -36,7 +36,8 @@ final class Cadence
      * @throws \InvalidArgumentException on an unknown unit, an N outside that
      *         range, or a start date that is not a real calendar day. PHP's date
      *         parser would roll 2026-02-30 to 2026-03-02 without a word, and a
-     *         schedule anchored a few days off is worse than one refused.
+     *         schedule counting from a day the admin never typed is worse than
+     *         one refused.
      */
     public function __construct(string $startDate, string $unit, int $everyDays = 1)
     {
@@ -58,7 +59,7 @@ final class Cadence
     /**
      * Whether $day is a real calendar day written as Y-m-d.
      */
-    public static function isCalendarDay(string $day): bool
+    private static function isCalendarDay(string $day): bool
     {
         if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $day, $m)) {
             return false;
@@ -103,12 +104,12 @@ final class Cadence
 
         switch ($this->unit) {
             case self::UNIT_YEARLY:
-                return $this->onAnchorDay(
+                return $this->onStartDay(
                     (int) $from->format('Y') + 1,
                     (int) $this->day($this->startDate)->format('n')
                 );
             case self::UNIT_MONTHLY:
-                return $this->onAnchorDay((int) $from->format('Y'), (int) $from->format('n') + 1);
+                return $this->onStartDay((int) $from->format('Y'), (int) $from->format('n') + 1);
             case self::UNIT_WEEKLY:
                 return $from->modify('+7 days')->format('Y-m-d');
             default:
@@ -120,16 +121,16 @@ final class Cadence
      * The start date's day of the month inside the given month, or that month's
      * last day when it has no such day. $month may run past 12; the year rolls.
      */
-    private function onAnchorDay(int $year, int $month): string
+    private function onStartDay(int $year, int $month): string
     {
         $first = $this->day('2000-01-01')->setDate($year, $month, 1);
-        $anchorDay = (int) $this->day($this->startDate)->format('j');
+        $startDay = (int) $this->day($this->startDate)->format('j');
         $lastDay = (int) $first->format('t');
 
         return $first->setDate(
             (int) $first->format('Y'),
             (int) $first->format('n'),
-            min($anchorDay, $lastDay)
+            min($startDay, $lastDay)
         )->format('Y-m-d');
     }
 

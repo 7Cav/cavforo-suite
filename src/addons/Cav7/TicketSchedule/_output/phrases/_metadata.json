@@ -137,6 +137,12 @@
         "version_string": "1.0.0",
         "hash": "fefd1ed58492ca8e93163c777989a6aa"
     },
+    "cav7_ts_set_x_active_or_inactive.txt": {
+        "global_cache": false,
+        "version_id": 0,
+        "version_string": "",
+        "hash": "e9c6abdce24e2e83391a93692dffc760"
+    },
     "cav7_ts_start_date.txt": {
         "global_cache": false,
         "version_id": 1000070,
@@ -183,7 +189,7 @@
         "global_cache": false,
         "version_id": 1000070,
         "version_string": "1.0.0",
-        "hash": "44d874982937911df0d534eb3c4157a5"
+        "hash": "5f84b075c090e5272908b62e8834204a"
     },
     "option_group.cav7TicketSchedule.txt": {
         "global_cache": false,

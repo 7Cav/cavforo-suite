@@ -1,3 +1,10 @@
+<xf:set var="$unitLabels" value="{{ {
+	'yearly': phrase('cav7_ts_cadence_yearly'),
+	'monthly': phrase('cav7_ts_cadence_monthly'),
+	'weekly': phrase('cav7_ts_cadence_weekly'),
+	'days': phrase('cav7_ts_cadence_days')
+} }}" />
+
 <xf:if is="$schedule.isInsert()">
 	<xf:title>{{ phrase('cav7_ts_add_ticket_schedule') }}</xf:title>
 <xf:else />
@@ -35,14 +42,14 @@
 				label="{{ phrase('cav7_ts_cadence') }}">
 				<xf:foreach loop="$units" value="$unit">
 					<xf:if is="$unit == 'days'">
-						<xf:option value="{$unit}" data-hide="true" label="{{ phrase('cav7_ts_cadence_days') }}">
+						<xf:option value="{$unit}" data-hide="true" label="{$unitLabels.{$unit}}">
 							<xf:dependent>
 								<xf:numberbox name="cadence_every" value="{$schedule.cadence_every}" min="1" max="366" step="1" />
 								<div class="formRow-explain">{{ phrase('cav7_ts_every_n_days_explain') }}</div>
 							</xf:dependent>
 						</xf:option>
 					<xf:else />
-						<xf:option value="{$unit}" label="{{ phrase('cav7_ts_cadence_' . $unit) }}" />
+						<xf:option value="{$unit}" label="{$unitLabels.{$unit}}" />
 					</xf:if>
 				</xf:foreach>
 			</xf:radiorow>
@@ -55,10 +62,10 @@
 				<xf:inforow label="{{ phrase('cav7_ts_due_date') }}">{$schedule.due_date}</xf:inforow>
 				<xf:inforow label="{{ phrase('cav7_ts_last_ticket') }}">
 					<xf:if is="$schedule.LastTicket">
-						<a href="{{ link('public:tickets', $schedule.LastTicket) }}" target="_blank">{$schedule.LastTicket.title}</a>
+						<a href="{$schedule.LastTicket.getContentUrl()}" target="_blank">{$schedule.LastTicket.title}</a>
 						(<xf:date time="{$schedule.last_ticket_date}" />)
 					<xf:else />
-						&mdash;
+						{{ phrase('n_a') }}
 					</xf:if>
 				</xf:inforow>
 			</xf:if>

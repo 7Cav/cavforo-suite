@@ -35,7 +35,7 @@ function check(string $label, bool $ok, string $detail = ''): void
         echo "PASS: $label\n";
     } else {
         $failures++;
-        echo "FAIL: $label" . ($detail !== '' ? " — $detail" : '') . "\n";
+        echo "FAIL: $label" . ($detail !== '' ? ": $detail" : '') . "\n";
     }
 }
 
@@ -67,7 +67,7 @@ check(
 
 // ---------------------------------------------------------------------------
 // Monthly keeps the start date's day of the month. A month too short for it
-// uses its last day, and the month after returns to the anchor day.
+// uses its last day, and the month after returns to the start date's day.
 // ---------------------------------------------------------------------------
 $monthlyOn31st = new Cadence('2026-01-31', Cadence::UNIT_MONTHLY);
 
@@ -80,11 +80,11 @@ check(
 check(
     'monthly on the 31st: the due date after the clamped 2026-02-28 returns to 2026-03-31',
     $monthlyOn31st->dueAfter('2026-02-28') === '2026-03-31',
-    'an anchor read from the previous due date instead of the start date gives 03-28'
+    'a day of month read from the previous due date instead of the start date gives 03-28'
 );
 
-// A pin against a clamp that special-cases February and keeps the anchor day
-// for every other month. Under the shared clamp this row and the two above go
+// A pin against a clamp that special-cases February and keeps the start date's
+// day for every other month. Under the shared clamp this row and the two above go
 // red together; it is here for the rewrite that would split them.
 check(
     'monthly on the 31st: a 30-day month clamps too, so the due date after 2026-03-31 is 2026-04-30',
@@ -109,7 +109,7 @@ check(
 );
 
 // ---------------------------------------------------------------------------
-// Yearly keeps the start date's month and day. A leap-day anchor lands on
+// Yearly keeps the start date's month and day. A start on 29 February lands on
 // 28 February in a common year.
 // ---------------------------------------------------------------------------
 $yearlyOnLeapDay = new Cadence('2024-02-29', Cadence::UNIT_YEARLY);

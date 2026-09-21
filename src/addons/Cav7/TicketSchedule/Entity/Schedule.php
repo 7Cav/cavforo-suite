@@ -27,6 +27,9 @@ use XF\Mvc\Entity\Structure;
  * @property int $last_ticket_id
  * @property int $last_ticket_date
  *
+ * GETTERS
+ * @property-read \XF\Phrase $cadence_label
+ *
  * RELATIONS
  * @property-read \NF\Tickets\Entity\Category|null $Category
  * @property-read \NF\Tickets\Entity\Ticket|null $LastTicket
@@ -36,10 +39,26 @@ class Schedule extends Entity
     /**
      * The row's cadence as a value. Throws \InvalidArgumentException when the
      * row cannot be counted from; _preSave turns that into an entity error.
+     *
+     * The casts matter: a value XenForo has refused at the column, such as a
+     * unit outside allowedValues, is null on the entity, and null is not a
+     * string the constructor accepts.
      */
     public function getCadence(): Cadence
     {
-        return new Cadence($this->start_date, $this->cadence_unit, (int) $this->cadence_every);
+        return new Cadence((string) $this->start_date, (string) $this->cadence_unit, (int) $this->cadence_every);
+    }
+
+    /**
+     * The cadence as the ACP shows it: "Yearly", or "Every 10 days".
+     */
+    public function getCadenceLabel(): \XF\Phrase
+    {
+        if ($this->cadence_unit === Cadence::UNIT_DAYS) {
+            return \XF::phrase('cav7_ts_every_x_days', ['n' => $this->cadence_every]);
+        }
+
+        return \XF::phrase('cav7_ts_cadence_' . $this->cadence_unit);
     }
 
     /**
@@ -54,6 +73,12 @@ class Schedule extends Entity
      */
     protected function _preSave(): void
     {
+        if ($this->hasErrors()) {
+            // A column has already refused its value and said so. A second
+            // message about the same field would only repeat it.
+            return;
+        }
+
         try {
             $cadence = $this->getCadence();
         } catch (\InvalidArgumentException $e) {
@@ -107,6 +132,9 @@ class Schedule extends Entity
             'due_date' => ['type' => self::STR, 'default' => '', 'maxLength' => 10],
             'last_ticket_id' => ['type' => self::UINT, 'default' => 0],
             'last_ticket_date' => ['type' => self::UINT, 'default' => 0],
+        ];
+        $structure->getters = [
+            'cadence_label' => true,
         ];
         $structure->relations = [
             'Category' => [

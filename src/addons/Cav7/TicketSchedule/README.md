@@ -29,8 +29,8 @@ the start. Uninstalling drops the table and leaves every ticket the addon opened
 in place.
 
 One option, under **Setup > Options > Ticket Schedule**: the opener user ID.
-Every scheduled ticket is opened as this user. The default is 598, the bot user
-the suite already posts as. While the ID names no user, the schedule screens
+Every scheduled ticket is opened as this user. The default is 598, the user
+`Cav7/EnlistmentReminder` already posts as. While the ID names no user, the schedule screens
 refuse every save and the cron logs one error per run and opens nothing.
 
 ## Writing a schedule
@@ -50,8 +50,8 @@ A schedule has:
 - A cadence: yearly, monthly, weekly, or every N days with N from 1 to 366.
 
 Monthly and yearly keep the start date's day of the month. A month too short
-for it uses its last day, and the month after returns to the anchor day, so a
-schedule on the 31st lands on 28 February and then 31 March. A yearly schedule
+for it uses its last day, and the month after returns to the start date's day,
+so a schedule on the 31st lands on 28 February and then 31 March. A yearly schedule
 on 29 February lands on 28 February in a common year.
 
 The save refuses, with the reason shown, a category the opener may not open a

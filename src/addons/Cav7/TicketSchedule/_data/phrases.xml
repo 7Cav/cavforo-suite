@@ -23,6 +23,7 @@
   <phrase title="cav7_ts_opener_user_id_x_names_no_user" version_id="1000070" version_string="1.0.0"><![CDATA[Opener user ID {id} names no user. Correct the option under Ticket Schedule before saving a schedule.]]></phrase>
   <phrase title="cav7_ts_opener_x_may_not_open_a_ticket_in_category_y_because_z" version_id="1000070" version_string="1.0.0"><![CDATA[{opener} may not open a ticket in {category}: {reason}]]></phrase>
   <phrase title="cav7_ts_schedule_not_found" version_id="1000070" version_string="1.0.0"><![CDATA[The requested ticket schedule could not be found.]]></phrase>
+  <phrase title="cav7_ts_set_x_active_or_inactive"><![CDATA[Set '{title}' active or inactive]]></phrase>
   <phrase title="cav7_ts_start_date" version_id="1000070" version_string="1.0.0"><![CDATA[Start date]]></phrase>
   <phrase title="cav7_ts_start_date_explain" version_id="1000070" version_string="1.0.0"><![CDATA[The day the cadence counts from. It may be in the past: every 1 March since 2019 has its next ticket on the next 1 March, not today. Monthly and yearly keep this day of the month; a shorter month uses its last day.]]></phrase>
   <phrase title="cav7_ts_the_opener_has_no_create_permission_there" version_id="1000070" version_string="1.0.0"><![CDATA[the opener has no create permission there]]></phrase>
@@ -30,7 +31,7 @@
   <phrase title="cav7_ts_ticket_schedules" version_id="1000070" version_string="1.0.0"><![CDATA[Ticket schedules]]></phrase>
   <phrase title="cron_entry.cav7TSOpenDueTickets" version_id="1000070" version_string="1.0.0"><![CDATA[Open the tickets whose schedule is due]]></phrase>
   <phrase title="option.cav7TicketScheduleOpenerUserId" version_id="1000070" version_string="1.0.0"><![CDATA[Opener user ID]]></phrase>
-  <phrase title="option_explain.cav7TicketScheduleOpenerUserId" version_id="1000070" version_string="1.0.0"><![CDATA[The XenForo user every scheduled ticket is opened as. One user for the whole board. Default: 598, the bot user the suite already posts as. A save in the ticket schedule screens is refused while this names no user.]]></phrase>
+  <phrase title="option_explain.cav7TicketScheduleOpenerUserId" version_id="1000070" version_string="1.0.0"><![CDATA[The XenForo user every scheduled ticket is opened as. One user for the whole board. Default: 598, the user Cav7/EnlistmentReminder already posts as. A save in the ticket schedule screens is refused while this names no user.]]></phrase>
   <phrase title="option_group.cav7TicketSchedule" version_id="1000070" version_string="1.0.0"><![CDATA[Ticket Schedule]]></phrase>
   <phrase title="option_group_description.cav7TicketSchedule" version_id="1000070" version_string="1.0.0"><![CDATA[Opens an NF/Tickets ticket on a calendar cadence, so recurring work such as a yearly review has a ticket waiting on the day. Schedules are written under Tickets.]]></phrase>
 </phrases>

@@ -68,12 +68,9 @@ class Schedule extends \XF\Admin\Controller\AbstractController
     {
         $this->assertPostOnly();
 
-        if ($params->schedule_id)
-        {
+        if ($params->schedule_id) {
             $schedule = $this->assertScheduleExists($params->schedule_id);
-        }
-        else
-        {
+        } else {
             /** @var ScheduleEntity $schedule */
             $schedule = $this->em()->create('Cav7\TicketSchedule:Schedule');
         }
@@ -99,18 +96,15 @@ class Schedule extends \XF\Admin\Controller\AbstractController
 
         // N is read only for the days unit. Store 1 for the others so a later
         // switch to days starts from a sane value rather than a stale one.
-        if ($input['cadence_unit'] !== Cadence::UNIT_DAYS)
-        {
+        if ($input['cadence_unit'] !== Cadence::UNIT_DAYS) {
             $input['cadence_every'] = 1;
         }
 
         $form->basicEntitySave($schedule, $input);
 
         // After the entity's own checks, so the category relation is set.
-        $form->validate(function (FormAction $form) use ($schedule)
-        {
-            foreach ($this->refusals($schedule) as $refusal)
-            {
+        $form->validate(function (FormAction $form) use ($schedule) {
+            foreach ($this->refusals($schedule) as $refusal) {
                 $form->logError($refusal);
             }
         });
@@ -124,29 +118,24 @@ class Schedule extends \XF\Admin\Controller\AbstractController
      */
     protected function refusals(ScheduleEntity $schedule): array
     {
-        $openerId = (int) (\XF::options()->cav7TicketScheduleOpenerUserId ?? 0);
-        /** @var \XF\Entity\User|null $opener */
-        $opener = $openerId ? $this->em()->find('XF:User', $openerId) : null;
-        if (!$opener)
-        {
-            return [\XF::phrase('cav7_ts_opener_user_id_x_names_no_user', ['id' => $openerId])];
+        $repo = $this->getScheduleRepo();
+        $opener = $repo->findOpener();
+        if (!$opener) {
+            return [\XF::phrase('cav7_ts_opener_user_id_x_names_no_user', ['id' => $repo->openerUserId()])];
         }
 
         $category = $schedule->Category;
-        if (!$category)
-        {
+        if (!$category) {
             return [\XF::phrase('cav7_ts_category_not_found')];
         }
 
         $refusals = [];
 
         $error = null;
-        $canCreate = \XF::asVisitor($opener, function () use ($category, &$error)
-        {
+        $canCreate = \XF::asVisitor($opener, function () use ($category, &$error) {
             return $category->canCreateTicket($error);
         });
-        if (!$canCreate)
-        {
+        if (!$canCreate) {
             $refusals[] = \XF::phrase('cav7_ts_opener_x_may_not_open_a_ticket_in_category_y_because_z', [
                 'opener' => $opener->username,
                 'category' => $category->title,
@@ -154,8 +143,7 @@ class Schedule extends \XF\Admin\Controller\AbstractController
             ]);
         }
 
-        if ($category->require_prefix && !$category->default_prefix_id)
-        {
+        if ($category->require_prefix && !$category->default_prefix_id) {
             $refusals[] = \XF::phrase('cav7_ts_category_x_requires_a_prefix_and_has_no_default', [
                 'category' => $category->title,
             ]);
@@ -206,8 +194,7 @@ class Schedule extends \XF\Admin\Controller\AbstractController
     {
         /** @var ScheduleEntity|null $schedule */
         $schedule = $this->em()->find('Cav7\TicketSchedule:Schedule', $scheduleId);
-        if (!$schedule)
-        {
+        if (!$schedule) {
             throw $this->exception($this->notFound(\XF::phrase('cav7_ts_schedule_not_found')));
         }
 
