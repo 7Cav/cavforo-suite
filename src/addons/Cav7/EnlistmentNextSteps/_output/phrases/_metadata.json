@@ -1,0 +1,44 @@
+{
+    "cav7_ens_next_steps_body.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "b8788d4326b6a95b387ae7413dd7206d"
+    },
+    "cav7_ens_next_steps_button.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "c6d10c1a74ef9761e6a1853662b7f42a"
+    },
+    "cav7_ens_next_steps_title.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "33f1f41d294d159503f822d97a5969d2"
+    },
+    "option.cav7ENSTriggeringFormIds.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "4a6eec012662c92590a8a57904975b67"
+    },
+    "option_explain.cav7ENSTriggeringFormIds.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "0d95baea5949187e0a5b4c3416dde0a6"
+    },
+    "option_group.cav7EnlistmentNextSteps.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "c996323f772d13b5a63cc81d8ef860b4"
+    },
+    "option_group_description.cav7EnlistmentNextSteps.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "2d58e7231af94ea2d930fe100d651b7b"
+    }
+}

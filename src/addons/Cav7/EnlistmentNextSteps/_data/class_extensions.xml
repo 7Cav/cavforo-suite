@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<class_extensions>
+  <extension from_class="Snog\Forms\Pub\Controller\Form" to_class="Cav7\EnlistmentNextSteps\Snog\Forms\Pub\Controller\Form" execute_order="10" active="1"/>
+</class_extensions>

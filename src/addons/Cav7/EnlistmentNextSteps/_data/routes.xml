@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<routes>
+  <route route_type="public" route_prefix="enlistment-next-steps" format=":int&lt;thread_id&gt;/" controller="Cav7\EnlistmentNextSteps:NextSteps"/>
+</routes>

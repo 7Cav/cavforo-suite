@@ -1,0 +1,119 @@
+// The next-steps card (issue #291). Left: RRD's paragraph and the one
+// button, centred against the poster's height. Right: the enlistment
+// process poster, bleeding to the card edge. At @xf-responsiveMedium and
+// below the poster drops under the button.
+
+.cav7Ens-container
+{
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(260px, 36%);
+	overflow: hidden;
+
+	@media (max-width: @xf-responsiveMedium)
+	{
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.cav7Ens-main
+{
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: flex-start;
+	gap: @xf-paddingLargest;
+	padding: (@xf-paddingLargest * 2.5) (@xf-paddingLargest * 2);
+
+	@media (max-width: @xf-responsiveMedium)
+	{
+		padding: (@xf-paddingLargest * 1.5) @xf-paddingLargest;
+	}
+}
+
+.cav7Ens-mark
+{
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 52px;
+	height: 52px;
+	border-radius: 50%;
+	border: 2px solid @xf-paletteAccent2;
+	color: @xf-paletteAccent2;
+	background: fade(@xf-paletteAccent2, 8%);
+	font-size: 22px;
+}
+
+.cav7Ens-body
+{
+	max-width: 58ch;
+	font-size: @xf-fontSizeLarge;
+	line-height: 1.65;
+	color: @xf-textColor;
+	text-wrap: pretty;
+
+	p { margin: 0; }
+	p + p { margin-top: @xf-paddingLarge; }
+}
+
+.cav7Ens-cta.button
+{
+	font-size: @xf-fontSizeLarge;
+	font-weight: @xf-fontWeightHeavy;
+	padding: 11px 22px;
+}
+
+.cav7Ens-figure
+{
+	margin: 0;
+	background: #000;
+	border-left: @xf-borderSize solid @xf-borderColor;
+
+	@media (max-width: @xf-responsiveMedium)
+	{
+		border-left: none;
+		border-top: @xf-borderSize solid @xf-borderColor;
+	}
+}
+
+.cav7Ens-poster
+{
+	position: relative;
+	display: block;
+
+	img
+	{
+		display: block;
+		width: 100%;
+		height: auto;
+		// The PNG carries a 3px white strip along its top edge and a 1px one
+		// along the bottom. Crop them so the poster sits flush on the card.
+		clip-path: inset(0.35% 0 0.15% 0);
+	}
+
+	// The lightbox script sets cursor: pointer once it has bound the poster.
+	// This corner badge is the visible hint for the same click.
+	.cav7Ens-zoom
+	{
+		position: absolute;
+		right: @xf-paddingLarge;
+		bottom: @xf-paddingLarge;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		background: fade(#000, 65%);
+		border: 1px solid fade(@xf-paletteAccent2, 60%);
+		color: @xf-paletteAccent2;
+		font-size: 14px;
+		opacity: .7;
+		.m-transition(opacity; @xf-animationSpeed);
+	}
+
+	&:hover .cav7Ens-zoom
+	{
+		opacity: 1;
+	}
+}

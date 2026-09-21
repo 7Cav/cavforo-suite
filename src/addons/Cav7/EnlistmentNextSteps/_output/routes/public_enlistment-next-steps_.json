@@ -1,0 +1,11 @@
+{
+    "route_type": "public",
+    "route_prefix": "enlistment-next-steps",
+    "sub_name": "",
+    "format": ":int<thread_id>/",
+    "build_class": "",
+    "build_method": "",
+    "controller": "Cav7\\EnlistmentNextSteps:NextSteps",
+    "context": "",
+    "action_prefix": ""
+}
