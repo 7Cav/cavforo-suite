@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<phrases>
+  <phrase title="admin_navigation.cav7TicketWebhooks" version_id="1000070" version_string="1.0.0"><![CDATA[Ticket hooks]]></phrase>
+  <phrase title="cav7_tw_active" version_id="1000070" version_string="1.0.0"><![CDATA[Active]]></phrase>
+  <phrase title="cav7_tw_active_explain" version_id="1000070" version_string="1.0.0"><![CDATA[An inactive hook opens nothing, and a caller cannot tell it from a hook that does not exist.]]></phrase>
+  <phrase title="cav7_tw_add_ticket_hook" version_id="1000070" version_string="1.0.0"><![CDATA[Add ticket hook]]></phrase>
+  <phrase title="cav7_tw_category_explain" version_id="1000070" version_string="1.0.0"><![CDATA[Every ticket this hook opens goes in this category. Only categories that allow tickets to be opened are listed.]]></phrase>
+  <phrase title="cav7_tw_category_not_found" version_id="1000070" version_string="1.0.0"><![CDATA[The requested ticket category could not be found.]]></phrase>
+  <phrase title="cav7_tw_category_x_requires_a_prefix_and_has_no_default" version_id="1000070" version_string="1.0.0"><![CDATA[{category} requires a prefix but has no default one. Set a default prefix on the category, or choose another category.]]></phrase>
+  <phrase title="cav7_tw_done" version_id="1000070" version_string="1.0.0"><![CDATA[Done]]></phrase>
+  <phrase title="cav7_tw_hook_not_found" version_id="1000070" version_string="1.0.0"><![CDATA[The requested ticket hook could not be found.]]></phrase>
+  <phrase title="cav7_tw_hook_url" version_id="1000070" version_string="1.0.0"><![CDATA[Hook URL]]></phrase>
+  <phrase title="cav7_tw_hook_url_explain" version_id="1000070" version_string="1.0.0"><![CDATA[Paste this as the Discord webhook URL in the caller. Every post to it opens one ticket.]]></phrase>
+  <phrase title="cav7_tw_hook_url_without_token" version_id="1000070" version_string="1.0.0"><![CDATA[Hook URL for a bearer header]]></phrase>
+  <phrase title="cav7_tw_hook_url_without_token_explain" version_id="1000070" version_string="1.0.0"><![CDATA[A caller that can send an Authorization: Bearer header may post here with the token in the header instead, which keeps it out of access logs.]]></phrase>
+  <phrase title="cav7_tw_last_ticket" version_id="1000070" version_string="1.0.0"><![CDATA[Last ticket]]></phrase>
+  <phrase title="cav7_tw_last_used" version_id="1000070" version_string="1.0.0"><![CDATA[Last used]]></phrase>
+  <phrase title="cav7_tw_name_explain" version_id="1000070" version_string="1.0.0"><![CDATA[Up to 150 characters. A post that carries no title of its own opens a ticket with this name as its title.]]></phrase>
+  <phrase title="cav7_tw_no_ticket_hooks_yet" version_id="1000070" version_string="1.0.0"><![CDATA[No ticket hooks have been written yet.]]></phrase>
+  <phrase title="cav7_tw_opener_user_id_x_names_no_user" version_id="1000070" version_string="1.0.0"><![CDATA[Opener user ID {id} names no user. Correct the option under Setup > Options > Ticket Webhook before saving a hook.]]></phrase>
+  <phrase title="cav7_tw_opener_x_may_not_open_a_ticket_in_category_y_because_z" version_id="1000070" version_string="1.0.0"><![CDATA[{opener} may not open a ticket in {category}: {reason}]]></phrase>
+  <phrase title="cav7_tw_replace_token" version_id="1000070" version_string="1.0.0"><![CDATA[Replace token]]></phrase>
+  <phrase title="cav7_tw_replace_token_x_explain" version_id="1000070" version_string="1.0.0"><![CDATA[Replace the token for '{name}'? The current token stops working at once, and the new one is shown once.]]></phrase>
+  <phrase title="cav7_tw_set_x_active_or_inactive" version_id="1000070" version_string="1.0.0"><![CDATA[Set '{name}' active or inactive]]></phrase>
+  <phrase title="cav7_tw_the_opener_has_no_create_permission_there" version_id="1000070" version_string="1.0.0"><![CDATA[the opener has no permission to create tickets there]]></phrase>
+  <phrase title="cav7_tw_ticket_hook" version_id="1000070" version_string="1.0.0"><![CDATA[Ticket hook]]></phrase>
+  <phrase title="cav7_tw_ticket_hooks" version_id="1000070" version_string="1.0.0"><![CDATA[Ticket hooks]]></phrase>
+  <phrase title="cav7_tw_token" version_id="1000070" version_string="1.0.0"><![CDATA[Token]]></phrase>
+  <phrase title="cav7_tw_token_not_shown_again" version_id="1000070" version_string="1.0.0"><![CDATA[The token is stored only as a hash and cannot be shown again. Use Replace token to issue a new one.]]></phrase>
+  <phrase title="cav7_tw_token_shown_after_save" version_id="1000070" version_string="1.0.0"><![CDATA[The token is generated when you save and shown once, with the URL to paste into the caller.]]></phrase>
+  <phrase title="cav7_tw_token_shown_once" version_id="1000070" version_string="1.0.0"><![CDATA[Copy the URL now. The token is stored only as a hash and will not be shown again.]]></phrase>
+  <phrase title="option.cav7TicketWebhookOpenerUserId" version_id="1000070" version_string="1.0.0"><![CDATA[Opener user ID]]></phrase>
+  <phrase title="option_explain.cav7TicketWebhookOpenerUserId" version_id="1000070" version_string="1.0.0"><![CDATA[The XenForo user every hook ticket is opened as.]]></phrase>
+  <phrase title="option_group.cav7TicketWebhook" version_id="1000070" version_string="1.0.0"><![CDATA[Ticket Webhook]]></phrase>
+  <phrase title="option_group_description.cav7TicketWebhook" version_id="1000070" version_string="1.0.0"><![CDATA[Opens an NF/Tickets ticket when a remote tool posts to a hook.]]></phrase>
+</phrases>

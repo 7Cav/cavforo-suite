@@ -1,0 +1,11 @@
+{
+    "route_type": "public",
+    "route_prefix": "ticket-webhooks",
+    "sub_name": "",
+    "format": ":int<hook_id>/:str<token>/",
+    "build_class": "",
+    "build_method": "",
+    "controller": "Cav7\\TicketWebhook\\Pub\\Controller\\Hook",
+    "context": "",
+    "action_prefix": ""
+}

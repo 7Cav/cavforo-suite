@@ -1,0 +1,1 @@
+Copy the URL now. The token is stored only as a hash and will not be shown again.

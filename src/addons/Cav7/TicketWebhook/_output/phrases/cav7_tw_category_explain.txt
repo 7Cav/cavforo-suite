@@ -1,0 +1,1 @@
+Every ticket this hook opens goes in this category. Only categories that allow tickets to be opened are listed.

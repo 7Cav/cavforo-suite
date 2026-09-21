@@ -1,0 +1,11 @@
+{
+    "parent_navigation_id": "nfTickets",
+    "display_order": 70,
+    "link": "ticket-webhooks",
+    "icon": "fa-plug",
+    "admin_permission_id": "nfTickets",
+    "debug_only": false,
+    "development_only": false,
+    "super_admin_only": false,
+    "hide_no_children": false
+}

@@ -1,0 +1,58 @@
+<xf:title>{{ phrase('cav7_tw_ticket_hooks') }}</xf:title>
+
+<xf:pageaction>
+	<xf:button href="{{ link('ticket-webhooks/add') }}" icon="add">{{ phrase('cav7_tw_add_ticket_hook') }}</xf:button>
+</xf:pageaction>
+
+<xf:if is="$hooks is not empty">
+	<xf:form action="{{ link('ticket-webhooks/toggle') }}" class="block" ajax="true">
+		<div class="block-container">
+			<div class="block-body">
+				<xf:datalist>
+					<xf:datarow rowtype="header">
+						<xf:cell>{{ phrase('name') }}</xf:cell>
+						<xf:cell>{{ phrase('category') }}</xf:cell>
+						<xf:cell>{{ phrase('cav7_tw_last_used') }}</xf:cell>
+						<xf:cell>{{ phrase('cav7_tw_last_ticket') }}</xf:cell>
+						<xf:cell class="dataList-cell--min"></xf:cell>
+						<xf:cell class="dataList-cell--min"></xf:cell>
+					</xf:datarow>
+					<xf:foreach loop="$hooks" value="$hook">
+						<xf:datarow
+							label="{$hook.name}"
+							href="{{ link('ticket-webhooks/edit', $hook) }}"
+							delete="{{ link('ticket-webhooks/delete', $hook) }}">
+
+							<xf:cell>
+								<xf:if is="$hook.Category">
+									{$hook.Category.title}
+								<xf:else />
+									<span class="label label--red">{{ phrase('cav7_tw_category_not_found') }}</span>
+								</xf:if>
+							</xf:cell>
+							<xf:cell>
+								<xf:if is="$hook.last_used_date">
+									<xf:date time="{$hook.last_used_date}" />
+								<xf:else />
+									{{ phrase('never') }}
+								</xf:if>
+							</xf:cell>
+							<xf:cell>
+								<xf:if is="$hook.LastTicket">
+									<a href="{$hook.LastTicket.getContentUrl()}" target="_blank">{$hook.LastTicket.title}</a>
+								<xf:else />
+									{{ phrase('n_a') }}
+								</xf:if>
+							</xf:cell>
+							<xf:toggle name="active[{$hook.hook_id}]" selected="$hook.active"
+								class="dataList-cell--separated" submit="true"
+								tooltip="{{ phrase('cav7_tw_set_x_active_or_inactive', {'name': $hook.name}) }}" />
+						</xf:datarow>
+					</xf:foreach>
+				</xf:datalist>
+			</div>
+		</div>
+	</xf:form>
+<xf:else />
+	<div class="blockMessage">{{ phrase('cav7_tw_no_ticket_hooks_yet') }}</div>
+</xf:if>

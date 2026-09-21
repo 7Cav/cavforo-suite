@@ -1,0 +1,1 @@
+A caller that can send an Authorization: Bearer header may post here with the token in the header instead, which keeps it out of access logs.

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates>
+  <template type="admin" title="cav7_ticket_webhook_edit" version_id="1000070" version_string="1.0.0"><![CDATA[<xf:if is="$hook.isInsert()">
+	<xf:title>{{ phrase('cav7_tw_add_ticket_hook') }}</xf:title>
+<xf:else />
+	<xf:title>{{ phrase('cav7_tw_ticket_hook') }}: {$hook.name}</xf:title>
+</xf:if>
+
+<xf:pageaction if="$hook.isUpdate()">
+	<xf:button href="{{ link('ticket-webhooks/rotate', $hook) }}" icon="redo" overlay="true">{{ phrase('cav7_tw_replace_token') }}</xf:button>
+	<xf:button href="{{ link('ticket-webhooks/delete', $hook) }}" icon="delete" overlay="true" />
+</xf:pageaction>
+
+<xf:form action="{{ link('ticket-webhooks/save', $hook) }}" class="block" ajax="true">
+	<div class="block-container">
+		<div class="block-body">
+			<xf:textboxrow name="name" value="{$hook.name}" maxlength="150"
+				label="{{ phrase('name') }}"
+				explain="{{ phrase('cav7_tw_name_explain') }}" />
+
+			<xf:selectrow name="ticket_category_id" value="{$hook.ticket_category_id}"
+				label="{{ phrase('category') }}"
+				explain="{{ phrase('cav7_tw_category_explain') }}">
+				<xf:option value="0"></xf:option>
+				<xf:foreach loop="$categories" key="$categoryId" value="$categoryTitle">
+					<xf:option value="{$categoryId}">{$categoryTitle}</xf:option>
+				</xf:foreach>
+			</xf:selectrow>
+
+			<xf:checkboxrow>
+				<xf:option name="active" value="1" selected="{$hook.active}" label="{{ phrase('cav7_tw_active') }}"
+					hint="{{ phrase('cav7_tw_active_explain') }}" />
+			</xf:checkboxrow>
+
+			<xf:if is="$hook.isInsert()">
+				<xf:formrow rowtype="explain">{{ phrase('cav7_tw_token_shown_after_save') }}</xf:formrow>
+			<xf:else />
+				<xf:inforow label="{{ phrase('cav7_tw_hook_url') }}">
+					<code>{$urlWithoutToken}&lt;token&gt;/</code>
+					<div class="formRow-explain">{{ phrase('cav7_tw_token_not_shown_again') }}</div>
+				</xf:inforow>
+				<xf:inforow label="{{ phrase('cav7_tw_last_used') }}">
+					<xf:if is="$hook.last_used_date">
+						<xf:date time="{$hook.last_used_date}" />
+					<xf:else />
+						{{ phrase('never') }}
+					</xf:if>
+				</xf:inforow>
+				<xf:inforow label="{{ phrase('cav7_tw_last_ticket') }}">
+					<xf:if is="$hook.LastTicket">
+						<a href="{$hook.LastTicket.getContentUrl()}" target="_blank">{$hook.LastTicket.title}</a>
+					<xf:else />
+						{{ phrase('n_a') }}
+					</xf:if>
+				</xf:inforow>
+			</xf:if>
+		</div>
+		<xf:submitrow icon="save" sticky="true" />
+	</div>
+</xf:form>
+]]></template>
+  <template type="admin" title="cav7_ticket_webhook_list" version_id="1000070" version_string="1.0.0"><![CDATA[<xf:title>{{ phrase('cav7_tw_ticket_hooks') }}</xf:title>
+
+<xf:pageaction>
+	<xf:button href="{{ link('ticket-webhooks/add') }}" icon="add">{{ phrase('cav7_tw_add_ticket_hook') }}</xf:button>
+</xf:pageaction>
+
+<xf:if is="$hooks is not empty">
+	<xf:form action="{{ link('ticket-webhooks/toggle') }}" class="block" ajax="true">
+		<div class="block-container">
+			<div class="block-body">
+				<xf:datalist>
+					<xf:datarow rowtype="header">
+						<xf:cell>{{ phrase('name') }}</xf:cell>
+						<xf:cell>{{ phrase('category') }}</xf:cell>
+						<xf:cell>{{ phrase('cav7_tw_last_used') }}</xf:cell>
+						<xf:cell>{{ phrase('cav7_tw_last_ticket') }}</xf:cell>
+						<xf:cell class="dataList-cell--min"></xf:cell>
+						<xf:cell class="dataList-cell--min"></xf:cell>
+					</xf:datarow>
+					<xf:foreach loop="$hooks" value="$hook">
+						<xf:datarow
+							label="{$hook.name}"
+							href="{{ link('ticket-webhooks/edit', $hook) }}"
+							delete="{{ link('ticket-webhooks/delete', $hook) }}">
+
+							<xf:cell>
+								<xf:if is="$hook.Category">
+									{$hook.Category.title}
+								<xf:else />
+									<span class="label label--red">{{ phrase('cav7_tw_category_not_found') }}</span>
+								</xf:if>
+							</xf:cell>
+							<xf:cell>
+								<xf:if is="$hook.last_used_date">
+									<xf:date time="{$hook.last_used_date}" />
+								<xf:else />
+									{{ phrase('never') }}
+								</xf:if>
+							</xf:cell>
+							<xf:cell>
+								<xf:if is="$hook.LastTicket">
+									<a href="{$hook.LastTicket.getContentUrl()}" target="_blank">{$hook.LastTicket.title}</a>
+								<xf:else />
+									{{ phrase('n_a') }}
+								</xf:if>
+							</xf:cell>
+							<xf:toggle name="active[{$hook.hook_id}]" selected="$hook.active"
+								class="dataList-cell--separated" submit="true"
+								tooltip="{{ phrase('cav7_tw_set_x_active_or_inactive', {'name': $hook.name}) }}" />
+						</xf:datarow>
+					</xf:foreach>
+				</xf:datalist>
+			</div>
+		</div>
+	</xf:form>
+<xf:else />
+	<div class="blockMessage">{{ phrase('cav7_tw_no_ticket_hooks_yet') }}</div>
+</xf:if>
+]]></template>
+  <template type="admin" title="cav7_ticket_webhook_rotate" version_id="1000070" version_string="1.0.0"><![CDATA[<xf:title>{{ phrase('cav7_tw_replace_token') }}: {$hook.name}</xf:title>
+
+<xf:form action="{{ link('ticket-webhooks/rotate', $hook) }}" class="block" ajax="true">
+	<div class="block-container">
+		<div class="block-body">
+			<div class="block-rowMessage">{{ phrase('cav7_tw_replace_token_x_explain', {'name': $hook.name}) }}</div>
+		</div>
+		<xf:submitrow icon="redo" sticky="true" submit="{{ phrase('cav7_tw_replace_token') }}" />
+	</div>
+</xf:form>
+]]></template>
+  <template type="admin" title="cav7_ticket_webhook_token" version_id="1000070" version_string="1.0.0"><![CDATA[<xf:title>{{ phrase('cav7_tw_ticket_hook') }}: {$hook.name}</xf:title>
+
+<div class="block">
+	<div class="block-container">
+		<div class="block-body">
+			<div class="block-rowMessage block-rowMessage--important">
+				<strong>{{ phrase('cav7_tw_token_shown_once') }}</strong>
+			</div>
+			<xf:textboxrow name="_cav7_tw_url" value="{$url}"
+				inputclass="input--mono" readonly="true"
+				label="{{ phrase('cav7_tw_hook_url') }}"
+				explain="{{ phrase('cav7_tw_hook_url_explain') }}" />
+			<xf:textboxrow name="_cav7_tw_url_without_token" value="{$urlWithoutToken}"
+				inputclass="input--mono" readonly="true"
+				label="{{ phrase('cav7_tw_hook_url_without_token') }}"
+				explain="{{ phrase('cav7_tw_hook_url_without_token_explain') }}" />
+			<xf:textboxrow name="_cav7_tw_token" value="{$token}"
+				inputclass="input--mono" readonly="true"
+				label="{{ phrase('cav7_tw_token') }}" />
+		</div>
+		<div class="block-footer">
+			<a href="{{ link('ticket-webhooks') }}" class="button">{{ phrase('cav7_tw_done') }}</a>
+		</div>
+	</div>
+</div>
+]]></template>
+</templates>
