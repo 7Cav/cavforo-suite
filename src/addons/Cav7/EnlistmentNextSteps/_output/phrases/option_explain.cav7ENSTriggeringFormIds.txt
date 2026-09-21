@@ -1,0 +1,1 @@
+Comma-separated Advanced Forms form IDs. A recruit who submits one of these forms lands on the next-steps page instead of the form's own reply. Leave it empty to show the page on no form. An entry that is not a form ID is ignored and the entries beside it still count. Default: 1.

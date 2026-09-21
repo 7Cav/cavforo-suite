@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<phrases>
+  <phrase title="cav7_ens_next_steps_body" version_id="1000070" version_string="1.0.0"><![CDATA[<p>Thank you for submitting your application to 7th Cavalry Gaming. Your application has been received and RRD Staff will contact you soon. Please be patient while we review your submission. Once you receive your Welcome Letter, make sure to read it carefully from beginning to end. It may contain important information, questions, or issues regarding your application that require your attention. Please respond to every point raised in the Welcome Letter and provide any information requested by the staff. This will help us move your application forward without unnecessary delays. Keep an eye on your messages and we'll be in touch soon.</p>]]></phrase>
+  <phrase title="cav7_ens_next_steps_button" version_id="1000070" version_string="1.0.0"><![CDATA[I Understand]]></phrase>
+  <phrase title="cav7_ens_next_steps_title" version_id="1000070" version_string="1.0.0"><![CDATA[Application Received]]></phrase>
+  <phrase title="option.cav7ENSTriggeringFormIds" version_id="1000070" version_string="1.0.0"><![CDATA[Triggering form IDs]]></phrase>
+  <phrase title="option_explain.cav7ENSTriggeringFormIds" version_id="1000070" version_string="1.0.0"><![CDATA[Comma-separated Advanced Forms form IDs. A recruit who submits one of these forms lands on the next-steps page instead of the form's own reply. Leave it empty to show the page on no form. An entry that is not a form ID is ignored and the entries beside it still count. Default: 1.]]></phrase>
+  <phrase title="option_group.cav7EnlistmentNextSteps" version_id="1000070" version_string="1.0.0"><![CDATA[Enlistment Next Steps]]></phrase>
+  <phrase title="option_group_description.cav7EnlistmentNextSteps" version_id="1000070" version_string="1.0.0"><![CDATA[Lands a recruit on a next-steps page the moment a triggering Advanced Forms form is accepted, in place of the form's own reply.]]></phrase>
+</phrases>

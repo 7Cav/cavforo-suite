@@ -1,0 +1,1 @@
+Lands a recruit on a next-steps page the moment a triggering Advanced Forms form is accepted, in place of the form's own reply.
