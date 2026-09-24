@@ -6,8 +6,8 @@ record the moment a milpac is created — so a recruiter starts from a
 near-complete form and the new member starts with what every member already
 carries. Companion to NF/Rosters; attaches through XenForo class extensions and
 ships none of the vendor's code (same shape as
-[Cav7/RosterAudit](../RosterAudit/README.md)). For **milpac**, see the
-suite-wide [CONTEXT.md](../../../../CONTEXT.md).
+[Cav7/RosterAudit](../RosterAudit/README.md)). For **milpac**, **citation**
+and **citation image**, see the suite-wide [CONTEXT.md](../../../../CONTEXT.md).
 
 ## Language
 
@@ -41,10 +41,10 @@ either way) and "pending date" (**pending** means not yet carried at the moment
 the set is applied, which is the normal state of every date on a new milpac).
 
 **Citation**:
-The JPG document attached to a PUC grant, stored per award row at
-`data://roster_award_citations/…/{record_id}.jpg`. Citations are _generalized_:
-the same image is reused for a given PUC date across every member, so the set of
-citation images is bundled with the addon rather than produced per member.
+Defined suite-wide, in the root [CONTEXT.md](../../../../CONTEXT.md). In this
+addon it is always a PUC's. Each PUC date has one citation image, the same for
+every member who carries that date, so the addon bundles one image per date
+instead of producing one per member.
 _Avoid_: per-member or personalized citations (they are unit-level documents).
 
 **Enlistment record**:

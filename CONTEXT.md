@@ -17,6 +17,31 @@ the org. Within this system a member has at most one milpac; two
 _Avoid_: profile (the XenForo user profile is a separate thing), personnel
 jacket, record (ambiguous with service record)
 
+**citation**:
+The document that records something granted to a member, such as an award, a
+promotion or a completed course. A roster row carries at most one.
+_Avoid_: citation for a recommendation's proposed prose, which is the 7Cav Medal
+App's sense of the word; disciplinary citation (a Disciplinary record's image is
+a filed form, and nothing is granted)
+
+**citation image**:
+The image in a roster row's citation slot, whatever document it shows. Most
+show a citation. On a Disciplinary record it shows a filed disciplinary form,
+which is not one.
+_Avoid_: citation where the image is meant rather than what was granted
+
+**citation blob**:
+One stored copy of a citation image, shared by every row whose image has the
+same bytes. A row reaches it through a **citation reference**.
+
+**citation reference**:
+A row's pointer at the **citation blob** that holds its citation image.
+
+**citation upload**:
+A person attaching an image file to a row's citation slot through the roster's
+save forms. When code fills the slot, as `Cav7/EnlistmentDefaults` does with a
+new milpac's PUC set, that is not a citation upload.
+
 **data type**:
 One kind of XenForo add-on data — options, phrases, routes, cron entries. A
 data type is named twice, once for each of the two trees below, and the two
