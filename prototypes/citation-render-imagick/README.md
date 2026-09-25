@@ -4,6 +4,8 @@ Throwaway. No tests, no error handling beyond what makes it run. Do not merge to
 
 The question comes from [#303](https://github.com/7Cav/cavforo-suite/issues/303). Can Imagick, as prod runs it, set a citation's typed fields well enough and fast enough to render on view? And does a render route ending in `.jpg` get through prod's nginx and Cloudflare?
 
+The prod measurements and the verdict are in [the resolution on #303](https://github.com/7Cav/cavforo-suite/issues/303#issuecomment-5825535960). This README covers the prototype and what the staging mirror showed.
+
 It renders one BSM grant member: variant B of the Chromium prototype on `prototype/citation-render` (the taller layout leadership preferred), scaled from its 640px plate to 1275px wide. The member, the operation, the citation text and the signatory are all made up. The ink image is a synthetic squiggle, not anyone's signature.
 
 ## Run it
