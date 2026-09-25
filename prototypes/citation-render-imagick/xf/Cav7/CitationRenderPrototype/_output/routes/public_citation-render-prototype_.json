@@ -1,0 +1,11 @@
+{
+    "route_type": "public",
+    "route_prefix": "citation-render-prototype",
+    "sub_name": "",
+    "format": ":int<member_id>/:str<token>/:int<revision>/",
+    "build_class": "",
+    "build_method": "",
+    "controller": "Cav7\\CitationRenderPrototype\\Pub\\Controller\\Render",
+    "context": "",
+    "action_prefix": ""
+}
