@@ -20,7 +20,7 @@ run php render.php --fonts=/fonts --text=long --bench=30 --json      # warm timi
 run php render.php --env                                             # the image's Imagick build and limits
 ```
 
-The renders and timings below were made with Liberation Serif 2.1.5 in place of Tinos. Liberation 2 is drawn from Tinos and has the same advance widths, so sizes and line breaks carry over. Glyph shapes differ in small details.
+The renders and timings below use Tinos 1.340. A first pass used Liberation Serif 2.1.5 in its place, and the Tinos renders came out byte for byte the same. The two fonts share every advance width and every ASCII outline, and differ in hinting, which this ImageMagick build doesn't apply.
 
 `--text` is `short` (880 characters), `long` (1,429 characters over 3 paragraphs) or `tail` (2,090 characters, deliberately too long).
 
@@ -67,11 +67,11 @@ Warm, 30 renders in one process on Apple silicon (arm64, Docker, PHP 8.3.33, Ima
 
 | text | p50 | p95 |
 |---|---|---|
-| short | 186ms | 201ms |
-| long | 213ms | 233ms |
-| tail | 242ms | 253ms |
+| short | 182ms | 197ms |
+| long | 211ms | 219ms |
+| tail | 239ms | 247ms |
 
-A fresh process per render lands within 10ms of those. The plate's PNG decode takes about 50ms, drawing the text 50 to 80ms, the fit about 40ms, and the encode about 20ms.
+A fresh process per render lands within 20ms of those: 198 to 202ms for the short text and 227 to 231ms for the long one, with one long render at 337ms. The plate's PNG decode takes about 50ms, drawing the text 50 to 80ms, the fit about 40ms, and the encode about 20ms.
 
 ### Two ImageMagick behaviours the spec should know
 
@@ -95,7 +95,7 @@ XenForo's router strips a trailing `.jpg` from the path and treats it as a respo
 
 ### Cookies and cache headers
 
-A render must not set a cookie, or Cloudflare won't cache it. Two things set one:
+A render must carry its own cache headers and no cookie, or Cloudflare won't cache it. Two XenForo defaults got in the way:
 
 - XenForo sends `Expires: Thu, 19 Nov 1981` on any response that has none. `max-age` outranks it, but the route sets its own `Expires` anyway.
 - A visitor with no session cookie gets a new guest session. Advanced Forms (Snog) writes `snogFormsCount` into it in its `app_pub_start_end` listener, on every request, so XenForo saves it and sends `Set-Cookie: xf_session`. The route drops a session that was never saved. It must not call `expunge()` on a stored one, because that deletes it and signs the member out.
