@@ -45,6 +45,14 @@ question over, open it and use **Change type**. Its past answers stay in the
 form log as they were. A regex or length limit it kept from its Text days no
 longer applies.
 
+In the question editor, both types have a default answer and a placeholder,
+beside the settings every question has. They have no regex, length limits or
+expected answers. A default answer of `{username}` fills the box with the
+filer's own name, so a filer doesn't have to enter themselves on their own
+request. **Read-only** works as it does for Text. It greys the box only when
+the question has a default answer, and the form doesn't check it on submit, so
+a filer who edits the page in the browser can still send another name.
+
 When the form is submitted, the add-on looks up each name among the forum's
 accounts:
 

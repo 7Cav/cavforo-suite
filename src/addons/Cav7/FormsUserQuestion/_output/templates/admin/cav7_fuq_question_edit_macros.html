@@ -1,0 +1,20 @@
+<xf:macro id="type_options" arg-question="!">
+	<xf:comment>
+		The options a forum user question has of its own, in the question editor. They
+		follow the vendor Text branch of snog_forms_question_edit_macros::question_types,
+		keeping placeholder and default answer and leaving out regex, length limits and
+		expected answers, which do nothing for these types. The vendor save maps fields
+		to columns only for its own types, so
+		Cav7\FormsUserQuestion\Snog\Forms\Admin\Controller\Questions saves these two,
+		under field names of the addon's own.
+	</xf:comment>
+	<xf:textboxrow name="cav7_fuq_placeholder" value="{$question.placeholder}"
+				   maxlength="{{ max_length($question, 'placeholder') }}"
+				   label="{{ phrase('snog_forms_placeholder') }}"
+				   explain="{{ phrase('cav7_fuq_placeholder_explain') }}" />
+
+	<xf:textboxrow name="cav7_fuq_default_answer" value="{$question.defanswer}"
+				   maxlength="{{ max_length($question, 'defanswer') }}"
+				   label="{{ phrase('snog_forms_default_answer') }}"
+				   explain="{{ phrase('cav7_fuq_default_answer_explain') }}" />
+</xf:macro>

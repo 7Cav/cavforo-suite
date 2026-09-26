@@ -5,6 +5,18 @@
         "version_string": "1.0.0",
         "hash": "ad08d374afbde29b9ce0b3cc09bf1e75"
     },
+    "cav7_fuq_default_answer_explain.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "e70a516f85e865956c86c24438a51811"
+    },
+    "cav7_fuq_placeholder_explain.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "9ad99d96b8c71e2586fd3feb72843a65"
+    },
     "snog_forms_question_type_def.cav7_fuq_forum_user.txt": {
         "global_cache": false,
         "version_id": 1000070,

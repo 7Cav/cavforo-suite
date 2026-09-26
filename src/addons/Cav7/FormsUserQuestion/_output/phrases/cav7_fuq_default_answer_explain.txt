@@ -1,0 +1,1 @@
+Fills the box when the form opens. Enter a username, or {username} for the filer's own name. A "Forum users" question can take several, separated by commas.

@@ -1,4 +1,9 @@
 {
+    "admin/cav7_fuq_question_edit_macros.html": {
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "6e05d89d2b065ca4f2936792084f086b"
+    },
     "public/cav7_fuq_question_macros.html": {
         "version_id": 1000070,
         "version_string": "1.0.0",

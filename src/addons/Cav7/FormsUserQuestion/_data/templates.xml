@@ -1,5 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <templates>
+  <template type="admin" title="cav7_fuq_question_edit_macros" version_id="1000070" version_string="1.0.0"><![CDATA[<xf:macro id="type_options" arg-question="!">
+	<xf:comment>
+		The options a forum user question has of its own, in the question editor. They
+		follow the vendor Text branch of snog_forms_question_edit_macros::question_types,
+		keeping placeholder and default answer and leaving out regex, length limits and
+		expected answers, which do nothing for these types. The vendor save maps fields
+		to columns only for its own types, so
+		Cav7\FormsUserQuestion\Snog\Forms\Admin\Controller\Questions saves these two,
+		under field names of the addon's own.
+	</xf:comment>
+	<xf:textboxrow name="cav7_fuq_placeholder" value="{$question.placeholder}"
+				   maxlength="{{ max_length($question, 'placeholder') }}"
+				   label="{{ phrase('snog_forms_placeholder') }}"
+				   explain="{{ phrase('cav7_fuq_placeholder_explain') }}" />
+
+	<xf:textboxrow name="cav7_fuq_default_answer" value="{$question.defanswer}"
+				   maxlength="{{ max_length($question, 'defanswer') }}"
+				   label="{{ phrase('snog_forms_default_answer') }}"
+				   explain="{{ phrase('cav7_fuq_default_answer_explain') }}" />
+</xf:macro>]]></template>
   <template type="public" title="cav7_fuq_question_macros" version_id="1000070" version_string="1.0.0"><![CDATA[<xf:macro id="name_box" arg-question="!" arg-canSubmit="!" arg-row="!">
 	<xf:comment>
 		The box a forum user question is answered in. It copies the vendor's type_text

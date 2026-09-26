@@ -1,0 +1,9 @@
+{
+    "template": "snog_forms_question_edit_macros",
+    "description": "Give forum user questions their own options in the question editor, where the per-type chain would show None",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "str_replace",
+    "find": "<xf:elseif is=\"$question.type == 'text'\" />",
+    "replace": "<xf:elseif is=\"$question.isCav7FuqForumUserType()\" />\n\t\t<xf:macro id=\"cav7_fuq_question_edit_macros::type_options\" arg-question=\"{$question}\" />\n\t<xf:elseif is=\"$question.type == 'text'\" />"
+}
