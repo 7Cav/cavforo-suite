@@ -39,12 +39,12 @@ class Question extends XFCP_Question
         $types = parent::getSupportedQuestionTypes();
         $ours = [QuestionType::FORUM_USER, QuestionType::FORUM_USERS];
 
-        $afterText = array_search('text', $types, true);
-        if ($afterText === false) {
+        $textIndex = array_search('text', $types, true);
+        if ($textIndex === false) {
             return array_merge($types, $ours);
         }
 
-        array_splice($types, $afterText + 1, 0, $ours);
+        array_splice($types, $textIndex + 1, 0, $ours);
 
         return $types;
     }

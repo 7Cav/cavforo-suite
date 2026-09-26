@@ -99,7 +99,7 @@ use XF\Finder\UserFinder;
  */
 class Question extends XFCP_Question
 {
-    /** @var array<string, Result> keyed by the raw answer and whether it takes several */
+    /** @var array<string, Result> keyed by the raw answer */
     protected $cav7fuqResolved = [];
 
     /**
@@ -148,7 +148,7 @@ class Question extends XFCP_Question
      */
     public function getFormattedAnswer($answer, $context = 'message')
     {
-        $result = $this->cav7fuqAcceptedResult($answer);
+        $result = $this->isCav7FuqForumUserType() ? $this->cav7fuqAcceptedResult($answer) : null;
         if ($result === null) {
             return parent::getFormattedAnswer($answer, $context);
         }
@@ -168,7 +168,7 @@ class Question extends XFCP_Question
             return parent::canUsedForReportTitle();
         }
 
-        return !QuestionType::takesSeveral((string) $this->type);
+        return !$this->doesCav7FuqTakeSeveral();
     }
 
     /**
@@ -190,12 +190,12 @@ class Question extends XFCP_Question
     }
 
     /**
-     * The result for an accepted answer to a forum user question. Null when
-     * this is another type, nothing was posted, or the answer was refused.
+     * The result for an accepted answer to this forum user question. Null when
+     * nothing was posted or the answer was refused. Callers check the type.
      */
     protected function cav7fuqAcceptedResult($answer): ?Result
     {
-        if (!$this->isCav7FuqForumUserType() || $answer === null) {
+        if ($answer === null) {
             return null;
         }
 
@@ -223,19 +223,14 @@ class Question extends XFCP_Question
     }
 
     /**
-     * Resolves an answer once per request. The key carries the type as well as
-     * the answer, so a question whose type changes mid-request is not answered
-     * from the other type's result.
+     * Resolves an answer once per request.
      */
     protected function cav7fuqResolve(string $raw): Result
     {
-        $takesSeveral = QuestionType::takesSeveral((string) $this->type);
-        $key = ($takesSeveral ? 'several:' : 'one:') . $raw;
-
-        if (!isset($this->cav7fuqResolved[$key])) {
-            $this->cav7fuqResolved[$key] = AnswerResolution::resolve(
+        if (!isset($this->cav7fuqResolved[$raw])) {
+            $this->cav7fuqResolved[$raw] = AnswerResolution::resolve(
                 $raw,
-                $takesSeveral,
+                $this->doesCav7FuqTakeSeveral(),
                 function (string $name): ?array {
                     $user = $this->finder(UserFinder::class)
                         ->where('username', $name)
@@ -246,6 +241,6 @@ class Question extends XFCP_Question
             );
         }
 
-        return $this->cav7fuqResolved[$key];
+        return $this->cav7fuqResolved[$raw];
     }
 }
