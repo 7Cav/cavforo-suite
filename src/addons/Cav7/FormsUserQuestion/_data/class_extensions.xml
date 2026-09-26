@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<class_extensions>
+  <extension from_class="Snog\Forms\Admin\Controller\Questions" to_class="Cav7\FormsUserQuestion\Snog\Forms\Admin\Controller\Questions" execute_order="10" active="1"/>
+  <extension from_class="Snog\Forms\Entity\Question" to_class="Cav7\FormsUserQuestion\Snog\Forms\Entity\Question" execute_order="10" active="1"/>
+  <extension from_class="Snog\Forms\Repository\Question" to_class="Cav7\FormsUserQuestion\Snog\Forms\Repository\Question" execute_order="10" active="1"/>
+</class_extensions>

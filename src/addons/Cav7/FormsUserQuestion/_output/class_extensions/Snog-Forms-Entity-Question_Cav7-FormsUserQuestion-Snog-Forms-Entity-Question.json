@@ -1,0 +1,6 @@
+{
+    "from_class": "Snog\\Forms\\Entity\\Question",
+    "to_class": "Cav7\\FormsUserQuestion\\Snog\\Forms\\Entity\\Question",
+    "execute_order": 10,
+    "active": true
+}

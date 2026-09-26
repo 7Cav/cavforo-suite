@@ -26,3 +26,10 @@ The input a **forum user question** is answered through: a name box that offers
 matching forum users as the name is typed.
 _Avoid_: member picker, and user picker for the question itself (the picker is
 only the input)
+
+**filer**:
+The person filling in and submitting an Advanced Forms form. A filer may be a
+guest, and is often not the **forum user** the form is about.
+_Avoid_: submitter (several forms already have a "Submitter Name" question),
+applicant (only the filer of an enlistment application), user (a filer need not
+be signed in)

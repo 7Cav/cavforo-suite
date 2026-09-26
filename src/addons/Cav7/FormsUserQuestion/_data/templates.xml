@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates>
+  <template type="admin" title="cav7_fuq_question_edit_macros" version_id="1000070" version_string="1.0.0"><![CDATA[<xf:macro id="type_options" arg-question="!">
+	<xf:comment>
+		The options a forum user question has of its own, in the question editor. They
+		follow the vendor Text branch of snog_forms_question_edit_macros::question_types,
+		keeping placeholder and default answer and leaving out regex, length limits and
+		expected answers, which do nothing for these types. The vendor save maps fields
+		to columns only for its own types, so
+		Cav7\FormsUserQuestion\Snog\Forms\Admin\Controller\Questions saves these two,
+		under field names of the addon's own.
+	</xf:comment>
+	<xf:textboxrow name="cav7_fuq_placeholder" value="{$question.placeholder}"
+				   maxlength="{{ max_length($question, 'placeholder') }}"
+				   label="{{ phrase('snog_forms_placeholder') }}"
+				   explain="{{ phrase('cav7_fuq_placeholder_explain') }}" />
+
+	<xf:textboxrow name="cav7_fuq_default_answer" value="{$question.defanswer}"
+				   maxlength="{{ max_length($question, 'defanswer') }}"
+				   label="{{ phrase('snog_forms_default_answer') }}"
+				   explain="{{ phrase('cav7_fuq_default_answer_explain') }}" />
+</xf:macro>]]></template>
+  <template type="public" title="cav7_fuq_question_macros" version_id="1000070" version_string="1.0.0"><![CDATA[<xf:macro id="name_box" arg-question="!" arg-canSubmit="!" arg-row="!">
+	<xf:comment>
+		The box a forum user question is answered in. It copies the vendor's type_text
+		macro in snog_forms_question_macros, less its maxlength and minlength. Those
+		read type_data, which a question converted from Text keeps, so the browser
+		would go on enforcing a limit the server no longer applies.
+
+		The box is the user picker, XenForo's autocomplete box pointed at the addon's
+		own lookup, Pub\Controller\Lookup, rather than members/find. "Forum user" uses
+		single mode. "Forum users" uses multiple mode, as search_form_macros::user does,
+		and each pick appends the name and a ", " separator.
+	</xf:comment>
+	<xf:set var="$defanswer" value="{$question.getDefaultAnswer()}" />
+	<xf:set var="$formData">
+		<xf:textbox placeholder="{$question.placeholder}"
+					name="question[{$question.questionid}]"
+					value="{{ $defanswer ?: '' }}"
+					readonly="{{ ($question.getDefaultAnswer() is not empty && $question.readonly) || !$canSubmit }}"
+					required="{{ $question.error ? 'required' : '' }}"
+					ac="{{ $question.doesCav7FuqTakeSeveral() ? 'true' : 'single' }}"
+					data-acurl="{{ link('forms-user-question/find') }}" />
+	</xf:set>
+	<xf:if is="$row">
+		<xf:formrow rowtype="input" rowclass="formRow--noColon"
+					label="{{ bb_code($question.text, '', '') }}"
+					explain="{$question.description|raw}"
+					hint="{{ $question.error ? phrase('required') : '' }}">
+			{$formData|raw}
+		</xf:formrow>
+	<xf:else />
+		<div class="menu-row">
+			<label>{{ bb_code($question.text, '', '') }}</label>
+			<div class="u-inputSpacer">{$formData|raw}</div>
+			<label class="u-muted">{$question.description|raw}</label>
+			<label class="u-muted">{{ $question.error ? phrase('required') : '' }}</label>
+		</div>
+	</xf:if>
+</xf:macro>]]></template>
+</templates>

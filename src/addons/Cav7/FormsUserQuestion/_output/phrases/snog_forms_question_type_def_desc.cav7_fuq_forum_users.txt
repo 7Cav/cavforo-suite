@@ -1,0 +1,1 @@
+Takes the names of several forum users, separated by commas. The form refuses any name that belongs to no forum user.

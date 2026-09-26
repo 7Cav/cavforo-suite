@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<template_modifications>
+  <modification type="admin" template="snog_forms_question_edit_macros" modification_key="cav7_fuq_question_type_options" description="Give forum user questions their own options in the question editor, where the per-type chain would show None" execution_order="10" enabled="1" action="str_replace">
+    <find><![CDATA[<xf:elseif is="$question.type == 'text'" />]]></find>
+    <replace><![CDATA[<xf:elseif is="$question.isCav7FuqForumUserType()" />
+		<xf:macro id="cav7_fuq_question_edit_macros::type_options" arg-question="{$question}" />
+	<xf:elseif is="$question.type == 'text'" />]]></replace>
+  </modification>
+  <modification type="public" template="snog_forms_question_macros" modification_key="cav7_fuq_conditional_chain" description="Add a forum user question branch to the conditional question chain, which has no else branch" execution_order="10" enabled="1" action="str_replace">
+    <find><![CDATA[<xf:if is="$hiddenquestion.type == 'text'">]]></find>
+    <replace><![CDATA[<xf:if is="$hiddenquestion.isCav7FuqForumUserType()">
+							<xf:macro id="cav7_fuq_question_macros::name_box" arg-question="{$hiddenquestion}" arg-canSubmit="{canSubmit}" arg-row="{$row}" />
+						<xf:elseif is="$hiddenquestion.type == 'text'" />]]></replace>
+  </modification>
+  <modification type="public" template="snog_forms_question_macros" modification_key="cav7_fuq_question_chain" description="Add a forum user question branch to the top-level question chain, which has no else branch" execution_order="10" enabled="1" action="str_replace">
+    <find><![CDATA[<xf:if is="$question.type == 'text'">]]></find>
+    <replace><![CDATA[<xf:if is="$question.isCav7FuqForumUserType()">
+			<xf:macro id="cav7_fuq_question_macros::name_box" arg-question="{$question}" arg-canSubmit="{canSubmit}" arg-row="{$row}" />
+		<xf:elseif is="$question.type == 'text'" />]]></replace>
+  </modification>
+</template_modifications>
