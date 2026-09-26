@@ -10,8 +10,8 @@ anyone, so a typo or an old name goes straight into the thread. The two
 question types check every name against the forum's accounts before the form
 submits.
 
-The terms this README uses (forum user, forum user question) are defined in
-[CONTEXT.md](CONTEXT.md).
+The terms this README uses (forum user, forum user question, user picker) are
+defined in [CONTEXT.md](CONTEXT.md).
 
 ## Requirements
 
@@ -40,17 +40,15 @@ before a release, per [CONTRIBUTING.md](../../../../CONTRIBUTING.md).
 | Forum user | One forum user |
 | Forum users | Several forum users, names separated by commas |
 
-The filer answers in a user picker. After the filer types two characters, it
-suggests up to 10 forum users whose username starts with them. Unlike
-XenForo's own name lookups, it also suggests forum users who haven't been
-active for months. It leaves out banned and unconfirmed accounts, but a filer
-can still type one in full. Guests and registrants who haven't confirmed their
-account get suggestions too.
-
 Both sit next to Text in the add-question chooser. To move an existing Text
 question over, open it and use **Change type**. Its past answers stay in the
 form log as they were. A regex or length limit it kept from its Text days no
 longer applies.
+
+Copying a form, or exporting it and importing it on another board, keeps both
+question types.
+
+## Setting up a question
 
 In the question editor, both types have a default answer and a placeholder,
 beside the settings every question has. They have no regex, length limits or
@@ -59,6 +57,27 @@ filer's own name, so a filer doesn't have to enter themselves on their own
 request. **Read-only** works as it does for Text. It greys the box only when
 the question has a default answer, and the form doesn't check it on submit, so
 a filer who edits the page in the browser can still send another name.
+
+A "Forum user" answer can fill a slot such as `{A2}` in the form's thread
+title, as a Text answer did, so a title keeps working after its question is
+converted. A "Forum users" question can't go in a title, like Advanced Forms'
+other multi-answer types, and saving the form refuses a title that uses one.
+The change-type screen doesn't run that check. A title whose question you
+convert to "Forum users" lists every name until the form's next save refuses
+it.
+
+Don't choose a "Forum user" question as the form's confirmation-email
+question, even though Advanced Forms lists it there. The answer is a username,
+not an email address, so no confirmation email goes out.
+
+## Filling in the form
+
+The filer answers in a user picker. After the filer types two characters, it
+suggests up to 10 forum users whose username starts with them. Unlike
+XenForo's own name lookups, it also suggests forum users who haven't been
+active for months. It leaves out banned and unconfirmed accounts, but a filer
+can still type one in full. Guests and registrants who haven't confirmed their
+account get suggestions too.
 
 When the form is submitted, the add-on looks up each name among the forum's
 accounts:
@@ -73,8 +92,22 @@ accounts:
 - An optional question left empty submits. A required question must name at
   least one forum user.
 
-Copying a form, or exporting it and importing it on another board, keeps both
-question types.
+## What a submission writes
+
+The thread post links each forum user named to their profile, and so do a
+reply to an existing thread and a conversation. The thread title, the answer
+stored in the form log and the notification email give plain usernames.
+
+The add-on writes every name the way the account spells it, so `doe.j` becomes
+`Doe.J`. A forum user named twice appears once, and the names keep the order
+the filer gave them.
+
+The usernames in the title, the form log and the email are a snapshot taken at
+submission, and a later rename doesn't change them. The link in the post points
+at the account, so it still reaches the right profile after a rename.
+
+Naming a forum user doesn't alert them. XenForo alerts only on a typed `@Name`,
+and the add-on writes no `@`.
 
 ## Disabling or uninstalling
 

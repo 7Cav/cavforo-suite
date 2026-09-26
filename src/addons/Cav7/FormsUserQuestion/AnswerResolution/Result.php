@@ -55,4 +55,31 @@ final class Result
     {
         return $this->users;
     }
+
+    /**
+     * The answer as a thread post or conversation writes it: a [USER=id] link
+     * to each forum user's profile, spelled the way the account spells it. The
+     * id is what lasts, since the name inside the tag is only how the account
+     * was spelled at submission. XenForo writes a mention the same way. Empty
+     * when the answer names nobody.
+     */
+    public function postText(): string
+    {
+        $links = [];
+        foreach ($this->users as $user) {
+            $links[] = '[USER=' . $user['id'] . ']' . $user['username'] . '[/USER]';
+        }
+
+        return implode(', ', $links);
+    }
+
+    /**
+     * The answer as a title, the form log or an email writes it: each forum
+     * user's username as it stood at submission, with no BB code. Empty when
+     * the answer names nobody.
+     */
+    public function plainText(): string
+    {
+        return implode(', ', array_column($this->users, 'username'));
+    }
 }
