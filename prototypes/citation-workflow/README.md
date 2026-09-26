@@ -20,7 +20,7 @@ The page behaves the same in both files. The artifact frame can't open new tabs 
 
 ## What's in it
 
-A stand-in for the forum with a guide panel on the right. The reviewer picks their group and one of three walkthroughs. Every step has a short scenario, what to do, what changed from today, and a feedback box. Notes stay in the reviewer's browser until they copy them from the guide. The copy is BB code, for pasting as a reply in the forum DM thread the link came from.
+A stand-in for the forum with a guide panel on the right. The reviewer picks one of three walkthroughs. Every step has a short scenario, what to do, what changed from today, and a feedback box. Notes stay in the reviewer's browser until they copy them from the guide. The copy is BB code, for pasting as a reply in the forum DM thread the link came from.
 
 | Walkthrough | Steps |
 |---|---|

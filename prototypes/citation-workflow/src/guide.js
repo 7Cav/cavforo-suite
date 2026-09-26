@@ -3,7 +3,6 @@
 
 const Guide = (() => {
   const STORE = 'cavforo-citation-prototype-v1';
-  const GROUPS = ['S1 Citations clerk', 'S1 Milpacs clerk', 'S1 HQ', 'General Staff', 'Someone else'];
 
   // --- helpers the checks share ----------------------------------------------------------------
 
@@ -315,14 +314,14 @@ const Guide = (() => {
   // --- storage ---------------------------------------------------------------------------------------
 
   function load() {
-    try { return JSON.parse(localStorage.getItem(STORE)) || { group: '', notes: {} }; } catch (e) { return { group: '', notes: {} }; }
+    try { return JSON.parse(localStorage.getItem(STORE)) || { notes: {} }; } catch (e) { return { notes: {} }; }
   }
   function save() { try { localStorage.setItem(STORE, JSON.stringify(store)); } catch (e) { /* private window: notes last until the tab closes */ } }
   const store = load();
 
   // --- state -----------------------------------------------------------------------------------------
 
-  let view = 'home', pathId = null, idx = 0, collapsed = false, hints = true, confirmClear = false;
+  let view = 'home', pathId = null, idx = 0, collapsed = false, hints = true, confirmClear = false, notesFrom = 'home';
   const entered = new Set();
   const el = () => document.getElementById('guide');
   const esc2 = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -348,20 +347,14 @@ const Guide = (() => {
 
   // --- rendering -------------------------------------------------------------------------------------
 
-  function groupPicker() {
-    return `<div class="pg-group"><label class="pg-label" for="pgGroup">I'm in</label>
-      <select id="pgGroup" class="pg-select"><option value="">Choose your group...</option>${GROUPS.map(g => `<option ${store.group === g ? 'selected' : ''}>${g}</option>`).join('')}</select></div>`;
-  }
-
   function homeHtml() {
     return `<div class="pg-intro">
         <h2 class="pg-h">How citations would work on the forum</h2>
         <p>This is a clickable mock-up of the forum after S1 stops making citations in GIMP. It isn't connected to the forum, and everyone in it is made up. Nothing you do here goes anywhere, except the notes you choose to send.</p>
-        <p>Pick your group, then a walkthrough. Each step says what's going on, what to do, and what changed from today, and has a box for your comments. Anyone can walk any path.</p>
+        <p>Pick a walkthrough. Each step says what's going on, what to do, and what changed from today, and has a box for your comments. Anyone can walk any path.</p>
         <p>Your comments stay in this browser. When you're done, the guide gives you all of them to copy into the forum DM thread you got this link from.</p>
         <p class="pg-muted">The certificate design is a stand-in. Comments on fonts and layout are welcome, but they belong to the separate look approval before go-live.</p>
       </div>
-      ${groupPicker()}
       <div class="pg-paths">${Object.entries(PATHS).map(([k, p]) => `<button class="pg-path" data-g="start" data-path="${k}">
         <span class="pg-path-title">${esc2(p.title)}</span><span class="pg-path-sum">${esc2(p.summary)}</span><span class="pg-path-n">${p.steps.length} steps</span></button>`).join('')}</div>
       <div class="pg-foot"><button class="pg-link" data-g="feedback">Your notes (${noteCount()})</button></div>`;
@@ -385,7 +378,7 @@ const Guide = (() => {
         <div class="pg-cardHead">Your feedback on this step</div>
         ${s.ask ? `<div class="pg-ask">${esc2(s.ask)}</div>` : ''}
         <textarea id="pgNote" rows="${s.final ? 7 : 4}" placeholder="${s.final ? 'Your overall view' : 'Anything that surprised you, is missing, or would get in your way'}">${esc2(n ? n.text : '')}</textarea>
-        <div class="pg-fbMeta">${store.group ? `Commenting as <b>${esc2(store.group)}</b> &middot; <button class="pg-link" data-g="home">change</button>` : `<span class="pg-warn">Choose your group</span> ${groupPicker()}`}<span id="pgSaved" class="pg-saved"></span></div>
+        <div class="pg-fbMeta"><span id="pgSaved" class="pg-saved"></span></div>
       </div>
       <div class="pg-nav">
         <button class="pg-btn" data-g="prev" ${idx === 0 ? 'disabled' : ''}>Back</button>
@@ -395,21 +388,16 @@ const Guide = (() => {
         <button class="pg-link" data-g="restart">Start this walkthrough again</button></div>`;
   }
 
-  // BB code, because reviewers paste it into a forum DM. The group goes once at the top when every
-  // note shares it, and on each step when they don't.
+  // BB code, because reviewers paste it into a forum DM.
   function exportText() {
     const written = Object.values(store.notes).filter(n => n.text.trim());
-    const groups = new Set(written.map(n => n.group || ''));
-    const oneGroup = groups.size === 1 ? [...groups][0] : null;
-    const lines = ['[B]Citation prototype feedback[/B]'];
-    if (oneGroup) lines.push(`Group: ${oneGroup}`);
-    lines.push('');
+    const lines = ['[B]Citation prototype feedback[/B]', ''];
     for (const [pid, p] of Object.entries(PATHS)) {
       const ns = p.steps.map((s, i) => ({ s, i, n: store.notes[noteKey(pid, s.key)] })).filter(x => x.n && x.n.text.trim());
       if (!ns.length) continue;
       lines.push(`[U][B]${p.title} walkthrough[/B][/U]`, '');
       for (const { s, i, n } of ns) {
-        lines.push(`[B]Step ${i + 1}. ${s.title}[/B]${oneGroup === null ? ` (${n.group || 'group not given'})` : ''}`);
+        lines.push(`[B]Step ${i + 1}. ${s.title}[/B]`);
         lines.push(n.text.trim(), '');
       }
     }
@@ -419,7 +407,7 @@ const Guide = (() => {
 
   function feedbackHtml() {
     const n = noteCount();
-    return `<div class="pg-crumb"><button class="pg-link" data-g="${pathId ? 'back-step' : 'home'}">&larr; Back</button><span>Your notes</span></div>
+    return `<div class="pg-crumb"><button class="pg-link" data-g="home">&larr; All walkthroughs</button>${notesFrom === 'step' ? `<button class="pg-link" data-g="back-step">Back to step ${idx + 1}</button>` : ''}</div>
       <h2 class="pg-h">Send your notes</h2>
       <p>Your notes are saved in this browser only. Copy them, then paste them as a reply in the forum DM thread you got this link from.</p>
       <div class="pg-btns"><button class="pg-btn pg-btn--primary" data-g="copy">Copy all notes</button><span id="pgCopied" class="pg-saved"></span></div>
@@ -452,7 +440,7 @@ const Guide = (() => {
       const pid = pathId, i = idx, s = step();
       note.addEventListener('input', () => {
         pendingNote = () => {
-          store.notes[noteKey(pid, s.key)] = { path: PATHS[pid].title, step: i + 1, stepTitle: s.title, group: store.group, text: note.value, at: new Date().toISOString() };
+          store.notes[noteKey(pid, s.key)] = { path: PATHS[pid].title, step: i + 1, stepTitle: s.title, text: note.value, at: new Date().toISOString() };
           save();
           const sv = g.querySelector('#pgSaved'); if (sv && note.isConnected) sv.textContent = 'Saved in this browser';
         };
@@ -460,15 +448,6 @@ const Guide = (() => {
         noteTimer = setTimeout(flushNote, 300);
       });
     }
-    const grp = g.querySelector('#pgGroup');
-    if (grp) grp.addEventListener('change', () => {
-      store.group = grp.value; save();
-      if (pathId && view === 'step') {
-        const n = store.notes[noteKey(pathId, step().key)];
-        if (n) { n.group = store.group; save(); }
-        renderPanel();
-      }
-    });
     const h = g.querySelector('#pgHints');
     if (h) h.addEventListener('change', () => { hints = h.checked; refreshHints(); });
     refreshHints();
@@ -503,7 +482,6 @@ const Guide = (() => {
     if (!b) return;
     const a = b.dataset.g;
     if (a === 'start') {
-      if (!store.group) { const gp = el().querySelector('#pgGroup'); gp && gp.focus(); gp && gp.classList.add('pg-need'); return; }
       return start(b.dataset.path);
     }
     if (a === 'home') { view = 'home'; return renderPanel(); }
@@ -512,7 +490,7 @@ const Guide = (() => {
     if (a === 'step') return goStep(+b.dataset.i);
     if (a === 'helper') { step().helper.run(); return refreshStatus(); }
     if (a === 'restart') { const keep = pathId; return start(keep); }
-    if (a === 'feedback') { view = 'feedback'; confirmClear = false; return renderPanel(); }
+    if (a === 'feedback') { notesFrom = view; view = 'feedback'; confirmClear = false; return renderPanel(); }
     if (a === 'back-step') { view = 'step'; return renderPanel(); }
     if (a === 'toggle') { collapsed = !collapsed; return renderPanel(); }
     if (a === 'copy') {
