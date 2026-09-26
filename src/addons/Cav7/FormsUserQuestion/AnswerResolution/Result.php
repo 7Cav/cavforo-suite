@@ -60,8 +60,11 @@ final class Result
      * The answer as a thread post or conversation writes it: a [USER=id] link
      * to each forum user's profile, spelled the way the account spells it. The
      * id is what lasts, since the name inside the tag is only how the account
-     * was spelled at submission. XenForo writes a mention the same way. Empty
-     * when the answer names nobody.
+     * was spelled at submission. Empty when the answer names nobody.
+     *
+     * XenForo stores a mention in the same tag, but the link alerts nobody.
+     * XenForo alerts only on typed `@Name` text, its mention parser skips
+     * [USER] tags, and nothing here writes an `@`.
      */
     public function postText(): string
     {

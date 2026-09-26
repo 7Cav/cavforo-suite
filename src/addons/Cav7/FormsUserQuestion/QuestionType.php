@@ -7,12 +7,12 @@ namespace Cav7\FormsUserQuestion;
  * xf_snog_forms_questions.type. Pure PHP, so any class can read them without
  * going through XenForo's class extension loader.
  *
- * The strings are permanent once a question uses them. They are stored on every
- * such question, copied with a form and written into an export, so renaming one
- * needs a data migration. They are [a-z0-9_] only because the vendor builds
- * phrase titles from them (snog_forms_question_type_def.<type>), and a phrase
- * title allows nothing else after its dot. The cav7_fuq_ prefix keeps a future
- * vendor type from colliding with them.
+ * The strings are permanent once a question uses them. Every such question
+ * stores one, so renaming one needs a data migration. They are [a-z0-9_] only
+ * because the vendor builds phrase titles from them
+ * (snog_forms_question_type_def.<type>), and a phrase title allows nothing else
+ * after its dot. The cav7_fuq_ prefix keeps a future vendor type from colliding
+ * with them.
  *
  * Registering a type (Snog\Forms\Repository\Question) is not enough to show it
  * on a form. The vendor's snog_forms_question_macros template picks a macro per

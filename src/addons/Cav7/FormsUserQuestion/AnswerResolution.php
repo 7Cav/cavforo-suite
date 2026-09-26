@@ -11,9 +11,7 @@ use Cav7\FormsUserQuestion\AnswerResolution\Result;
  * (Snog\Forms\Entity\Question) supplies the account lookup, a user finder query
  * per name, and turns a refusal into the question's error.
  *
- * Names are compared only by that lookup. In production it matches
- * `username = ?`, so the column's case-insensitive collation decides that
- * "doe.j" is "Doe.J", and nothing here compares names in PHP. Two names are the
+ * Names are compared only by that lookup, never in PHP here. Two names are the
  * same forum user when they find the same account id.
  *
  * Splitting on commas is safe because XenForo refuses a comma in a username.

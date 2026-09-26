@@ -14,15 +14,13 @@ use XF\Finder\UserFinder;
  *
  * AnswerResolution holds the rule. This class feeds it the posted answer and a
  * lookup that runs one user finder query per name with `username = ?`, so the
- * column's collation decides the match. It then turns a refusal into the
- * question's error, which blocks the submission. An accepted answer goes into
- * the thread post, a reply and a conversation as one [USER=id] link per forum
- * user, and into the thread title, the form log and the emails as plain
- * usernames. Both are spelled the way the account spelled the name at
- * submission, so the stored answer is a snapshot and the post's id is the
- * lasting record of who was named. Naming a forum user alerts nobody. XenForo
- * alerts only on typed `@Name` text, its mention parser skips [USER] tags, and
- * nothing here writes an `@`.
+ * column's case-insensitive collation decides that "doe.j" is "Doe.J". It then
+ * turns a refusal into the question's error, which blocks the submission. An
+ * accepted answer goes into the thread post, a reply and a conversation as one
+ * [USER=id] link per forum user, and into the thread title, the form log and
+ * the emails as plain usernames. Both are spelled the way the account spelled
+ * the name at submission, so the stored answer is a snapshot and the post's id
+ * is the lasting record of who was named.
  *
  * What it assumes about the vendor, and what breaks silently if the vendor
  * moves. Checked against [OzzModz] Advanced Forms 2.2.6 RC3:

@@ -10,8 +10,8 @@ anyone, so a typo or an old name goes straight into the thread. The two
 question types check every name against the forum's accounts before the form
 submits.
 
-The terms this README uses (forum user, forum user question, user picker) are
-defined in [CONTEXT.md](CONTEXT.md).
+The terms this README uses (forum user, forum user question, user picker,
+filer) are defined in [CONTEXT.md](CONTEXT.md).
 
 ## Requirements
 
@@ -106,8 +106,7 @@ The usernames in the title, the form log and the email are a snapshot taken at
 submission, and a later rename doesn't change them. The link in the post points
 at the account, so it still reaches the right profile after a rename.
 
-Naming a forum user doesn't alert them. XenForo alerts only on a typed `@Name`,
-and the add-on writes no `@`.
+Naming a forum user doesn't alert them.
 
 ## Disabling or uninstalling
 
