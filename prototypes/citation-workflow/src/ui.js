@@ -651,6 +651,12 @@ const App = (() => {
     }
   }
 
+  // Ticking "Show retired signatures" only adds options to a closed list, so say what it added.
+  function retiredNote(billetId) {
+    const retired = Model.signaturesForBillet(S, billetId, true).filter(x => x.state === 'retired');
+    return retired.length ? `Added to the list above: ${retired.map(x => esc(x.lines[0]) + ' (retired)').join(', ')}.` : 'No retired signatures are on file for this billet.';
+  }
+
   function issueFormHtml(d, mode) {
     const g = mode === 'correct' ? Model.grant(S, d.grantId) : null;
     const ver = draftVersion(d);
@@ -691,7 +697,8 @@ const App = (() => {
           rows.push(`<dl class="formRow formRow--input" data-proto="issue-sig-${f.key}"><dt><div class="formRow-labelWrapper"><label class="formRow-label">${esc(b.title)}</label></div></dt>
             <dd><select class="input" data-sig="${f.key}"><option value="">Choose a signature...</option>${sigs.map(x => `<option value="${x.id}" ${d.sigs[f.key] === x.id ? 'selected' : ''}>${esc(x.lines[0])}${x.state === 'retired' ? ' (retired)' : ''}</option>`).join('')}</select>
             <div class="formRow-explain">${cur ? 'Prints as: ' + signatureLines(cur) : Model.signaturesForBillet(S, f.billetId, false).length > 1 ? 'More than one signature is on file for this billet, so pick one.' : 'Pick the signature this slot carries.'}</div>
-            <div style="margin-top:10px"><label class="iconic iconic--checkbox iconic--standalone"><input type="checkbox" data-retired="${f.key}" ${d.showRetired[f.key] ? 'checked' : ''}><i></i><span class="iconic-label">Show retired signatures</span></label></div></dd></dl>`);
+            <div style="margin-top:10px"><label class="iconic iconic--checkbox iconic--standalone"><input type="checkbox" data-retired="${f.key}" ${d.showRetired[f.key] ? 'checked' : ''}><i></i><span class="iconic-label">Show retired signatures</span></label></div>
+            ${d.showRetired[f.key] ? `<div class="formRow-explain">${retiredNote(f.billetId)}</div>` : ''}</dd></dl>`);
         }
       }
       // Members

@@ -51,7 +51,7 @@ const Guide = (() => {
         {
           key: 'signatures', title: 'Check the signatures',
           scenario: 'The MSM design has two signature slots: the Regimental Commander and the Regimental Executive Officer.',
-          task: 'The Commander\'s slot is filled in for you, because only one Commander signature is on file. Two XO signatures are on file, so pick the XO yourself. Try <b>Show retired signatures</b> too.',
+          task: 'The Commander\'s slot is filled in for you, because only one active Commander signature is on file. Two XO signatures are on file, so pick the XO yourself. Then tick <b>Show retired signatures</b> under the Commander\'s slot to see the previous commander\'s signature.',
           changed: 'Today the signature is part of each design, so after a change of command the old commander stays on some designs until someone edits them. Now you pick the signatures once per citation, from signatures S1 keeps for each billet. The form won\'t issue with a slot left empty.',
           ask: 'Would you know which signature to pick? Who tells you today?',
           check: ctx => { const d = ctx.ui.issue; return (d && d.sigs.sig1 && d.sigs.sig2) || !!byClerk(ctx.S, 15); },
@@ -208,7 +208,7 @@ const Guide = (() => {
           key: 'disciplinary', title: 'Open a Disciplinary record',
           scenario: 'Stroud.O has a letter of reprimand on file.',
           task: 'Open <b>Stroud.O</b> and edit the <b>Disciplinary</b> record from its <b>&bull;&bull;&bull;</b> menu.',
-          changed: 'Nothing. Disciplinary records keep the file upload, because S1 command staff enter those documents and the forum doesn\'t generate them. They\'re the one place a citation file can still be uploaded.',
+          changed: 'Nothing. Disciplinary records keep the file upload as today.',
           ask: 'Anything else you upload today that isn\'t a citation S1 Citations makes?',
           check: ctx => ctx.events.some(e => e.type === 'edit-row' && e.kind === 'record' && e.typeId === Model.DISCIPLINARY),
           target: ctx => {

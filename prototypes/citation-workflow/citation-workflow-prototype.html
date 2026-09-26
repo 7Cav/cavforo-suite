@@ -1553,7 +1553,7 @@ const Render = (() => {
       g.font = '400 18px Tinos, serif'; g.fillText('7CAV-R-043   LETTER OF REPRIMAND', 70, 145);
       g.fillRect(70, 165, 710, 2);
       g.font = '400 17px Tinos, serif';
-      const rows = [['MEMBER', m.username], ['DATE', r.date], ['ISSUED BY', 'S1 Command Staff']];
+      const rows = [['MEMBER', m.username], ['DATE', r.date]];
       rows.forEach(([k, v], i) => { g.fillStyle = '#555'; g.fillText(k, 70, 215 + i * 34); g.fillStyle = '#111'; g.fillText(v, 240, 215 + i * 34); });
       g.fillStyle = '#e8e8e8';
       for (let i = 0; i < 16; i++) g.fillRect(70, 360 + i * 34, i % 5 === 4 ? 420 : 710, 12);
@@ -2275,6 +2275,12 @@ const App = (() => {
     }
   }
 
+  // Ticking "Show retired signatures" only adds options to a closed list, so say what it added.
+  function retiredNote(billetId) {
+    const retired = Model.signaturesForBillet(S, billetId, true).filter(x => x.state === 'retired');
+    return retired.length ? `Added to the list above: ${retired.map(x => esc(x.lines[0]) + ' (retired)').join(', ')}.` : 'No retired signatures are on file for this billet.';
+  }
+
   function issueFormHtml(d, mode) {
     const g = mode === 'correct' ? Model.grant(S, d.grantId) : null;
     const ver = draftVersion(d);
@@ -2315,7 +2321,8 @@ const App = (() => {
           rows.push(`<dl class="formRow formRow--input" data-proto="issue-sig-${f.key}"><dt><div class="formRow-labelWrapper"><label class="formRow-label">${esc(b.title)}</label></div></dt>
             <dd><select class="input" data-sig="${f.key}"><option value="">Choose a signature...</option>${sigs.map(x => `<option value="${x.id}" ${d.sigs[f.key] === x.id ? 'selected' : ''}>${esc(x.lines[0])}${x.state === 'retired' ? ' (retired)' : ''}</option>`).join('')}</select>
             <div class="formRow-explain">${cur ? 'Prints as: ' + signatureLines(cur) : Model.signaturesForBillet(S, f.billetId, false).length > 1 ? 'More than one signature is on file for this billet, so pick one.' : 'Pick the signature this slot carries.'}</div>
-            <div style="margin-top:10px"><label class="iconic iconic--checkbox iconic--standalone"><input type="checkbox" data-retired="${f.key}" ${d.showRetired[f.key] ? 'checked' : ''}><i></i><span class="iconic-label">Show retired signatures</span></label></div></dd></dl>`);
+            <div style="margin-top:10px"><label class="iconic iconic--checkbox iconic--standalone"><input type="checkbox" data-retired="${f.key}" ${d.showRetired[f.key] ? 'checked' : ''}><i></i><span class="iconic-label">Show retired signatures</span></label></div>
+            ${d.showRetired[f.key] ? `<div class="formRow-explain">${retiredNote(f.billetId)}</div>` : ''}</dd></dl>`);
         }
       }
       // Members
@@ -2971,7 +2978,7 @@ const Guide = (() => {
         {
           key: 'signatures', title: 'Check the signatures',
           scenario: 'The MSM design has two signature slots: the Regimental Commander and the Regimental Executive Officer.',
-          task: 'The Commander\'s slot is filled in for you, because only one Commander signature is on file. Two XO signatures are on file, so pick the XO yourself. Try <b>Show retired signatures</b> too.',
+          task: 'The Commander\'s slot is filled in for you, because only one active Commander signature is on file. Two XO signatures are on file, so pick the XO yourself. Then tick <b>Show retired signatures</b> under the Commander\'s slot to see the previous commander\'s signature.',
           changed: 'Today the signature is part of each design, so after a change of command the old commander stays on some designs until someone edits them. Now you pick the signatures once per citation, from signatures S1 keeps for each billet. The form won\'t issue with a slot left empty.',
           ask: 'Would you know which signature to pick? Who tells you today?',
           check: ctx => { const d = ctx.ui.issue; return (d && d.sigs.sig1 && d.sigs.sig2) || !!byClerk(ctx.S, 15); },
@@ -3128,7 +3135,7 @@ const Guide = (() => {
           key: 'disciplinary', title: 'Open a Disciplinary record',
           scenario: 'Stroud.O has a letter of reprimand on file.',
           task: 'Open <b>Stroud.O</b> and edit the <b>Disciplinary</b> record from its <b>&bull;&bull;&bull;</b> menu.',
-          changed: 'Nothing. Disciplinary records keep the file upload, because S1 command staff enter those documents and the forum doesn\'t generate them. They\'re the one place a citation file can still be uploaded.',
+          changed: 'Nothing. Disciplinary records keep the file upload as today.',
           ask: 'Anything else you upload today that isn\'t a citation S1 Citations makes?',
           check: ctx => ctx.events.some(e => e.type === 'edit-row' && e.kind === 'record' && e.typeId === Model.DISCIPLINARY),
           target: ctx => {

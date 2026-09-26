@@ -292,7 +292,7 @@ const Render = (() => {
       g.font = '400 18px Tinos, serif'; g.fillText('7CAV-R-043   LETTER OF REPRIMAND', 70, 145);
       g.fillRect(70, 165, 710, 2);
       g.font = '400 17px Tinos, serif';
-      const rows = [['MEMBER', m.username], ['DATE', r.date], ['ISSUED BY', 'S1 Command Staff']];
+      const rows = [['MEMBER', m.username], ['DATE', r.date]];
       rows.forEach(([k, v], i) => { g.fillStyle = '#555'; g.fillText(k, 70, 215 + i * 34); g.fillStyle = '#111'; g.fillText(v, 240, 215 + i * 34); });
       g.fillStyle = '#e8e8e8';
       for (let i = 0; i < 16; i++) g.fillRect(70, 360 + i * 34, i % 5 === 4 ? 420 : 710, 12);
