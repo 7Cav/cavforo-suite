@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rosters | 7th Cavalry Gaming</title>
+<!--
+  PROTOTYPE, throwaway. A clickable walkthrough of issuing, attaching and opening a generated
+  citation, for S1 to review (7Cav/cavforo-suite#309, on the map #261).
+
+  It isn't connected to the forum. Every member, officer, citation and record in it is invented.
+  The forum look is a from-scratch recreation of 7cav.us's dark style, measured on the live site;
+  no XenForo or theme code is copied. Icons: Lucide (ISC) and Simple Icons (CC0). Fonts: Roboto
+  (Apache 2.0) for the forum and Tinos (Apache 2.0) for certificates.
+
+  Built by build.py from src/. Edit the sources, not this file.
+-->
+<style>{{FONTS}}</style>
+<style>{{CSS}}</style>
+</head>
+<body>
+<div id="app"></div>
+<noscript><div style="padding:40px;color:#ddd;font:16px sans-serif">This prototype needs JavaScript.</div></noscript>
+<script>window.ASSETS = {{ASSETS}}; window.ICONS = {{ICONS}};</script>
+<script>
+{{JS}}
+</script>
+<script>
+(async () => {
+  await Render.init(window.ASSETS);
+  App.boot();
+  Guide.boot();
+  App.reset('citations', '/rosters');
+})();
+</script>
+</body>
+</html>

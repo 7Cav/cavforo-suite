@@ -1,0 +1,62 @@
+/* PROTOTYPE. Styles for the new addon's pages, built from the forum's own pieces. */
+
+body.has-overlay { overflow: hidden; }
+.p-body-inner { container-type: inline-size; }
+
+.issueLayout { display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 38%, 440px); gap: 16px; align-items: start; }
+.issueLayout--editor { grid-template-columns: minmax(0, 1fr) clamp(300px, 42%, 480px); }
+.issueFormCol { min-width: 0; margin: 0; }
+.issuePreviewCol { position: sticky; top: 70px; min-width: 0; }
+@container (max-width: 740px) {
+  .issueLayout, .issueLayout--editor { grid-template-columns: minmax(0, 1fr); }
+  .issuePreviewCol { position: static; }
+}
+.previewBlock .block-row { padding: 14px; }
+.previewMount { background: #0e0e0e; border: 1px solid var(--line); border-radius: 2px; line-height: 0; }
+.previewCanvas { display: block; width: 100%; height: auto; }
+.previewEmpty { line-height: 1.4; padding: 60px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+.previewNote { font-size: 13px; margin-top: 10px; color: var(--text); }
+.previewNote strong { color: var(--strong); font-weight: 500; }
+#previewFit .blockMessage { margin: 10px 0 0; }
+.previewLinks { margin-top: 10px; font-size: 13px; }
+.previewLinks .ic { vertical-align: -2px; }
+
+.memberCards { display: grid; gap: 10px; }
+.memberCard { border: 1px solid var(--line); border-radius: 3px; background: rgba(27,27,27,.5); padding: 10px 12px 12px; }
+.memberCard-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.memberCard-remove { color: var(--muted); display: flex; }
+.memberCard-remove:hover { color: var(--strong); }
+.memberCard-fields { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.memberField { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); flex: 1 1 170px; min-width: 0; }
+.memberField em { font-style: normal; opacity: .7; }
+.memberField select.input--small { padding-right: 26px; background-position: right 8px center; }
+.genericText { background: var(--input); border: 1px solid var(--line); border-radius: 3px; padding: 12px; color: var(--muted); white-space: pre-wrap; }
+
+.pairs--tight > dt { width: 30%; }
+.pairs--tight + .pairs--tight { margin-top: 6px; }
+
+.overlay--wide { max-width: 1100px; }
+.fieldEditor { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+.fieldEditor-preview { padding: 15px 14px; border-left: 1px solid var(--line); }
+@media (max-width: 900px) { .fieldEditor { grid-template-columns: 1fr; } .fieldEditor-preview { border-left: 0; border-top: 1px solid var(--line); } }
+.numRow { display: flex; flex-wrap: wrap; gap: 10px 12px; }
+.numRow .input--number { width: 92px; }
+.numField { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font: 12px/1 ui-monospace, Menlo, Consolas, monospace; color: var(--text); background: #232323; border: 1px solid var(--line-2); border-radius: 3px; padding: 5px 7px; }
+.chip:hover { color: var(--gold); border-color: #5a4c10; text-decoration: none; }
+code { font: 13px ui-monospace, Menlo, Consolas, monospace; color: var(--strong); }
+
+.inkThumb { display: inline-block; background: #efece2; border-radius: 2px; padding: 3px 6px; line-height: 0; }
+.inkThumb img { height: 28px; width: auto; }
+.sigPreview { line-height: 0; max-width: 330px; }
+.sigPreview canvas { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 2px; }
+
+.overlay-content > .blockMessage { border: 0; margin: 0; border-radius: 0 0 3px 3px; box-shadow: none; }
+.overlay-content > .blockMessage ul { margin: 8px 0 0; padding-left: 20px; }
+.blockMessage ul { margin: 8px 0 0; padding-left: 20px; }
+
+@container (max-width: 1100px) {
+  .issueFormCol .formRow > dt { width: 28%; }
+  .issueFormCol .formSubmitRow-controls { padding-left: calc(28% + 14px); }
+}
