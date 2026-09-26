@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<phrases>
+  <phrase title="cav7_fuq_answer_not_accepted" version_id="1000070" version_string="1.0.0"><![CDATA[Please check the names you entered. Each must belong to a forum user, and a question that asks for one forum user takes only one.]]></phrase>
+  <phrase title="snog_forms_question_type_def.cav7_fuq_forum_user" version_id="1000070" version_string="1.0.0"><![CDATA[Forum user]]></phrase>
+  <phrase title="snog_forms_question_type_def.cav7_fuq_forum_users" version_id="1000070" version_string="1.0.0"><![CDATA[Forum users]]></phrase>
+  <phrase title="snog_forms_question_type_def_desc.cav7_fuq_forum_user" version_id="1000070" version_string="1.0.0"><![CDATA[Takes the name of one forum user. The form refuses a name that belongs to no forum user.]]></phrase>
+  <phrase title="snog_forms_question_type_def_desc.cav7_fuq_forum_users" version_id="1000070" version_string="1.0.0"><![CDATA[Takes the names of several forum users, separated by commas. The form refuses any name that belongs to no forum user.]]></phrase>
+</phrases>

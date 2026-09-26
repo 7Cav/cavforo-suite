@@ -1,0 +1,9 @@
+{
+    "template": "snog_forms_question_macros",
+    "description": "Add a forum user question branch to the top-level question chain, which has no else branch",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "str_replace",
+    "find": "<xf:if is=\"$question.type == 'text'\">",
+    "replace": "<xf:if is=\"$question.isCav7FuqForumUserType()\">\n\t\t\t<xf:macro id=\"cav7_fuq_question_macros::name_box\" arg-question=\"{$question}\" arg-canSubmit=\"{canSubmit}\" arg-row=\"{$row}\" />\n\t\t<xf:elseif is=\"$question.type == 'text'\" />"
+}

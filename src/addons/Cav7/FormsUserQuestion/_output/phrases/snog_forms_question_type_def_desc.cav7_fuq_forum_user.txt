@@ -1,0 +1,1 @@
+Takes the name of one forum user. The form refuses a name that belongs to no forum user.

@@ -1,0 +1,32 @@
+{
+    "cav7_fuq_answer_not_accepted.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "ad08d374afbde29b9ce0b3cc09bf1e75"
+    },
+    "snog_forms_question_type_def.cav7_fuq_forum_user.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "867d513b20467054cdc79cc0e04421b8"
+    },
+    "snog_forms_question_type_def.cav7_fuq_forum_users.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "8e9fc2974c0847498822ced93e6b42bb"
+    },
+    "snog_forms_question_type_def_desc.cav7_fuq_forum_user.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "b5001ff070f73a9175fb1bd757a147ab"
+    },
+    "snog_forms_question_type_def_desc.cav7_fuq_forum_users.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "6a7cb7ffc13b10274b18090e98184bde"
+    }
+}

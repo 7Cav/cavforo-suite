@@ -1,0 +1,1 @@
+Please check the names you entered. Each must belong to a forum user, and a question that asks for one forum user takes only one.

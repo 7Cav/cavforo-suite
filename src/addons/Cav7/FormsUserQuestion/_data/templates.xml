@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates>
+  <template type="public" title="cav7_fuq_question_macros" version_id="1000070" version_string="1.0.0"><![CDATA[<xf:macro id="name_box" arg-question="!" arg-canSubmit="!" arg-row="!">
+	<xf:comment>
+		The box a forum user question is answered in. It copies the vendor's type_text
+		macro in snog_forms_question_macros, less its maxlength and minlength. Those
+		read type_data, which a question converted from Text keeps, so the browser
+		would go on enforcing a limit the server no longer applies.
+	</xf:comment>
+	<xf:set var="$defanswer" value="{$question.getDefaultAnswer()}" />
+	<xf:set var="$formData">
+		<xf:textbox placeholder="{$question.placeholder}"
+					name="question[{$question.questionid}]"
+					value="{{ $defanswer ?: '' }}"
+					readonly="{{ ($question.getDefaultAnswer() is not empty && $question.readonly) || !$canSubmit }}"
+					required="{{ $question.error ? 'required' : '' }}" />
+	</xf:set>
+	<xf:if is="$row">
+		<xf:formrow rowtype="input" rowclass="formRow--noColon"
+					label="{{ bb_code($question.text, '', '') }}"
+					explain="{$question.description|raw}"
+					hint="{{ $question.error ? phrase('required') : '' }}">
+			{$formData|raw}
+		</xf:formrow>
+	<xf:else />
+		<div class="menu-row">
+			<label>{{ bb_code($question.text, '', '') }}</label>
+			<div class="u-inputSpacer">{$formData|raw}</div>
+			<label class="u-muted">{$question.description|raw}</label>
+			<label class="u-muted">{{ $question.error ? phrase('required') : '' }}</label>
+		</div>
+	</xf:if>
+</xf:macro>]]></template>
+</templates>
