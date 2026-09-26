@@ -114,7 +114,8 @@ Convert every forum user question back to Text before you disable or
 uninstall the add-on. Advanced Forms has no fallback for a question type it
 doesn't know. Those questions stop appearing on their forms, and a required
 one then blocks every submission of its form, since the filer has no box to
-answer it in.
+answer it in. A required question that an earlier answer reveals blocks only
+the submissions that give that answer.
 
 ## License
 
