@@ -1,6 +1,6 @@
 /* PROTOTYPE. Styles for the new addon's pages, built from the forum's own pieces. */
 
-body.has-overlay { overflow: hidden; }
+body.has-overlay, body.has-viewer { overflow: hidden; }
 .p-body-inner { container-type: inline-size; }
 
 .issueLayout { display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 38%, 440px); gap: 16px; align-items: start; }
@@ -60,3 +60,21 @@ code { font: 13px ui-monospace, Menlo, Consolas, monospace; color: var(--strong)
   .issueFormCol .formRow > dt { width: 28%; }
   .issueFormCol .formSubmitRow-controls { padding-left: calc(28% + 14px); }
 }
+@media (max-width: 650px) {
+  .issueFormCol .formRow > dt { width: auto; }
+  .issueFormCol .formSubmitRow-controls { padding-left: 14px; }
+}
+
+/* Stands in for the new tab the live Citation link opens: the browser's dark backdrop, the image
+   fitted to the window, a click for full size, and the filename where the tab title would be. */
+.imageViewer { position: fixed; inset: 0; z-index: 920; display: flex; flex-direction: column; background: #0e0e0e; padding-top: env(safe-area-inset-top, 0px); }
+.imageViewer-bar { display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 16px; background: #202124; color: #e8eaed; border-bottom: 1px solid #000; font: 13px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.imageViewer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imageViewer-size { color: #9aa0a6; margin-left: 4px; }
+.imageViewer-close { flex: none; display: inline-flex; align-items: center; gap: 6px; background: #3c4043; color: #e8eaed; border: 0; border-radius: 4px; padding: 6px 12px; font: inherit; cursor: pointer; }
+.imageViewer-close:hover { background: #4a4e52; }
+.imageViewer-close:focus-visible { outline: 2px solid #8ab4f8; outline-offset: 2px; }
+.imageViewer-stage { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; }
+.imageViewer-stage img { display: block; max-width: 100%; max-height: 100%; cursor: zoom-in; user-select: none; -webkit-user-select: none; }
+.imageViewer.is-zoomed .imageViewer-stage { display: block; }
+.imageViewer.is-zoomed .imageViewer-stage img { max-width: none; max-height: none; margin: auto; cursor: zoom-out; }

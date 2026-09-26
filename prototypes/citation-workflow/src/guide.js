@@ -69,7 +69,7 @@ const Guide = (() => {
         {
           key: 'text', title: 'Enter the citation text and watch the preview',
           scenario: 'The proofread citation text is ready. It has a typo in it that nobody has spotted yet.',
-          task: 'Put the text into <b>Citation text</b>, or use the button below to fill it in. Watch the preview on the right, and switch it between the two members.',
+          task: 'Put the text into <b>Citation text</b>, or use the button below to fill it in. Watch the preview, and switch it between the two members.',
           changed: 'Today you retype the text into a GIMP text layer and shrink it by hand until it fits. Now you enter it once, as plain text, and the forum fits it to the box. If it comes out below the template\'s reading size, the preview warns you and S1 gets a list to fix the template. You can still issue it.',
           ask: 'Does the preview tell you what you need before you issue?',
           helper: { label: 'Fill in the text for me', run: () => App.setIssueText(Model.MSM_TEXT_WITH_TYPO) },
@@ -113,7 +113,7 @@ const Guide = (() => {
         {
           key: 'open', title: 'Open it from the roster',
           scenario: 'Later that day S1 Milpacs added the MSM to Quill.E\'s milpac and picked your citation.',
-          task: 'Go to <b>Milpacs</b>, open <b>Quill.E</b>, and click <b>Citation</b> on the MSM row. It opens in a new tab.',
+          task: 'Go to <b>Milpacs</b>, open <b>Quill.E</b>, and click <b>Citation</b> on the MSM row. On the forum it opens in a new tab. Here it opens over the page instead.',
           changed: 'Nothing changes for whoever opens it. The Citation link opens the certificate as an image in a new tab, as it does today. The image is drawn from the stored citation, so it shows your correction.',
           ask: 'Does it look like a citation you\'d have made?',
           onEnter: () => App.simulate(S => {
@@ -219,7 +219,7 @@ const Guide = (() => {
         },
         {
           key: 'open', title: 'Open a citation from the roster',
-          task: 'Go back to <b>Quill.E</b> and click <b>Citation</b> on the MSM row you added. It opens in a new tab.',
+          task: 'Go back to <b>Quill.E</b> and click <b>Citation</b> on the MSM row you added. On the forum it opens in a new tab. Here it opens over the page instead.',
           changed: 'Nothing for whoever opens it. The certificate opens as an image in a new tab, as it does today.',
           ask: 'Does it look right next to the citations already on the milpac?',
           check: ctx => { const r = rowWith(ctx.S, 101, 'award', 15); return !!r && openedRow(ctx, r.id); },
@@ -293,7 +293,7 @@ const Guide = (() => {
         },
         {
           key: 'open-old', title: 'Open a citation issued on the old version',
-          task: 'Open <b>Delacroix.M</b> from the Milpacs roster and click <b>Citation</b> on the <b>Bronze Star</b> row. It was issued on version 1 and opens in a new tab.',
+          task: 'Open <b>Delacroix.M</b> from the Milpacs roster and click <b>Citation</b> on the <b>Bronze Star</b> row, which was issued on version 1. On the forum it opens in a new tab. Here it opens over the page instead.',
           changed: 'Nothing for whoever opens it. It still shows the landscape design it was issued on, with the commander who signed it at the time.',
           check: ctx => { const r = ctx.S.rows.find(x => x.memberId === 102 && x.kind === 'award' && x.typeId === 12); return !!r && openedRow(ctx, r.id); },
           target: ctx => { const r = ctx.S.rows.find(x => x.memberId === 102 && x.kind === 'award' && x.typeId === 12); return profileTarget(ctx, 102, `[data-proto=cite-${r.id}]`); },
@@ -322,7 +322,7 @@ const Guide = (() => {
 
   // --- state -----------------------------------------------------------------------------------------
 
-  let view = 'home', pathId = null, idx = 0, collapsed = false, hints = true;
+  let view = 'home', pathId = null, idx = 0, collapsed = false, hints = true, confirmClear = false;
   const entered = new Set();
   const el = () => document.getElementById('guide');
   const esc2 = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -358,6 +358,7 @@ const Guide = (() => {
         <h2 class="pg-h">How citations would work on the forum</h2>
         <p>This is a clickable mock-up of the forum after S1 stops making citations in GIMP. It isn't connected to the forum, and everyone in it is made up. Nothing you do here goes anywhere, except the notes you choose to send.</p>
         <p>Pick your group, then a walkthrough. Each step says what's going on, what to do, and what changed from today, and has a box for your comments. Anyone can walk any path.</p>
+        <p>Your comments stay in this browser. When you're done, the guide gives you all of them to copy into the forum DM thread you got this link from.</p>
         <p class="pg-muted">The certificate design is a stand-in. Comments on fonts and layout are welcome, but they belong to the separate look approval before go-live.</p>
       </div>
       ${groupPicker()}
@@ -394,47 +395,69 @@ const Guide = (() => {
         <button class="pg-link" data-g="restart">Start this walkthrough again</button></div>`;
   }
 
+  // BB code, because reviewers paste it into a forum DM. The group goes once at the top when every
+  // note shares it, and on each step when they don't.
   function exportText() {
-    const lines = ['Citation prototype feedback', ''];
+    const written = Object.values(store.notes).filter(n => n.text.trim());
+    const groups = new Set(written.map(n => n.group || ''));
+    const oneGroup = groups.size === 1 ? [...groups][0] : null;
+    const lines = ['[B]Citation prototype feedback[/B]'];
+    if (oneGroup) lines.push(`Group: ${oneGroup}`);
+    lines.push('');
     for (const [pid, p] of Object.entries(PATHS)) {
       const ns = p.steps.map((s, i) => ({ s, i, n: store.notes[noteKey(pid, s.key)] })).filter(x => x.n && x.n.text.trim());
       if (!ns.length) continue;
-      lines.push(`== ${p.title} walkthrough ==`);
+      lines.push(`[U][B]${p.title} walkthrough[/B][/U]`, '');
       for (const { s, i, n } of ns) {
-        lines.push(`Step ${i + 1}, ${s.title} (${n.group || 'group not given'}):`);
+        lines.push(`[B]Step ${i + 1}. ${s.title}[/B]${oneGroup === null ? ` (${n.group || 'group not given'})` : ''}`);
         lines.push(n.text.trim(), '');
       }
     }
-    if (lines.length === 2) lines.push('(no notes yet)');
-    return lines.join('\n');
+    if (!written.length) lines.push('(no notes yet)');
+    return lines.join('\n').trim();
   }
 
   function feedbackHtml() {
+    const n = noteCount();
     return `<div class="pg-crumb"><button class="pg-link" data-g="${pathId ? 'back-step' : 'home'}">&larr; Back</button><span>Your notes</span></div>
       <h2 class="pg-h">Send your notes</h2>
-      <p>Your notes are saved in this browser only. When you're done, copy them or download them, and send them to whoever sent you this prototype.</p>
-      <div class="pg-btns"><button class="pg-btn pg-btn--primary" data-g="copy">Copy all notes</button><button class="pg-btn" data-g="download">Download as a text file</button></div>
-      <span id="pgCopied" class="pg-saved"></span>
+      <p>Your notes are saved in this browser only. Copy them, then paste them as a reply in the forum DM thread you got this link from.</p>
+      <div class="pg-btns"><button class="pg-btn pg-btn--primary" data-g="copy">Copy all notes</button><span id="pgCopied" class="pg-saved"></span></div>
       <textarea class="pg-export" readonly rows="16">${esc2(exportText())}</textarea>
-      <div class="pg-foot"><button class="pg-link pg-link--danger" data-g="clear">Delete all my notes</button></div>`;
+      <p class="pg-muted">They're written in BB code, so the [B] tags turn into bold once you post them.</p>
+      ${n ? `<div class="pg-foot">${confirmClear
+        ? `<span>Delete all ${n} note${n === 1 ? '' : 's'}? You can't get them back.</span><span class="pg-btns pg-btns--tight"><button class="pg-btn pg-btn--danger" data-g="clear-yes">Delete</button><button class="pg-btn" data-g="clear-no">Keep them</button></span>`
+        : `<button class="pg-link pg-link--danger" data-g="clear">Delete all my notes</button>`}</div>` : ''}`;
+  }
+
+  // A note saves 300 ms after the last keystroke. It keeps the step it was typed on, and any
+  // pending save runs before the panel re-renders, so "Next step" straight after typing
+  // can't drop the note or file it under the next step.
+  let pendingNote = null, noteTimer;
+  function flushNote() {
+    clearTimeout(noteTimer);
+    const f = pendingNote;
+    pendingNote = null;
+    if (f) f();
   }
 
   function renderPanel() {
+    flushNote();
     const g = el();
     g.classList.toggle('is-collapsed', collapsed);
     document.body.classList.toggle('pg-open', !collapsed);
     g.querySelector('.pg-body').innerHTML = view === 'home' ? homeHtml() : view === 'feedback' ? feedbackHtml() : stepHtml();
     const note = g.querySelector('#pgNote');
     if (note) {
-      let t;
+      const pid = pathId, i = idx, s = step();
       note.addEventListener('input', () => {
-        clearTimeout(t);
-        t = setTimeout(() => {
-          const s = step();
-          store.notes[noteKey(pathId, s.key)] = { path: path().title, step: idx + 1, stepTitle: s.title, group: store.group, text: note.value, at: new Date().toISOString() };
+        pendingNote = () => {
+          store.notes[noteKey(pid, s.key)] = { path: PATHS[pid].title, step: i + 1, stepTitle: s.title, group: store.group, text: note.value, at: new Date().toISOString() };
           save();
-          const sv = g.querySelector('#pgSaved'); if (sv) sv.textContent = 'Saved in this browser';
-        }, 300);
+          const sv = g.querySelector('#pgSaved'); if (sv && note.isConnected) sv.textContent = 'Saved in this browser';
+        };
+        clearTimeout(noteTimer);
+        noteTimer = setTimeout(flushNote, 300);
       });
     }
     const grp = g.querySelector('#pgGroup');
@@ -489,40 +512,34 @@ const Guide = (() => {
     if (a === 'step') return goStep(+b.dataset.i);
     if (a === 'helper') { step().helper.run(); return refreshStatus(); }
     if (a === 'restart') { const keep = pathId; return start(keep); }
-    if (a === 'feedback') { view = 'feedback'; return renderPanel(); }
+    if (a === 'feedback') { view = 'feedback'; confirmClear = false; return renderPanel(); }
     if (a === 'back-step') { view = 'step'; return renderPanel(); }
     if (a === 'toggle') { collapsed = !collapsed; return renderPanel(); }
     if (a === 'copy') {
-      const text = exportText();
+      // Clipboard writes only work inside the click. Where the browser refuses, select the text
+      // so the reviewer can copy it by hand.
       const ta = el().querySelector('.pg-export');
-      const okMsg = () => { const c = el().querySelector('#pgCopied'); if (c) c.textContent = 'Copied'; };
-      if (navigator.clipboard) navigator.clipboard.writeText(text).then(okMsg, () => { ta.select(); document.execCommand('copy'); okMsg(); });
-      else { ta.select(); document.execCommand('copy'); okMsg(); }
+      const say = m => { const c = el().querySelector('#pgCopied'); if (c) c.textContent = m; };
+      const byHand = () => { ta.focus(); ta.select(); say(document.execCommand('copy') ? 'Copied' : 'Selected. Press Ctrl+C or ⌘C to copy.'); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(() => say('Copied'), byHand);
+      else byHand();
       return;
     }
-    if (a === 'download') {
-      const blob = new Blob([exportText()], { type: 'text/plain' });
-      const u = URL.createObjectURL(blob);
-      const link = document.createElement('a'); link.href = u; link.download = 'citation-prototype-feedback.txt';
-      document.body.appendChild(link); link.click(); link.remove();
-      setTimeout(() => URL.revokeObjectURL(u), 1000);
-      return;
-    }
-    if (a === 'clear') {
-      if (!confirm('Delete every note you\'ve written in this prototype?')) return;
-      store.notes = {}; save(); return renderPanel();
-    }
+    if (a === 'clear') { confirmClear = true; return renderPanel(); }
+    if (a === 'clear-no') { confirmClear = false; return renderPanel(); }
+    if (a === 'clear-yes') { confirmClear = false; store.notes = {}; save(); return renderPanel(); }
   }
 
   function boot() {
     const g = document.createElement('aside');
     g.id = 'guide';
     g.className = 'pg';
-    g.innerHTML = `<div class="pg-head"><span class="pg-tag">Prototype guide</span><span class="pg-headNote">Not part of the forum</span>
+    g.innerHTML = `<div class="pg-head"><span class="pg-tag">Prototype<span class="pg-tagMore"> guide</span></span><span class="pg-headNote">Not part of the forum</span>
       <button class="pg-toggle" data-g="toggle" title="Hide or show the guide"><span class="pg-toggle-hide">Hide</span><span class="pg-toggle-show">Guide</span></button></div>
       <div class="pg-body"></div>`;
     document.body.appendChild(g);
     g.addEventListener('click', onGuideClick);
+    window.addEventListener('pagehide', flushNote);
     App.on(type => {
       if (type === 'reset') return;
       if (['change', 'route', 'render', 'form', 'preview', 'menu', 'overlay', 'overlay-closed', 'open-citation', 'edit-row', 'preview-tab'].includes(type)) {

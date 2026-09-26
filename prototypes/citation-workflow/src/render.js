@@ -358,20 +358,5 @@ const Render = (() => {
     return `https://7cav.us/citations/render/${key}/${grant.revision}/${renderFilename(s, grant, gm)}`;
   }
 
-  // Opens an image the way the roster's Citation link does: in a new tab, on the browser's
-  // own backdrop. Falls back to an in-page viewer if the browser blocks the new tab.
-  function openImage(c, filename, fallback) {
-    const dataUrl = c.toDataURL('image/jpeg', 0.85);
-    const w = window.open('', '_blank');
-    if (!w) { fallback && fallback(dataUrl, filename, c); return; }
-    const doc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, minimum-scale=0.1">
-<title>${filename} (${c.width}×${c.height})</title>
-<style>html,body{margin:0;height:100%;background:#0e0e0e}body{display:flex;align-items:center;justify-content:center}
-img{display:block;max-width:100%;max-height:100vh;cursor:zoom-in;user-select:none;-webkit-user-select:none}
-body.z{display:block}body.z img{max-width:none;max-height:none;cursor:zoom-out;margin:auto}</style></head>
-<body><img src="${dataUrl}" alt="${filename}" onclick="document.body.classList.toggle('z')"></body></html>`;
-    w.document.open(); w.document.write(doc); w.document.close();
-  }
-
-  return { init, IMG, plate, drawSignature, renderGrant, legacyImage, uploadedImage, renderFilename, renderUrl, openImage, toPt, makeInk };
+  return { init, IMG, plate, drawSignature, renderGrant, legacyImage, uploadedImage, renderFilename, renderUrl, toPt, makeInk };
 })();

@@ -1,6 +1,7 @@
 """PROTOTYPE build: inline src/ and assets/ into one self-contained HTML file.
 
-    python3 build.py      ->  citation-workflow-prototype.html
+    python3 build.py      ->  citation-workflow-prototype.html   (open it in a browser)
+                              citation-workflow-artifact.html    (publish it as a claude.ai Artifact)
 """
 import base64
 import json
@@ -9,6 +10,10 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 SRC, ASSETS = HERE / 'src', HERE / 'assets'
+
+# A claude.ai Artifact wraps the page in its own document, so the artifact copy drops these lines
+# and opens on the <title>. The title has to fall in the first 8 KB, ahead of the inlined fonts.
+WRAPPER = re.compile(r'^(<!doctype html>|<html[^>]*>|</?head>|<meta [^>]*>|</?body>|</html>)\n', re.M | re.I)
 
 
 def data_url(path: Path) -> str:
@@ -63,11 +68,15 @@ def main() -> None:
         '{{ICONS}}': json.dumps(icons()),
         '{{JS}}': js,
     }
-    for k, v in parts.items():
-        shell = shell.replace(k, v)
-    out = HERE / 'citation-workflow-prototype.html'
-    out.write_text(shell)
-    print(f'{out.name}: {out.stat().st_size / 1024:.0f} KiB')
+    for name, template in (('citation-workflow-prototype.html', shell),
+                           ('citation-workflow-artifact.html', WRAPPER.sub('', shell))):
+        for k, v in parts.items():
+            template = template.replace(k, v)
+        out = HERE / name
+        out.write_text(template)
+        print(f'{out.name}: {out.stat().st_size / 1024:.0f} KiB')
+    art = (HERE / 'citation-workflow-artifact.html').read_text()
+    assert art.startswith('<title>') and art.index('</title>') < 8192, 'the artifact must open on its <title>'
 
 
 if __name__ == '__main__':

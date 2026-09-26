@@ -34,18 +34,27 @@ const App = (() => {
   function isManager() { return pathId === 'milpacs' || pathId === 'hq'; }
   function canCitations() { return pathId === 'citations' || pathId === 'hq'; }
 
-  function route() { return location.hash.replace(/^#/, '') || '/rosters'; }
-  function go(r) { if (route() === r) render(); else location.hash = r; }
+  // The route lives in memory, not in location.hash: inside a claude.ai artifact frame only a
+  // bare #anchor survives, and the page must behave the same there as in the standalone file.
+  // Links keep their "#/..." hrefs and boot() turns clicks on them into go().
+  let current = '/rosters';
+  function route() { return current; }
+  function go(r) {
+    if (current === r) { render(); return; }
+    current = r;
+    closeOverlay(); closeViewer(); render(); window.scrollTo(0, 0);
+    emit('route', { route: current });
+  }
 
   function reset(pid, startRoute) {
     pathId = pid;
     S = Model.seed(pid);
     events.length = 0;
     for (const k of Object.keys(ui)) delete ui[k];
-    closeOverlay(); closeMenus();
+    closeOverlay(); closeViewer(); closeMenus();
     renderShell();
-    if (startRoute) { if (route() === startRoute) render(); else location.hash = startRoute; }
-    else render();
+    if (startRoute) { current = startRoute; window.scrollTo(0, 0); }
+    render();
     emit('reset', { pathId: pid });
   }
 
@@ -94,7 +103,7 @@ const App = (() => {
     <a class="p-staffBar-link" data-act="nyi">Tickets<span class="badge">7</span></a><a class="p-staffBar-link p-staffBar-link--menu" data-act="nyi">Moderator</a>
   </div></div>
   <div class="p-navSticky" id="navSticky"><nav class="p-nav"><div class="p-nav-inner">
-    <a class="p-nav-menuTrigger" data-menu="mobile-nav">${icon('menu')} Menu</a>
+    <a class="p-nav-menuTrigger" data-menu="mobile-nav">${icon('menu')}<span class="p-nav-menuText">Menu</span></a>
     <a class="p-nav-logo" href="#/rosters"><img src="${asset('logo')}" alt="7th Cavalry Gaming"></a>
     <ul class="p-nav-list">
       <li><div class="p-navEl"><a class="p-navEl-link p-navEl-link--split" data-act="nyi">${icon('messages-square')}Forums</a><a class="p-navEl-caret" data-act="nyi"></a></div></li>
@@ -137,11 +146,9 @@ const App = (() => {
         ${page.desc ? `<div class="p-description">${page.desc}</div>` : ''}</div>
       <div class="p-body-main">${page.body}</div>
       ${crumbsRow(page.crumbs || [{ label: 'Milpacs', href: '#/rosters' }])}`;
-    document.title = page.docTitle || (stripTags(page.title) + ' | 7th Cavalry Gaming');
     page.after && page.after();
     emit('render', { route: route() });
   }
-  const stripTags = h => String(h).replace(/<[^>]+>/g, '');
 
   function resolve(r) {
     let m;
@@ -268,21 +275,41 @@ const App = (() => {
 
   // --- opening citations ------------------------------------------------------------------------
 
-  function viewerFallback(dataUrl, filename) {
-    openOverlay({ title: filename, wide: true, body: `<div style="background:#0e0e0e;padding:10px;text-align:center"><img src="${dataUrl}" style="max-width:100%"></div>` });
+  // The live Citation link opens the image in a new tab, on the browser's own dark backdrop.
+  // A claude.ai artifact can't open new tabs, so this stands in for that tab: the image fitted
+  // to the window, click to see it at full size, with the filename where the tab title would be.
+  function openViewer(c, filename) {
+    closeViewer(); closeMenus();
+    $('#flash')?.classList.remove('is-active');
+    const el = document.createElement('div');
+    el.id = 'viewer';
+    el.className = 'imageViewer';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', filename);
+    el.innerHTML = `<div class="imageViewer-bar"><span class="imageViewer-name">${esc(filename)} <span class="imageViewer-size">${c.width} &times; ${c.height}</span></span>
+        <button class="imageViewer-close" data-act="close-viewer">${icon('x')}<span>Close</span></button></div>
+      <div class="imageViewer-stage"><img src="${c.toDataURL('image/jpeg', 0.85)}" alt="${esc(filename)}" title="Click to zoom"></div>`;
+    el.querySelector('img').addEventListener('click', () => el.classList.toggle('is-zoomed'));
+    document.body.appendChild(el);
+    document.body.classList.add('has-viewer');
+    el.querySelector('.imageViewer-close').focus({ preventScroll: true });
+  }
+  function closeViewer() {
+    const el = $('#viewer');
+    if (el) { el.remove(); document.body.classList.remove('has-viewer'); emit('viewer-closed'); }
   }
   function openGrantMember(gmId, from) {
     const { grant, gm } = Model.grantMember(S, gmId);
     const ver = Model.version(S, grant.templateId, grant.v);
     const { canvas } = Render.renderGrant(S, { grant, gm, ver });
-    Render.openImage(canvas, Render.renderFilename(S, grant, gm), viewerFallback);
+    openViewer(canvas, Render.renderFilename(S, grant, gm));
     emit('open-citation', { gmId, grantId: grant.id, from });
   }
   function openRegiment(grantId, from) {
     const grant = Model.grant(S, grantId);
     const ver = Model.version(S, grant.templateId, grant.v);
     const { canvas } = Render.renderGrant(S, { grant, gm: null, ver });
-    Render.openImage(canvas, Render.renderFilename(S, grant, null), viewerFallback);
+    openViewer(canvas, Render.renderFilename(S, grant, null));
     emit('open-citation', { grantId, from });
   }
   const uploads = {};
@@ -305,7 +332,7 @@ const App = (() => {
     if (!r || !r.citation) return;
     if (r.citation.type === 'grant') return openGrantMember(r.citation.gmId, { rowId });
     if (r.citation.type === 'regiment') return openRegiment(r.citation.grantId, { rowId });
-    Render.openImage(rowCitationCanvas(r), `${r.id}.jpg`, viewerFallback);
+    openViewer(rowCitationCanvas(r), `${r.id}.jpg`);
     emit('open-citation', { rowId, image: true });
   }
 
@@ -1181,6 +1208,7 @@ const App = (() => {
     switch (name) {
       case 'nyi': return nyi();
       case 'close-overlay': return closeOverlay();
+      case 'close-viewer': return closeViewer();
       case 'open-row-citation': return openRowCitation(+d.row);
       case 'edit-row': closeMenus(); return editRowOverlay(+d.row);
       case 'delete-row': closeMenus(); closeOverlay(); return deleteRow(+d.row);
@@ -1201,7 +1229,7 @@ const App = (() => {
       }
       case 'issue-open-full': {
         if (!ui.previewCanvas) return;
-        return Render.openImage(ui.previewCanvas, 'preview.jpg', viewerFallback);
+        return openViewer(ui.previewCanvas, 'preview.jpg');
       }
       case 'issue-submit': return submitIssue();
       case 'correct-submit': return submitCorrect();
@@ -1245,9 +1273,10 @@ const App = (() => {
       if (m) { e.preventDefault(); toggleMenu(m); return; }
       if (openMenu && !e.target.closest('.menu')) closeMenus();
       if (e.target.closest('.menu a[href]')) closeMenus();
+      const link = e.target.closest('a[href^="#/"]');
+      if (link) { e.preventDefault(); go(link.getAttribute('href').slice(1)); }
     });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenus(); closeOverlay(); } });
-    window.addEventListener('hashchange', () => { closeOverlay(); render(); window.scrollTo(0, 0); emit('route', { route: route() }); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenus(); closeOverlay(); closeViewer(); } });
     window.addEventListener('scroll', () => { const n = $('#navSticky'); if (n) n.classList.toggle('is-sticky', window.scrollY > 40); }, { passive: true });
     const navFit = () => { const l = $('.p-nav-list'); if (l) l.classList.toggle('is-overflowing', l.scrollWidth > l.clientWidth + 2); };
     window.addEventListener('resize', navFit);

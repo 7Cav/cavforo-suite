@@ -14,9 +14,13 @@ To change it, edit `src/` and rebuild:
 python3 build.py     # inlines src/ and assets/ into citation-workflow-prototype.html
 ```
 
+The build also writes `citation-workflow-artifact.html` for publishing as a claude.ai Artifact. It's the same page without the `<!doctype>`, `<html>`, `<head>` and `<body>` lines, because claude.ai adds its own, and it opens on the `<title>`. It isn't committed.
+
+The page behaves the same in both files. The artifact frame can't open new tabs or windows, start downloads, show `confirm()` dialogs, or keep a route in `location.hash`, so the page does none of those. It keeps its route in memory and opens citations in an in-page viewer, and the guide confirms deletes inline.
+
 ## What's in it
 
-A stand-in for the forum with a guide panel on the right. The reviewer picks their group and one of three walkthroughs. Every step has a short scenario, what to do, what changed from today, and a feedback box. Notes stay in the reviewer's browser until they copy or download them from the guide.
+A stand-in for the forum with a guide panel on the right. The reviewer picks their group and one of three walkthroughs. Every step has a short scenario, what to do, what changed from today, and a feedback box. Notes stay in the reviewer's browser until they copy them from the guide. The copy is BB code, for pasting as a reply in the forum DM thread the link came from.
 
 | Walkthrough | Steps |
 |---|---|
@@ -26,14 +30,14 @@ A stand-in for the forum with a guide panel on the right. The reviewer picks the
 
 Each walkthrough starts from a fresh copy of the data. The guide checks each step against what the reviewer did, and can point at the next thing to click.
 
-The Citation links open the render in a new tab on the browser's own backdrop, under the filename the read-path decision gives it, as the live Citation links do.
+The live Citation links open the render in a new tab. Here they open it in a full-window viewer with the browser's dark backdrop, under the filename the read-path decision gives it. A click zooms the image to full size.
 
 ## Files
 
 - `src/model.js`: the citation model as the map decided it. Plain data and pure functions (issue, correct, save a row with the picker, publish, retire, add a signature), with no DOM.
 - `src/render.js`: the render, in canvas instead of Imagick. Single-line fields shrink to their box; the citation text takes the largest size that fits, justified with a centred last line; anything below a field's reading size is flagged, never refused.
 - `src/ui.js`: the forum pages, the vendor's row forms with the picker in the upload box's place, and the new Citations and template manager pages.
-- `src/guide.js`: the walkthroughs, the per-step feedback and the export.
+- `src/guide.js`: the walkthroughs, the per-step feedback and the BB code export.
 - `src/forum.css`, `src/addon.css`, `src/guide.css`: styles. `forum.css` recreates the live forum's dark style.
 
 ## How the forum look was matched

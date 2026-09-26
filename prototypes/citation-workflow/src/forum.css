@@ -3,6 +3,7 @@
    or theme CSS is copied here; class names follow XenForo's so the markup reads the same. */
 
 :root {
+  color-scheme: dark;
   --bg: #121212;
   --text: #a1a1a1;
   --muted: #8d8d8d;
@@ -22,7 +23,7 @@
 }
 
 * { box-sizing: border-box; }
-html { background: var(--bg); color-scheme: dark; }
+html { background: var(--bg); }
 body {
   margin: 0; font: 400 15px/1.4 var(--font); color: var(--text);
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
@@ -56,7 +57,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
 .p-staffBar-link .badge { display: inline-block; background: #c8493a; color: #fff; font-size: 10.4px; line-height: 10.4px; padding: 2px 4px; border-radius: 2px; margin-left: 4px; font-weight: 400; }
 .p-staffBar-link--menu::after { content: ""; display: inline-block; margin-left: 3px; border: 4px solid transparent; border-top-color: #fff; border-bottom: 0; vertical-align: 2px; }
 
-.p-navSticky { position: sticky; top: 0; z-index: 100; margin-top: 50px; }
+.p-navSticky { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 100; margin-top: 50px; }
 .p-navSticky.is-sticky { z-index: 400; box-shadow: 0 0 8px 3px rgba(0,0,0,.3); }
 .p-nav { color: var(--strong); padding: 7px; }
 .p-navSticky.is-sticky .p-nav { background: var(--nav-sticky); }
@@ -376,11 +377,19 @@ input[type=file].input::file-selector-button { font: inherit; margin-right: 6px;
 }
 @media (max-width: 900px) {
   .p-nav-list { display: none; }
-  .p-nav-menuTrigger { display: block; }
+  .p-nav-menuTrigger { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
   .p-nav-logo img { width: 160px; }
   .p-navgroup-linkText { display: none; }
   .p-body { margin-top: 20px; }
-  .p-body-inner { max-width: 100%; border-radius: 0; border-left: 0; border-right: 0; padding: 10px; }
+  .p-body-inner { max-width: 100%; border-radius: 0; border-left: 0; border-right: 0; padding: 10px 16px; }
+}
+@media (max-width: 480px) {
+  .p-nav-inner { max-width: 100%; }
+  .p-nav-menuText { display: none; }
+  .p-nav-menuTrigger, .p-navgroup-link { padding-left: 9px; padding-right: 9px; }
+  .p-nav-logo { margin-right: 8px; }
+  .p-nav-logo img { width: 130px; }
+  .p-nav-opposite { padding-left: 4px; }
 }
 @media (max-width: 650px) {
   .formRow, .formRow > dt, .formRow > dd { display: block; }

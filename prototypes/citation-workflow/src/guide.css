@@ -4,7 +4,7 @@
 :root { --pg-w: 380px; --pg-bg: #111820; --pg-bg2: #17212c; --pg-line: #26364a; --pg-text: #c7d3e0; --pg-muted: #8193a8; --pg-accent: #6fb1ff; --pg-ok: #5fcf8a; }
 
 body.pg-open .p-pageWrapper { margin-right: var(--pg-w); }
-body.pg-open .overlay-container { right: var(--pg-w); }
+body.pg-open .overlay-container, body.pg-open .imageViewer { right: var(--pg-w); }
 body.pg-open .flashMessage { left: calc(50% - var(--pg-w) / 2); }
 
 .pg {
@@ -13,7 +13,9 @@ body.pg-open .flashMessage { left: calc(50% - var(--pg-w) / 2); }
   font: 400 14px/1.5 var(--font); display: flex; flex-direction: column; box-shadow: -6px 0 18px rgba(0,0,0,.35);
 }
 .pg.is-collapsed { width: auto; top: auto; bottom: 16px; right: 16px; border: 1px solid var(--pg-line); border-radius: 8px; }
-.pg.is-collapsed .pg-body, .pg.is-collapsed .pg-headNote, .pg.is-collapsed .pg-tag { display: none; }
+/* Collapsed, it keeps saying "Prototype", so the page never reads as the real forum. */
+.pg.is-collapsed .pg-body, .pg.is-collapsed .pg-headNote, .pg.is-collapsed .pg-tagMore { display: none; }
+.pg.is-collapsed .pg-tag { padding-left: 8px; }
 .pg-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--pg-line); background: var(--pg-bg2); }
 .pg.is-collapsed .pg-head { border: 0; border-radius: 8px; padding: 6px; }
 .pg-tag { font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--pg-accent); }
@@ -68,11 +70,15 @@ body.pg-open .flashMessage { left: calc(50% - var(--pg-w) / 2); }
 
 .pg-nav, .pg-btns { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 .pg-nav .pg-btn:last-child { margin-left: auto; }
+.pg-btns { align-items: center; }
+.pg-btns--tight { margin-top: 0; flex-wrap: nowrap; }
 .pg-btn { background: transparent; border: 1px solid var(--pg-line); color: var(--pg-text); border-radius: 6px; padding: 8px 14px; font: 600 13px var(--font); cursor: pointer; }
 .pg-btn:hover:not(:disabled) { border-color: var(--pg-accent); color: #fff; }
 .pg-btn:disabled { opacity: .4; cursor: default; }
 .pg-btn--primary { background: var(--pg-accent); border-color: var(--pg-accent); color: #07121f; }
 .pg-btn--primary:hover:not(:disabled) { background: #8cc2ff; color: #07121f; }
+.pg-btn--danger { border-color: #b85c5c; color: #f0b4b4; }
+.pg-btn--danger:hover:not(:disabled) { background: #b85c5c; border-color: #b85c5c; color: #fff; }
 .pg-btn--quiet { margin-top: 10px; font-weight: 500; padding: 5px 10px; }
 .pg-link { background: none; border: 0; padding: 0; color: var(--pg-accent); font: inherit; font-size: 12px; cursor: pointer; }
 .pg-link:hover { text-decoration: underline; }
@@ -84,12 +90,13 @@ body.pg-open .flashMessage { left: calc(50% - var(--pg-w) / 2); }
 /* Points at the next thing to click. Blue, to read as the guide rather than the forum. */
 .pg-hint { outline: 2px solid var(--pg-accent) !important; outline-offset: 3px; border-radius: 3px; animation: pg-pulse 1.6s ease-in-out infinite; position: relative; z-index: 1; }
 @keyframes pg-pulse { 0%, 100% { outline-color: rgba(111,177,255,1); } 50% { outline-color: rgba(111,177,255,.25); } }
+@media (prefers-reduced-motion: reduce) { .pg-hint { animation: none; } .flashMessage { transition: none; } }
 
 @media (max-width: 1100px) {
   :root { --pg-w: 0px; }
   .pg { top: auto; left: 0; width: auto; height: 44vh; border-left: 0; border-top: 1px solid var(--pg-line); }
   body.pg-open .p-pageWrapper { margin-right: 0; padding-bottom: 44vh; }
-  body.pg-open .overlay-container { right: 0; bottom: 44vh; }
+  body.pg-open .overlay-container, body.pg-open .imageViewer { right: 0; bottom: 44vh; }
 }
 @media (max-width: 1100px) {
   .pg.is-collapsed { left: auto; height: auto; top: auto; }

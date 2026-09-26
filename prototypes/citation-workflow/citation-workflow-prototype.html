@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rosters | 7th Cavalry Gaming</title>
+<title>S1 Citation Walkthrough</title>
 <!--
   PROTOTYPE, throwaway. A clickable walkthrough of issuing, attaching and opening a generated
   citation, for S1 to review (7Cav/cavforo-suite#309, on the map #261).
@@ -24,6 +24,7 @@
    or theme CSS is copied here; class names follow XenForo's so the markup reads the same. */
 
 :root {
+  color-scheme: dark;
   --bg: #121212;
   --text: #a1a1a1;
   --muted: #8d8d8d;
@@ -43,7 +44,7 @@
 }
 
 * { box-sizing: border-box; }
-html { background: var(--bg); color-scheme: dark; }
+html { background: var(--bg); }
 body {
   margin: 0; font: 400 15px/1.4 var(--font); color: var(--text);
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
@@ -77,7 +78,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
 .p-staffBar-link .badge { display: inline-block; background: #c8493a; color: #fff; font-size: 10.4px; line-height: 10.4px; padding: 2px 4px; border-radius: 2px; margin-left: 4px; font-weight: 400; }
 .p-staffBar-link--menu::after { content: ""; display: inline-block; margin-left: 3px; border: 4px solid transparent; border-top-color: #fff; border-bottom: 0; vertical-align: 2px; }
 
-.p-navSticky { position: sticky; top: 0; z-index: 100; margin-top: 50px; }
+.p-navSticky { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 100; margin-top: 50px; }
 .p-navSticky.is-sticky { z-index: 400; box-shadow: 0 0 8px 3px rgba(0,0,0,.3); }
 .p-nav { color: var(--strong); padding: 7px; }
 .p-navSticky.is-sticky .p-nav { background: var(--nav-sticky); }
@@ -397,11 +398,19 @@ input[type=file].input::file-selector-button { font: inherit; margin-right: 6px;
 }
 @media (max-width: 900px) {
   .p-nav-list { display: none; }
-  .p-nav-menuTrigger { display: block; }
+  .p-nav-menuTrigger { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
   .p-nav-logo img { width: 160px; }
   .p-navgroup-linkText { display: none; }
   .p-body { margin-top: 20px; }
-  .p-body-inner { max-width: 100%; border-radius: 0; border-left: 0; border-right: 0; padding: 10px; }
+  .p-body-inner { max-width: 100%; border-radius: 0; border-left: 0; border-right: 0; padding: 10px 16px; }
+}
+@media (max-width: 480px) {
+  .p-nav-inner { max-width: 100%; }
+  .p-nav-menuText { display: none; }
+  .p-nav-menuTrigger, .p-navgroup-link { padding-left: 9px; padding-right: 9px; }
+  .p-nav-logo { margin-right: 8px; }
+  .p-nav-logo img { width: 130px; }
+  .p-nav-opposite { padding-left: 4px; }
 }
 @media (max-width: 650px) {
   .formRow, .formRow > dt, .formRow > dd { display: block; }
@@ -416,7 +425,7 @@ input[type=file].input::file-selector-button { font: inherit; margin-right: 6px;
 
 /* PROTOTYPE. Styles for the new addon's pages, built from the forum's own pieces. */
 
-body.has-overlay { overflow: hidden; }
+body.has-overlay, body.has-viewer { overflow: hidden; }
 .p-body-inner { container-type: inline-size; }
 
 .issueLayout { display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 38%, 440px); gap: 16px; align-items: start; }
@@ -476,6 +485,24 @@ code { font: 13px ui-monospace, Menlo, Consolas, monospace; color: var(--strong)
   .issueFormCol .formRow > dt { width: 28%; }
   .issueFormCol .formSubmitRow-controls { padding-left: calc(28% + 14px); }
 }
+@media (max-width: 650px) {
+  .issueFormCol .formRow > dt { width: auto; }
+  .issueFormCol .formSubmitRow-controls { padding-left: 14px; }
+}
+
+/* Stands in for the new tab the live Citation link opens: the browser's dark backdrop, the image
+   fitted to the window, a click for full size, and the filename where the tab title would be. */
+.imageViewer { position: fixed; inset: 0; z-index: 920; display: flex; flex-direction: column; background: #0e0e0e; padding-top: env(safe-area-inset-top, 0px); }
+.imageViewer-bar { display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 16px; background: #202124; color: #e8eaed; border-bottom: 1px solid #000; font: 13px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.imageViewer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imageViewer-size { color: #9aa0a6; margin-left: 4px; }
+.imageViewer-close { flex: none; display: inline-flex; align-items: center; gap: 6px; background: #3c4043; color: #e8eaed; border: 0; border-radius: 4px; padding: 6px 12px; font: inherit; cursor: pointer; }
+.imageViewer-close:hover { background: #4a4e52; }
+.imageViewer-close:focus-visible { outline: 2px solid #8ab4f8; outline-offset: 2px; }
+.imageViewer-stage { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; }
+.imageViewer-stage img { display: block; max-width: 100%; max-height: 100%; cursor: zoom-in; user-select: none; -webkit-user-select: none; }
+.imageViewer.is-zoomed .imageViewer-stage { display: block; }
+.imageViewer.is-zoomed .imageViewer-stage img { max-width: none; max-height: none; margin: auto; cursor: zoom-out; }
 
 /* PROTOTYPE. The walkthrough panel. Deliberately a different palette from the forum, so nobody
    mistakes it for part of the forum. */
@@ -483,7 +510,7 @@ code { font: 13px ui-monospace, Menlo, Consolas, monospace; color: var(--strong)
 :root { --pg-w: 380px; --pg-bg: #111820; --pg-bg2: #17212c; --pg-line: #26364a; --pg-text: #c7d3e0; --pg-muted: #8193a8; --pg-accent: #6fb1ff; --pg-ok: #5fcf8a; }
 
 body.pg-open .p-pageWrapper { margin-right: var(--pg-w); }
-body.pg-open .overlay-container { right: var(--pg-w); }
+body.pg-open .overlay-container, body.pg-open .imageViewer { right: var(--pg-w); }
 body.pg-open .flashMessage { left: calc(50% - var(--pg-w) / 2); }
 
 .pg {
@@ -492,7 +519,9 @@ body.pg-open .flashMessage { left: calc(50% - var(--pg-w) / 2); }
   font: 400 14px/1.5 var(--font); display: flex; flex-direction: column; box-shadow: -6px 0 18px rgba(0,0,0,.35);
 }
 .pg.is-collapsed { width: auto; top: auto; bottom: 16px; right: 16px; border: 1px solid var(--pg-line); border-radius: 8px; }
-.pg.is-collapsed .pg-body, .pg.is-collapsed .pg-headNote, .pg.is-collapsed .pg-tag { display: none; }
+/* Collapsed, it keeps saying "Prototype", so the page never reads as the real forum. */
+.pg.is-collapsed .pg-body, .pg.is-collapsed .pg-headNote, .pg.is-collapsed .pg-tagMore { display: none; }
+.pg.is-collapsed .pg-tag { padding-left: 8px; }
 .pg-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--pg-line); background: var(--pg-bg2); }
 .pg.is-collapsed .pg-head { border: 0; border-radius: 8px; padding: 6px; }
 .pg-tag { font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--pg-accent); }
@@ -547,11 +576,15 @@ body.pg-open .flashMessage { left: calc(50% - var(--pg-w) / 2); }
 
 .pg-nav, .pg-btns { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 .pg-nav .pg-btn:last-child { margin-left: auto; }
+.pg-btns { align-items: center; }
+.pg-btns--tight { margin-top: 0; flex-wrap: nowrap; }
 .pg-btn { background: transparent; border: 1px solid var(--pg-line); color: var(--pg-text); border-radius: 6px; padding: 8px 14px; font: 600 13px var(--font); cursor: pointer; }
 .pg-btn:hover:not(:disabled) { border-color: var(--pg-accent); color: #fff; }
 .pg-btn:disabled { opacity: .4; cursor: default; }
 .pg-btn--primary { background: var(--pg-accent); border-color: var(--pg-accent); color: #07121f; }
 .pg-btn--primary:hover:not(:disabled) { background: #8cc2ff; color: #07121f; }
+.pg-btn--danger { border-color: #b85c5c; color: #f0b4b4; }
+.pg-btn--danger:hover:not(:disabled) { background: #b85c5c; border-color: #b85c5c; color: #fff; }
 .pg-btn--quiet { margin-top: 10px; font-weight: 500; padding: 5px 10px; }
 .pg-link { background: none; border: 0; padding: 0; color: var(--pg-accent); font: inherit; font-size: 12px; cursor: pointer; }
 .pg-link:hover { text-decoration: underline; }
@@ -563,12 +596,13 @@ body.pg-open .flashMessage { left: calc(50% - var(--pg-w) / 2); }
 /* Points at the next thing to click. Blue, to read as the guide rather than the forum. */
 .pg-hint { outline: 2px solid var(--pg-accent) !important; outline-offset: 3px; border-radius: 3px; animation: pg-pulse 1.6s ease-in-out infinite; position: relative; z-index: 1; }
 @keyframes pg-pulse { 0%, 100% { outline-color: rgba(111,177,255,1); } 50% { outline-color: rgba(111,177,255,.25); } }
+@media (prefers-reduced-motion: reduce) { .pg-hint { animation: none; } .flashMessage { transition: none; } }
 
 @media (max-width: 1100px) {
   :root { --pg-w: 0px; }
   .pg { top: auto; left: 0; width: auto; height: 44vh; border-left: 0; border-top: 1px solid var(--pg-line); }
   body.pg-open .p-pageWrapper { margin-right: 0; padding-bottom: 44vh; }
-  body.pg-open .overlay-container { right: 0; bottom: 44vh; }
+  body.pg-open .overlay-container, body.pg-open .imageViewer { right: 0; bottom: 44vh; }
 }
 @media (max-width: 1100px) {
   .pg.is-collapsed { left: auto; height: auto; top: auto; }
@@ -1585,22 +1619,7 @@ const Render = (() => {
     return `https://7cav.us/citations/render/${key}/${grant.revision}/${renderFilename(s, grant, gm)}`;
   }
 
-  // Opens an image the way the roster's Citation link does: in a new tab, on the browser's
-  // own backdrop. Falls back to an in-page viewer if the browser blocks the new tab.
-  function openImage(c, filename, fallback) {
-    const dataUrl = c.toDataURL('image/jpeg', 0.85);
-    const w = window.open('', '_blank');
-    if (!w) { fallback && fallback(dataUrl, filename, c); return; }
-    const doc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, minimum-scale=0.1">
-<title>${filename} (${c.width}×${c.height})</title>
-<style>html,body{margin:0;height:100%;background:#0e0e0e}body{display:flex;align-items:center;justify-content:center}
-img{display:block;max-width:100%;max-height:100vh;cursor:zoom-in;user-select:none;-webkit-user-select:none}
-body.z{display:block}body.z img{max-width:none;max-height:none;cursor:zoom-out;margin:auto}</style></head>
-<body><img src="${dataUrl}" alt="${filename}" onclick="document.body.classList.toggle('z')"></body></html>`;
-    w.document.open(); w.document.write(doc); w.document.close();
-  }
-
-  return { init, IMG, plate, drawSignature, renderGrant, legacyImage, uploadedImage, renderFilename, renderUrl, openImage, toPt, makeInk };
+  return { init, IMG, plate, drawSignature, renderGrant, legacyImage, uploadedImage, renderFilename, renderUrl, toPt, makeInk };
 })();
 
 // PROTOTYPE. The page: a stand-in for the forum, driving the pure Model. Throwaway.
@@ -1639,18 +1658,27 @@ const App = (() => {
   function isManager() { return pathId === 'milpacs' || pathId === 'hq'; }
   function canCitations() { return pathId === 'citations' || pathId === 'hq'; }
 
-  function route() { return location.hash.replace(/^#/, '') || '/rosters'; }
-  function go(r) { if (route() === r) render(); else location.hash = r; }
+  // The route lives in memory, not in location.hash: inside a claude.ai artifact frame only a
+  // bare #anchor survives, and the page must behave the same there as in the standalone file.
+  // Links keep their "#/..." hrefs and boot() turns clicks on them into go().
+  let current = '/rosters';
+  function route() { return current; }
+  function go(r) {
+    if (current === r) { render(); return; }
+    current = r;
+    closeOverlay(); closeViewer(); render(); window.scrollTo(0, 0);
+    emit('route', { route: current });
+  }
 
   function reset(pid, startRoute) {
     pathId = pid;
     S = Model.seed(pid);
     events.length = 0;
     for (const k of Object.keys(ui)) delete ui[k];
-    closeOverlay(); closeMenus();
+    closeOverlay(); closeViewer(); closeMenus();
     renderShell();
-    if (startRoute) { if (route() === startRoute) render(); else location.hash = startRoute; }
-    else render();
+    if (startRoute) { current = startRoute; window.scrollTo(0, 0); }
+    render();
     emit('reset', { pathId: pid });
   }
 
@@ -1699,7 +1727,7 @@ const App = (() => {
     <a class="p-staffBar-link" data-act="nyi">Tickets<span class="badge">7</span></a><a class="p-staffBar-link p-staffBar-link--menu" data-act="nyi">Moderator</a>
   </div></div>
   <div class="p-navSticky" id="navSticky"><nav class="p-nav"><div class="p-nav-inner">
-    <a class="p-nav-menuTrigger" data-menu="mobile-nav">${icon('menu')} Menu</a>
+    <a class="p-nav-menuTrigger" data-menu="mobile-nav">${icon('menu')}<span class="p-nav-menuText">Menu</span></a>
     <a class="p-nav-logo" href="#/rosters"><img src="${asset('logo')}" alt="7th Cavalry Gaming"></a>
     <ul class="p-nav-list">
       <li><div class="p-navEl"><a class="p-navEl-link p-navEl-link--split" data-act="nyi">${icon('messages-square')}Forums</a><a class="p-navEl-caret" data-act="nyi"></a></div></li>
@@ -1742,11 +1770,9 @@ const App = (() => {
         ${page.desc ? `<div class="p-description">${page.desc}</div>` : ''}</div>
       <div class="p-body-main">${page.body}</div>
       ${crumbsRow(page.crumbs || [{ label: 'Milpacs', href: '#/rosters' }])}`;
-    document.title = page.docTitle || (stripTags(page.title) + ' | 7th Cavalry Gaming');
     page.after && page.after();
     emit('render', { route: route() });
   }
-  const stripTags = h => String(h).replace(/<[^>]+>/g, '');
 
   function resolve(r) {
     let m;
@@ -1873,21 +1899,41 @@ const App = (() => {
 
   // --- opening citations ------------------------------------------------------------------------
 
-  function viewerFallback(dataUrl, filename) {
-    openOverlay({ title: filename, wide: true, body: `<div style="background:#0e0e0e;padding:10px;text-align:center"><img src="${dataUrl}" style="max-width:100%"></div>` });
+  // The live Citation link opens the image in a new tab, on the browser's own dark backdrop.
+  // A claude.ai artifact can't open new tabs, so this stands in for that tab: the image fitted
+  // to the window, click to see it at full size, with the filename where the tab title would be.
+  function openViewer(c, filename) {
+    closeViewer(); closeMenus();
+    $('#flash')?.classList.remove('is-active');
+    const el = document.createElement('div');
+    el.id = 'viewer';
+    el.className = 'imageViewer';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', filename);
+    el.innerHTML = `<div class="imageViewer-bar"><span class="imageViewer-name">${esc(filename)} <span class="imageViewer-size">${c.width} &times; ${c.height}</span></span>
+        <button class="imageViewer-close" data-act="close-viewer">${icon('x')}<span>Close</span></button></div>
+      <div class="imageViewer-stage"><img src="${c.toDataURL('image/jpeg', 0.85)}" alt="${esc(filename)}" title="Click to zoom"></div>`;
+    el.querySelector('img').addEventListener('click', () => el.classList.toggle('is-zoomed'));
+    document.body.appendChild(el);
+    document.body.classList.add('has-viewer');
+    el.querySelector('.imageViewer-close').focus({ preventScroll: true });
+  }
+  function closeViewer() {
+    const el = $('#viewer');
+    if (el) { el.remove(); document.body.classList.remove('has-viewer'); emit('viewer-closed'); }
   }
   function openGrantMember(gmId, from) {
     const { grant, gm } = Model.grantMember(S, gmId);
     const ver = Model.version(S, grant.templateId, grant.v);
     const { canvas } = Render.renderGrant(S, { grant, gm, ver });
-    Render.openImage(canvas, Render.renderFilename(S, grant, gm), viewerFallback);
+    openViewer(canvas, Render.renderFilename(S, grant, gm));
     emit('open-citation', { gmId, grantId: grant.id, from });
   }
   function openRegiment(grantId, from) {
     const grant = Model.grant(S, grantId);
     const ver = Model.version(S, grant.templateId, grant.v);
     const { canvas } = Render.renderGrant(S, { grant, gm: null, ver });
-    Render.openImage(canvas, Render.renderFilename(S, grant, null), viewerFallback);
+    openViewer(canvas, Render.renderFilename(S, grant, null));
     emit('open-citation', { grantId, from });
   }
   const uploads = {};
@@ -1910,7 +1956,7 @@ const App = (() => {
     if (!r || !r.citation) return;
     if (r.citation.type === 'grant') return openGrantMember(r.citation.gmId, { rowId });
     if (r.citation.type === 'regiment') return openRegiment(r.citation.grantId, { rowId });
-    Render.openImage(rowCitationCanvas(r), `${r.id}.jpg`, viewerFallback);
+    openViewer(rowCitationCanvas(r), `${r.id}.jpg`);
     emit('open-citation', { rowId, image: true });
   }
 
@@ -2786,6 +2832,7 @@ const App = (() => {
     switch (name) {
       case 'nyi': return nyi();
       case 'close-overlay': return closeOverlay();
+      case 'close-viewer': return closeViewer();
       case 'open-row-citation': return openRowCitation(+d.row);
       case 'edit-row': closeMenus(); return editRowOverlay(+d.row);
       case 'delete-row': closeMenus(); closeOverlay(); return deleteRow(+d.row);
@@ -2806,7 +2853,7 @@ const App = (() => {
       }
       case 'issue-open-full': {
         if (!ui.previewCanvas) return;
-        return Render.openImage(ui.previewCanvas, 'preview.jpg', viewerFallback);
+        return openViewer(ui.previewCanvas, 'preview.jpg');
       }
       case 'issue-submit': return submitIssue();
       case 'correct-submit': return submitCorrect();
@@ -2850,9 +2897,10 @@ const App = (() => {
       if (m) { e.preventDefault(); toggleMenu(m); return; }
       if (openMenu && !e.target.closest('.menu')) closeMenus();
       if (e.target.closest('.menu a[href]')) closeMenus();
+      const link = e.target.closest('a[href^="#/"]');
+      if (link) { e.preventDefault(); go(link.getAttribute('href').slice(1)); }
     });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenus(); closeOverlay(); } });
-    window.addEventListener('hashchange', () => { closeOverlay(); render(); window.scrollTo(0, 0); emit('route', { route: route() }); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenus(); closeOverlay(); closeViewer(); } });
     window.addEventListener('scroll', () => { const n = $('#navSticky'); if (n) n.classList.toggle('is-sticky', window.scrollY > 40); }, { passive: true });
     const navFit = () => { const l = $('.p-nav-list'); if (l) l.classList.toggle('is-overflowing', l.scrollWidth > l.clientWidth + 2); };
     window.addEventListener('resize', navFit);
@@ -2941,7 +2989,7 @@ const Guide = (() => {
         {
           key: 'text', title: 'Enter the citation text and watch the preview',
           scenario: 'The proofread citation text is ready. It has a typo in it that nobody has spotted yet.',
-          task: 'Put the text into <b>Citation text</b>, or use the button below to fill it in. Watch the preview on the right, and switch it between the two members.',
+          task: 'Put the text into <b>Citation text</b>, or use the button below to fill it in. Watch the preview, and switch it between the two members.',
           changed: 'Today you retype the text into a GIMP text layer and shrink it by hand until it fits. Now you enter it once, as plain text, and the forum fits it to the box. If it comes out below the template\'s reading size, the preview warns you and S1 gets a list to fix the template. You can still issue it.',
           ask: 'Does the preview tell you what you need before you issue?',
           helper: { label: 'Fill in the text for me', run: () => App.setIssueText(Model.MSM_TEXT_WITH_TYPO) },
@@ -2985,7 +3033,7 @@ const Guide = (() => {
         {
           key: 'open', title: 'Open it from the roster',
           scenario: 'Later that day S1 Milpacs added the MSM to Quill.E\'s milpac and picked your citation.',
-          task: 'Go to <b>Milpacs</b>, open <b>Quill.E</b>, and click <b>Citation</b> on the MSM row. It opens in a new tab.',
+          task: 'Go to <b>Milpacs</b>, open <b>Quill.E</b>, and click <b>Citation</b> on the MSM row. On the forum it opens in a new tab. Here it opens over the page instead.',
           changed: 'Nothing changes for whoever opens it. The Citation link opens the certificate as an image in a new tab, as it does today. The image is drawn from the stored citation, so it shows your correction.',
           ask: 'Does it look like a citation you\'d have made?',
           onEnter: () => App.simulate(S => {
@@ -3091,7 +3139,7 @@ const Guide = (() => {
         },
         {
           key: 'open', title: 'Open a citation from the roster',
-          task: 'Go back to <b>Quill.E</b> and click <b>Citation</b> on the MSM row you added. It opens in a new tab.',
+          task: 'Go back to <b>Quill.E</b> and click <b>Citation</b> on the MSM row you added. On the forum it opens in a new tab. Here it opens over the page instead.',
           changed: 'Nothing for whoever opens it. The certificate opens as an image in a new tab, as it does today.',
           ask: 'Does it look right next to the citations already on the milpac?',
           check: ctx => { const r = rowWith(ctx.S, 101, 'award', 15); return !!r && openedRow(ctx, r.id); },
@@ -3165,7 +3213,7 @@ const Guide = (() => {
         },
         {
           key: 'open-old', title: 'Open a citation issued on the old version',
-          task: 'Open <b>Delacroix.M</b> from the Milpacs roster and click <b>Citation</b> on the <b>Bronze Star</b> row. It was issued on version 1 and opens in a new tab.',
+          task: 'Open <b>Delacroix.M</b> from the Milpacs roster and click <b>Citation</b> on the <b>Bronze Star</b> row, which was issued on version 1. On the forum it opens in a new tab. Here it opens over the page instead.',
           changed: 'Nothing for whoever opens it. It still shows the landscape design it was issued on, with the commander who signed it at the time.',
           check: ctx => { const r = ctx.S.rows.find(x => x.memberId === 102 && x.kind === 'award' && x.typeId === 12); return !!r && openedRow(ctx, r.id); },
           target: ctx => { const r = ctx.S.rows.find(x => x.memberId === 102 && x.kind === 'award' && x.typeId === 12); return profileTarget(ctx, 102, `[data-proto=cite-${r.id}]`); },
@@ -3194,7 +3242,7 @@ const Guide = (() => {
 
   // --- state -----------------------------------------------------------------------------------------
 
-  let view = 'home', pathId = null, idx = 0, collapsed = false, hints = true;
+  let view = 'home', pathId = null, idx = 0, collapsed = false, hints = true, confirmClear = false;
   const entered = new Set();
   const el = () => document.getElementById('guide');
   const esc2 = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -3230,6 +3278,7 @@ const Guide = (() => {
         <h2 class="pg-h">How citations would work on the forum</h2>
         <p>This is a clickable mock-up of the forum after S1 stops making citations in GIMP. It isn't connected to the forum, and everyone in it is made up. Nothing you do here goes anywhere, except the notes you choose to send.</p>
         <p>Pick your group, then a walkthrough. Each step says what's going on, what to do, and what changed from today, and has a box for your comments. Anyone can walk any path.</p>
+        <p>Your comments stay in this browser. When you're done, the guide gives you all of them to copy into the forum DM thread you got this link from.</p>
         <p class="pg-muted">The certificate design is a stand-in. Comments on fonts and layout are welcome, but they belong to the separate look approval before go-live.</p>
       </div>
       ${groupPicker()}
@@ -3266,47 +3315,69 @@ const Guide = (() => {
         <button class="pg-link" data-g="restart">Start this walkthrough again</button></div>`;
   }
 
+  // BB code, because reviewers paste it into a forum DM. The group goes once at the top when every
+  // note shares it, and on each step when they don't.
   function exportText() {
-    const lines = ['Citation prototype feedback', ''];
+    const written = Object.values(store.notes).filter(n => n.text.trim());
+    const groups = new Set(written.map(n => n.group || ''));
+    const oneGroup = groups.size === 1 ? [...groups][0] : null;
+    const lines = ['[B]Citation prototype feedback[/B]'];
+    if (oneGroup) lines.push(`Group: ${oneGroup}`);
+    lines.push('');
     for (const [pid, p] of Object.entries(PATHS)) {
       const ns = p.steps.map((s, i) => ({ s, i, n: store.notes[noteKey(pid, s.key)] })).filter(x => x.n && x.n.text.trim());
       if (!ns.length) continue;
-      lines.push(`== ${p.title} walkthrough ==`);
+      lines.push(`[U][B]${p.title} walkthrough[/B][/U]`, '');
       for (const { s, i, n } of ns) {
-        lines.push(`Step ${i + 1}, ${s.title} (${n.group || 'group not given'}):`);
+        lines.push(`[B]Step ${i + 1}. ${s.title}[/B]${oneGroup === null ? ` (${n.group || 'group not given'})` : ''}`);
         lines.push(n.text.trim(), '');
       }
     }
-    if (lines.length === 2) lines.push('(no notes yet)');
-    return lines.join('\n');
+    if (!written.length) lines.push('(no notes yet)');
+    return lines.join('\n').trim();
   }
 
   function feedbackHtml() {
+    const n = noteCount();
     return `<div class="pg-crumb"><button class="pg-link" data-g="${pathId ? 'back-step' : 'home'}">&larr; Back</button><span>Your notes</span></div>
       <h2 class="pg-h">Send your notes</h2>
-      <p>Your notes are saved in this browser only. When you're done, copy them or download them, and send them to whoever sent you this prototype.</p>
-      <div class="pg-btns"><button class="pg-btn pg-btn--primary" data-g="copy">Copy all notes</button><button class="pg-btn" data-g="download">Download as a text file</button></div>
-      <span id="pgCopied" class="pg-saved"></span>
+      <p>Your notes are saved in this browser only. Copy them, then paste them as a reply in the forum DM thread you got this link from.</p>
+      <div class="pg-btns"><button class="pg-btn pg-btn--primary" data-g="copy">Copy all notes</button><span id="pgCopied" class="pg-saved"></span></div>
       <textarea class="pg-export" readonly rows="16">${esc2(exportText())}</textarea>
-      <div class="pg-foot"><button class="pg-link pg-link--danger" data-g="clear">Delete all my notes</button></div>`;
+      <p class="pg-muted">They're written in BB code, so the [B] tags turn into bold once you post them.</p>
+      ${n ? `<div class="pg-foot">${confirmClear
+        ? `<span>Delete all ${n} note${n === 1 ? '' : 's'}? You can't get them back.</span><span class="pg-btns pg-btns--tight"><button class="pg-btn pg-btn--danger" data-g="clear-yes">Delete</button><button class="pg-btn" data-g="clear-no">Keep them</button></span>`
+        : `<button class="pg-link pg-link--danger" data-g="clear">Delete all my notes</button>`}</div>` : ''}`;
+  }
+
+  // A note saves 300 ms after the last keystroke. It keeps the step it was typed on, and any
+  // pending save runs before the panel re-renders, so "Next step" straight after typing
+  // can't drop the note or file it under the next step.
+  let pendingNote = null, noteTimer;
+  function flushNote() {
+    clearTimeout(noteTimer);
+    const f = pendingNote;
+    pendingNote = null;
+    if (f) f();
   }
 
   function renderPanel() {
+    flushNote();
     const g = el();
     g.classList.toggle('is-collapsed', collapsed);
     document.body.classList.toggle('pg-open', !collapsed);
     g.querySelector('.pg-body').innerHTML = view === 'home' ? homeHtml() : view === 'feedback' ? feedbackHtml() : stepHtml();
     const note = g.querySelector('#pgNote');
     if (note) {
-      let t;
+      const pid = pathId, i = idx, s = step();
       note.addEventListener('input', () => {
-        clearTimeout(t);
-        t = setTimeout(() => {
-          const s = step();
-          store.notes[noteKey(pathId, s.key)] = { path: path().title, step: idx + 1, stepTitle: s.title, group: store.group, text: note.value, at: new Date().toISOString() };
+        pendingNote = () => {
+          store.notes[noteKey(pid, s.key)] = { path: PATHS[pid].title, step: i + 1, stepTitle: s.title, group: store.group, text: note.value, at: new Date().toISOString() };
           save();
-          const sv = g.querySelector('#pgSaved'); if (sv) sv.textContent = 'Saved in this browser';
-        }, 300);
+          const sv = g.querySelector('#pgSaved'); if (sv && note.isConnected) sv.textContent = 'Saved in this browser';
+        };
+        clearTimeout(noteTimer);
+        noteTimer = setTimeout(flushNote, 300);
       });
     }
     const grp = g.querySelector('#pgGroup');
@@ -3361,40 +3432,34 @@ const Guide = (() => {
     if (a === 'step') return goStep(+b.dataset.i);
     if (a === 'helper') { step().helper.run(); return refreshStatus(); }
     if (a === 'restart') { const keep = pathId; return start(keep); }
-    if (a === 'feedback') { view = 'feedback'; return renderPanel(); }
+    if (a === 'feedback') { view = 'feedback'; confirmClear = false; return renderPanel(); }
     if (a === 'back-step') { view = 'step'; return renderPanel(); }
     if (a === 'toggle') { collapsed = !collapsed; return renderPanel(); }
     if (a === 'copy') {
-      const text = exportText();
+      // Clipboard writes only work inside the click. Where the browser refuses, select the text
+      // so the reviewer can copy it by hand.
       const ta = el().querySelector('.pg-export');
-      const okMsg = () => { const c = el().querySelector('#pgCopied'); if (c) c.textContent = 'Copied'; };
-      if (navigator.clipboard) navigator.clipboard.writeText(text).then(okMsg, () => { ta.select(); document.execCommand('copy'); okMsg(); });
-      else { ta.select(); document.execCommand('copy'); okMsg(); }
+      const say = m => { const c = el().querySelector('#pgCopied'); if (c) c.textContent = m; };
+      const byHand = () => { ta.focus(); ta.select(); say(document.execCommand('copy') ? 'Copied' : 'Selected. Press Ctrl+C or ⌘C to copy.'); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(() => say('Copied'), byHand);
+      else byHand();
       return;
     }
-    if (a === 'download') {
-      const blob = new Blob([exportText()], { type: 'text/plain' });
-      const u = URL.createObjectURL(blob);
-      const link = document.createElement('a'); link.href = u; link.download = 'citation-prototype-feedback.txt';
-      document.body.appendChild(link); link.click(); link.remove();
-      setTimeout(() => URL.revokeObjectURL(u), 1000);
-      return;
-    }
-    if (a === 'clear') {
-      if (!confirm('Delete every note you\'ve written in this prototype?')) return;
-      store.notes = {}; save(); return renderPanel();
-    }
+    if (a === 'clear') { confirmClear = true; return renderPanel(); }
+    if (a === 'clear-no') { confirmClear = false; return renderPanel(); }
+    if (a === 'clear-yes') { confirmClear = false; store.notes = {}; save(); return renderPanel(); }
   }
 
   function boot() {
     const g = document.createElement('aside');
     g.id = 'guide';
     g.className = 'pg';
-    g.innerHTML = `<div class="pg-head"><span class="pg-tag">Prototype guide</span><span class="pg-headNote">Not part of the forum</span>
+    g.innerHTML = `<div class="pg-head"><span class="pg-tag">Prototype<span class="pg-tagMore"> guide</span></span><span class="pg-headNote">Not part of the forum</span>
       <button class="pg-toggle" data-g="toggle" title="Hide or show the guide"><span class="pg-toggle-hide">Hide</span><span class="pg-toggle-show">Guide</span></button></div>
       <div class="pg-body"></div>`;
     document.body.appendChild(g);
     g.addEventListener('click', onGuideClick);
+    window.addEventListener('pagehide', flushNote);
     App.on(type => {
       if (type === 'reset') return;
       if (['change', 'route', 'render', 'form', 'preview', 'menu', 'overlay', 'overlay-closed', 'open-citation', 'edit-row', 'preview-tab'].includes(type)) {
