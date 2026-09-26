@@ -61,6 +61,38 @@ accounts:
 Copying a form, or exporting it and importing it on another board, keeps both
 question types.
 
+## What an accepted answer writes
+
+The thread post links each forum user named to their profile, and so do a
+reply to an existing thread and a conversation. The thread title, the answer
+stored in the form log and the notification email give plain usernames.
+
+The add-on writes every name the way the account spells it, so `doe.j` becomes
+`Doe.J`. A forum user named twice appears once, and the names keep the order
+the filer gave them.
+
+The usernames in the title, the form log and the email are a snapshot taken at
+submission, and a later rename doesn't change them. The link in the post points
+at the account, so it still reaches the right profile after a rename.
+
+Naming a forum user doesn't alert them. XenForo alerts only on a typed `@Name`,
+and the add-on writes no `@`.
+
+## Thread titles and emails
+
+A "Forum user" answer can fill a slot such as `{A2}` in the form's thread
+title, as a Text answer did, so a title keeps working after its question is
+converted. A "Forum users" question can't go in a title, like Advanced Forms'
+other multi-answer types. Saving the form refuses a title that uses one.
+Advanced Forms runs that check only when the form is saved, not on the
+change-type screen. A title whose question you convert to "Forum users" lists
+every name until the form's next save refuses it.
+
+Don't choose a "Forum user" question as the form's confirmation-email
+question. Advanced Forms offers it in that list, because it fills the list with
+the questions a thread title can use. The answer is a username, not an email
+address, so Advanced Forms sends no confirmation email.
+
 ## Disabling or uninstalling
 
 Convert every forum user question back to Text before you disable or

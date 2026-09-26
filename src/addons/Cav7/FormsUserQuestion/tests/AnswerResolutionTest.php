@@ -1,11 +1,12 @@
 <?php
 
 /**
- * Issue #312 (spec #310). The pure rule that decides whether a forum user
- * question's answer is accepted, and which forum users it names. The entity
- * extension that feeds it a real answer, the user finder query behind
- * $findAccount, and the database collation that makes "doe.j" find "Doe.J" all
- * need a live XenForo and are verified on the dev stack, not here.
+ * Issues #312 and #313 (spec #310). The pure rule that decides whether a forum
+ * user question's answer is accepted, which forum users it names, and the text
+ * an accepted answer writes. The entity extension that feeds it a real answer
+ * and puts that text in the post, title, form log and email, the user finder
+ * query behind $findAccount, and the database collation that makes "doe.j" find
+ * "Doe.J" all need a live XenForo and are verified on the dev stack, not here.
  *
  * Rule under test (Cav7\FormsUserQuestion\AnswerResolution::resolve):
  *
@@ -16,8 +17,13 @@
  *  - an answer that names nobody is accepted. Whether the question may be left
  *    empty is the caller's business.
  *
- * The slices carry the spec's numbers. Slices 3 and 9 cover the output text and
- * belong to #313.
+ * Text under test (Cav7\FormsUserQuestion\AnswerResolution\Result): postText()
+ * names each forum user in a [USER=id] tag and plainText() by username, both
+ * spelled the way the account spells the name, not the way the filer typed it.
+ * How either joins its names is not part of the contract, so the slices assert
+ * only what the text must contain or be.
+ *
+ * The slices carry the spec's numbers.
  *
  * The fixture stands in for the database: "Doe.J" and "doe.j" both find account
  * 12, the second as the case-insensitive collation would, "Smith.A" finds 34,
@@ -93,6 +99,14 @@ check(
     describe($result)
 );
 
+// Slice 3. Reddened by: writing the typed name instead of the account's username.
+$result = resolve('doe.j', true);
+check(
+    'slice 3: a name typed in another letter case is written the way the account spells it',
+    $result->isAccepted() && $result->plainText() === 'Doe.J',
+    describe($result) . ' plainText=' . json_encode($result->plainText())
+);
+
 // Slice 4. Reddened by: finding duplicates by the typed name, not the account id.
 $result = resolve('Doe.J, doe.j', true);
 check(
@@ -132,6 +146,16 @@ check(
     'slice 8: an empty answer is accepted with no users',
     $result->isAccepted() && userIds($result) === [],
     describe($result)
+);
+
+// Slice 9. Reddened by: putting the wrong id in a forum user's tag.
+$result = resolve('Smith.A, Doe.J', true);
+check(
+    'slice 9: the post text links each forum user by their own account id',
+    $result->isAccepted()
+        && str_contains($result->postText(), '[USER=34]Smith.A[/USER]')
+        && str_contains($result->postText(), '[USER=12]Doe.J[/USER]'),
+    describe($result) . ' postText=' . json_encode($result->postText())
 );
 
 if ($failures > 0) {
