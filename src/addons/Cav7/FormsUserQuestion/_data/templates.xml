@@ -6,6 +6,11 @@
 		macro in snog_forms_question_macros, less its maxlength and minlength. Those
 		read type_data, which a question converted from Text keeps, so the browser
 		would go on enforcing a limit the server no longer applies.
+
+		The box is the user picker, XenForo's autocomplete box pointed at the addon's
+		own lookup, Pub\Controller\Lookup, rather than members/find. "Forum user" uses
+		single mode. "Forum users" uses multiple mode, as search_form_macros::user does,
+		and each pick appends the name and a ", " separator.
 	</xf:comment>
 	<xf:set var="$defanswer" value="{$question.getDefaultAnswer()}" />
 	<xf:set var="$formData">
@@ -13,7 +18,9 @@
 					name="question[{$question.questionid}]"
 					value="{{ $defanswer ?: '' }}"
 					readonly="{{ ($question.getDefaultAnswer() is not empty && $question.readonly) || !$canSubmit }}"
-					required="{{ $question.error ? 'required' : '' }}" />
+					required="{{ $question.error ? 'required' : '' }}"
+					ac="{{ $question.doesCav7FuqTakeSeveral() ? 'true' : 'single' }}"
+					data-acurl="{{ link('forms-user-question/find') }}" />
 	</xf:set>
 	<xf:if is="$row">
 		<xf:formrow rowtype="input" rowclass="formRow--noColon"

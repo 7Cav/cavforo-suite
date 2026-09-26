@@ -40,6 +40,13 @@ before a release, per [CONTRIBUTING.md](../../../../CONTRIBUTING.md).
 | Forum user | One forum user |
 | Forum users | Several forum users, names separated by commas |
 
+The filer answers in a user picker. After the filer types two characters, it
+suggests up to 10 forum users whose username starts with them. Unlike
+XenForo's own name lookups, it also suggests forum users who haven't been
+active for months. It leaves out banned and unconfirmed accounts, but a filer
+can still type one in full. Guests and registrants who haven't confirmed their
+account get suggestions too.
+
 Both sit next to Text in the add-question chooser. To move an existing Text
 question over, open it and use **Change type**. Its past answers stay in the
 form log as they were. A regex or length limit it kept from its Text days no

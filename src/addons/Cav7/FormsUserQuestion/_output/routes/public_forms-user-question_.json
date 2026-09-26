@@ -1,0 +1,11 @@
+{
+    "route_type": "public",
+    "route_prefix": "forms-user-question",
+    "sub_name": "",
+    "format": "",
+    "build_class": "",
+    "build_method": "",
+    "controller": "Cav7\\FormsUserQuestion:Lookup",
+    "context": "",
+    "action_prefix": ""
+}

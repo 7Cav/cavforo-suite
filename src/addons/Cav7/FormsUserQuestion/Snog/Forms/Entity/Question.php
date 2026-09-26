@@ -64,6 +64,15 @@ class Question extends XFCP_Question
         return QuestionType::isForumUserType((string) $this->type);
     }
 
+    /**
+     * True for "Forum users". cav7_fuq_question_macros::name_box calls it to put
+     * the user picker in multiple mode, and in single mode otherwise.
+     */
+    public function doesCav7FuqTakeSeveral(): bool
+    {
+        return QuestionType::takesSeveral((string) $this->type);
+    }
+
     public function getAnswerErrors($answer, $conditionalAnswer = '')
     {
         if (!$this->isCav7FuqForumUserType()) {
