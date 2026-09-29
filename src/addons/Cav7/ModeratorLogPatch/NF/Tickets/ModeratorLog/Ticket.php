@@ -20,9 +20,18 @@ use Cav7\ModeratorLogPatch\AuthorshipLogging;
  * `priority`, which this addon decides.
  *
  * The class extension that reaches this file is registered against
- * `NF\Tickets\ModeratorLog\TicketHandler`, a name with no file behind it, because
- * that is the name XenForo's aliasing autoloader resolves to when the moderator log
- * asks for this handler. `cav7-moderator-log-patch:verify` checks it on the install.
+ * `NF\Tickets\ModeratorLog\Ticket`, the class NF ships and the one the content-type
+ * field names. XenForo files an extension under `XF::getClassForAlias()` of its
+ * `from_class`. The moderator log looks the handler up under `XF::getClassForAlias()`
+ * of that field. The extension applies only when both alias to the same name.
+ * `getClassForAlias()` appends `Handler` when a file by that name exists, and never
+ * strips it. NF ships no `TicketHandler.php`, so both sides stay at `...\Ticket`. If
+ * NF adds one, both move to the suffixed name together.
+ *
+ * The `Handler` spelling that XenForo's own handlers are registered under is wrong
+ * here. No file sits behind `...\TicketHandler`, so it aliases to itself and the
+ * lookup never asks for it. An extension registered against it installs and does
+ * nothing. `cav7-moderator-log-patch:verify` checks this on the install.
  */
 class Ticket extends XFCP_Ticket
 {
