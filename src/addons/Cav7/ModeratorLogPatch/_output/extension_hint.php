@@ -15,8 +15,8 @@ namespace Cav7\ModeratorLogPatch\NF\Calendar\ModeratorLog
 
 namespace Cav7\ModeratorLogPatch\NF\Tickets\ModeratorLog
 {
-	class XFCP_Message extends \NF\Tickets\ModeratorLog\MessageHandler {}
-	class XFCP_Ticket extends \NF\Tickets\ModeratorLog\TicketHandler {}
+	class XFCP_Message extends \NF\Tickets\ModeratorLog\Message {}
+	class XFCP_Ticket extends \NF\Tickets\ModeratorLog\Ticket {}
 }
 
 namespace Cav7\ModeratorLogPatch\XF\ModeratorLog

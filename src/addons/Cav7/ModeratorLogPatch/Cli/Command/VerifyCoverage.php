@@ -34,11 +34,12 @@ use XF\Service\Thread\CreatorService;
  * the abstract handler they are declared on, the resolved action names the rule keys
  * on, and the aliasing that decides which class an extension lands on — and neither
  * side of any of them is visible to a test that runs without XenForo and without the
- * vendor code on the include path. Rename a handler, add a real `TicketHandler.php`,
- * change the aliasable-namespace list, or resolve a handler in a different order, and
- * CI notices none of it. Two of those seams have already bitten: the shared abstract
- * handler is never resolved through the extension system, which is why the behaviour
- * is a trait, and the ticket handlers' registered names have no files behind them.
+ * vendor code on the include path. Rename a handler, change the aliasable-namespace
+ * list, or resolve a handler in a different order, and CI notices none of it. Two of
+ * those seams have already bitten. The shared abstract handler is never resolved
+ * through the extension system, which is why the behaviour is a trait. The ticket
+ * handlers' extensions once sat under names XenForo's aliasing never looks up. The
+ * ticket subclasses' docblocks say which names it does look up.
  *
  * Checking by hand instead means four things, all of which this command covers:
  * every registered content type resolves to a handler carrying the trait — the check

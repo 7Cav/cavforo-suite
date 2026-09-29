@@ -1,5 +1,5 @@
 {
-    "from_class": "NF\\Tickets\\ModeratorLog\\TicketHandler",
+    "from_class": "NF\\Tickets\\ModeratorLog\\Ticket",
     "to_class": "Cav7\\ModeratorLogPatch\\NF\\Tickets\\ModeratorLog\\Ticket",
     "execute_order": 10,
     "active": true
