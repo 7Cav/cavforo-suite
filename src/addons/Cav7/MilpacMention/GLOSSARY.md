@@ -3,7 +3,7 @@
 Treats a linked **milpac** like an `@`-mention: when a member's roster profile
 link appears in content, that member is alerted. Companion to NF/Rosters, and to
 NF/Tickets as a soft dependency. For **milpac** and other cross-addon terms, see
-the suite-wide [CONTEXT.md](../../../../CONTEXT.md).
+the suite-wide [GLOSSARY.md](../../../../GLOSSARY.md).
 
 ## Language
 

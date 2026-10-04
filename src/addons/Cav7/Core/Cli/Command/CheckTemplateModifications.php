@@ -15,7 +15,7 @@ use XF\Cli\Command\AbstractCommand;
  *
  * What the command answers and how to read its exits: the addon's README. What
  * "in force" means and what each shape tells the reader: the suite's
- * CONTEXT.md. The check itself is `TemplateModification\BoardFacts`
+ * GLOSSARY.md. The check itself is `TemplateModification\BoardFacts`
  * (what the board says) and `TemplateModification\Reconciliation` (which of
  * that is a failure). This is one of two thin callers, the other being
  * `Cron\CheckTemplateModifications`.

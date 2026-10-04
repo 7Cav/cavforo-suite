@@ -1,7 +1,7 @@
 # PUC citation images
 
 The Presidential Unit Citation documents that this addon attaches to each PUC
-grant it applies to a new milpac. See the addon `CONTEXT.md` (PUC, citation) and
+grant it applies to a new milpac. See the addon `GLOSSARY.md` (PUC, citation) and
 `docs/adr/0001-bundle-citation-set.md` for why the set is bundled here rather
 than cloned from a template milpac.
 

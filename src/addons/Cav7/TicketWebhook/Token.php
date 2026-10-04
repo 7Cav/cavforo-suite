@@ -3,7 +3,7 @@
 namespace Cav7\TicketWebhook;
 
 /**
- * A hook's token: what lets a caller post to one hook. See CONTEXT.md.
+ * A hook's token: what lets a caller post to one hook. See GLOSSARY.md.
  *
  * Pure PHP with no XenForo import, so tests/TokenTest.php runs it with bare
  * php. Three operations: generate a new token, hash one for storage, and

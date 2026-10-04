@@ -8,7 +8,7 @@ use XF\Mvc\Entity\Structure;
 
 /**
  * A ticket schedule: one record that names a ticket to open and the cadence to
- * open it on. See CONTEXT.md for the terms.
+ * open it on. See GLOSSARY.md for the terms.
  *
  * The row carries the title, first message and category, and nothing else about
  * the ticket. Priority, status and prefix come from the category and the

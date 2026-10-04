@@ -10,7 +10,7 @@ code, so NF/Rosters can be updated independently (same shape as
 [Cav7/RosterAudit](../RosterAudit/README.md)).
 
 Terms used below — milpac, PUC, PUC set, citation, enlistment record, Join Date,
-enlistment defaults — are defined in [CONTEXT.md](CONTEXT.md). The decisions
+enlistment defaults — are defined in [GLOSSARY.md](GLOSSARY.md). The decisions
 behind the behaviour are in [docs/adr/](docs/adr/).
 
 ## The add-form prefill

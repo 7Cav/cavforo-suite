@@ -4,6 +4,8 @@
 
 Accepted
 
+**Note (2026-10-04):** `CONTEXT-MAP.md` is now `GLOSSARY-MAP.md`, and each `CONTEXT.md` is now `GLOSSARY.md` in the same directory. The layout and the decision stand.
+
 ## Context
 
 The suite holds several addons that are developed, versioned, and released independently. Several arrived from their own repositories already carrying their own ADRs and domain notes. Their vocabularies overlap on the shared 7Cav domain (ranks, roster, milpac records, user groups, API scopes), but each addon also has language and decisions that only make sense inside it, for example DotTokenFix's tokenizer behavior or AvatarByRole's avatar variant rules.

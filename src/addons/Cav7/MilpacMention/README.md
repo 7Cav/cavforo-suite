@@ -16,7 +16,7 @@ dependency: leave NF/Tickets out and the add-on still installs, the other four
 surfaces still fire, and the two ticket extensions stay dormant.
 
 Terms used below — milpac link, milpac mention, surface, suppressed area — are
-defined in [CONTEXT.md](CONTEXT.md). The design is in
+defined in [GLOSSARY.md](GLOSSARY.md). The design is in
 [`docs/specs/milpac-mention-implementation-spec.md`](../../../../docs/specs/milpac-mention-implementation-spec.md).
 
 ## When the alert fires

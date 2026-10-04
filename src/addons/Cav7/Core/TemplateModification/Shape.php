@@ -11,7 +11,7 @@ namespace Cav7\Core\TemplateModification;
  * the two looks alike from the board.
  *
  * The values are the words the report prints, and they are the six the suite
- * CONTEXT.md lists under *shape*, so a failure line and the domain doc say the
+ * GLOSSARY.md lists under *shape*, so a failure line and the domain doc say the
  * same thing. Two glossary terms deliberately have no constant here:
  * *master mismatch* and *style mismatch* are the two diagnoses behind
  * `MATCHED_NOTHING`, and the failure's reason tells them apart rather than the

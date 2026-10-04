@@ -71,7 +71,7 @@ An addon's README answers three questions, for someone who has just met the addo
 its place against one of those. Everything else already has a home:
 
 - Why a decision went the way it did → an ADR under the addon's `docs/adr/`.
-- What a term means → the addon's `CONTEXT.md`.
+- What a term means → the addon's `GLOSSARY.md`.
 - What the code assumes about a vendor's internals, and what breaks silently if the
   vendor moves → the docblock of the class making the assumption.
 - What was checked, when, and what it proved → the commit, the issue, the test.
@@ -92,7 +92,7 @@ Shared scripts live in [`tools/`](tools/); [tools/README.md](tools/README.md) ha
 
 - Run an addon's tests: `tools/run-tests.sh <AddonId>`. These are standalone PHP scripts and need only `php`, plus `pdo_sqlite` for DiscordSyncPatch, whose sweep test runs the addon's real SQL against an in-memory database rather than a fake that answers by query shape.
 - Build the **release build** from committed files, with no XenForo install: `tools/package-addon.sh <AddonId>`. CI and the release workflow use this, it produces the `upload/...` layout the admin panel installs from, and it is the only zip anyone should install a board from.
-- Build a **local build** for testing against a real install (needs a XenForo install): `tools/build.sh <AddonId>`. It wraps `xf-addon:build-release` (export to `_data/`, then package). Point it at your install with `XF_ROOT` or `XF_CMD`. It ships each addon's `tests/`, `docs/` and `CONTEXT.md` deliberately — see [ADR 0005](docs/adr/0005-the-release-build-is-the-distribution-channel.md).
+- Build a **local build** for testing against a real install (needs a XenForo install): `tools/build.sh <AddonId>`. It wraps `xf-addon:build-release` (export to `_data/`, then package). Point it at your install with `XF_ROOT` or `XF_CMD`. It ships each addon's `tests/`, `docs/` and `GLOSSARY.md` deliberately — see [ADR 0005](docs/adr/0005-the-release-build-is-the-distribution-channel.md).
 
 CI runs the tests and a static build check on every push and pull request: lint, `addon.json` and `_data/` validation, an `_output/`-and-`_data/` consistency check, and a packaging dry-run. It also packages every addon for real and reads the archive, so a release zip that gained a `tests/` directory fails the build. Once for the repo rather than per addon, it checks the root README's addon catalog against the addons that ship, so adding an addon and leaving the table alone fails. None of it runs XenForo — that is the constraint on what CI can check, rather than any rule about which tools a check may use. The consistency check reads both trees against each other, so re-export and commit both whenever you change XenForo data, or it will fail — including when a data type reaches one tree and not the other. For most types it compares what the records actually say and not just how many there are, so editing one side alone fails even when the counts still line up; [tools/README.md](tools/README.md) lists which types are checked how. It also reads each `_output/<type>/_metadata.json` against the files beside it, which is what catches a tree that was hand-edited rather than exported — so hand-edit neither tree, in either direction.
 

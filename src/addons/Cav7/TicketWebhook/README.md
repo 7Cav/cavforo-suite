@@ -11,8 +11,8 @@ tool's own templates render, and the category's staff are notified as they are
 for any other ticket.
 
 The terms this README uses (hook, caller, token, inactive) are defined in
-[CONTEXT.md](CONTEXT.md). Opener is defined in the suite-wide
-[CONTEXT.md](../../../../CONTEXT.md). Why a hook speaks Discord's webhook
+[GLOSSARY.md](GLOSSARY.md). Opener is defined in the suite-wide
+[GLOSSARY.md](../../../../GLOSSARY.md). Why a hook speaks Discord's webhook
 request, and what that costs, is in
 [ADR-0001](docs/adr/0001-inbound-hooks-speak-discord.md).
 

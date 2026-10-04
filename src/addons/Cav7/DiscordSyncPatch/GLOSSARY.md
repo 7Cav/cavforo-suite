@@ -3,7 +3,7 @@
 Makes a member's forum user groups authoritative for every Discord role a group
 grants. Companion to NF/Discord, whose per-user sync message it extends. For
 terms shared across the suite, see the suite-wide
-[CONTEXT.md](../../../../CONTEXT.md).
+[GLOSSARY.md](../../../../GLOSSARY.md).
 
 ## Language
 

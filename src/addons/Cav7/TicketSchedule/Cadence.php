@@ -3,7 +3,7 @@
 namespace Cav7\TicketSchedule;
 
 /**
- * How a ticket schedule repeats: a start date plus a unit. See CONTEXT.md.
+ * How a ticket schedule repeats: a start date plus a unit. See GLOSSARY.md.
  *
  * Pure PHP with no XenForo import, so tests/CadenceTest.php runs it with bare
  * php. Every date in and out is a calendar day as a Y-m-d string, with no time

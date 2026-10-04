@@ -45,7 +45,7 @@ exports `_data/` from the database, then packages the zip into the addon's
 `_releases/` directory. This needs a working XenForo install.
 
 A local build is a testing artifact, not something to install a board from. It
-ships the addon's `tests/`, `docs/` and `CONTEXT.md`, deliberately and
+ships the addon's `tests/`, `docs/` and `GLOSSARY.md`, deliberately and
 unchecked; `package-addon.sh` below is the release build, and the only
 distribution channel. The reasoning is in
 [ADR 0005](../docs/adr/0005-the-release-build-is-the-distribution-channel.md).
@@ -69,7 +69,7 @@ reproduces the `upload/src/addons/Cav7/<Id>/` layout that
 `xf-addon:build-release` emits, so the zip installs through the admin panel's
 "Install/upgrade from archive". Because it archives committed content only,
 `_data/` must already be exported and committed. Dev-only paths (`_output/`,
-`tests/`, `docs/`, `CONTEXT.md`, ...) are left out, and so are `_files/` and
+`tests/`, `docs/`, `GLOSSARY.md`, ...) are left out, and so are `_files/` and
 `build.json`, which XenForo also keeps out of `upload/src/addons/...`.
 
 `package-addon.sh` always runs `package-web-assets.php` (below): it copies web

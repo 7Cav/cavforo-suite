@@ -14,7 +14,7 @@ member already in that state corrects themselves on their next ordinary sync. Th
 no migration step and no mass role update when it is enabled.
 
 Terms used below — managed role, divergence, unlinked holder — are defined in
-[CONTEXT.md](CONTEXT.md). The decisions behind the behaviour are in
+[GLOSSARY.md](GLOSSARY.md). The decisions behind the behaviour are in
 [docs/adr/](docs/adr/).
 
 ## The resync button

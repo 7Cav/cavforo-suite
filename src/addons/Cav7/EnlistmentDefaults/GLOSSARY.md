@@ -7,7 +7,7 @@ near-complete form and the new member starts with what every member already
 carries. Companion to NF/Rosters; attaches through XenForo class extensions and
 ships none of the vendor's code (same shape as
 [Cav7/RosterAudit](../RosterAudit/README.md)). For **milpac**, **citation**
-and **citation image**, see the suite-wide [CONTEXT.md](../../../../CONTEXT.md).
+and **citation image**, see the suite-wide [GLOSSARY.md](../../../../GLOSSARY.md).
 
 ## Language
 
@@ -41,7 +41,7 @@ either way) and "pending date" (**pending** means not yet carried at the moment
 the set is applied, which is the normal state of every date on a new milpac).
 
 **Citation**:
-Defined suite-wide, in the root [CONTEXT.md](../../../../CONTEXT.md). In this
+Defined suite-wide, in the root [GLOSSARY.md](../../../../GLOSSARY.md). In this
 addon it is always a PUC's. Each PUC date has one citation image, the same for
 every member who carries that date, so the addon bundles one image per date
 instead of producing one per member.

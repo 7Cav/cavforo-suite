@@ -48,7 +48,7 @@ fi
 # ReleaseBuilderService excludes _files/ and build.json there too: _files/ web
 # assets are copied to the upload/ web root instead (see the web-asset step
 # below), and build.json is a build input, not a shipped file.
-excludes=( _output _files build.json tests docs CONTEXT.md .out-of-scope .gitattributes )
+excludes=( _output _files build.json tests docs GLOSSARY.md .out-of-scope .gitattributes )
 
 # version_string from the committed addon.json (well-formed, one key per line).
 ver="$(git -C "$repo_root" show "$ref:$sub/addon.json" \

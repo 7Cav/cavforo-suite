@@ -11,7 +11,7 @@ use XF\Mvc\Reply\AbstractReply;
 
 /**
  * The one public route, `ticket-webhooks/{hook_id}/{token}`: a caller posts
- * Discord's webhook request here and one ticket opens. See CONTEXT.md for
+ * Discord's webhook request here and one ticket opens. See GLOSSARY.md for
  * hook, caller and token, and ADR-0001 for why the request is Discord's.
  *
  * Nothing of a browser session applies to a caller, so the stock pre-dispatch

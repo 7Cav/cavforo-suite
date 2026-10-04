@@ -3,7 +3,7 @@
 Opens an NF/Tickets ticket when a remote tool posts to a hook, so an alert from
 a monitor or an updater lands as a ticket rather than in a chat channel nobody
 is reading. Hooks are written and edited in the ACP. For cross-addon terms, such
-as opener, see the suite-wide [CONTEXT.md](../../../../CONTEXT.md).
+as opener, see the suite-wide [GLOSSARY.md](../../../../GLOSSARY.md).
 
 ## Language
 

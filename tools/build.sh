@@ -5,7 +5,7 @@
 # from the database first, then packages the zip.
 #
 # A local build is a testing artifact. It ships the addon's tests/, docs/ and
-# CONTEXT.md, deliberately and unchecked, so it is not a zip to install a board
+# GLOSSARY.md, deliberately and unchecked, so it is not a zip to install a board
 # from — tools/package-addon.sh builds the one that is. See
 # docs/adr/0005-the-release-build-is-the-distribution-channel.md.
 #

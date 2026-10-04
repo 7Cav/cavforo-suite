@@ -4,7 +4,7 @@ Lets an Advanced Forms form ask for forum users by choosing them, where today it
 can only ask for a name typed as text. Companion to [OzzModz] Advanced Forms
 (`Snog/Forms`), which owns the forms, their questions and the thread a
 submission posts. For **milpac** and other suite-wide terms, see the root
-[CONTEXT.md](../../../../CONTEXT.md).
+[GLOSSARY.md](../../../../GLOSSARY.md).
 
 ## Language
 
