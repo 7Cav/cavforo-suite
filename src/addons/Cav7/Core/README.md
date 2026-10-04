@@ -18,7 +18,7 @@ The command asks the whole question at once. It exits:
 - `1` — one or more are not, each named on its own line
 - `2` — the check could not be performed, which is not the same as finding nothing wrong
 
-A failure line names which of the six shapes it is, because the remedies differ, and carries its own remedy, so the command's output is the reference rather than any list here. The vocabulary — shipped, installed, in force, and the shapes — is defined once in [CONTEXT.md](../../../../CONTEXT.md).
+A failure line names which of the six shapes it is, because the remedies differ, and carries its own remedy, so the command's output is the reference rather than any list here. The vocabulary — shipped, installed, in force, and the shapes — is defined once in [GLOSSARY.md](../../../../GLOSSARY.md).
 
 It reads XenForo's verdict rather than any template body, so what it reports is what the board recorded the last time each copy was compiled. It repairs nothing, mutes nothing, and ignores modifications belonging to addons outside this suite.
 

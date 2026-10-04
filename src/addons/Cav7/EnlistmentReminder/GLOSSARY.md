@@ -6,7 +6,7 @@ deadline without a clerk picking it up, so applications do not creep toward the
 and the enlistment forum; reads the thread's status prefixes to tell a started
 application from an untouched one, and roster positions to decide who to tell.
 For **milpac** and other cross-addon terms, see the suite-wide
-[CONTEXT.md](../../../../CONTEXT.md).
+[GLOSSARY.md](../../../../GLOSSARY.md).
 
 ## Language
 

@@ -10,7 +10,7 @@ impossible for normal user tokens: an OAuth client can learn who a user is,
 but not what groups they belong to. This add-on closes that gap for the
 user's own account only.
 
-Terms used below are defined in [CONTEXT.md](CONTEXT.md). The decisions behind
+Terms used below are defined in [GLOSSARY.md](GLOSSARY.md). The decisions behind
 the behaviour are in [docs/adr/](docs/adr/).
 
 ## Behavior

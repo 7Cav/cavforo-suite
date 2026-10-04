@@ -123,13 +123,13 @@ function shippedAnywhere(array $entries, string $name): array
  *
  * tests/ is the load-bearing member. A shipped tests/*.php is reachable and
  * executable over HTTP on an nginx-served board, because XenForo's only guard
- * for src/ is an Apache-syntax .htaccess. docs/ and CONTEXT.md are inert by
+ * for src/ is an Apache-syntax .htaccess. docs/ and GLOSSARY.md are inert by
  * comparison and ride along because it is the same exclusion either way.
  */
-const DEV_ONLY = ['tests', 'docs', 'CONTEXT.md'];
+const DEV_ONLY = ['tests', 'docs', 'GLOSSARY.md'];
 
 /**
- * Build inputs — see the glossary in the root CONTEXT.md. Kept apart from
+ * Build inputs — see the root GLOSSARY.md. Kept apart from
  * DEV_ONLY because they are excluded for a different reason and carry a
  * different severity: a shipped tests/*.php is an executable endpoint, a
  * shipped build.json is inert. The assertion does not grade on that. An entry

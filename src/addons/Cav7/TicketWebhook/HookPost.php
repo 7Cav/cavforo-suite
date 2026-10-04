@@ -4,7 +4,7 @@ namespace Cav7\TicketWebhook;
 
 /**
  * What one post to a hook yields: not found, bad request, or accepted with
- * the title and message of the ticket to open. See CONTEXT.md for hook,
+ * the title and message of the ticket to open. See GLOSSARY.md for hook,
  * caller and token.
  *
  * Pure PHP with no XenForo import, so tests/HookPostTest.php runs it with

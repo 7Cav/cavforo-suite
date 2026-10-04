@@ -9,7 +9,7 @@ namespace Cav7\EnlistmentReminder;
  * processing-status suppression and the once-only guard can be exercised for
  * real in plain PHP rather than pinned by shape.
  *
- * An application is reminded when all three hold (see CONTEXT.md for the
+ * An application is reminded when all three hold (see GLOSSARY.md for the
  * domain terms):
  *
  *   - un-reminded: it is not already recorded in the marker table;

@@ -2,7 +2,7 @@
 
 Suite-wide vocabulary, for terms that cut across more than one addon. Terms
 specific to a single addon live in that addon's
-`src/addons/Cav7/<AddonId>/CONTEXT.md`. See [CONTEXT-MAP.md](CONTEXT-MAP.md).
+`src/addons/Cav7/<AddonId>/GLOSSARY.md`. See [GLOSSARY-MAP.md](GLOSSARY-MAP.md).
 
 ## Language
 
@@ -73,7 +73,7 @@ _Avoid_: canonical build
 
 **dev-only path**:
 A path an add-on carries for the people working on it rather than for the board
-running it — its `tests/`, `docs/`, `CONTEXT.md` and `_output` tree. Distinct
+running it — its `tests/`, `docs/`, `GLOSSARY.md` and `_output` tree. Distinct
 from a build input, below, which the build itself consumes.
 
 **build input**:

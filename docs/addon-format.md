@@ -98,5 +98,5 @@ The suite handles these once, at the root:
 These stay with the addon, under `src/addons/Cav7/<AddonId>/`:
 
 - The addon's `README.md`.
-- The addon's `CONTEXT.md` (its domain glossary), if it has one.
-- The addon's own `docs/adr/`, including any ADRs it arrived with. This repo is multi-context; see [CONTEXT-MAP.md](../CONTEXT-MAP.md).
+- The addon's `GLOSSARY.md` (its domain glossary), if it has one.
+- The addon's own `docs/adr/`, including any ADRs it arrived with. This repo is multi-context; see [GLOSSARY-MAP.md](../GLOSSARY-MAP.md).

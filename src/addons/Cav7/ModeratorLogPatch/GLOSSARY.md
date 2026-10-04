@@ -4,7 +4,7 @@ Makes XenForo's moderator log record what members with moderation permissions
 actually do, instead of only what the handful holding a moderator record do.
 Companion to XF core's log handlers and to those of NF/Tickets and NF/Calendar,
 all of which it extends. For terms shared across the suite, see the suite-wide
-[CONTEXT.md](../../../../CONTEXT.md).
+[GLOSSARY.md](../../../../GLOSSARY.md).
 
 ## Language
 

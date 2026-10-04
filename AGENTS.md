@@ -18,7 +18,7 @@ Enhancements closed as `wontfix` leave a record in `.out-of-scope/`, one file pe
 
 ### Domain docs
 
-Multi-context: a suite-wide context plus one per addon. See `docs/agents/domain.md` and `CONTEXT-MAP.md`.
+Multi-context: a suite-wide context plus one per addon. See `docs/agents/domain.md` and `GLOSSARY-MAP.md`.
 
 ## Writing tests
 

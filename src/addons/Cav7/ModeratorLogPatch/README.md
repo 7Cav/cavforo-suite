@@ -17,7 +17,7 @@ same way: locks, prefixes, moves, approvals, soft deletes, thread type changes,
 title edits, and the post, profile-post, ticket and calendar equivalents.
 
 Terms used below — moderator record, author-reachable action — are defined in
-[CONTEXT.md](CONTEXT.md). The decisions behind the behaviour are in
+[GLOSSARY.md](GLOSSARY.md). The decisions behind the behaviour are in
 [docs/adr/](docs/adr/).
 
 ## What it changes

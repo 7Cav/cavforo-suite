@@ -33,7 +33,7 @@ class ScanQueue
      * mistyped value reaches this method intact.
      *
      * 30 days is chosen against the slip this is for — extra zeros — rather than
-     * against a calendar. The queue's own SLA is 48 hours (see CONTEXT.md), so no
+     * against a calendar. The queue's own SLA is 48 hours (see GLOSSARY.md), so no
      * usable deadline comes close to the bound and nothing real is refused, while
      * `2400` and `240000` typed for `24` are both caught. A year was the first
      * choice and is too loose to be worth having: the oldest open application in

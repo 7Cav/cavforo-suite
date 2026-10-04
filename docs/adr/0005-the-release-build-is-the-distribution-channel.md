@@ -4,6 +4,8 @@
 
 Accepted.
 
+**Note (2026-10-04):** each addon's `CONTEXT.md` is now `GLOSSARY.md`, so read every `CONTEXT.md` below as `GLOSSARY.md`. `tools/package-addon.sh` excludes it under the new name. The decision stands.
+
 ## Context
 
 Two paths turn an add-on into a zip and they do not agree about what goes in it.

@@ -10,7 +10,7 @@ namespace Cav7\EnlistmentReminder;
  * rather than pinned by shape.
  *
  * The clerk seats split by enlistment type into two overlapping responsibility
- * sets (see CONTEXT.md's Processing Clerk term): a thread's _primary_ prefix is
+ * sets (see GLOSSARY.md's Processing Clerk term): a thread's _primary_ prefix is
  * either Standard (57 by default) or Re-Enlistment (58). Built from the four
  * parsed config lists, it answers the routing question and reports the two config
  * faults that live in those same four lists:

@@ -7,7 +7,7 @@ use XF\Mvc\Entity\Structure;
 
 /**
  * A hook: one address a caller can post to, and the record behind it. See
- * CONTEXT.md for the terms.
+ * GLOSSARY.md for the terms.
  *
  * The row carries the name, the category and the token's hash, and nothing
  * else about the ticket. Priority, status and prefix come from the category

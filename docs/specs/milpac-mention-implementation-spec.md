@@ -551,7 +551,7 @@ Under `src/addons/Cav7/MilpacMention/`:
 ```
 addon.json
 README.md                                        # description, requirements, provenance note
-CONTEXT.md                                        # optional: addon-local glossary, links suite CONTEXT.md
+GLOSSARY.md                                        # optional: addon-local glossary, links suite GLOSSARY.md
 MilpacResolver.php                                # shared relation_id -> user_id reverse resolver
 XF/Service/Message/PreparerService.php            # shared detection hook (§2.2)
 XF/Service/Post/NotifierService.php               # fire milpac_mention on post (§2.4)

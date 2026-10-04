@@ -175,7 +175,7 @@ check('awardDateTimestamp() rejects a single-digit date the format guard alone c
 // --- The bundled default record-type option is the Transfer type id --------
 // This addon exists to stop the historical drift where the first record was
 // written under the wrong type. Pin the shipped default so a stray edit to
-// _data/options.xml fails CI. CONTEXT.md fixes the Transfer type id at 3.
+// _data/options.xml fails CI. GLOSSARY.md fixes the Transfer type id at 3.
 $optionsXml = simplexml_load_file(__DIR__ . '/../_data/options.xml');
 check(
     'options.xml could be read',

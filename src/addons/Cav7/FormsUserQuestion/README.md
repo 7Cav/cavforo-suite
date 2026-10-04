@@ -11,7 +11,7 @@ question types check every name against the forum's accounts before the form
 submits.
 
 The terms this README uses (forum user, forum user question, user picker,
-filer) are defined in [CONTEXT.md](CONTEXT.md).
+filer) are defined in [GLOSSARY.md](GLOSSARY.md).
 
 ## Requirements
 

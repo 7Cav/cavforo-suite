@@ -17,7 +17,7 @@ seated where on the roster today.
 
 Why the alert is not a mention is in
 [docs/adr/0001-alert-not-mention.md](docs/adr/0001-alert-not-mention.md); the
-domain terms are in [CONTEXT.md](CONTEXT.md).
+domain terms are in [GLOSSARY.md](GLOSSARY.md).
 
 ## What it scans, and what it skips
 
@@ -51,7 +51,7 @@ All options live under **Admin CP → Options → Enlistment Reminder**:
 
 Do not put the enlistment type prefixes (57, 58) in the in-processing list: they
 are not processing statuses, and the run aborts if they are there. **Processing
-status** in [CONTEXT.md](CONTEXT.md) is where that distinction is defined.
+status** in [GLOSSARY.md](GLOSSARY.md) is where that distinction is defined.
 
 ## When a scan stops, and when it only complains
 

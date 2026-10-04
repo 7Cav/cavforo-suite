@@ -18,7 +18,7 @@ prefix or watch behaviour, so the queue and the clerks see the same threads
 they see today.
 
 The terms this README uses (next-steps page, triggering form, vendor reply) are
-defined in [CONTEXT.md](CONTEXT.md).
+defined in [GLOSSARY.md](GLOSSARY.md).
 
 ## Requirements
 

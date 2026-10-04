@@ -22,7 +22,7 @@ namespace Cav7\RosterPatch\NF\Rosters\Entity;
  * EnlistmentDefaults' _postSave never runs and no awards are granted.
  *
  * The rule is one milpac per member across every roster, not one per roster
- * (the suite glossary in the root CONTEXT.md), so the read is not scoped to the
+ * (the suite glossary in the root GLOSSARY.md), so the read is not scoped to the
  * roster being saved to.
  *
  * The row being saved is excluded by its own relation_id, which is what keeps

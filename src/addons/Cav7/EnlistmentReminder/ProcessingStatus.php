@@ -19,7 +19,7 @@ namespace Cav7\EnlistmentReminder;
  *
  * RRD works the queue through a status prefix state machine supplied by the
  * SV/MultiPrefix add-on, which stores every prefix a thread carries in its own
- * thread-prefix link table. CONTEXT.md's "Processing status" term is the one home
+ * thread-prefix link table. GLOSSARY.md's "Processing status" term is the one home
  * for which statuses those are and what order they run in; nothing here depends on
  * either, because membership in a set is order-blind.
  *

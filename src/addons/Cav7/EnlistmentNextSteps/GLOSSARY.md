@@ -6,9 +6,9 @@ to their own thread. Companion to [OzzModz] Advanced Forms (`Snog/Forms`);
 attaches through one XenForo class extension over the vendor's public form
 controller and ships none of the vendor's code. For **Enlistment queue** and
 **Processing Clerk**, see
-[Cav7/EnlistmentReminder's CONTEXT.md](../EnlistmentReminder/CONTEXT.md). For
+[Cav7/EnlistmentReminder's GLOSSARY.md](../EnlistmentReminder/GLOSSARY.md). For
 **milpac** and other suite-wide terms, see the root
-[CONTEXT.md](../../../../CONTEXT.md).
+[GLOSSARY.md](../../../../GLOSSARY.md).
 
 ## Language
 

@@ -3,7 +3,7 @@
 Opens an NF/Tickets ticket on a calendar cadence, so recurring work such as a
 yearly review has a ticket waiting on the day rather than depending on someone
 remembering. Schedules are written and edited in the ACP. For cross-addon terms,
-see the suite-wide [CONTEXT.md](../../../../CONTEXT.md).
+see the suite-wide [GLOSSARY.md](../../../../GLOSSARY.md).
 
 ## Language
 
@@ -44,5 +44,5 @@ yields one late ticket rather than a pile.
 _Avoid_: next run (the cron runs hourly regardless), fire date, trigger
 
 **opener**:
-Defined in the suite-wide [CONTEXT.md](../../../../CONTEXT.md), since more
+Defined in the suite-wide [GLOSSARY.md](../../../../GLOSSARY.md), since more
 than one addon opens tickets as one.
