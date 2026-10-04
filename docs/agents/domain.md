@@ -11,7 +11,7 @@ This repo is multi-context. Each addon is its own bounded context, plus there is
 - **`src/addons/Cav7/<AddonId>/GLOSSARY.md`** for the addon you are working in, if it exists.
 - **`docs/adr/`** at the root for suite-wide decisions, plus **`src/addons/Cav7/<AddonId>/docs/adr/`** for decisions specific to the addon you are touching.
 
-If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/grill-with-docs`) creates them lazily when terms or decisions actually get resolved.
+If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/domain-modeling`) creates them lazily when terms or decisions actually get resolved.
 
 ## File structure
 
@@ -35,7 +35,7 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 
 When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in the relevant `GLOSSARY.md`, the addon's first, then the suite-wide one. Don't drift to synonyms the glossary explicitly avoids.
 
-If the concept you need isn't in the glossary yet, that's a signal. Either you're inventing language the project doesn't use (reconsider), or there's a real gap (note it for `/grill-with-docs`).
+If the concept you need isn't in the glossary yet, that's a signal. Either you're inventing language the project doesn't use (reconsider), or there's a real gap (note it for `/domain-modeling`).
 
 ## Flag ADR conflicts
 
