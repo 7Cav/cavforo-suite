@@ -37,8 +37,45 @@ class Setup extends AbstractSetup
         });
     }
 
+    public function installStep2(): void
+    {
+        $this->createAlertKeyTable();
+    }
+
+    /**
+     * 1.1.0 adds the alert key table. Existing tickets get no rows, so nothing
+     * changes for a hook until a call carries a key.
+     */
+    public function upgrade1010070Step1(): void
+    {
+        $this->createAlertKeyTable();
+    }
+
     public function uninstallStep1(): void
     {
         $this->schemaManager()->dropTable('xf_cav7_ticket_webhook_hook');
+    }
+
+    public function uninstallStep2(): void
+    {
+        $this->schemaManager()->dropTable('xf_cav7_ticket_webhook_alert_key');
+    }
+
+    /**
+     * One row per hook and alert key, naming the ticket the key links. The
+     * key is stored only as the 32 bytes HookCall hashes it to, because
+     * healthchecks.io's natural key is also the secret that pings a check.
+     * Deleting a ticket leaves its row; the next call finds no ticket and
+     * replaces the row.
+     */
+    protected function createAlertKeyTable(): void
+    {
+        $this->schemaManager()->createTable('xf_cav7_ticket_webhook_alert_key', function (Create $table)
+        {
+            $table->addColumn('hook_id', 'int');
+            $table->addColumn('key_hash', 'varbinary', 32);
+            $table->addColumn('ticket_id', 'int');
+            $table->addPrimaryKey(['hook_id', 'key_hash']);
+        });
     }
 }

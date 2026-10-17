@@ -13,6 +13,11 @@ use XF\Mvc\Entity\Structure;
  * else about the ticket. Priority, status and prefix come from the category
  * and the vendor's option defaults when a call opens one.
  *
+ * A hook owns its alert keys: rows in ALERT_KEY_TABLE, one per key hash,
+ * each naming the ticket the key links. Deleting the hook deletes them and
+ * leaves the tickets. Replacing the token and toggling the hook save this
+ * same row and leave them alone.
+ *
  * COLUMNS
  * @property int|null $hook_id
  * @property string $name
@@ -29,6 +34,8 @@ use XF\Mvc\Entity\Structure;
  */
 class Hook extends Entity
 {
+    public const ALERT_KEY_TABLE = 'xf_cav7_ticket_webhook_alert_key';
+
     /**
      * The row as HookCall reads it: whether it opens anything, what a
      * presented token is matched against, and the title of last resort.
@@ -40,6 +47,48 @@ class Hook extends Entity
             'token_hash' => (string) $this->token_hash,
             'name' => (string) $this->name,
         ];
+    }
+
+    /**
+     * The ticket a key hash links on this hook, or null when it links none or
+     * the ticket is gone, as a ticket merged into another is.
+     */
+    public function linkedTicket(string $keyHash): ?\NF\Tickets\Entity\Ticket
+    {
+        $ticketId = (int) $this->db()->fetchOne(
+            'SELECT ticket_id FROM ' . self::ALERT_KEY_TABLE . ' WHERE hook_id = ? AND key_hash = ?',
+            [$this->hook_id, $keyHash]
+        );
+
+        /** @var \NF\Tickets\Entity\Ticket|null $ticket */
+        $ticket = $ticketId ? $this->em()->find('NF\Tickets:Ticket', $ticketId) : null;
+
+        return $ticket;
+    }
+
+    /**
+     * Record a call that reached a ticket: link the key to it, when the call
+     * had one, and move the hook list's last used date and last ticket.
+     */
+    public function recordCall(int $ticketId, ?string $keyHash): void
+    {
+        if ($keyHash !== null) {
+            $this->db()->insert(self::ALERT_KEY_TABLE, [
+                'hook_id' => $this->hook_id,
+                'key_hash' => $keyHash,
+                'ticket_id' => $ticketId,
+            ], true);
+        }
+
+        $this->fastUpdate([
+            'last_used_date' => \XF::$time,
+            'last_ticket_id' => $ticketId,
+        ]);
+    }
+
+    protected function _postDelete(): void
+    {
+        $this->db()->delete(self::ALERT_KEY_TABLE, 'hook_id = ?', $this->hook_id);
     }
 
     public static function getStructure(Structure $structure): Structure
