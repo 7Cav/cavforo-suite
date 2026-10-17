@@ -50,6 +50,59 @@ class Hook extends Entity
     }
 
     /**
+     * How long a call waits for another call with its key to finish, in
+     * seconds. Opening a ticket or replying takes well under one. A call that
+     * waits this long has done nothing, so it answers 500 and a caller that
+     * retries loses nothing.
+     */
+    public const KEY_LOCK_WAIT = 10;
+
+    /**
+     * Take this hook's lock on a key hash, waiting up to KEY_LOCK_WAIT while
+     * another call holds it, so calls with one key run one at a time. Calls
+     * with other keys take other locks and do not wait.
+     *
+     * The lock is a database named lock, GET_LOCK. It belongs to the DB
+     * connection, not to a transaction, so the Creator's and the Replier's
+     * own commits leave it held. The server frees it when the connection
+     * closes, so a request that dies holding it lets go of it. XenForo's
+     * replication adapter sends lock queries to the write server, so every
+     * call meets the same lock.
+     *
+     * Names are server-wide, and MySQL refuses one over 64 characters. This
+     * one carries the hook id and the first half of the hash, 50 characters
+     * at most. Two keys whose names collide only wait on each other.
+     *
+     * @throws \RuntimeException when the lock stayed taken past the wait
+     */
+    public function lockKey(string $keyHash): void
+    {
+        $taken = $this->db()->fetchOne('SELECT GET_LOCK(?, ?)', [$this->keyLockName($keyHash), self::KEY_LOCK_WAIT]);
+        if ((int) $taken !== 1) {
+            throw new \RuntimeException(sprintf('the key stayed locked for %d seconds', self::KEY_LOCK_WAIT));
+        }
+    }
+
+    /**
+     * Release the lock lockKey() took. Never throws, because it runs after a
+     * call has done its work and the caller must still hear success. The
+     * query fails only on a broken connection, and the server has freed the
+     * lock with it.
+     */
+    public function unlockKey(string $keyHash): void
+    {
+        try {
+            $this->db()->fetchOne('SELECT RELEASE_LOCK(?)', [$this->keyLockName($keyHash)]);
+        } catch (\Throwable $e) {
+        }
+    }
+
+    protected function keyLockName(string $keyHash): string
+    {
+        return 'cav7tw:' . $this->hook_id . ':' . bin2hex(substr($keyHash, 0, 16));
+    }
+
+    /**
      * The ticket a key hash links on this hook, or null when it links none or
      * the ticket is gone, as a ticket merged into another is.
      */
