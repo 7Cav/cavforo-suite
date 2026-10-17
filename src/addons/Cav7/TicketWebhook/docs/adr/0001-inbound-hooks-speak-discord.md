@@ -3,6 +3,14 @@
 - **Status:** Accepted
 - **Date:** 2026-09-21
 - **Issues:** #288
+- **Amended by:** [ADR-0002](0002-a-call-with-an-alert-key-joins-its-ticket.md),
+  which replaces the consequence "One post is one ticket, and the addon does not
+  de-duplicate". A call that carries an alert key now joins that key's ticket.
+- **Note (2026-10-17):** "Every tool with a Discord target" overstates it.
+  healthchecks.io's Discord integration takes its URL from Discord's own sign-in
+  and sends a Slack-shaped body, so it cannot call a hook. Its generic Webhook
+  integration can. This record says post for what the addon's glossary now
+  calls a call.
 
 Remote tools need to open NF/Tickets tickets, and WUD is the first. WUD's
 Discord trigger, and the Discord target of most self-hosted tools, posts
