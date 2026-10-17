@@ -101,8 +101,8 @@ Markdown a caller writes for Discord arrives formatted:
   inside a word, as in `my_app_web`, stays as typed.
 - Backticks make inline code, and a fenced block makes a code block.
 - `[text](url)` and a bare URL become links.
-- A line starting with `>` becomes a quote. Lines starting with `- `, `* ` or
-  `+ ` become a list, unless a space comes before the marker.
+- A line starting with `>` becomes a quote. Lines starting with `-`, `*` or
+  `+` and a space become a list, unless a space comes before the marker.
 - A shortcode such as `:warning:` becomes its emoji.
 - `@` followed by a member's name mentions that member, who gets the alert any
   mention sends.
