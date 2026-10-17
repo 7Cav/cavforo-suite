@@ -100,7 +100,7 @@ what that costs and why it is accepted is in
 
 ### WUD
 
-[What's Up Docker](https://getwud.dev/) is the first caller. Give its Discord
+[What's Up Docker](https://getwud.app/) is the first caller. Give its Discord
 trigger the hook URL:
 
 ```
