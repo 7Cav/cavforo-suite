@@ -79,6 +79,12 @@ final class HookCall
 
     private string $title;
 
+    /**
+     * The title before the cut to TITLE_MAX_LENGTH, so a reply can tell a
+     * message that is nothing but the title from one that says more.
+     */
+    private string $fullTitle;
+
     private string $message;
 
     private ?string $keyHash;
@@ -87,13 +93,14 @@ final class HookCall
 
     private function __construct(
         string $outcome,
-        string $title = '',
+        string $fullTitle = '',
         string $message = '',
         ?string $keyHash = null,
         bool $allClear = false
     ) {
         $this->outcome = $outcome;
-        $this->title = $title;
+        $this->title = mb_substr($fullTitle, 0, self::TITLE_MAX_LENGTH, 'UTF-8');
+        $this->fullTitle = $fullTitle;
         $this->message = $message;
         $this->keyHash = $keyHash;
         $this->allClear = $allClear;
@@ -174,7 +181,7 @@ final class HookCall
 
         return new self(
             self::ACCEPTED,
-            mb_substr($bodyTitle !== '' ? $bodyTitle : $hook['name'], 0, self::TITLE_MAX_LENGTH, 'UTF-8'),
+            $bodyTitle !== '' ? $bodyTitle : $hook['name'],
             implode("\n\n", $parts),
             $keyLine ? hash('sha256', $keyLine['key'], true) : null,
             $keyLine ? $keyLine['all_clear'] : false
@@ -211,8 +218,11 @@ final class HookCall
             return $value;
         }
         // Lines and the breaks between them, alternating, so the text that
-        // stays keeps the breaks it was sent with.
-        $pieces = preg_split('/(\R)/', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
+        // stays keeps the breaks it was sent with. Only CR LF, CR and LF end
+        // a line. PCRE's \R also takes form feed, vertical tab and byte 0x85,
+        // the last byte of letters such as Å in UTF-8, and would cut a key
+        // short there.
+        $pieces = preg_split('/(\r\n|\r|\n)/', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
         $kept = [];
         for ($i = 0; $i < count($pieces); $i += 2) {
             if (preg_match('/^[ \t]*(alert key|all-clear)[ \t]*:(.*)$/i', $pieces[$i], $m)) {
@@ -304,11 +314,12 @@ final class HookCall
      * The text of a reply to the key's ticket: the call's title on the first
      * line, then its message. The ticket keeps its own title, so this is
      * where a later call's title, such as Grafana's [FIRING:2], shows. A call
-     * whose message is nothing but its title says it once.
+     * whose message is nothing but its title says it once, whole, even when
+     * the title is longer than the ticket's title can hold.
      */
     public function replyMessage(): string
     {
-        if (trim($this->message) === $this->title) {
+        if (trim($this->message) === $this->fullTitle) {
             return $this->message;
         }
 
