@@ -2,8 +2,9 @@
 
 /**
  * Exercises HookCall, the decision behind a call to a hook: not found, bad
- * request, or accepted with a title, a message and an alert key, and whether
- * an accepted call opens a ticket or replies to its key's ticket.
+ * request, or accepted with a title, a message and an alert key, and what an
+ * accepted call does to its key's ticket: open one, reply to it, and close or
+ * reopen it.
  *
  * Every row is an explicit input and a literal expected outcome from the spec
  * on issue #288, or for alert keys the spec on issue #321. The hook facts and
@@ -13,8 +14,9 @@
  *
  * What a test cannot reach is verified by hand on the dev stack: the key
  * table, the vendor's Replier and its notifications, the ticket option that
- * keeps a reply from moving the status, and reducing a real ticket to the
- * closed, locked and deleted facts these rows hand HookCall.
+ * keeps a reply from moving the status, the vendor's Editor closing and
+ * reopening a ticket, and reducing a real ticket to the closed, locked and
+ * deleted facts these rows hand HookCall.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -410,9 +412,55 @@ check(
 );
 
 // ---------------------------------------------------------------------------
+// The all-clear. `All-clear: <key>` stands where `Alert key: <key>` would, and
+// says the problem the key names is fine again.
+// ---------------------------------------------------------------------------
+
+// A minimal all-clear body is a complete call, and its key line leaves the
+// text like any other, so the hook's name stands in for title and message.
+$allClearOnly = call($hook, ['content' => 'All-clear: k1']);
+
+check(
+    'a call whose only text is its all-clear line: accepted',
+    $allClearOnly->outcome() === HookCall::ACCEPTED,
+    'got ' . $allClearOnly->outcome()
+);
+
+check(
+    'a call whose only text is its all-clear line: the title is the hook name',
+    $allClearOnly->title() === 'Hook name',
+    'got ' . var_export($allClearOnly->title(), true)
+);
+
+check(
+    'a call whose only text is its all-clear line: the message is the hook name',
+    $allClearOnly->message() === 'Hook name',
+    'got ' . var_export($allClearOnly->message(), true)
+);
+
+// The all-clear label matches as the alert key label does, whatever its case
+// and the spaces around it, and it names the same key, so the all-clear
+// reaches the ticket its firing call opened. The line sits mid-content so its
+// trailing space is followed by a line break.
+$allClear = call($hook, ['content' => "Disk back\nall-CLEAR :  k1 \nmore"]);
+
+check(
+    'an all-clear line in another case and with spaces around it names the same key as an alert key line',
+    $allClear->keyHash() !== null && $allClear->keyHash() === $keyed->keyHash()
+);
+
+// A call that says a key is firing and clear at once disagrees with itself,
+// like two different keys, so it has no key and opens a ticket.
+check(
+    'an alert key line and an all-clear line for the same key give no key',
+    call($hook, ['content' => "Disk full\nAlert key: k1\nAll-clear: k1"])->keyHash() === null
+);
+
+// ---------------------------------------------------------------------------
 // What a firing call does, given the facts of its key's linked ticket: null
-// when there is none, else whether it is closed, locked and deleted. Until
-// all-clears land (#327), a closed ticket ends the link like a locked one.
+// when there is none, else whether it is closed, locked and deleted. Staff
+// close a ticket to mean done for now, so a firing call reopens it, and lock
+// or delete it to mean start a new ticket next time.
 // ---------------------------------------------------------------------------
 check(
     'a firing call whose key has no linked ticket opens one',
@@ -431,8 +479,8 @@ check(
 $closedTicket = ['closed' => true] + $openTicket;
 
 check(
-    'a firing call whose key links a closed ticket opens a new one',
-    $keyed->action($closedTicket) === HookCall::OPEN,
+    'a firing call whose key links a closed ticket replies and reopens it',
+    $keyed->action($closedTicket) === HookCall::REPLY_AND_REOPEN,
     'got ' . var_export($keyed->action($closedTicket), true)
 );
 
@@ -450,6 +498,53 @@ check(
     'a firing call whose key links a deleted ticket opens a new one',
     $keyed->action($deletedTicket) === HookCall::OPEN,
     'got ' . var_export($keyed->action($deletedTicket), true)
+);
+
+// A lock is staff saying start a new ticket next time, and it wins over the
+// ticket being closed too.
+$lockedClosedTicket = ['locked' => true, 'closed' => true] + $openTicket;
+
+check(
+    'a firing call whose key links a locked and closed ticket opens a new one',
+    $keyed->action($lockedClosedTicket) === HookCall::OPEN,
+    'got ' . var_export($keyed->action($lockedClosedTicket), true)
+);
+
+// ---------------------------------------------------------------------------
+// What an all-clear does, given the same facts. It closes the key's ticket,
+// and when there is no ticket it can reach, it opens one and closes it at
+// once, so an outage whose firing call was lost still leaves a record.
+// ---------------------------------------------------------------------------
+check(
+    'an all-clear whose key has no linked ticket opens one and closes it',
+    $allClear->action(null) === HookCall::OPEN_AND_CLOSE,
+    'got ' . var_export($allClear->action(null), true)
+);
+
+check(
+    'an all-clear whose key links an open ticket replies and closes it',
+    $allClear->action($openTicket) === HookCall::REPLY_AND_CLOSE,
+    'got ' . var_export($allClear->action($openTicket), true)
+);
+
+// An all-clear for a ticket staff already closed adds its reply, so the
+// history shows the recovery, and the ticket stays closed.
+check(
+    'an all-clear whose key links a closed ticket replies and closes it',
+    $allClear->action($closedTicket) === HookCall::REPLY_AND_CLOSE,
+    'got ' . var_export($allClear->action($closedTicket), true)
+);
+
+check(
+    'an all-clear whose key links a locked ticket opens a new one and closes it',
+    $allClear->action($lockedTicket) === HookCall::OPEN_AND_CLOSE,
+    'got ' . var_export($allClear->action($lockedTicket), true)
+);
+
+check(
+    'an all-clear whose key links a deleted ticket opens a new one and closes it',
+    $allClear->action($deletedTicket) === HookCall::OPEN_AND_CLOSE,
+    'got ' . var_export($allClear->action($deletedTicket), true)
 );
 
 // ---------------------------------------------------------------------------

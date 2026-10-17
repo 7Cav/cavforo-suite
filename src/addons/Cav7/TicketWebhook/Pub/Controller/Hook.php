@@ -7,6 +7,7 @@ use Cav7\TicketWebhook\HookCall;
 use Cav7\TicketWebhook\NotPermitted;
 use Cav7\TicketWebhook\TicketOpener;
 use Cav7\TicketWebhook\TicketReplier;
+use Cav7\TicketWebhook\TicketStatusChange;
 use NF\Tickets\Entity\Ticket;
 use XF\Mvc\ParameterBag;
 use XF\Mvc\Reply\AbstractReply;
@@ -14,9 +15,11 @@ use XF\Mvc\Reply\AbstractReply;
 /**
  * The one public route, `ticket-webhooks/{hook_id}/{token}`. A caller sends
  * Discord's webhook request here, and the call opens a ticket or, when its
- * alert key links an open ticket, replies to that one. HookCall decides
- * which. See GLOSSARY.md for hook, caller, call and alert key, ADR-0001 for
- * why the request is Discord's, and ADR-0002 for alert keys.
+ * alert key links a ticket it can still reach, replies to that one. An
+ * all-clear then closes the ticket, and a firing call reopens a closed one.
+ * HookCall decides which. See GLOSSARY.md for hook, caller, call, alert key
+ * and all-clear, ADR-0001 for why the request is Discord's, and ADR-0002 for
+ * alert keys.
  *
  * Nothing of a browser session applies to a caller, so the stock pre-dispatch
  * checks are all skipped: CSRF, two-step, policy acceptance, the canonical
@@ -126,10 +129,13 @@ class Hook extends \XF\Pub\Controller\AbstractController
             return $this->status(500);
         }
 
-        if ($call->action($facts) === HookCall::REPLY) {
+        $action = $call->action($facts);
+        $then = $this->statusChange($action);
+
+        if (in_array($action, [HookCall::REPLY, HookCall::REPLY_AND_REOPEN, HookCall::REPLY_AND_CLOSE], true)) {
             try {
-                \XF::asVisitor($opener, function () use ($hook, $linked, $call, $keyHash) {
-                    (new TicketReplier())->reply($hook, $linked, $call->replyMessage(), $keyHash);
+                \XF::asVisitor($opener, function () use ($hook, $linked, $call, $keyHash, $then) {
+                    (new TicketReplier())->reply($hook, $linked, $call->replyMessage(), $keyHash, $then);
                 });
             } catch (\Throwable $e) {
                 \XF::logException($e, true, sprintf(
@@ -146,8 +152,8 @@ class Hook extends \XF\Pub\Controller\AbstractController
         }
 
         try {
-            $ticket = \XF::asVisitor($opener, function () use ($hook, $call, $keyHash) {
-                return (new TicketOpener())->open($hook, $call->title(), $call->message(), $keyHash);
+            $ticket = \XF::asVisitor($opener, function () use ($hook, $call, $keyHash, $then) {
+                return (new TicketOpener())->open($hook, $call->title(), $call->message(), $keyHash, $then);
             });
         } catch (NotPermitted $e) {
             \XF::logError(sprintf(
@@ -169,6 +175,24 @@ class Hook extends \XF\Pub\Controller\AbstractController
         }
 
         return $this->reached($ticket);
+    }
+
+    /**
+     * The status change an action makes once its ticket or reply is recorded:
+     * close on an all-clear, reopen on a firing call for a closed ticket, and
+     * none otherwise.
+     */
+    protected function statusChange(string $action): ?TicketStatusChange
+    {
+        switch ($action) {
+            case HookCall::REPLY_AND_CLOSE:
+            case HookCall::OPEN_AND_CLOSE:
+                return TicketStatusChange::close();
+            case HookCall::REPLY_AND_REOPEN:
+                return TicketStatusChange::reopen();
+            default:
+                return null;
+        }
     }
 
     /**

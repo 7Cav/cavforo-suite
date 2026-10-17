@@ -6,8 +6,8 @@ namespace Cav7\TicketWebhook;
  * What one call to a hook yields: not found, bad request, or accepted with
  * the title and message of the ticket to open, the hash of its alert key,
  * and what to do given the facts of the ticket that key links. See
- * GLOSSARY.md for hook, caller, call, alert key and token, and ADR-0002 for
- * why a key is a line in the call's text.
+ * GLOSSARY.md for hook, caller, call, alert key, all-clear and token, and
+ * ADR-0002 for why a key is a line in the call's text.
  *
  * Pure PHP with no XenForo import, so tests/HookCallTest.php runs it with
  * bare php. The public controller supplies the facts (the hook row, the path
@@ -34,20 +34,27 @@ namespace Cav7\TicketWebhook;
  * a body that yields a title and nothing else carries the title as its
  * message, so the vendor is never handed an empty one.
  *
- * A key line is `Alert key: <key>` on a line of its own, in `content`, in an
- * embed's `description` or in a field's `value`. The label matches in any
- * case and with spaces or tabs before it and around its colon. The key is
- * the rest of the line, trimmed and compared exactly. An embed's title and
- * url and a field's name are never read for one. Every key line leaves the
- * text before the title and message are built, so staff never read it and a
- * content that opens with one does not make it the title. The call has a key
- * only when its key lines all name the same non-empty key. An empty key, or
- * lines that disagree, as WUD's batch mode writes, leave it without one. A
- * call whose only text was key lines is accepted with the hook's name as its
- * title and message.
+ * A key line is `Alert key: <key>` for a firing call, or `All-clear: <key>`
+ * for an all-clear, on a line of its own, in `content`, in an embed's
+ * `description` or in a field's `value`. The label matches in any case and
+ * with spaces or tabs before it and around its colon. The key is the rest of
+ * the line, trimmed and compared exactly, and the label is no part of it, so
+ * an all-clear reaches the ticket its firing call opened. An embed's title
+ * and url and a field's name are never read for one. Every key line leaves
+ * the text before the title and message are built, so staff never read it
+ * and a content that opens with one does not make it the title. The call has
+ * a key only when its key lines all carry the same label and name the same
+ * non-empty key. An empty key, or lines that disagree, as WUD's batch mode
+ * writes or as a call that is firing and clear at once does, leave it without
+ * one. A call whose only text was key lines is accepted with the hook's name
+ * as its title and message.
  *
- * A firing call replies to its key's ticket while that ticket is open, and
- * opens a new ticket when there is none or it is closed, locked or deleted.
+ * What a call does to its key's ticket follows the action table in the spec
+ * on #321. A ticket staff locked or deleted, or one that is gone, ends the
+ * link: a firing call opens a new ticket, and an all-clear opens one and
+ * closes it. A lock wins over the ticket being closed too. Otherwise a firing
+ * call replies, and reopens the ticket when it is closed, and an all-clear
+ * replies and closes it.
  */
 final class HookCall
 {
@@ -57,6 +64,9 @@ final class HookCall
 
     public const OPEN = 'open';
     public const REPLY = 'reply';
+    public const REPLY_AND_REOPEN = 'reply_and_reopen';
+    public const REPLY_AND_CLOSE = 'reply_and_close';
+    public const OPEN_AND_CLOSE = 'open_and_close';
 
     /**
      * The width of xf_nf_tickets_ticket.title in characters. The vendor's
@@ -73,12 +83,20 @@ final class HookCall
 
     private ?string $keyHash;
 
-    private function __construct(string $outcome, string $title = '', string $message = '', ?string $keyHash = null)
-    {
+    private bool $allClear;
+
+    private function __construct(
+        string $outcome,
+        string $title = '',
+        string $message = '',
+        ?string $keyHash = null,
+        bool $allClear = false
+    ) {
         $this->outcome = $outcome;
         $this->title = $title;
         $this->message = $message;
         $this->keyHash = $keyHash;
+        $this->allClear = $allClear;
     }
 
     /**
@@ -152,31 +170,40 @@ final class HookCall
             $parts[] = $bodyTitle !== '' ? $bodyTitle : $hook['name'];
         }
 
+        $keyLine = self::oneKeyLine($keys);
+
         return new self(
             self::ACCEPTED,
             mb_substr($bodyTitle !== '' ? $bodyTitle : $hook['name'], 0, self::TITLE_MAX_LENGTH, 'UTF-8'),
             implode("\n\n", $parts),
-            self::keyHashOf($keys)
+            $keyLine ? hash('sha256', $keyLine['key'], true) : null,
+            $keyLine ? $keyLine['all_clear'] : false
         );
     }
 
     /**
-     * The hash of the one key the call's key lines name, or null when they
-     * name none.
+     * The one key line the call's key lines amount to, or null when they name
+     * no key. Lines name one key only when they all carry the same label and
+     * the same non-empty key.
      */
-    private static function keyHashOf(array $keys): ?string
+    private static function oneKeyLine(array $keys): ?array
     {
-        $keys = array_values(array_unique($keys));
-        if (count($keys) !== 1 || $keys[0] === '') {
+        $distinct = [];
+        foreach ($keys as $line) {
+            $distinct[($line['all_clear'] ? 'all-clear' : 'alert key') . ':' . $line['key']] = $line;
+        }
+        if (count($distinct) !== 1) {
             return null;
         }
+        $line = reset($distinct);
 
-        return hash('sha256', $keys[0], true);
+        return $line['key'] !== '' ? $line : null;
     }
 
     /**
-     * A body value with its key lines taken out, each key it named added to
-     * $keys. Anything that is not a string comes back as it was.
+     * A body value with its key lines taken out, each one added to $keys as
+     * ['all_clear' => bool, 'key' => string]. Anything that is not a string
+     * comes back as it was.
      */
     private static function withoutKeyLines($value, array &$keys)
     {
@@ -188,8 +215,11 @@ final class HookCall
         $pieces = preg_split('/(\R)/', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
         $kept = [];
         for ($i = 0; $i < count($pieces); $i += 2) {
-            if (preg_match('/^[ \t]*alert key[ \t]*:(.*)$/i', $pieces[$i], $m)) {
-                $keys[] = trim($m[1], " \t");
+            if (preg_match('/^[ \t]*(alert key|all-clear)[ \t]*:(.*)$/i', $pieces[$i], $m)) {
+                $keys[] = [
+                    'all_clear' => strcasecmp($m[1], 'all-clear') === 0,
+                    'key' => trim($m[2], " \t"),
+                ];
                 continue;
             }
             $kept[] = $pieces[$i] . ($pieces[$i + 1] ?? '');
@@ -296,7 +326,9 @@ final class HookCall
 
     /**
      * What an accepted call does: OPEN a ticket, or REPLY to its key's linked
-     * ticket.
+     * ticket, and with an all-clear or a closed ticket, the status change
+     * after it: OPEN_AND_CLOSE, REPLY_AND_CLOSE or REPLY_AND_REOPEN. A call
+     * without a key always opens, since its ticket facts are null.
      *
      * @param array|null $ticket the linked ticket's facts as ['closed' => bool,
      *                           'locked' => bool, 'deleted' => bool], or null
@@ -304,10 +336,13 @@ final class HookCall
      */
     public function action(?array $ticket): string
     {
-        if ($ticket === null || $ticket['deleted'] || $ticket['locked'] || $ticket['closed']) {
-            return self::OPEN;
+        if ($ticket === null || $ticket['deleted'] || $ticket['locked']) {
+            return $this->allClear ? self::OPEN_AND_CLOSE : self::OPEN;
+        }
+        if ($this->allClear) {
+            return self::REPLY_AND_CLOSE;
         }
 
-        return self::REPLY;
+        return $ticket['closed'] ? self::REPLY_AND_REOPEN : self::REPLY;
     }
 }

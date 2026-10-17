@@ -8,8 +8,9 @@ The board issues the hook a token, shown once, and the admin pastes the hook's
 URL into the remote tool as a Discord webhook. From then on a call to that URL
 opens a ticket as the board's opener user, with the title and message the
 tool's own templates render. A call that names an alert key lands on that key's
-ticket as a reply while the ticket is open, so a tool that keeps reporting the
-same problem fills one ticket instead of a stack of them.
+ticket as a reply, so a tool that keeps reporting the same problem fills one
+ticket instead of a stack of them. An all-clear closes the ticket, and the
+next firing call reopens it.
 
 The terms this README uses (hook, caller, call, alert key, token, inactive) are
 defined in [GLOSSARY.md](GLOSSARY.md). Opener is defined in the suite-wide
@@ -84,7 +85,7 @@ Not every Discord target works. healthchecks.io's Discord integration takes
 its URL from Discord's own sign-in, so it cannot be pointed at a hook, and it
 sends a Slack-shaped body, which a hook answers with 400. healthchecks.io's
 generic Webhook integration can call a hook, with a body written in Discord's
-shape.
+shape, as [healthchecks.io](#healthchecksio) below shows.
 
 A tool that can send an `Authorization: Bearer <token>` header may instead
 call the URL without the token part, which keeps the token out of access logs;
@@ -108,9 +109,9 @@ The answers a caller gets, which are Discord's own where Discord has one:
 
 Every 403 and 500 leaves one entry in the XenForo error log naming the hook,
 and the ticket too when a reply failed. If a ticket or reply saves and a later
-step fails, such as its notifications, the hook leaves one entry naming the
-hook and the ticket. The caller still hears success, so its retry cannot add a
-duplicate. An entry logged during a call with the token in the path carries
+step fails, such as closing the ticket or sending its notifications, the hook
+leaves one entry naming the hook and the ticket. The caller still hears
+success, so its retry cannot add a duplicate. An entry logged during a call with the token in the path carries
 the token, because the error log records the request URL; what that costs and
 why it is accepted is in [ADR-0001](docs/adr/0001-inbound-hooks-speak-discord.md).
 
@@ -123,13 +124,21 @@ problem on one ticket, put a key line in the caller's template:
 Alert key: <key>
 ```
 
+A call with that line is a firing call. When the problem clears, the caller
+sends an all-clear, which writes `All-clear` in place of `Alert key` and names
+the same key:
+
+```
+All-clear: <key>
+```
+
 The line has to stand on its own, in the content, in an embed's description,
 or in a field's value. The hook ignores a key in an embed's title or link, in
-a field's name, or in the URL. `Alert key:` matches in any case and with spaces
-around it, so `alert key :` works. The key is the rest of the line with the
-spaces either side trimmed, and it matches exactly, case included, so `nginx`
-and `Nginx` are two keys. Pick a key that stays the same for as long as the
-problem does and differs between problems.
+a field's name, or in the URL. `Alert key:` and `All-clear:` match in any case
+and with spaces around them, so `alert key :` works. The key is the rest of the
+line with the spaces either side trimmed, and it matches exactly, case
+included, so `nginx` and `Nginx` are two keys. Pick a key that stays the same
+for as long as the problem does and differs between problems.
 
 What does not count as a key:
 
@@ -139,26 +148,46 @@ What does not count as a key:
 - A key line wrapped in Markdown, such as `**Alert key:** k1` or a line in
   backticks. Write the line plain.
 - Key lines that disagree. A call naming two keys has no key and opens a
-  ticket, which is what WUD's batch mode produces. Repeating the same key line
-  is fine.
+  ticket, which is what WUD's batch mode produces. So does a call that carries
+  `Alert key: k1` and `All-clear: k1` together. Repeating the same key line is
+  fine.
 
 The hook takes every key line out of the text before it writes the ticket or
 the reply, so staff never see it, and a key that is also a secret, such as a
 healthchecks.io check's UUID, stays out of the ticket. A call whose only text
-is its key line is accepted, with the hook's name as its title and message.
+is its key line is accepted, with the hook's name as its title and message, so
+a bare `All-clear: <key>` is a complete call.
 
 A key belongs to its hook. The same key sent to two hooks reaches two tickets.
 
-When a call carries a key, the hook looks for the ticket that key last reached:
+When a call carries a key, the hook looks for the ticket that key last reached,
+and does this:
 
-- With no ticket yet, the call opens one, and the key points at it.
-- While the ticket is open, the call adds a reply to it as the opener. The
-  reply starts with the call's title, then its message, and the title appears
-  once when it is all the call says. The ticket keeps its own title, its
-  status and its category, and moves to the top of the list as any reply
-  moves it.
-- Once staff close, lock or delete the ticket, or merge it into another, the
-  next call opens a new ticket, and the key moves to it.
+| The key's ticket | Firing call | All-clear |
+| --- | --- | --- |
+| None yet | Opens a ticket. | Opens a ticket and closes it at once. |
+| Open | Replies. | Replies, then closes the ticket. |
+| Closed | Replies, then reopens the ticket. | Replies. The ticket stays closed. |
+| Locked, deleted, or merged into another | Opens a new ticket. | Opens a new ticket and closes it at once. |
+
+A ticket the call opens takes the key, so the next call reaches it. An
+all-clear whose firing call never arrived still leaves a record of the outage.
+
+A reply starts with the call's title, then its message, and the title appears
+once when it is all the call says. The ticket keeps its own title and its
+category, and moves to the top of the list as any reply moves it.
+
+Closing sets the status that NF/Tickets' resolved-status option names,
+Resolved by default. Reopening sets the status its open-status option names,
+Open by default. A ticket staff already closed keeps the closed status they
+gave it. Beyond closing and reopening, the hook leaves a ticket's status alone,
+so a ticket staff put on hold stays on hold through the caller's repeats. The
+opener owns every hook ticket, so closing and reopening send no status alert.
+
+Closing a ticket means done for now, and the next firing call reopens it. An
+alert that fires all night stays on one ticket with its history. To make the
+next call start a fresh ticket, lock the ticket. A ticket that is locked and
+closed counts as locked.
 
 A reply goes through wherever the ticket now sits. A ticket staff moved to
 another category keeps its key's replies, even in a category where the opener
@@ -169,7 +198,8 @@ A new ticket notifies the category's staff as any new ticket does. A reply
 notifies whoever NF/Tickets notifies for any reply, which is fewer people. The
 ticket's watchers hear it, and so do category watchers set to hear messages.
 Category watchers set to new tickets only, and the category's and the
-priority's notify addresses, do not.
+priority's notify addresses, do not. A reopen is a reply, so they do not hear
+that an alert fired again either.
 
 ### WUD
 
@@ -186,8 +216,8 @@ title and message of a single update, and `..._MODE=batch` sends several
 updates as one call, which opens one ticket.
 
 WUD calls again when a newer version replaces the one it reported. To land
-those calls on the container's open ticket, end SIMPLEBODY with a key line
-whose key is `${container.watcher}_${container.name}`. That pair survives
+those calls on the container's ticket, end SIMPLEBODY with a key line whose
+key is `${container.watcher}_${container.name}`. That pair survives
 recreating the container, and `container.id` does not. In a Compose file,
 write every `$` as `$$`:
 
@@ -203,11 +233,71 @@ WUD renders SIMPLEBODY into the value of its one field, which is where the hook
 finds the line. In batch mode each container adds its own key line, so the
 call has no key and opens a ticket.
 
+WUD sends no all-clear. Staff close the ticket once the container is updated,
+and WUD's next update for that container reopens it. Lock the ticket instead
+to have the next update open a fresh one.
+
+### Grafana
+
+Give a Grafana Discord contact point the hook URL. Grafana calls again every 4
+hours by default while an alert fires, when an instance joins or leaves the
+alert group, and once the alert clears. To keep those calls on one ticket and
+close it when the alert clears, set the contact point's message to a key line
+followed by Grafana's default message:
+
+```
+{{ if eq .Status "resolved" }}All-clear{{ else }}Alert key{{ end }}: {{ .GroupKey }}
+{{ template "default.message" . }}
+```
+
+`.GroupKey` names the alert group and stays the same from the first firing
+call to the all-clear, so one ticket follows one group. Your notification
+policy's grouping decides how many tickets that makes. Under Grafana's default
+grouping it is one ticket per alert rule and folder. `.Status` is `resolved`
+only once every alert in the group has cleared, so a group with one alert
+still firing sends a firing call.
+
+Keep the key line first. Grafana cuts the message at 2000 characters, and a
+key line cut short names a different key. Leave the contact point's "Disable
+resolved message" setting off, or Grafana never sends the all-clear. Its Test
+button sends a new group key on every click, so each test opens a ticket of
+its own.
+
+### healthchecks.io
+
+Use the Webhook integration. It has a separate URL, body and headers for a
+check going down and for a check coming back up. Give both the hook URL and
+the POST method, and put the check's `$CODE` in the down body as an alert key
+and in the up body as an all-clear.
+
+Down body:
+
+```json
+{"content": "Check is down since $NOW\nAlert key: $CODE", "embeds": [{"title": $NAME_JSON}]}
+```
+
+Up body:
+
+```json
+{"content": "Check is up since $NOW\nAll-clear: $CODE", "embeds": [{"title": $NAME_JSON}]}
+```
+
+`$CODE` is the check's UUID, which never changes, so a check's down and its up
+reach the same ticket, and the next down reopens it. The UUID is also the
+secret that pings the check. The hook stores only a hash of it and takes the
+line out of the ticket, but keep `$CODE` off every other line of the body.
+Write the check's name as `$NAME_JSON`, which healthchecks.io quotes for JSON.
+Plain `$NAME` goes in unescaped, and a name with a quote in it breaks the body.
+To keep the token out of the URL, add an `Authorization: Bearer <token>`
+header to both and use the URL without the token part. The integration's test
+button uses a dummy check with a new UUID each time, so each test opens a
+ticket of its own.
+
 ## Tests
 
 Run them with `tools/run-tests.sh TicketWebhook`. They need only `php` and
-cover `HookCall`, which decides what a call yields and whether it opens a
-ticket or replies, and `Token`. Everything that needs a live XenForo is
+cover `HookCall`, which decides what a call yields and what it does to its
+key's ticket, and `Token`. Everything that needs a live XenForo is
 verified by hand on a dev stack before a release, per
 [CONTRIBUTING.md](../../../../CONTRIBUTING.md).
 

@@ -12,14 +12,15 @@ use Cav7\TicketWebhook\Entity\Hook;
  * Runs under `\XF::asVisitor($opener)`, which the public controller sets up;
  * that is what makes the opener the ticket's user. Ordering inside open() is
  * deliberate. Right after the ticket saves, the hook links the call's alert
- * key to it and moves its last used date and last ticket id. The vendor's
- * notifications go out after that. A crash between the save and the record
- * leaves the ticket in place and the list one call behind, which the next
- * call corrects; the reverse order would list a ticket that does not exist.
- * The record and the notifications each fail on their own. A failure in
- * either leaves the ticket standing and one error naming the hook and the
- * ticket, and the caller still hears success, so a caller that retries does
- * not open a duplicate.
+ * key to it and moves its last used date and last ticket id. An all-clear's
+ * ticket is closed after that, and the vendor's notifications go out last. A
+ * crash between the save and the record leaves the ticket in place and the
+ * list one call behind, which the next call corrects; the reverse order would
+ * list a ticket that does not exist. The record, the close and the
+ * notifications each fail on their own. A failure in any of them leaves the
+ * ticket standing and one error naming the hook and the ticket, and the
+ * caller still hears success, so a caller that retries does not open a
+ * duplicate.
  *
  * What this assumes about NF/Tickets 2.12.2, read from its source and first
  * recorded on Cav7/TicketSchedule's opener. None of it is checked by a test
@@ -46,15 +47,23 @@ class TicketOpener
 {
     /**
      * Open the ticket for one accepted call as the current visitor, record it
-     * on the hook, linking the call's alert key to it when there is one, and
-     * send the vendor's notifications.
+     * on the hook, linking the call's alert key to it when there is one, make
+     * the call's status change, and send the vendor's notifications.
      *
-     * @param string|null $keyHash the call's HookCall::keyHash(), or null
+     * @param string|null             $keyHash the call's HookCall::keyHash(), or null
+     * @param TicketStatusChange|null $then    the status change to make once the
+     *                                         call is recorded, or null for none
      *
      * @throws NotPermitted      when the opener may not open in the hook's category
      * @throws \RuntimeException when the Creator refuses the ticket
      */
-    public function open(Hook $hook, string $title, string $message, ?string $keyHash): \NF\Tickets\Entity\Ticket
+    public function open(
+        Hook $hook,
+        string $title,
+        string $message,
+        ?string $keyHash,
+        ?TicketStatusChange $then = null
+    ): \NF\Tickets\Entity\Ticket
     {
         $category = $hook->Category;
         if (!$category) {
@@ -96,6 +105,20 @@ class TicketOpener
                 $hook->name,
                 $ticket->ticket_id
             ));
+        }
+
+        if ($then) {
+            try {
+                $then->apply($ticket);
+            } catch (\Throwable $e) {
+                \XF::logException($e, true, sprintf(
+                    '[Cav7/TicketWebhook] Hook %d "%s" opened ticket %d but could not %s it; the ticket stands: ',
+                    $hook->hook_id,
+                    $hook->name,
+                    $ticket->ticket_id,
+                    $then->verb()
+                ));
+            }
         }
 
         try {
