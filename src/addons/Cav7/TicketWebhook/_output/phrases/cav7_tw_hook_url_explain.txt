@@ -1,1 +1,1 @@
-Paste this as the Discord webhook URL in the caller. Every post to it opens one ticket.
+Paste this as the Discord webhook URL in the caller. Each call to it opens a ticket, or replies to the ticket its alert key links.

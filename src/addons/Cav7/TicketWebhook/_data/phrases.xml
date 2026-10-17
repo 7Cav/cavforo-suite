@@ -10,7 +10,7 @@
   <phrase title="cav7_tw_done" version_id="1000070" version_string="1.0.0"><![CDATA[Done]]></phrase>
   <phrase title="cav7_tw_hook_not_found" version_id="1000070" version_string="1.0.0"><![CDATA[The requested ticket hook could not be found.]]></phrase>
   <phrase title="cav7_tw_hook_url" version_id="1000070" version_string="1.0.0"><![CDATA[Hook URL]]></phrase>
-  <phrase title="cav7_tw_hook_url_explain" version_id="1000070" version_string="1.0.0"><![CDATA[Paste this as the Discord webhook URL in the caller. Every post to it opens one ticket.]]></phrase>
+  <phrase title="cav7_tw_hook_url_explain" version_id="1010070" version_string="1.1.0"><![CDATA[Paste this as the Discord webhook URL in the caller. Each call to it opens a ticket, or replies to the ticket its alert key links.]]></phrase>
   <phrase title="cav7_tw_hook_url_without_token" version_id="1000070" version_string="1.0.0"><![CDATA[Hook URL for a bearer header]]></phrase>
   <phrase title="cav7_tw_hook_url_without_token_explain" version_id="1000070" version_string="1.0.0"><![CDATA[A caller that can send an Authorization: Bearer header may post here with the token in the header instead, which keeps it out of access logs.]]></phrase>
   <phrase title="cav7_tw_last_ticket" version_id="1000070" version_string="1.0.0"><![CDATA[Last ticket]]></phrase>
