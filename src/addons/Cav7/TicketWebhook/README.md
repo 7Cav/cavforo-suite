@@ -122,7 +122,7 @@ updates as one call, which opens one ticket.
 ## Tests
 
 Run them with `tools/run-tests.sh TicketWebhook`. They need only `php` and
-cover `HookPost`, which decides what a call yields, and `Token`. Everything
+cover `HookCall`, which decides what a call yields, and `Token`. Everything
 that needs a live XenForo is verified by hand on a dev stack before a release,
 per [CONTRIBUTING.md](../../../../CONTRIBUTING.md).
 

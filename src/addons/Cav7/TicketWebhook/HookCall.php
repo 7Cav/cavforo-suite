@@ -3,11 +3,11 @@
 namespace Cav7\TicketWebhook;
 
 /**
- * What one post to a hook yields: not found, bad request, or accepted with
+ * What one call to a hook yields: not found, bad request, or accepted with
  * the title and message of the ticket to open. See GLOSSARY.md for hook,
  * caller and token.
  *
- * Pure PHP with no XenForo import, so tests/HookPostTest.php runs it with
+ * Pure PHP with no XenForo import, so tests/HookCallTest.php runs it with
  * bare php. The public controller supplies the facts (the hook row, the path
  * token, the Authorization header, the decoded body) and acts on the answer.
  *
@@ -30,7 +30,7 @@ namespace Cav7\TicketWebhook;
  * a body that yields a title and nothing else carries the title as its
  * message, so the vendor is never handed an empty one.
  */
-final class HookPost
+final class HookCall
 {
     public const NOT_FOUND = 'not_found';
     public const BAD_REQUEST = 'bad_request';

@@ -84,8 +84,8 @@ class Hook extends \XF\Admin\Controller\AbstractController
 
     /**
      * The hook's public URL, on the public router: the admin router would
-     * build an admin.php address. With a token, the URL a caller posts to;
-     * without one, the URL a caller posts to with the token in a bearer
+     * build an admin.php address. With a token, the URL a caller calls;
+     * without one, the URL a caller calls with the token in a bearer
      * header.
      */
     protected function hookUrl(HookEntity $hook, ?string $token = null): string
@@ -145,7 +145,7 @@ class Hook extends \XF\Admin\Controller\AbstractController
 
     /**
      * Why this hook could never open its ticket, found now rather than when
-     * the first post arrives. Each entry is a phrase with the reason.
+     * the first call arrives. Each entry is a phrase with the reason.
      */
     protected function refusals(HookEntity $hook): array
     {

@@ -6,14 +6,14 @@ use Cav7\TicketWebhook\Entity\Hook;
 
 /**
  * The XenForo-coupled half of the addon: opens one NF/Tickets ticket for an
- * accepted post, as the opener user, then records it on the hook.
+ * accepted call, as the opener user, then records it on the hook.
  *
  * Runs under `\XF::asVisitor($opener)`, which the public controller sets up;
  * that is what makes the opener the ticket's user. Ordering inside open() is
  * deliberate. The hook's last used date and last ticket id are written right
  * after the ticket has saved, and the vendor's notifications go out after
  * that. A crash between the save and the record leaves the ticket in place
- * and the list one post behind, which the next post corrects; the reverse
+ * and the list one call behind, which the next call corrects; the reverse
  * order would list a ticket that does not exist. Notifications fail on their
  * own: a notifier that throws (a mailer, a third-party notifier extension)
  * leaves the ticket standing and one error naming the hook and the ticket,
@@ -35,7 +35,7 @@ use Cav7\TicketWebhook\Entity\Hook;
  *   ticket's first and last message dates, so a ticket opened that way sorts
  *   as if it had no messages.
  * - `setContent()` with validations on trims nothing: a title over 150
- *   characters is an error, which is why HookPost cuts the title first.
+ *   characters is an error, which is why HookCall cuts the title first.
  * - The Creator does not apply the category's `default_prefix_id`; the public
  *   form does, as a preselected input. It is set here so a category that
  *   requires a prefix accepts the ticket.
@@ -43,7 +43,7 @@ use Cav7\TicketWebhook\Entity\Hook;
 class TicketOpener
 {
     /**
-     * Open the ticket for one accepted post as the current visitor, record it
+     * Open the ticket for one accepted call as the current visitor, record it
      * on the hook, and send the vendor's notifications.
      *
      * @throws NotPermitted      when the opener may not open in the hook's category

@@ -3,14 +3,14 @@
 namespace Cav7\TicketWebhook\Pub\Controller;
 
 use Cav7\TicketWebhook\Entity\Hook as HookEntity;
-use Cav7\TicketWebhook\HookPost;
+use Cav7\TicketWebhook\HookCall;
 use Cav7\TicketWebhook\NotPermitted;
 use Cav7\TicketWebhook\TicketOpener;
 use XF\Mvc\ParameterBag;
 use XF\Mvc\Reply\AbstractReply;
 
 /**
- * The one public route, `ticket-webhooks/{hook_id}/{token}`: a caller posts
+ * The one public route, `ticket-webhooks/{hook_id}/{token}`: a caller sends
  * Discord's webhook request here and one ticket opens. See GLOSSARY.md for
  * hook, caller and token, and ADR-0001 for why the request is Discord's.
  *
@@ -40,7 +40,7 @@ use XF\Mvc\Reply\AbstractReply;
 class Hook extends \XF\Pub\Controller\AbstractController
 {
     /**
-     * No session posts here, so there is no CSRF token to check.
+     * A browser never sends a form here, so there is no CSRF token to check.
      */
     public function checkCsrfIfNeeded($action, ParameterBag $params): void
     {
@@ -73,17 +73,17 @@ class Hook extends \XF\Pub\Controller\AbstractController
         $pathToken = $params->token !== null ? (string) $params->token : null;
         $authorization = $this->request->getAuthorizationHeader();
 
-        $post = HookPost::decide(
+        $call = HookCall::decide(
             $hook ? $hook->facts() : null,
             $pathToken,
             $authorization !== '' ? $authorization : null,
             json_decode($this->request->getInputRaw(), true)
         );
 
-        if ($post->outcome() === HookPost::NOT_FOUND) {
+        if ($call->outcome() === HookCall::NOT_FOUND) {
             return $this->status(404);
         }
-        if ($post->outcome() === HookPost::BAD_REQUEST) {
+        if ($call->outcome() === HookCall::BAD_REQUEST) {
             return $this->status(400);
         }
 
@@ -102,8 +102,8 @@ class Hook extends \XF\Pub\Controller\AbstractController
         }
 
         try {
-            $ticket = \XF::asVisitor($opener, function () use ($hook, $post) {
-                return (new TicketOpener())->open($hook, $post->title(), $post->message());
+            $ticket = \XF::asVisitor($opener, function () use ($hook, $call) {
+                return (new TicketOpener())->open($hook, $call->title(), $call->message());
             });
         } catch (NotPermitted $e) {
             \XF::logError(sprintf(
