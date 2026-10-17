@@ -54,6 +54,18 @@ use XF\Mvc\Reply\AbstractReply;
  * Replier open a transaction before code that can throw, and nothing commits
  * a transaction left open by a throw. It rolls back when the connection
  * closes, and an error row written inside it would go with it.
+ *
+ * A call that waited for its key's lock is dated from when it took the lock.
+ * What that rests on in NF/Tickets 2.12.2, read from its source and checked
+ * by no test here: the Replier dates a reply with `\XF::$time`, which
+ * XenForo sets when the request starts (`Replier::finalSetup()`). It refuses
+ * a reply dated before the ticket's last message
+ * (`Replier::setMessagePosition()`). Two calls with one key that arrive a
+ * second apart can take the lock in either order. Dated from arrival, the
+ * one that arrived first and waited would be older than the message the
+ * other just wrote, and its caller would hear 500. `\XF::updateTime()` is
+ * XenForo's own refresh, which its job runners call between jobs. The fix
+ * also assumes every web server behind the board keeps the same clock.
  */
 class Hook extends \XF\Pub\Controller\AbstractController
 {
@@ -135,6 +147,9 @@ class Hook extends \XF\Pub\Controller\AbstractController
 
             return $this->status(500);
         }
+
+        // Dated from here, not from arrival. The class docblock says why.
+        \XF::updateTime();
 
         try {
             return $this->act($hook, $call, $opener);
