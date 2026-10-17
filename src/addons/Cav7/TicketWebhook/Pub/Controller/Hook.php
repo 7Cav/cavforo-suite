@@ -6,13 +6,17 @@ use Cav7\TicketWebhook\Entity\Hook as HookEntity;
 use Cav7\TicketWebhook\HookCall;
 use Cav7\TicketWebhook\NotPermitted;
 use Cav7\TicketWebhook\TicketOpener;
+use Cav7\TicketWebhook\TicketReplier;
+use NF\Tickets\Entity\Ticket;
 use XF\Mvc\ParameterBag;
 use XF\Mvc\Reply\AbstractReply;
 
 /**
- * The one public route, `ticket-webhooks/{hook_id}/{token}`: a caller sends
- * Discord's webhook request here and one ticket opens. See GLOSSARY.md for
- * hook, caller and token, and ADR-0001 for why the request is Discord's.
+ * The one public route, `ticket-webhooks/{hook_id}/{token}`. A caller sends
+ * Discord's webhook request here, and the call opens a ticket or, when its
+ * alert key links an open ticket, replies to that one. HookCall decides
+ * which. See GLOSSARY.md for hook, caller, call and alert key, ADR-0001 for
+ * why the request is Discord's, and ADR-0002 for alert keys.
  *
  * Nothing of a browser session applies to a caller, so the stock pre-dispatch
  * checks are all skipped: CSRF, two-step, policy acceptance, the canonical
@@ -25,17 +29,24 @@ use XF\Mvc\Reply\AbstractReply;
  * the status codes below with an empty body, so a strict caller and a probe
  * both get exactly what the spec on #288 lists.
  *
- *   204  the ticket opened
- *   200  the ticket opened and the query carried wait=true; the body is
- *        {"id": "<ticket id>"}
+ *   204  the call opened a ticket or replied to one
+ *   200  the same, and the query carried wait=true; the body is
+ *        {"id": "<ticket id>"}, the ticket the call reached
  *   400  the body is not a JSON object, or yields no text
  *   403  the opener may not open a ticket in the hook's category
  *   404  no such hook, an inactive hook, or no matching token
  *   405  a method other than POST
- *   500  the Creator refused the ticket, or the opener names no user
+ *   500  the Creator refused the ticket, the Replier refused the reply, the
+ *        alert key could not be looked up, or the opener names no user
  *
  * Every 403 and 500 leaves one entry in the XenForo error log naming the hook
- * by id and name. Nothing else is told.
+ * by id and name, and the ticket too when a reply failed. A 500 means the
+ * call saved nothing. Nothing else is told.
+ *
+ * Errors are logged with logException's rollback on. The Creator and the
+ * Replier open a transaction before code that can throw, and nothing commits
+ * a transaction left open by a throw. It rolls back when the connection
+ * closes, and an error row written inside it would go with it.
  */
 class Hook extends \XF\Pub\Controller\AbstractController
 {
@@ -101,9 +112,43 @@ class Hook extends \XF\Pub\Controller\AbstractController
             return $this->status(500);
         }
 
+        $keyHash = $call->keyHash();
         try {
-            $ticket = \XF::asVisitor($opener, function () use ($hook, $call) {
-                return (new TicketOpener())->open($hook, $call->title(), $call->message());
+            $linked = $keyHash !== null ? $hook->linkedTicket($keyHash) : null;
+        } catch (\Throwable $e) {
+            \XF::logException($e, true, sprintf(
+                '[Cav7/TicketWebhook] Hook %d "%s" could not look up its alert key: ',
+                $hook->hook_id,
+                $hook->name
+            ));
+
+            return $this->status(500);
+        }
+
+        $action = $call->action($linked ? $this->ticketFacts($linked) : null);
+
+        if ($action === HookCall::REPLY) {
+            try {
+                \XF::asVisitor($opener, function () use ($hook, $linked, $call, $keyHash) {
+                    (new TicketReplier())->reply($hook, $linked, $call->replyMessage(), $keyHash);
+                });
+            } catch (\Throwable $e) {
+                \XF::logException($e, true, sprintf(
+                    '[Cav7/TicketWebhook] Hook %d "%s" could not reply to ticket %d: ',
+                    $hook->hook_id,
+                    $hook->name,
+                    $linked->ticket_id
+                ));
+
+                return $this->status(500);
+            }
+
+            return $this->reached($linked);
+        }
+
+        try {
+            $ticket = \XF::asVisitor($opener, function () use ($hook, $call, $keyHash) {
+                return (new TicketOpener())->open($hook, $call->title(), $call->message(), $keyHash);
             });
         } catch (NotPermitted $e) {
             \XF::logError(sprintf(
@@ -115,7 +160,7 @@ class Hook extends \XF\Pub\Controller\AbstractController
 
             return $this->status(403);
         } catch (\Throwable $e) {
-            \XF::logException($e, false, sprintf(
+            \XF::logException($e, true, sprintf(
                 '[Cav7/TicketWebhook] Hook %d "%s" could not open its ticket: ',
                 $hook->hook_id,
                 $hook->name
@@ -124,13 +169,39 @@ class Hook extends \XF\Pub\Controller\AbstractController
             return $this->status(500);
         }
 
+        return $this->reached($ticket);
+    }
+
+    /**
+     * The linked ticket as HookCall reads it. A deleted ticket is one staff
+     * soft-deleted; one merged into another is gone, and never gets here.
+     * The category plays no part, so a key follows its ticket wherever staff
+     * move it.
+     */
+    protected function ticketFacts(Ticket $ticket): array
+    {
+        $status = $ticket->Status;
+
+        return [
+            'closed' => $status ? (bool) $status->is_close : false,
+            'locked' => (bool) $ticket->ticket_locked,
+            'deleted' => $ticket->discussion_state === 'deleted',
+        ];
+    }
+
+    /**
+     * Success: 204, or with wait=true, 200 and the id of the ticket the call
+     * reached, whether it opened that ticket or replied to it.
+     */
+    protected function reached(Ticket $ticket): AbstractReply
+    {
         if (!$this->filter('wait', 'bool')) {
             return $this->status(204);
         }
 
         $this->app->response()->contentType('application/json', 'utf-8');
 
-        return $this->view('Cav7\TicketWebhook:Hook\Opened', '', [
+        return $this->view('Cav7\TicketWebhook:Hook\Reached', '', [
             'innerContent' => json_encode(['id' => (string) $ticket->ticket_id]),
         ]);
     }

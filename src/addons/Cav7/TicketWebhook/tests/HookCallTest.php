@@ -2,12 +2,19 @@
 
 /**
  * Exercises HookCall, the decision behind a call to a hook: not found, bad
- * request, or accepted with a title and a message.
+ * request, or accepted with a title, a message and an alert key, and whether
+ * an accepted call opens a ticket or replies to its key's ticket.
  *
  * Every row is an explicit input and a literal expected outcome from the spec
- * on issue #288. The hook facts and the tokens are fixtures; the hash comes
- * from Token's public API, which is the seam HookCall matches through. Nothing
- * here recomputes a title or a message the way the code does.
+ * on issue #288, or for alert keys the spec on issue #321. The hook facts and
+ * the tokens are fixtures; the hash comes from Token's public API, which is
+ * the seam HookCall matches through. Nothing here recomputes a title, a
+ * message or a key hash the way the code does.
+ *
+ * What a test cannot reach is verified by hand on the dev stack: the key
+ * table, the vendor's Replier and its notifications, the ticket option that
+ * keeps a reply from moving the status, and reducing a real ticket to the
+ * closed, locked and deleted facts these rows hand HookCall.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
@@ -272,6 +279,213 @@ check(
     'a WUD call: the message is the one field value alone',
     $wud->message() === 'V',
     'got ' . var_export($wud->message(), true)
+);
+
+// ---------------------------------------------------------------------------
+// The alert key. A key line is `Alert key: <key>` on a line of its own, in
+// the content, an embed's description or a field's value. Rows compare one
+// answer's key hash with another's and never compute a digest, so the hash
+// algorithm stays free.
+// ---------------------------------------------------------------------------
+$keyed = call($hook, ['content' => "Disk full\nAlert key: k1"]);
+
+check(
+    'a key line in the content gives the call a key',
+    $keyed->keyHash() !== null
+);
+
+// The key line is for the hook, not for staff: it leaves the message, and the
+// lines either side of it stay.
+$keyLineBetween = call($hook, ['content' => "before\nAlert key: k1\nafter"]);
+
+check(
+    'a key line is left out of the message',
+    !str_contains($keyLineBetween->message(), 'Alert key'),
+    'got ' . var_export($keyLineBetween->message(), true)
+);
+
+check(
+    'the lines either side of a key line stay in the message',
+    str_contains($keyLineBetween->message(), 'before') && str_contains($keyLineBetween->message(), 'after'),
+    'got ' . var_export($keyLineBetween->message(), true)
+);
+
+// A call whose only text is its key line still says something happened, so it
+// is accepted, and with nothing else to go on its title and message are the
+// hook's name.
+$keyLineOnly = call($hook, ['content' => 'Alert key: k1']);
+
+check(
+    'a call whose only text is its key line: accepted',
+    $keyLineOnly->outcome() === HookCall::ACCEPTED,
+    'got ' . $keyLineOnly->outcome()
+);
+
+check(
+    'a call whose only text is its key line: the title is the hook name',
+    $keyLineOnly->title() === 'Hook name',
+    'got ' . var_export($keyLineOnly->title(), true)
+);
+
+check(
+    'a call whose only text is its key line: the message is the hook name',
+    $keyLineOnly->message() === 'Hook name',
+    'got ' . var_export($keyLineOnly->message(), true)
+);
+
+// The key line is found where callers can put it: Grafana sends no fields, and
+// WUD's one field, with an empty name, holds its whole body.
+$keyedDescription = call($hook, ['embeds' => [['title' => 'Disk full', 'description' => 'Alert key: k1']]]);
+
+check(
+    'a key line in an embed description names the same key as one in the content',
+    $keyedDescription->keyHash() !== null && $keyedDescription->keyHash() === $keyed->keyHash()
+);
+
+$keyedField = call($hook, ['embeds' => [[
+    'title' => 'Disk full',
+    'fields' => [['name' => '', 'value' => "Disk full on host1\nAlert key: k1"]],
+]]]);
+
+check(
+    'a key line in a field value with an empty name names the same key as one in the content',
+    $keyedField->keyHash() !== null && $keyedField->keyHash() === $keyed->keyHash()
+);
+
+// A key line is a line of its own. Text that quotes the label mid-sentence
+// must not merge unrelated calls onto one ticket.
+check(
+    'the label inside a sentence gives no key',
+    call($hook, ['content' => 'see Alert key: k1 here'])->keyHash() === null
+);
+
+// The label matches whatever its case and the spaces around it, and the key
+// is trimmed. The line sits mid-content so its trailing space is followed by a
+// line break rather than by the end of the value.
+$looseLabel = call($hook, ['content' => "Disk full\nalert KEY :  k1 \nmore"]);
+
+check(
+    'the label in another case and with spaces around it names the same key',
+    $looseLabel->keyHash() !== null && $looseLabel->keyHash() === $keyed->keyHash()
+);
+
+// The key itself is exact: two containers whose names differ only in case
+// stay on separate tickets.
+$upperKey = call($hook, ['content' => "Disk full\nAlert key: K1"]);
+
+check(
+    'a key that differs only in case names a different key',
+    $upperKey->keyHash() !== null && $upperKey->keyHash() !== $keyed->keyHash()
+);
+
+// The answer carries a hash, never the key: a healthchecks.io check's UUID is
+// also the secret that pings it, and the hash is what gets stored.
+$uuidKey = call($hook, ['content' => "nightly-backup is down\nAlert key: d1665499-e827-441f-bf13-8f15e8f4c0b9"]);
+
+check(
+    'the key hash does not contain the key',
+    $uuidKey->keyHash() !== null && !str_contains($uuidKey->keyHash(), 'd1665499-e827-441f-bf13-8f15e8f4c0b9')
+);
+
+// A template variable that rendered empty must not merge every call onto one
+// ticket, so an empty key is no key.
+check(
+    'a key line with nothing after the label gives no key',
+    call($hook, ['content' => "Disk full\nAlert key:"])->keyHash() === null
+);
+
+// WUD's batch mode writes one key line per container in a single call. Key
+// lines that disagree leave the call without a key, so no container's ticket
+// collects the others.
+check(
+    'two key lines naming different keys give no key',
+    call($hook, ['content' => "nginx\nAlert key: k1\nhomepage\nAlert key: k2"])->keyHash() === null
+);
+
+$repeatedKey = call($hook, ['content' => "Disk full\nAlert key: k1\nstill full\nAlert key: k1"]);
+
+check(
+    'two identical key lines name the same key as one',
+    $repeatedKey->keyHash() !== null && $repeatedKey->keyHash() === $keyed->keyHash()
+);
+
+// ---------------------------------------------------------------------------
+// What a firing call does, given the facts of its key's linked ticket: null
+// when there is none, else whether it is closed, locked and deleted. Until
+// all-clears land (#327), a closed ticket ends the link like a locked one.
+// ---------------------------------------------------------------------------
+check(
+    'a firing call whose key has no linked ticket opens one',
+    $keyed->action(null) === HookCall::OPEN,
+    'got ' . var_export($keyed->action(null), true)
+);
+
+$openTicket = ['closed' => false, 'locked' => false, 'deleted' => false];
+
+check(
+    'a firing call whose key links an open ticket replies to it',
+    $keyed->action($openTicket) === HookCall::REPLY,
+    'got ' . var_export($keyed->action($openTicket), true)
+);
+
+$closedTicket = ['closed' => true] + $openTicket;
+
+check(
+    'a firing call whose key links a closed ticket opens a new one',
+    $keyed->action($closedTicket) === HookCall::OPEN,
+    'got ' . var_export($keyed->action($closedTicket), true)
+);
+
+$lockedTicket = ['locked' => true] + $openTicket;
+
+check(
+    'a firing call whose key links a locked ticket opens a new one',
+    $keyed->action($lockedTicket) === HookCall::OPEN,
+    'got ' . var_export($keyed->action($lockedTicket), true)
+);
+
+$deletedTicket = ['deleted' => true] + $openTicket;
+
+check(
+    'a firing call whose key links a deleted ticket opens a new one',
+    $keyed->action($deletedTicket) === HookCall::OPEN,
+    'got ' . var_export($keyed->action($deletedTicket), true)
+);
+
+// ---------------------------------------------------------------------------
+// A reply's text. The ticket keeps its own title, so a reply starts with the
+// call's title, such as Grafana's [FIRING:2], then carries its message.
+// ---------------------------------------------------------------------------
+
+/**
+ * The first non-blank line of a text, and everything after it.
+ */
+function splitFirstLine(string $text): array
+{
+    $lines = preg_split('/\R/', ltrim($text));
+
+    return [$lines[0], implode("\n", array_slice($lines, 1))];
+}
+
+$titled = call($hook, ['embeds' => [['title' => 'T-title', 'description' => 'M-body']]]);
+[$replyFirstLine, $replyRest] = splitFirstLine($titled->replyMessage());
+
+check(
+    'a reply starts with the call\'s title',
+    str_contains($replyFirstLine, 'T-title'),
+    'got ' . var_export($titled->replyMessage(), true)
+);
+
+check(
+    'a reply carries the call\'s message after its title',
+    str_contains($replyRest, 'M-body'),
+    'got ' . var_export($titled->replyMessage(), true)
+);
+
+check(
+    'a reply to a call whose only text is its title carries the title once',
+    substr_count($titleOnly->replyMessage(), 'Tango') === 1,
+    'got ' . var_export($titleOnly->replyMessage(), true)
 );
 
 exit($failures === 0 ? 0 : 1);

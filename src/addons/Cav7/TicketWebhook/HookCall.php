@@ -4,12 +4,16 @@ namespace Cav7\TicketWebhook;
 
 /**
  * What one call to a hook yields: not found, bad request, or accepted with
- * the title and message of the ticket to open. See GLOSSARY.md for hook,
- * caller and token.
+ * the title and message of the ticket to open, the hash of its alert key,
+ * and what to do given the facts of the ticket that key links. See
+ * GLOSSARY.md for hook, caller, call, alert key and token, and ADR-0002 for
+ * why a key is a line in the call's text.
  *
  * Pure PHP with no XenForo import, so tests/HookCallTest.php runs it with
  * bare php. The public controller supplies the facts (the hook row, the path
  * token, the Authorization header, the decoded body) and acts on the answer.
+ * It asks again with the facts of the key's linked ticket, and acts on that
+ * answer too.
  *
  * Not found when there is no hook, the hook is inactive, or neither the path
  * token nor an `Authorization: Bearer` header matches its hash; either
@@ -29,12 +33,30 @@ namespace Cav7\TicketWebhook;
  * are ignored. A body that yields no title and no message is a bad request;
  * a body that yields a title and nothing else carries the title as its
  * message, so the vendor is never handed an empty one.
+ *
+ * A key line is `Alert key: <key>` on a line of its own, in `content`, in an
+ * embed's `description` or in a field's `value`. The label matches in any
+ * case and with spaces or tabs before it and around its colon. The key is
+ * the rest of the line, trimmed and compared exactly. An embed's title and
+ * url and a field's name are never read for one. Every key line leaves the
+ * text before the title and message are built, so staff never read it and a
+ * content that opens with one does not make it the title. The call has a key
+ * only when its key lines all name the same non-empty key. An empty key, or
+ * lines that disagree, as WUD's batch mode writes, leave it without one. A
+ * call whose only text was key lines is accepted with the hook's name as its
+ * title and message.
+ *
+ * A firing call replies to its key's ticket while that ticket is open, and
+ * opens a new ticket when there is none or it is closed, locked or deleted.
  */
 final class HookCall
 {
     public const NOT_FOUND = 'not_found';
     public const BAD_REQUEST = 'bad_request';
     public const ACCEPTED = 'accepted';
+
+    public const OPEN = 'open';
+    public const REPLY = 'reply';
 
     /**
      * The width of xf_nf_tickets_ticket.title in characters. The vendor's
@@ -49,11 +71,14 @@ final class HookCall
 
     private string $message;
 
-    private function __construct(string $outcome, string $title = '', string $message = '')
+    private ?string $keyHash;
+
+    private function __construct(string $outcome, string $title = '', string $message = '', ?string $keyHash = null)
     {
         $this->outcome = $outcome;
         $this->title = $title;
         $this->message = $message;
+        $this->keyHash = $keyHash;
     }
 
     /**
@@ -76,7 +101,8 @@ final class HookCall
             return new self(self::NOT_FOUND);
         }
 
-        $content = self::text($body['content'] ?? null);
+        $keys = [];
+        $content = self::text(self::withoutKeyLines($body['content'] ?? null, $keys));
         $embeds = is_array($body['embeds'] ?? null) ? $body['embeds'] : [];
 
         $embedTitle = '';
@@ -91,11 +117,13 @@ final class HookCall
             if ($embedTitle === '') {
                 $embedTitle = trim(self::text($embed['title'] ?? null));
             }
-            foreach (['description', 'url'] as $key) {
-                $value = self::text($embed[$key] ?? null);
-                if ($value !== '') {
-                    $parts[] = $value;
-                }
+            $description = self::text(self::withoutKeyLines($embed['description'] ?? null, $keys));
+            if ($description !== '') {
+                $parts[] = $description;
+            }
+            $url = self::text($embed['url'] ?? null);
+            if ($url !== '') {
+                $parts[] = $url;
             }
             $fields = is_array($embed['fields'] ?? null) ? $embed['fields'] : [];
             foreach ($fields as $field) {
@@ -105,7 +133,7 @@ final class HookCall
                 // WUD's Discord trigger sends an empty field name by default,
                 // so a field with no name is its value alone.
                 $name = self::text($field['name'] ?? null);
-                $value = self::text($field['value'] ?? null);
+                $value = self::text(self::withoutKeyLines($field['value'] ?? null, $keys));
                 if ($name !== '' && $value !== '') {
                     $parts[] = $name . "\n" . $value;
                 } elseif ($name !== '' || $value !== '') {
@@ -117,18 +145,57 @@ final class HookCall
         // The title the body itself supplies, before the hook's name stands in.
         $bodyTitle = $embedTitle !== '' ? $embedTitle : self::firstLine($content);
 
-        if ($parts === [] && $bodyTitle === '') {
+        if ($parts === [] && $bodyTitle === '' && $keys === []) {
             return new self(self::BAD_REQUEST);
         }
         if ($parts === []) {
-            $parts[] = $bodyTitle;
+            $parts[] = $bodyTitle !== '' ? $bodyTitle : $hook['name'];
         }
 
         return new self(
             self::ACCEPTED,
             mb_substr($bodyTitle !== '' ? $bodyTitle : $hook['name'], 0, self::TITLE_MAX_LENGTH, 'UTF-8'),
-            implode("\n\n", $parts)
+            implode("\n\n", $parts),
+            self::keyHashOf($keys)
         );
+    }
+
+    /**
+     * The hash of the one key the call's key lines name, or null when they
+     * name none.
+     */
+    private static function keyHashOf(array $keys): ?string
+    {
+        $keys = array_values(array_unique($keys));
+        if (count($keys) !== 1 || $keys[0] === '') {
+            return null;
+        }
+
+        return hash('sha256', $keys[0], true);
+    }
+
+    /**
+     * A body value with its key lines taken out, each key it named added to
+     * $keys. Anything that is not a string comes back as it was.
+     */
+    private static function withoutKeyLines($value, array &$keys)
+    {
+        if (!is_string($value)) {
+            return $value;
+        }
+        // Lines and the breaks between them, alternating, so the text that
+        // stays keeps the breaks it was sent with.
+        $pieces = preg_split('/(\R)/', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $kept = [];
+        for ($i = 0; $i < count($pieces); $i += 2) {
+            if (preg_match('/^[ \t]*alert key[ \t]*:(.*)$/i', $pieces[$i], $m)) {
+                $keys[] = trim($m[1], " \t");
+                continue;
+            }
+            $kept[] = $pieces[$i] . ($pieces[$i + 1] ?? '');
+        }
+
+        return implode('', $kept);
     }
 
     /**
@@ -201,5 +268,46 @@ final class HookCall
     public function message(): string
     {
         return $this->message;
+    }
+
+    /**
+     * The text of a reply to the key's ticket: the call's title on the first
+     * line, then its message. The ticket keeps its own title, so this is
+     * where a later call's title, such as Grafana's [FIRING:2], shows. A call
+     * whose message is nothing but its title says it once.
+     */
+    public function replyMessage(): string
+    {
+        if (trim($this->message) === $this->title) {
+            return $this->message;
+        }
+
+        return $this->title . "\n\n" . $this->message;
+    }
+
+    /**
+     * A hash of the call's alert key, or null when it has none. The key itself
+     * never leaves this class.
+     */
+    public function keyHash(): ?string
+    {
+        return $this->keyHash;
+    }
+
+    /**
+     * What an accepted call does: OPEN a ticket, or REPLY to its key's linked
+     * ticket.
+     *
+     * @param array|null $ticket the linked ticket's facts as ['closed' => bool,
+     *                           'locked' => bool, 'deleted' => bool], or null
+     *                           when the key links no ticket
+     */
+    public function action(?array $ticket): string
+    {
+        if ($ticket === null || $ticket['deleted'] || $ticket['locked'] || $ticket['closed']) {
+            return self::OPEN;
+        }
+
+        return self::REPLY;
     }
 }

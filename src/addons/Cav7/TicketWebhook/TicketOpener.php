@@ -5,21 +5,23 @@ namespace Cav7\TicketWebhook;
 use Cav7\TicketWebhook\Entity\Hook;
 
 /**
- * The XenForo-coupled half of the addon: opens one NF/Tickets ticket for an
- * accepted call, as the opener user, then records it on the hook.
+ * The XenForo-coupled half of a call that opens a ticket: opens one
+ * NF/Tickets ticket for an accepted call, as the opener user, then records it
+ * on the hook. TicketReplier is the other half, for a call that replies.
  *
  * Runs under `\XF::asVisitor($opener)`, which the public controller sets up;
  * that is what makes the opener the ticket's user. Ordering inside open() is
- * deliberate. The hook's last used date and last ticket id are written right
- * after the ticket has saved, and the vendor's notifications go out after
- * that. A crash between the save and the record leaves the ticket in place
- * and the list one call behind, which the next call corrects; the reverse
- * order would list a ticket that does not exist. Notifications fail on their
- * own: a notifier that throws (a mailer, a third-party notifier extension)
- * leaves the ticket standing and one error naming the hook and the ticket,
- * and the caller still hears success.
+ * deliberate. Right after the ticket saves, the hook links the call's alert
+ * key to it and moves its last used date and last ticket id. The vendor's
+ * notifications go out after that. A crash between the save and the record
+ * leaves the ticket in place and the list one call behind, which the next
+ * call corrects; the reverse order would list a ticket that does not exist.
+ * The record and the notifications each fail on their own. A failure in
+ * either leaves the ticket standing and one error naming the hook and the
+ * ticket, and the caller still hears success, so a caller that retries does
+ * not open a duplicate.
  *
- * What this assumes about NF/Tickets 2.11.1, read from its source and first
+ * What this assumes about NF/Tickets 2.12.2, read from its source and first
  * recorded on Cav7/TicketSchedule's opener. None of it is checked by a test
  * here; the dev-stack pass before a release is where a vendor move shows.
  *
@@ -44,12 +46,15 @@ class TicketOpener
 {
     /**
      * Open the ticket for one accepted call as the current visitor, record it
-     * on the hook, and send the vendor's notifications.
+     * on the hook, linking the call's alert key to it when there is one, and
+     * send the vendor's notifications.
+     *
+     * @param string|null $keyHash the call's HookCall::keyHash(), or null
      *
      * @throws NotPermitted      when the opener may not open in the hook's category
      * @throws \RuntimeException when the Creator refuses the ticket
      */
-    public function open(Hook $hook, string $title, string $message): \NF\Tickets\Entity\Ticket
+    public function open(Hook $hook, string $title, string $message, ?string $keyHash): \NF\Tickets\Entity\Ticket
     {
         $category = $hook->Category;
         if (!$category) {
@@ -82,15 +87,21 @@ class TicketOpener
 
         $ticket = $creator->save();
 
-        $hook->fastUpdate([
-            'last_used_date' => \XF::$time,
-            'last_ticket_id' => $ticket->ticket_id,
-        ]);
+        try {
+            $hook->recordCall($ticket->ticket_id, $keyHash);
+        } catch (\Throwable $e) {
+            \XF::logException($e, true, sprintf(
+                '[Cav7/TicketWebhook] Hook %d "%s" opened ticket %d but could not record it; the ticket stands: ',
+                $hook->hook_id,
+                $hook->name,
+                $ticket->ticket_id
+            ));
+        }
 
         try {
             $this->sendNotifications($creator);
         } catch (\Throwable $e) {
-            \XF::logException($e, false, sprintf(
+            \XF::logException($e, true, sprintf(
                 '[Cav7/TicketWebhook] Hook %d "%s" opened ticket %d but its notifications failed; the ticket stands: ',
                 $hook->hook_id,
                 $hook->name,
