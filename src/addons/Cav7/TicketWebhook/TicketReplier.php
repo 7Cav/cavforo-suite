@@ -2,22 +2,18 @@
 
 namespace Cav7\TicketWebhook;
 
-use Cav7\TicketWebhook\Entity\Hook;
 use NF\Tickets\Entity\Ticket;
+use NF\Tickets\Service\Ticket\Replier;
 
 /**
  * The XenForo-coupled half of a call whose alert key links a ticket it
- * replies to: adds one reply to that ticket as the opener user, then records
- * the call on the hook. See GLOSSARY.md for call, alert key and all-clear.
+ * replies to: adds one reply to that ticket as the opener user, and hands
+ * back the saved Replier. What follows the save, the record, the status
+ * change and the notifications, is the public controller's afterSave(), as
+ * it is for TicketOpener. See GLOSSARY.md for call, alert key and link.
  *
  * Runs under `\XF::asVisitor($opener)`, which the public controller sets up;
- * that is what makes the opener the reply's author. The ordering matches
- * TicketOpener's: the hook's record is written right after the reply saves,
- * then the call's status change is made, closing the ticket on an all-clear
- * or reopening it on a firing call, and the vendor's notifications go out
- * last. Each of those three steps fails on its own, leaving the reply
- * standing and one error naming the hook and the ticket, and the caller still
- * hears success.
+ * that is what makes the opener the reply's author.
  *
  * What this assumes about NF/Tickets 2.12.2, read from its source. None of it
  * is checked by a test here; the dev-stack pass before a release is where a
@@ -55,24 +51,15 @@ use NF\Tickets\Entity\Ticket;
 class TicketReplier
 {
     /**
-     * Add the call's reply to the ticket as the current visitor, record the
-     * call on the hook, make the call's status change, and send the vendor's
-     * notifications.
-     *
-     * @param TicketStatusChange|null $then the status change to make once the
-     *                                      call is recorded, or null for none
+     * Add the call's reply to the ticket as the current visitor. The vendor's
+     * notifications are left to the caller, which sends them through the
+     * Replier returned once the call is recorded.
      *
      * @throws \RuntimeException when the Replier refuses the reply
      */
-    public function reply(
-        Hook $hook,
-        Ticket $ticket,
-        string $message,
-        string $keyHash,
-        ?TicketStatusChange $then = null
-    ): void
+    public function reply(Ticket $ticket, string $message): Replier
     {
-        /** @var \NF\Tickets\Service\Ticket\Replier $replier */
+        /** @var Replier $replier */
         $replier = \XF::service('NF\Tickets:Ticket\Replier', $ticket);
         $replier->logIp(false);
         $replier->setMessage($message);
@@ -86,50 +73,6 @@ class TicketReplier
         $ticket->setOption('skip_status_on_action', true);
         $replier->save();
 
-        try {
-            $hook->recordCall($ticket->ticket_id, $keyHash);
-        } catch (\Throwable $e) {
-            \XF::logException($e, true, sprintf(
-                '[Cav7/TicketWebhook] Hook %d "%s" replied to ticket %d but could not record it; the reply stands: ',
-                $hook->hook_id,
-                $hook->name,
-                $ticket->ticket_id
-            ));
-        }
-
-        if ($then) {
-            try {
-                $then->apply($ticket);
-            } catch (\Throwable $e) {
-                \XF::logException($e, true, sprintf(
-                    '[Cav7/TicketWebhook] Hook %d "%s" replied to ticket %d but could not %s it; the reply stands: ',
-                    $hook->hook_id,
-                    $hook->name,
-                    $ticket->ticket_id,
-                    $then->verb()
-                ));
-            }
-        }
-
-        try {
-            $this->sendNotifications($replier);
-        } catch (\Throwable $e) {
-            \XF::logException($e, true, sprintf(
-                '[Cav7/TicketWebhook] Hook %d "%s" replied to ticket %d but its notifications failed; the reply stands: ',
-                $hook->hook_id,
-                $hook->name,
-                $ticket->ticket_id
-            ));
-        }
-    }
-
-    /**
-     * The vendor's own notifications for a reply. A method of its own so a
-     * failure here is caught as "notifications failed", never as "could not
-     * reply".
-     */
-    protected function sendNotifications(\NF\Tickets\Service\Ticket\Replier $replier): void
-    {
-        $replier->sendNotifications();
+        return $replier;
     }
 }

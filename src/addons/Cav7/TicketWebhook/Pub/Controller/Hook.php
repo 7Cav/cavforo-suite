@@ -5,10 +5,13 @@ namespace Cav7\TicketWebhook\Pub\Controller;
 use Cav7\TicketWebhook\Entity\Hook as HookEntity;
 use Cav7\TicketWebhook\HookCall;
 use Cav7\TicketWebhook\NotPermitted;
+use Cav7\TicketWebhook\Repository\AlertKey as AlertKeys;
 use Cav7\TicketWebhook\TicketOpener;
 use Cav7\TicketWebhook\TicketReplier;
 use Cav7\TicketWebhook\TicketStatusChange;
 use NF\Tickets\Entity\Ticket;
+use NF\Tickets\Service\Ticket\Creator;
+use NF\Tickets\Service\Ticket\Replier;
 use XF\Mvc\ParameterBag;
 use XF\Mvc\Reply\AbstractReply;
 
@@ -17,9 +20,9 @@ use XF\Mvc\Reply\AbstractReply;
  * Discord's webhook request here, and the call opens a ticket or, when its
  * alert key links a ticket it can still reach, replies to that one. An
  * all-clear then closes the ticket, and a firing call reopens a closed one.
- * HookCall decides which. See GLOSSARY.md for hook, caller, call, alert key
- * and all-clear, ADR-0001 for why the request is Discord's, and ADR-0002 for
- * alert keys.
+ * HookCall decides which. See GLOSSARY.md for hook, caller, call, alert key,
+ * firing call, all-clear and link, ADR-0001 for why the request is Discord's,
+ * and ADR-0002 for alert keys.
  *
  * Nothing of a browser session applies to a caller, so the stock pre-dispatch
  * checks are all skipped: CSRF, two-step, policy acceptance, the canonical
@@ -41,7 +44,7 @@ use XF\Mvc\Reply\AbstractReply;
  *   405  a method other than POST
  *   500  the Creator refused the ticket, the Replier refused the reply, the
  *        alert key could not be looked up, another call held the key's lock
- *        past Entity\Hook::KEY_LOCK_WAIT, or the opener names no user
+ *        past Repository\AlertKey::LOCK_WAIT, or the opener names no user
  *
  * Every 403 and 500 leaves one entry in the XenForo error log naming the hook
  * by id and name, and the ticket too when a reply failed. A 500 means the
@@ -106,10 +109,8 @@ class Hook extends \XF\Pub\Controller\AbstractController
         $repo = $this->repository('Cav7\TicketWebhook:Hook');
         $opener = $repo->findOpener();
         if (!$opener) {
-            \XF::logError(sprintf(
-                '[Cav7/TicketWebhook] Hook %d "%s" could not open its ticket: opener user id %d names no user.',
-                $hook->hook_id,
-                $hook->name,
+            $this->logFailure($hook, sprintf(
+                'could not open its ticket: opener user id %d names no user.',
                 $repo->openerUserId()
             ));
 
@@ -126,14 +127,11 @@ class Hook extends \XF\Pub\Controller\AbstractController
         // all-clear. So a call holds its key's lock from before it reads the
         // link until its action is done, and a second call waits, then finds
         // the first call's ticket.
+        $alertKeys = $this->alertKeys();
         try {
-            $hook->lockKey($keyHash);
+            $alertKeys->lock($hook, $keyHash);
         } catch (\Throwable $e) {
-            \XF::logException($e, true, sprintf(
-                '[Cav7/TicketWebhook] Hook %d "%s" could not take its alert key\'s lock: ',
-                $hook->hook_id,
-                $hook->name
-            ));
+            $this->logFailure($hook, 'could not take its alert key\'s lock', $e);
 
             return $this->status(500);
         }
@@ -141,7 +139,7 @@ class Hook extends \XF\Pub\Controller\AbstractController
         try {
             return $this->act($hook, $call, $opener);
         } finally {
-            $hook->unlockKey($keyHash);
+            $alertKeys->unlock($hook, $keyHash);
         }
     }
 
@@ -154,33 +152,24 @@ class Hook extends \XF\Pub\Controller\AbstractController
     {
         $keyHash = $call->keyHash();
         try {
-            $linked = $keyHash !== null ? $hook->linkedTicket($keyHash) : null;
+            $linked = $keyHash !== null ? $this->alertKeys()->linkedTicket($hook, $keyHash) : null;
             $facts = $linked ? $this->ticketFacts($linked) : null;
         } catch (\Throwable $e) {
-            \XF::logException($e, true, sprintf(
-                '[Cav7/TicketWebhook] Hook %d "%s" could not look up its alert key: ',
-                $hook->hook_id,
-                $hook->name
-            ));
+            $this->logFailure($hook, 'could not look up its alert key', $e);
 
             return $this->status(500);
         }
 
-        $action = $call->action($facts);
-        $then = $this->statusChange($action);
+        [$replies, $statusChange] = $this->steps($call->action($facts));
 
-        if (in_array($action, [HookCall::REPLY, HookCall::REPLY_AND_REOPEN, HookCall::REPLY_AND_CLOSE], true)) {
+        if ($replies) {
             try {
-                \XF::asVisitor($opener, function () use ($hook, $linked, $call, $keyHash, $then) {
-                    (new TicketReplier())->reply($hook, $linked, $call->replyMessage(), $keyHash, $then);
+                \XF::asVisitor($opener, function () use ($hook, $call, $linked, $statusChange) {
+                    $replier = (new TicketReplier())->reply($linked, $call->replyMessage());
+                    $this->afterSave($hook, $call, $linked, $replier, $statusChange);
                 });
             } catch (\Throwable $e) {
-                \XF::logException($e, true, sprintf(
-                    '[Cav7/TicketWebhook] Hook %d "%s" could not reply to ticket %d: ',
-                    $hook->hook_id,
-                    $hook->name,
-                    $linked->ticket_id
-                ));
+                $this->logFailure($hook, sprintf('could not reply to ticket %d', $linked->ticket_id), $e);
 
                 return $this->status(500);
             }
@@ -189,24 +178,18 @@ class Hook extends \XF\Pub\Controller\AbstractController
         }
 
         try {
-            $ticket = \XF::asVisitor($opener, function () use ($hook, $call, $keyHash, $then) {
-                return (new TicketOpener())->open($hook, $call->title(), $call->message(), $keyHash, $then);
+            $ticket = \XF::asVisitor($opener, function () use ($hook, $call, $statusChange) {
+                $creator = (new TicketOpener())->open($hook, $call->title(), $call->message());
+                $this->afterSave($hook, $call, $creator->getTicket(), $creator, $statusChange);
+
+                return $creator->getTicket();
             });
         } catch (NotPermitted $e) {
-            \XF::logError(sprintf(
-                '[Cav7/TicketWebhook] Hook %d "%s" could not open its ticket: %s',
-                $hook->hook_id,
-                $hook->name,
-                $e->getMessage()
-            ));
+            $this->logFailure($hook, 'could not open its ticket: ' . $e->getMessage());
 
             return $this->status(403);
         } catch (\Throwable $e) {
-            \XF::logException($e, true, sprintf(
-                '[Cav7/TicketWebhook] Hook %d "%s" could not open its ticket: ',
-                $hook->hook_id,
-                $hook->name
-            ));
+            $this->logFailure($hook, 'could not open its ticket', $e);
 
             return $this->status(500);
         }
@@ -215,20 +198,97 @@ class Hook extends \XF\Pub\Controller\AbstractController
     }
 
     /**
-     * The status change an action makes once its ticket or reply is recorded:
-     * close on an all-clear, reopen on a firing call for a closed ticket, and
-     * none otherwise.
+     * The two things an action HookCall answers says: whether the call
+     * replies to its key's ticket rather than opening one, and the status
+     * change made once the ticket or reply is recorded. An all-clear closes,
+     * and a firing call for a closed ticket reopens.
+     *
+     * @return array{0: bool, 1: TicketStatusChange|null}
      */
-    protected function statusChange(string $action): ?TicketStatusChange
+    protected function steps(string $action): array
     {
         switch ($action) {
-            case HookCall::REPLY_AND_CLOSE:
-            case HookCall::OPEN_AND_CLOSE:
-                return TicketStatusChange::close();
+            case HookCall::REPLY:
+                return [true, null];
             case HookCall::REPLY_AND_REOPEN:
-                return TicketStatusChange::reopen();
+                return [true, TicketStatusChange::reopen()];
+            case HookCall::REPLY_AND_CLOSE:
+                return [true, TicketStatusChange::close()];
+            case HookCall::OPEN_AND_CLOSE:
+                return [false, TicketStatusChange::close()];
             default:
-                return null;
+                return [false, null];
+        }
+    }
+
+    /**
+     * What follows the save of a call's ticket or reply, in this order. The
+     * hook links the call's alert key to the ticket and moves the hook list's
+     * last used date and last ticket. Then the status change, if the call
+     * makes one. The vendor's notifications go out last, through the Creator
+     * or Replier that saved.
+     *
+     * A crash between the save and the record leaves the ticket in place and
+     * the list one call behind, which the next call corrects. The reverse
+     * order would list a ticket that does not exist. Each step fails on its
+     * own. A failure leaves the ticket or reply standing and one error naming
+     * the hook and the ticket, and the caller still hears success, so a
+     * caller that retries does not add a duplicate. Never throws.
+     *
+     * Runs inside the opener's visitor scope, which the Editor behind the
+     * status change reads.
+     *
+     * @param Creator|Replier $saved
+     */
+    protected function afterSave(
+        HookEntity $hook,
+        HookCall $call,
+        Ticket $ticket,
+        $saved,
+        ?TicketStatusChange $statusChange
+    ): void {
+        [$did, $stands] = $saved instanceof Replier
+            ? ['replied to', 'the reply stands']
+            : ['opened', 'the ticket stands'];
+
+        try {
+            $keyHash = $call->keyHash();
+            if ($keyHash !== null) {
+                $this->alertKeys()->link($hook, $keyHash, $ticket->ticket_id);
+            }
+            $hook->recordCall($ticket->ticket_id);
+        } catch (\Throwable $e) {
+            $this->logFailure($hook, sprintf(
+                '%s ticket %d but could not record it; %s',
+                $did,
+                $ticket->ticket_id,
+                $stands
+            ), $e);
+        }
+
+        if ($statusChange) {
+            try {
+                $statusChange->apply($ticket);
+            } catch (\Throwable $e) {
+                $this->logFailure($hook, sprintf(
+                    '%s ticket %d but could not %s it; %s',
+                    $did,
+                    $ticket->ticket_id,
+                    $statusChange->verb(),
+                    $stands
+                ), $e);
+            }
+        }
+
+        try {
+            $saved->sendNotifications();
+        } catch (\Throwable $e) {
+            $this->logFailure($hook, sprintf(
+                '%s ticket %d but its notifications failed; %s',
+                $did,
+                $ticket->ticket_id,
+                $stands
+            ), $e);
         }
     }
 
@@ -240,13 +300,34 @@ class Hook extends \XF\Pub\Controller\AbstractController
      */
     protected function ticketFacts(Ticket $ticket): array
     {
-        $status = $ticket->Status;
-
         return [
-            'closed' => $status ? (bool) $status->is_close : false,
+            'closed' => TicketStatusChange::isClosed($ticket),
             'locked' => (bool) $ticket->ticket_locked,
             'deleted' => $ticket->discussion_state === 'deleted',
         ];
+    }
+
+    protected function alertKeys(): AlertKeys
+    {
+        /** @var AlertKeys $alertKeys */
+        $alertKeys = $this->repository('Cav7\TicketWebhook:AlertKey');
+
+        return $alertKeys;
+    }
+
+    /**
+     * One entry in the XenForo error log, naming the hook by id and name
+     * before $what. An exception's message follows $what, and its trace goes
+     * in the entry. Rollback is on, for the reason the class docblock gives.
+     */
+    protected function logFailure(HookEntity $hook, string $what, ?\Throwable $e = null): void
+    {
+        $message = sprintf('[Cav7/TicketWebhook] Hook %d "%s" %s', $hook->hook_id, $hook->name, $what);
+        if ($e) {
+            \XF::logException($e, true, $message . ': ');
+        } else {
+            \XF::logError($message);
+        }
     }
 
     /**
