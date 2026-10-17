@@ -28,7 +28,7 @@ Addons sit at `src/addons/Cav7/<AddonId>/`, mirroring a XenForo install's tree, 
 | `Cav7/ModeratorLogPatch` | Records a moderation action from whoever had permission to take it, not only from the few holding a moderator record |
 | `Cav7/DonationGoalSync` | Recomputes the recurring donation goal's received total from the donations table, and corrects the vendor's monthly reset so it cannot be missed by seconds |
 | `Cav7/TicketSchedule` | Opens an NF/Tickets ticket on a calendar cadence, so recurring work such as a yearly review has a ticket waiting on the day |
-| `Cav7/TicketWebhook` | Opens an NF/Tickets ticket when a remote tool such as WUD posts to a hook, so an alert lands as a ticket in the right queue |
+| `Cav7/TicketWebhook` | Opens an NF/Tickets ticket when a remote tool such as WUD calls a hook, and replies to it when a later call names the same alert key, so one alert is one ticket in the right queue |
 | `Cav7/EnlistmentNextSteps` | Lands a recruit on a next-steps page the moment their Enlistment application is accepted, in place of the vendor's toast |
 | `Cav7/FormsUserQuestion` | Adds Advanced Forms question types that accept only names belonging to forum users, in place of a free-text name |
 

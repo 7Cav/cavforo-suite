@@ -61,9 +61,9 @@
     },
     "cav7_tw_hook_url_explain.txt": {
         "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "bb2543fe2d1f634e0511ee7a8a757ba8"
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "e6e68e8c6c274bd6e8ed0ecc741db68b"
     },
     "cav7_tw_hook_url_without_token.txt": {
         "global_cache": false,

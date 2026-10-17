@@ -6,12 +6,16 @@ use XF\Mvc\Entity\Entity;
 use XF\Mvc\Entity\Structure;
 
 /**
- * A hook: one address a caller can post to, and the record behind it. See
+ * A hook: one address a caller sends calls to, and the record behind it. See
  * GLOSSARY.md for the terms.
  *
  * The row carries the name, the category and the token's hash, and nothing
  * else about the ticket. Priority, status and prefix come from the category
- * and the vendor's option defaults when a post opens one.
+ * and the vendor's option defaults when a call opens one.
+ *
+ * A hook owns its alert keys, which Repository\AlertKey keeps. Deleting the
+ * hook deletes them and leaves the tickets. Replacing the token and toggling
+ * the hook save this same row and leave them alone.
  *
  * COLUMNS
  * @property int|null $hook_id
@@ -30,7 +34,7 @@ use XF\Mvc\Entity\Structure;
 class Hook extends Entity
 {
     /**
-     * The row as HookPost reads it: whether it opens anything, what a
+     * The row as HookCall reads it: whether it opens anything, what a
      * presented token is matched against, and the title of last resort.
      */
     public function facts(): array
@@ -42,6 +46,26 @@ class Hook extends Entity
         ];
     }
 
+    /**
+     * Record a call that reached a ticket on the hook list: its last used
+     * date, and the ticket as its last ticket, whether the call opened that
+     * ticket or replied to it.
+     */
+    public function recordCall(int $ticketId): void
+    {
+        $this->fastUpdate([
+            'last_used_date' => \XF::$time,
+            'last_ticket_id' => $ticketId,
+        ]);
+    }
+
+    protected function _postDelete(): void
+    {
+        /** @var \Cav7\TicketWebhook\Repository\AlertKey $alertKeys */
+        $alertKeys = $this->repository('Cav7\TicketWebhook:AlertKey');
+        $alertKeys->deleteForHook($this->hook_id);
+    }
+
     public static function getStructure(Structure $structure): Structure
     {
         $structure->table = 'xf_cav7_ticket_webhook_hook';
@@ -50,7 +74,7 @@ class Hook extends Entity
         $structure->columns = [
             'hook_id' => ['type' => self::UINT, 'autoIncrement' => true, 'nullable' => true],
             // 150 is the width of xf_nf_tickets_ticket.title, because the
-            // name is the title of a post that carries none of its own.
+            // name is the title of a call that carries none of its own.
             'name' => ['type' => self::STR, 'required' => 'please_enter_valid_name', 'maxLength' => 150],
             'ticket_category_id' => ['type' => self::UINT, 'required' => true],
             'active' => ['type' => self::BOOL, 'default' => true],
