@@ -1,26 +1,26 @@
 <?php
 
 /**
- * Exercises HookPost, the decision behind a post to a hook: not found, bad
+ * Exercises HookCall, the decision behind a call to a hook: not found, bad
  * request, or accepted with a title and a message.
  *
  * Every row is an explicit input and a literal expected outcome from the spec
  * on issue #288. The hook facts and the tokens are fixtures; the hash comes
- * from Token's public API, which is the seam HookPost matches through. Nothing
+ * from Token's public API, which is the seam HookCall matches through. Nothing
  * here recomputes a title or a message the way the code does.
  *
  * Self-contained: no XenForo, no framework. Exits non-zero on any failure.
  *
  * Run:
- *   php tests/HookPostTest.php
+ *   php tests/HookCallTest.php
  */
 
 namespace Cav7\TicketWebhook\Tests;
 
 require __DIR__ . '/../Token.php';
-require __DIR__ . '/../HookPost.php';
+require __DIR__ . '/../HookCall.php';
 
-use Cav7\TicketWebhook\HookPost;
+use Cav7\TicketWebhook\HookCall;
 use Cav7\TicketWebhook\Token;
 
 $failures = 0;
@@ -36,7 +36,7 @@ function check(string $label, bool $ok, string $detail = ''): void
     }
 }
 
-// The hook every row posts to unless it says otherwise, and the two tokens.
+// The hook every row calls unless it says otherwise, and the two tokens.
 $hook = [
     'active' => true,
     'token_hash' => Token::hash('correct-token'),
@@ -53,22 +53,22 @@ $bodyWithContent = ['content' => 'alpha'];
 // ---------------------------------------------------------------------------
 check(
     'no hook: not found',
-    HookPost::decide(null, 'correct-token', null, $bodyWithContent)->outcome() === HookPost::NOT_FOUND
+    HookCall::decide(null, 'correct-token', null, $bodyWithContent)->outcome() === HookCall::NOT_FOUND
 );
 
 check(
     'an inactive hook and the correct path token: not found',
-    HookPost::decide($inactiveHook, 'correct-token', null, $bodyWithContent)->outcome() === HookPost::NOT_FOUND
+    HookCall::decide($inactiveHook, 'correct-token', null, $bodyWithContent)->outcome() === HookCall::NOT_FOUND
 );
 
 check(
     'a wrong path token and no header: not found',
-    HookPost::decide($hook, 'wrong-token', null, $bodyWithContent)->outcome() === HookPost::NOT_FOUND
+    HookCall::decide($hook, 'wrong-token', null, $bodyWithContent)->outcome() === HookCall::NOT_FOUND
 );
 
 check(
     'a wrong path token beside a correct bearer header: accepted',
-    HookPost::decide($hook, 'wrong-token', 'Bearer correct-token', $bodyWithContent)->outcome() === HookPost::ACCEPTED
+    HookCall::decide($hook, 'wrong-token', 'Bearer correct-token', $bodyWithContent)->outcome() === HookCall::ACCEPTED
 );
 
 // Credentials are checked before the body, so a probe with a wrong token gets
@@ -76,29 +76,29 @@ check(
 // against a rewrite that reads the body first, which answers bad request.
 check(
     'a wrong path token and an empty body: not found, not bad request',
-    HookPost::decide($hook, 'wrong-token', null, [])->outcome() === HookPost::NOT_FOUND
+    HookCall::decide($hook, 'wrong-token', null, [])->outcome() === HookCall::NOT_FOUND
 );
 
 check(
     'a correct path token beside a wrong bearer header: accepted',
-    HookPost::decide($hook, 'correct-token', 'Bearer wrong-token', $bodyWithContent)->outcome() === HookPost::ACCEPTED,
+    HookCall::decide($hook, 'correct-token', 'Bearer wrong-token', $bodyWithContent)->outcome() === HookCall::ACCEPTED,
     'a proxy may add a header of its own; a correct URL still works'
 );
 
 // ---------------------------------------------------------------------------
-// The title and the message. Rows post with the correct path token and no
+// The title and the message. Rows call with the correct path token and no
 // header, so only the body decides.
 // ---------------------------------------------------------------------------
-function post(array $hook, $body): HookPost
+function call(array $hook, $body): HookCall
 {
-    return HookPost::decide($hook, 'correct-token', null, $body);
+    return HookCall::decide($hook, 'correct-token', null, $body);
 }
 
-$contentOnly = post($hook, ['content' => "first line\nsecond line"]);
+$contentOnly = call($hook, ['content' => "first line\nsecond line"]);
 
 check(
     'content alone: accepted',
-    $contentOnly->outcome() === HookPost::ACCEPTED
+    $contentOnly->outcome() === HookCall::ACCEPTED
 );
 
 check(
@@ -120,29 +120,29 @@ check(
 // ---------------------------------------------------------------------------
 check(
     'an empty object: bad request',
-    post($hook, [])->outcome() === HookPost::BAD_REQUEST
+    call($hook, [])->outcome() === HookCall::BAD_REQUEST
 );
 
 check(
     'empty content and no embeds: bad request',
-    post($hook, ['content' => '', 'embeds' => []])->outcome() === HookPost::BAD_REQUEST
+    call($hook, ['content' => '', 'embeds' => []])->outcome() === HookCall::BAD_REQUEST
 );
 
 // Whitespace is not text either. Accepting it hands the vendor an empty
 // message, which it refuses as a 500 that blames the hook.
 check(
     'whitespace-only content and no embeds: bad request',
-    post($hook, ['content' => '   '])->outcome() === HookPost::BAD_REQUEST
+    call($hook, ['content' => '   '])->outcome() === HookCall::BAD_REQUEST
 );
 
 // ---------------------------------------------------------------------------
 // The title of last resort is the hook's name.
 // ---------------------------------------------------------------------------
-$descriptionOnly = post($hook, ['embeds' => [['description' => 'D']]]);
+$descriptionOnly = call($hook, ['embeds' => [['description' => 'D']]]);
 
 check(
     'an embed with a description and no title, no content: accepted',
-    $descriptionOnly->outcome() === HookPost::ACCEPTED
+    $descriptionOnly->outcome() === HookCall::ACCEPTED
 );
 
 check(
@@ -155,11 +155,11 @@ check(
 // A title-only embed is text: the title is the ticket's title, and the
 // message carries it too rather than arriving empty for the vendor to refuse.
 // ---------------------------------------------------------------------------
-$titleOnly = post($hook, ['embeds' => [['title' => 'Tango']]]);
+$titleOnly = call($hook, ['embeds' => [['title' => 'Tango']]]);
 
 check(
     'a title-only embed: accepted',
-    $titleOnly->outcome() === HookPost::ACCEPTED
+    $titleOnly->outcome() === HookCall::ACCEPTED
 );
 
 check(
@@ -179,7 +179,7 @@ check(
 // The fixture is a two-byte character so a byte cut, which returns 75
 // characters, goes red.
 // ---------------------------------------------------------------------------
-$longTitle = post($hook, ['embeds' => [['title' => str_repeat('é', 200)]]]);
+$longTitle = call($hook, ['embeds' => [['title' => str_repeat('é', 200)]]]);
 
 check(
     'an embed title of 200 characters is cut to its first 150 characters',
@@ -194,7 +194,7 @@ check(
 // wrong order cannot pass. Each word is checked present before its offset is
 // compared, because strpos's false would otherwise compare as 0.
 // ---------------------------------------------------------------------------
-$ordered = post($hook, [
+$ordered = call($hook, [
     'content' => 'alpha',
     'embeds' => [[
         'title' => 'bravo',
@@ -241,13 +241,13 @@ check(
 );
 
 // ---------------------------------------------------------------------------
-// WUD's Discord trigger, as it posts by default: username, avatar_url, and one
+// WUD's Discord trigger, as it calls by default: username, avatar_url, and one
 // embed with a title, a colour and one field whose name is empty and whose
 // value is the rendered body. The value is the whole message, byte for byte:
 // an empty field name contributes nothing, not even a separator, and the
 // username cannot leak in.
 // ---------------------------------------------------------------------------
-$wud = post($hook, [
+$wud = call($hook, [
     'username' => 'WUD',
     'avatar_url' => 'https://example.test/a.png',
     'embeds' => [[
@@ -258,18 +258,18 @@ $wud = post($hook, [
 ]);
 
 check(
-    'a WUD post: accepted',
-    $wud->outcome() === HookPost::ACCEPTED
+    'a WUD call: accepted',
+    $wud->outcome() === HookCall::ACCEPTED
 );
 
 check(
-    'a WUD post: the title is the embed title',
+    'a WUD call: the title is the embed title',
     $wud->title() === 'T',
     'got ' . var_export($wud->title(), true)
 );
 
 check(
-    'a WUD post: the message is the one field value alone',
+    'a WUD call: the message is the one field value alone',
     $wud->message() === 'V',
     'got ' . var_export($wud->message(), true)
 );
