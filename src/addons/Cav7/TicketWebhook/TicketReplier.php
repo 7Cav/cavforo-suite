@@ -6,16 +6,18 @@ use Cav7\TicketWebhook\Entity\Hook;
 use NF\Tickets\Entity\Ticket;
 
 /**
- * The XenForo-coupled half of a firing call whose alert key links an open
- * ticket: adds one reply to that ticket as the opener user, then records the
- * call on the hook. See GLOSSARY.md for call and alert key.
+ * The XenForo-coupled half of a call whose alert key links a ticket it
+ * replies to: adds one reply to that ticket as the opener user, then records
+ * the call on the hook. See GLOSSARY.md for call, alert key and all-clear.
  *
  * Runs under `\XF::asVisitor($opener)`, which the public controller sets up;
  * that is what makes the opener the reply's author. The ordering matches
  * TicketOpener's: the hook's record is written right after the reply saves,
- * and the vendor's notifications go out after that. Each of those two steps
- * fails on its own, leaving the reply standing and one error naming the hook
- * and the ticket, and the caller still hears success.
+ * then the call's status change is made, closing the ticket on an all-clear
+ * or reopening it on a firing call, and the vendor's notifications go out
+ * last. Each of those three steps fails on its own, leaving the reply
+ * standing and one error naming the hook and the ticket, and the caller still
+ * hears success.
  *
  * What this assumes about NF/Tickets 2.12.2, read from its source. None of it
  * is checked by a test here; the dev-stack pass before a release is where a
@@ -54,11 +56,21 @@ class TicketReplier
 {
     /**
      * Add the call's reply to the ticket as the current visitor, record the
-     * call on the hook, and send the vendor's notifications.
+     * call on the hook, make the call's status change, and send the vendor's
+     * notifications.
+     *
+     * @param TicketStatusChange|null $then the status change to make once the
+     *                                      call is recorded, or null for none
      *
      * @throws \RuntimeException when the Replier refuses the reply
      */
-    public function reply(Hook $hook, Ticket $ticket, string $message, string $keyHash): void
+    public function reply(
+        Hook $hook,
+        Ticket $ticket,
+        string $message,
+        string $keyHash,
+        ?TicketStatusChange $then = null
+    ): void
     {
         /** @var \NF\Tickets\Service\Ticket\Replier $replier */
         $replier = \XF::service('NF\Tickets:Ticket\Replier', $ticket);
@@ -83,6 +95,20 @@ class TicketReplier
                 $hook->name,
                 $ticket->ticket_id
             ));
+        }
+
+        if ($then) {
+            try {
+                $then->apply($ticket);
+            } catch (\Throwable $e) {
+                \XF::logException($e, true, sprintf(
+                    '[Cav7/TicketWebhook] Hook %d "%s" replied to ticket %d but could not %s it; the reply stands: ',
+                    $hook->hook_id,
+                    $hook->name,
+                    $ticket->ticket_id,
+                    $then->verb()
+                ));
+            }
         }
 
         try {
