@@ -7,8 +7,9 @@ use NF\Tickets\Entity\Ticket;
 /**
  * The status change a call makes after its ticket or reply has saved: close
  * the ticket on an all-clear, or reopen it on a firing call. HookCall decides
- * which; TicketOpener and TicketReplier apply it between recording the call
- * and sending the notifications. See GLOSSARY.md for call and all-clear.
+ * which, and the public controller's afterSave() applies it between
+ * recording the call and sending the notifications. See GLOSSARY.md for call
+ * and all-clear.
  *
  * The hook moves a status only to close an open ticket or to reopen a closed
  * one. A ticket whose status already closes it is not closed again, so a
@@ -65,6 +66,15 @@ final class TicketStatusChange
     }
 
     /**
+     * Whether the ticket's status closes it, as the vendor reads a status's
+     * `is_close`. A ticket whose status row is gone reads as not closed.
+     */
+    public static function isClosed(Ticket $ticket): bool
+    {
+        return $ticket->Status ? (bool) $ticket->Status->is_close : false;
+    }
+
+    /**
      * What this change does to a ticket, for the error log.
      */
     public function verb(): string
@@ -80,8 +90,7 @@ final class TicketStatusChange
      */
     public function apply(Ticket $ticket): void
     {
-        $closed = $ticket->Status ? (bool) $ticket->Status->is_close : false;
-        if ($closed === $this->close) {
+        if (self::isClosed($ticket) === $this->close) {
             return;
         }
 

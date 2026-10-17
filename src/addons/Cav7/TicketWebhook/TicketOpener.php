@@ -3,24 +3,17 @@
 namespace Cav7\TicketWebhook;
 
 use Cav7\TicketWebhook\Entity\Hook;
+use NF\Tickets\Service\Ticket\Creator;
 
 /**
  * The XenForo-coupled half of a call that opens a ticket: opens one
- * NF/Tickets ticket for an accepted call, as the opener user, then records it
- * on the hook. TicketReplier is the other half, for a call that replies.
+ * NF/Tickets ticket for an accepted call, as the opener user, and hands back
+ * the saved Creator. TicketReplier is the other half, for a call that
+ * replies. What follows the save, the record, the status change and the
+ * notifications, is the public controller's afterSave().
  *
  * Runs under `\XF::asVisitor($opener)`, which the public controller sets up;
- * that is what makes the opener the ticket's user. Ordering inside open() is
- * deliberate. Right after the ticket saves, the hook links the call's alert
- * key to it and moves its last used date and last ticket id. An all-clear's
- * ticket is closed after that, and the vendor's notifications go out last. A
- * crash between the save and the record leaves the ticket in place and the
- * list one call behind, which the next call corrects; the reverse order would
- * list a ticket that does not exist. The record, the close and the
- * notifications each fail on their own. A failure in any of them leaves the
- * ticket standing and one error naming the hook and the ticket, and the
- * caller still hears success, so a caller that retries does not open a
- * duplicate.
+ * that is what makes the opener the ticket's user.
  *
  * What this assumes about NF/Tickets 2.12.2, read from its source and first
  * recorded on Cav7/TicketSchedule's opener. None of it is checked by a test
@@ -46,24 +39,14 @@ use Cav7\TicketWebhook\Entity\Hook;
 class TicketOpener
 {
     /**
-     * Open the ticket for one accepted call as the current visitor, record it
-     * on the hook, linking the call's alert key to it when there is one, make
-     * the call's status change, and send the vendor's notifications.
-     *
-     * @param string|null             $keyHash the call's HookCall::keyHash(), or null
-     * @param TicketStatusChange|null $then    the status change to make once the
-     *                                         call is recorded, or null for none
+     * Open the ticket for one accepted call as the current visitor. The
+     * vendor's notifications are left to the caller, which sends them through
+     * the Creator returned once the call is recorded.
      *
      * @throws NotPermitted      when the opener may not open in the hook's category
      * @throws \RuntimeException when the Creator refuses the ticket
      */
-    public function open(
-        Hook $hook,
-        string $title,
-        string $message,
-        ?string $keyHash,
-        ?TicketStatusChange $then = null
-    ): \NF\Tickets\Entity\Ticket
+    public function open(Hook $hook, string $title, string $message): Creator
     {
         $category = $hook->Category;
         if (!$category) {
@@ -80,7 +63,7 @@ class TicketOpener
             ));
         }
 
-        /** @var \NF\Tickets\Service\Ticket\Creator $creator */
+        /** @var Creator $creator */
         $creator = \XF::service('NF\Tickets:Ticket\Creator', $category);
         $creator->logIp(false);
         if ($category->default_prefix_id) {
@@ -94,55 +77,8 @@ class TicketOpener
             );
         }
 
-        $ticket = $creator->save();
+        $creator->save();
 
-        try {
-            $hook->recordCall($ticket->ticket_id, $keyHash);
-        } catch (\Throwable $e) {
-            \XF::logException($e, true, sprintf(
-                '[Cav7/TicketWebhook] Hook %d "%s" opened ticket %d but could not record it; the ticket stands: ',
-                $hook->hook_id,
-                $hook->name,
-                $ticket->ticket_id
-            ));
-        }
-
-        if ($then) {
-            try {
-                $then->apply($ticket);
-            } catch (\Throwable $e) {
-                \XF::logException($e, true, sprintf(
-                    '[Cav7/TicketWebhook] Hook %d "%s" opened ticket %d but could not %s it; the ticket stands: ',
-                    $hook->hook_id,
-                    $hook->name,
-                    $ticket->ticket_id,
-                    $then->verb()
-                ));
-            }
-        }
-
-        try {
-            $this->sendNotifications($creator);
-        } catch (\Throwable $e) {
-            \XF::logException($e, true, sprintf(
-                '[Cav7/TicketWebhook] Hook %d "%s" opened ticket %d but its notifications failed; the ticket stands: ',
-                $hook->hook_id,
-                $hook->name,
-                $ticket->ticket_id
-            ));
-        }
-
-        return $ticket;
-    }
-
-    /**
-     * The vendor's own notifications for a new ticket: the category's
-     * watchers, its notify addresses, and whatever notifier extensions other
-     * addons hang on it. A method of its own so a failure here is caught as
-     * "notifications failed", never as "the ticket could not open".
-     */
-    protected function sendNotifications(\NF\Tickets\Service\Ticket\Creator $creator): void
-    {
-        $creator->sendNotifications();
+        return $creator;
     }
 }

@@ -6,8 +6,8 @@ namespace Cav7\TicketWebhook;
  * What one call to a hook yields: not found, bad request, or accepted with
  * the title and message of the ticket to open, the hash of its alert key,
  * and what to do given the facts of the ticket that key links. See
- * GLOSSARY.md for hook, caller, call, alert key, all-clear and token, and
- * ADR-0002 for why a key is a line in the call's text.
+ * GLOSSARY.md for hook, caller, call, alert key, firing call, all-clear,
+ * link and token, and ADR-0002 for why a key is a line in the call's text.
  *
  * Pure PHP with no XenForo import, so tests/HookCallTest.php runs it with
  * bare php. The public controller supplies the facts (the hook row, the path
@@ -49,12 +49,12 @@ namespace Cav7\TicketWebhook;
  * one. A call whose only text was key lines is accepted with the hook's name
  * as its title and message.
  *
- * What a call does to its key's ticket follows the action table in the spec
- * on #321. A ticket staff locked or deleted, or one that is gone, ends the
- * link: a firing call opens a new ticket, and an all-clear opens one and
- * closes it. A lock wins over the ticket being closed too. Otherwise a firing
- * call replies, and reopens the ticket when it is closed, and an all-clear
- * replies and closes it.
+ * What a call does to its key's ticket is the table under "Alert keys" in
+ * README.md, and ADR-0002 records why. A ticket staff locked or deleted, or
+ * one that is gone, ends the link. A firing call then opens a new ticket, and
+ * an all-clear opens one and closes it. A lock wins over the ticket being
+ * closed too. Otherwise a firing call replies, and reopens the ticket when it
+ * is closed, and an all-clear replies and closes the ticket if it is open.
  */
 final class HookCall
 {
@@ -79,6 +79,12 @@ final class HookCall
 
     private string $title;
 
+    /**
+     * The title before the cut to TITLE_MAX_LENGTH, so a reply can tell a
+     * message that is nothing but the title from one that says more.
+     */
+    private string $fullTitle;
+
     private string $message;
 
     private ?string $keyHash;
@@ -87,13 +93,14 @@ final class HookCall
 
     private function __construct(
         string $outcome,
-        string $title = '',
+        string $fullTitle = '',
         string $message = '',
         ?string $keyHash = null,
         bool $allClear = false
     ) {
         $this->outcome = $outcome;
-        $this->title = $title;
+        $this->title = mb_substr($fullTitle, 0, self::TITLE_MAX_LENGTH, 'UTF-8');
+        $this->fullTitle = $fullTitle;
         $this->message = $message;
         $this->keyHash = $keyHash;
         $this->allClear = $allClear;
@@ -174,7 +181,7 @@ final class HookCall
 
         return new self(
             self::ACCEPTED,
-            mb_substr($bodyTitle !== '' ? $bodyTitle : $hook['name'], 0, self::TITLE_MAX_LENGTH, 'UTF-8'),
+            $bodyTitle !== '' ? $bodyTitle : $hook['name'],
             implode("\n\n", $parts),
             $keyLine ? hash('sha256', $keyLine['key'], true) : null,
             $keyLine ? $keyLine['all_clear'] : false
@@ -211,8 +218,11 @@ final class HookCall
             return $value;
         }
         // Lines and the breaks between them, alternating, so the text that
-        // stays keeps the breaks it was sent with.
-        $pieces = preg_split('/(\R)/', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
+        // stays keeps the breaks it was sent with. Only CR LF, CR and LF end
+        // a line. PCRE's \R also takes form feed, vertical tab and byte 0x85,
+        // the last byte of letters such as Å in UTF-8, and would cut a key
+        // short there.
+        $pieces = preg_split('/(\r\n|\r|\n)/', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
         $kept = [];
         for ($i = 0; $i < count($pieces); $i += 2) {
             if (preg_match('/^[ \t]*(alert key|all-clear)[ \t]*:(.*)$/i', $pieces[$i], $m)) {
@@ -304,11 +314,12 @@ final class HookCall
      * The text of a reply to the key's ticket: the call's title on the first
      * line, then its message. The ticket keeps its own title, so this is
      * where a later call's title, such as Grafana's [FIRING:2], shows. A call
-     * whose message is nothing but its title says it once.
+     * whose message is nothing but its title says it once, whole, even when
+     * the title is longer than the ticket's title can hold.
      */
     public function replyMessage(): string
     {
-        if (trim($this->message) === $this->title) {
+        if (trim($this->message) === $this->fullTitle) {
             return $this->message;
         }
 
@@ -328,7 +339,10 @@ final class HookCall
      * What an accepted call does: OPEN a ticket, or REPLY to its key's linked
      * ticket, and with an all-clear or a closed ticket, the status change
      * after it: OPEN_AND_CLOSE, REPLY_AND_CLOSE or REPLY_AND_REOPEN. A call
-     * without a key always opens, since its ticket facts are null.
+     * without a key always opens, since its ticket facts are null. An
+     * all-clear answers REPLY_AND_CLOSE for a closed ticket as for an open
+     * one. The close then leaves a ticket that is already closed in the
+     * status staff gave it (TicketStatusChange).
      *
      * @param array|null $ticket the linked ticket's facts as ['closed' => bool,
      *                           'locked' => bool, 'deleted' => bool], or null

@@ -380,6 +380,17 @@ check(
     $upperKey->keyHash() !== null && $upperKey->keyHash() !== $keyed->keyHash()
 );
 
+// A key is the whole rest of its line, whatever script it is written in. The
+// two keys share their first letter, whose last UTF-8 byte (0x85) a byte-wise
+// line break rule takes for a line break of its own.
+$keyAsa = call($hook, ['content' => "Disk full\nAlert key: Åsa"]);
+$keyAbo = call($hook, ['content' => "Disk full\nAlert key: Åbo"]);
+
+check(
+    'two keys that differ after a non-ASCII first letter name different keys',
+    $keyAsa->keyHash() !== null && $keyAbo->keyHash() !== null && $keyAsa->keyHash() !== $keyAbo->keyHash()
+);
+
 // The answer carries a hash, never the key: a healthchecks.io check's UUID is
 // also the secret that pings it, and the hash is what gets stored.
 $uuidKey = call($hook, ['content' => "nightly-backup is down\nAlert key: d1665499-e827-441f-bf13-8f15e8f4c0b9"]);
@@ -528,9 +539,11 @@ check(
 );
 
 // An all-clear for a ticket staff already closed adds its reply, so the
-// history shows the recovery, and the ticket stays closed.
+// history shows the recovery. The ticket keeps the closed status staff gave
+// it, because the close that follows leaves a ticket whose status already
+// closes it alone (ADR-0002's note). This row asserts only the answer.
 check(
-    'an all-clear whose key links a closed ticket replies and closes it',
+    'an all-clear whose key links a closed ticket answers reply and close, as for an open ticket',
     $allClear->action($closedTicket) === HookCall::REPLY_AND_CLOSE,
     'got ' . var_export($allClear->action($closedTicket), true)
 );
@@ -581,6 +594,17 @@ check(
     'a reply to a call whose only text is its title carries the title once',
     substr_count($titleOnly->replyMessage(), 'Tango') === 1,
     'got ' . var_export($titleOnly->replyMessage(), true)
+);
+
+// However long the title is. The ticket's title is cut to 150 characters, and
+// the reply still says the whole title, once: its first 150 characters occur
+// one time, not once for the cut title and again for the message.
+$longTitleReply = $longTitle->replyMessage();
+
+check(
+    'a reply to a call whose only text is a 200-character title carries the whole title once',
+    str_contains($longTitleReply, str_repeat('é', 200)) && substr_count($longTitleReply, str_repeat('é', 150)) === 1,
+    'got ' . strlen($longTitleReply) . ' bytes'
 );
 
 exit($failures === 0 ? 0 : 1);

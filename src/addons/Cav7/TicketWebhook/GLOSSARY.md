@@ -34,10 +34,20 @@ about the same thing reach the same ticket.
 _Avoid_: dedup key; alert id; group key and fingerprint, which are Grafana's
 names for particular values
 
+**firing call**:
+A call saying that whatever its alert key names is wrong. Every call with an
+alert key is a firing call or an all-clear.
+_Avoid_: alert, which XenForo uses for its own notifications; down; trigger
+
 **all-clear**:
 A call saying that whatever its alert key names is fine again.
 _Avoid_: resolve and resolved, which are NF/Tickets' words for closing a
 ticket; up; recovery
+
+**link**:
+The tie between a hook's alert key and the one ticket that later calls with
+that key reach. Staff end a link by locking, deleting or merging the ticket.
+_Avoid_: mapping, binding, thread
 
 **token**:
 The secret that lets a caller make calls to one hook. Issued once, shown once,
