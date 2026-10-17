@@ -41,6 +41,9 @@ use NF\Tickets\Service\Ticket\Replier;
  *   message checks. No spam check runs, as none runs on the open path.
  * - `validate()` before `save()` gives the refusal's reasons for the error
  *   log; `save()` alone throws with the first one.
+ * - `setMessage()` formats the message as the Creator's `setContent()` does,
+ *   with the same `$format` default, and TicketReplier leaves it at true for
+ *   the reason TicketOpener gives.
  * - `sendNotifications()` notifies whoever the vendor notifies for any reply:
  *   ticket watchers, and category and queue watchers set to hear messages.
  *   Category watchers set to new tickets only, and the category's and the

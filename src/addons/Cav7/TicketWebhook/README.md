@@ -92,9 +92,23 @@ call the URL without the token part, which keeps the token out of access logs;
 the token screen shows both forms.
 
 The ticket's title is the first embed's title, else the first line of the
-content, else the hook's name. The message is the content, then each embed's
-description, link and fields, in the order the tool sent them. Text arrives as
-typed. A tool that writes BB code gets BB code, and no Markdown is converted.
+content, else the hook's name, and it arrives as typed. The message is the
+content, then each embed's description, link and fields, in the order the tool
+sent them. NF/Tickets formats the message as it saves it, so most of the
+Markdown a caller writes for Discord arrives formatted:
+
+- `**x**` and `__x__` turn bold, and `*x*` and `_x_` italic. An underscore
+  inside a word, as in `my_app_web`, stays as typed.
+- Backticks make inline code, and a fenced block makes a code block.
+- `[text](url)` and a bare URL become links.
+- A line starting with `>` becomes a quote. Lines starting with `- `, `* ` or
+  `+ ` become a list, unless a space comes before the marker.
+- A shortcode such as `:warning:` becomes its emoji.
+- `@` followed by a member's name mentions that member, who gets the alert any
+  mention sends.
+
+BB code arrives as BB code. Numbered lines, `#` headings and `~~x~~` stay as
+typed.
 
 The answers a caller gets, which are Discord's own where Discord has one:
 

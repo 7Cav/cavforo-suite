@@ -11,6 +11,12 @@
   and sends a Slack-shaped body, so it cannot call a hook. Its generic Webhook
   integration can. This record says post for what the addon's glossary now
   calls a call.
+- **Note (2026-10-17):** The consequence "No Markdown is converted" below is
+  wrong, and has been since the first release. NF/Tickets formats a ticket's
+  message as it saves it, so Discord's `**bold**` arrives bold, stored as
+  `[B]bold[/B]`. The vendor's one switch for that formatting also turns off
+  the step that makes a bare URL a link, so the hook leaves it on. The README
+  says what a caller's text becomes. The decision stands.
 
 Remote tools need to open NF/Tickets tickets, and WUD is the first. WUD's
 Discord trigger, and the Discord target of most self-hosted tools, posts

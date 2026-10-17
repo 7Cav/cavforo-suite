@@ -32,6 +32,13 @@ use NF\Tickets\Service\Ticket\Creator;
  *   as if it had no messages.
  * - `setContent()` with validations on trims nothing: a title over 150
  *   characters is an error, which is why HookCall cuts the title first.
+ * - `setContent()` runs the message, not the title, through XenForo's message
+ *   preparer with its default filters on. That is what turns a caller's
+ *   Markdown into BB code, and README.md lists what else changes. Its third
+ *   argument, `$format`, defaults to true, and false turns every filter off
+ *   at once, including the one that makes a bare URL a link. So TicketOpener
+ *   leaves it at true, and a caller's Discord Markdown and links arrive
+ *   formatted.
  * - The Creator does not apply the category's `default_prefix_id`; the public
  *   form does, as a preselected input. It is set here so a category that
  *   requires a prefix accepts the ticket.

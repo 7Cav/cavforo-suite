@@ -28,11 +28,12 @@ namespace Cav7\TicketWebhook;
  * then for each embed its `description`, its `url`, and its fields, name
  * before value; a field with an empty name is its value alone, which is how
  * WUD's Discord trigger sends its body by default. Text passes through as
- * typed, with no Markdown conversion and no escaping. `username`,
- * `avatar_url`, `tts`, `allowed_mentions`, `components` and `attachments`
- * are ignored. A body that yields no title and no message is a bad request;
- * a body that yields a title and nothing else carries the title as its
- * message, so the vendor is never handed an empty one.
+ * typed and unescaped. NF/Tickets formats the message as it saves it,
+ * Markdown included, as TicketOpener records. `username`, `avatar_url`,
+ * `tts`, `allowed_mentions`, `components` and `attachments` are ignored. A
+ * body that yields no title and no message is a bad request; a body that
+ * yields a title and nothing else carries the title as its message, so the
+ * vendor is never handed an empty one.
  *
  * A key line is `Alert key: <key>` for a firing call, or `All-clear: <key>`
  * for an all-clear, on a line of its own, in `content`, in an embed's
