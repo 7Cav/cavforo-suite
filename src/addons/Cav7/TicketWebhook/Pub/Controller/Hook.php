@@ -37,7 +37,8 @@ use XF\Mvc\Reply\AbstractReply;
  *   404  no such hook, an inactive hook, or no matching token
  *   405  a method other than POST
  *   500  the Creator refused the ticket, the Replier refused the reply, the
- *        alert key could not be looked up, or the opener names no user
+ *        alert key could not be looked up, another call held the key's lock
+ *        past Entity\Hook::KEY_LOCK_WAIT, or the opener names no user
  *
  * Every 403 and 500 leaves one entry in the XenForo error log naming the hook
  * by id and name, and the ticket too when a reply failed. A 500 means the
@@ -112,6 +113,42 @@ class Hook extends \XF\Pub\Controller\AbstractController
             return $this->status(500);
         }
 
+        $keyHash = $call->keyHash();
+        if ($keyHash === null) {
+            return $this->act($hook, $call, $opener);
+        }
+
+        // Two calls with one key that both find no link would both open a
+        // ticket, and the one the key does not link would never hear its
+        // all-clear. So a call holds its key's lock from before it reads the
+        // link until its action is done, and a second call waits, then finds
+        // the first call's ticket.
+        try {
+            $hook->lockKey($keyHash);
+        } catch (\Throwable $e) {
+            \XF::logException($e, true, sprintf(
+                '[Cav7/TicketWebhook] Hook %d "%s" could not take its alert key\'s lock: ',
+                $hook->hook_id,
+                $hook->name
+            ));
+
+            return $this->status(500);
+        }
+
+        try {
+            return $this->act($hook, $call, $opener);
+        } finally {
+            $hook->unlockKey($keyHash);
+        }
+    }
+
+    /**
+     * Acts on an accepted call. Looks its alert key's link up, then opens a
+     * ticket or replies to the linked one, as HookCall answers. A call with a
+     * key gets here holding the key's lock.
+     */
+    protected function act(HookEntity $hook, HookCall $call, \XF\Entity\User $opener): AbstractReply
+    {
         $keyHash = $call->keyHash();
         try {
             $linked = $keyHash !== null ? $hook->linkedTicket($keyHash) : null;
