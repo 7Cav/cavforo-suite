@@ -6,8 +6,8 @@ namespace Cav7\TicketWebhook;
  * What one call to a hook yields: not found, bad request, or accepted with
  * the title and message of the ticket to open, the hash of its alert key,
  * and what to do given the facts of the ticket that key links. See
- * GLOSSARY.md for hook, caller, call, alert key, all-clear and token, and
- * ADR-0002 for why a key is a line in the call's text.
+ * GLOSSARY.md for hook, caller, call, alert key, firing call, all-clear,
+ * link and token, and ADR-0002 for why a key is a line in the call's text.
  *
  * Pure PHP with no XenForo import, so tests/HookCallTest.php runs it with
  * bare php. The public controller supplies the facts (the hook row, the path
@@ -49,12 +49,12 @@ namespace Cav7\TicketWebhook;
  * one. A call whose only text was key lines is accepted with the hook's name
  * as its title and message.
  *
- * What a call does to its key's ticket follows the action table in the spec
- * on #321. A ticket staff locked or deleted, or one that is gone, ends the
- * link: a firing call opens a new ticket, and an all-clear opens one and
- * closes it. A lock wins over the ticket being closed too. Otherwise a firing
- * call replies, and reopens the ticket when it is closed, and an all-clear
- * replies and closes it.
+ * What a call does to its key's ticket is the table under "Alert keys" in
+ * README.md, and ADR-0002 records why. A ticket staff locked or deleted, or
+ * one that is gone, ends the link. A firing call then opens a new ticket, and
+ * an all-clear opens one and closes it. A lock wins over the ticket being
+ * closed too. Otherwise a firing call replies, and reopens the ticket when it
+ * is closed, and an all-clear replies and closes the ticket if it is open.
  */
 final class HookCall
 {
@@ -339,7 +339,10 @@ final class HookCall
      * What an accepted call does: OPEN a ticket, or REPLY to its key's linked
      * ticket, and with an all-clear or a closed ticket, the status change
      * after it: OPEN_AND_CLOSE, REPLY_AND_CLOSE or REPLY_AND_REOPEN. A call
-     * without a key always opens, since its ticket facts are null.
+     * without a key always opens, since its ticket facts are null. An
+     * all-clear answers REPLY_AND_CLOSE for a closed ticket as for an open
+     * one. The close then leaves a ticket that is already closed in the
+     * status staff gave it (TicketStatusChange).
      *
      * @param array|null $ticket the linked ticket's facts as ['closed' => bool,
      *                           'locked' => bool, 'deleted' => bool], or null

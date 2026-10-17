@@ -6,6 +6,13 @@
 - **Amends:** [ADR-0001](0001-inbound-hooks-speak-discord.md), whose consequence
   "One post is one ticket, and the addon does not de-duplicate" this replaces.
   The rest of ADR-0001 stands.
+- **Note (2026-10-17):** The hook changes a status only to move a ticket
+  between closed and not closed. An all-clear for a ticket staff already
+  closed adds its reply and leaves the closed status they chose, as
+  NF/Tickets' own Resolve action refuses a ticket that is already closed. A
+  firing call reopens only a ticket whose status closes it. The list below
+  says an all-clear "sets the board's resolved status" without that
+  exception.
 
 Callers repeat themselves. Grafana calls again every 4 hours by default while
 an alert fires, and again when it clears. WUD calls again when a newer version
