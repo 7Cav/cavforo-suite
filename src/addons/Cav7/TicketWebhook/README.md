@@ -104,7 +104,7 @@ The answers a caller gets, which are Discord's own where Discord has one:
 | 403 | The opener may not open a ticket in the hook's category. |
 | 404 | No such hook, an inactive hook, or a wrong token. |
 | 405 | A method other than POST. |
-| 500 | The ticket or the reply could not be created, or the opener names no user. The call did nothing, so a retry is safe. |
+| 500 | The ticket or the reply could not be created, a call with the same alert key was still running after 10 seconds, or the opener names no user. The call did nothing, so a retry is safe. |
 
 Every 403 and 500 leaves one entry in the XenForo error log naming the hook,
 and the ticket too when a reply failed. If a ticket or reply saves and a later
@@ -164,6 +164,11 @@ A reply goes through wherever the ticket now sits. A ticket staff moved to
 another category keeps its key's replies, even in a category where the opener
 may not post. A key keeps reaching its ticket after an admin points the hook
 at a new category, and only new keys open their tickets there.
+
+Calls with one key run one at a time. A call that arrives while another with
+its key is still running waits for it, then lands on the ticket that call
+reached, so two calls sent together never open two tickets. Calls with
+different keys do not wait on each other.
 
 A new ticket notifies the category's staff as any new ticket does. A reply
 notifies whoever NF/Tickets notifies for any reply, which is fewer people. The
