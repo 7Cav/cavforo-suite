@@ -115,6 +115,7 @@ class Hook extends \XF\Pub\Controller\AbstractController
         $keyHash = $call->keyHash();
         try {
             $linked = $keyHash !== null ? $hook->linkedTicket($keyHash) : null;
+            $facts = $linked ? $this->ticketFacts($linked) : null;
         } catch (\Throwable $e) {
             \XF::logException($e, true, sprintf(
                 '[Cav7/TicketWebhook] Hook %d "%s" could not look up its alert key: ',
@@ -125,9 +126,7 @@ class Hook extends \XF\Pub\Controller\AbstractController
             return $this->status(500);
         }
 
-        $action = $call->action($linked ? $this->ticketFacts($linked) : null);
-
-        if ($action === HookCall::REPLY) {
+        if ($call->action($facts) === HookCall::REPLY) {
             try {
                 \XF::asVisitor($opener, function () use ($hook, $linked, $call, $keyHash) {
                     (new TicketReplier())->reply($hook, $linked, $call->replyMessage(), $keyHash);
