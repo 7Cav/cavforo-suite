@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Only the settings that differ from CodeRabbit's defaults. While this file
+# exists, settings made in the CodeRabbit web app do not apply to this repo.
+
+reviews:
+  # Leaves the PR description as written. The summary opens CodeRabbit's
+  # walkthrough comment instead.
+  high_level_summary_in_walkthrough: true
+
+  path_filters:
+    # _data/ repeats _output/ as XML, and CI checks that the two agree.
+    - "!src/addons/Cav7/*/_data/**"
+    # Hashes and IDE stubs that XenForo writes on export.
+    - "!src/addons/Cav7/*/_output/**/_metadata.json"
+    - "!src/addons/Cav7/*/_output/*_hint.php"
+
+  path_instructions:
+    # Restates CONTRIBUTING.md "What belongs in CI, and what does not".
+    - path: "**/tests/**"
+      instructions: |
+        Tests here are standalone PHP scripts that tools/run-tests.sh and
+        tools/run-tools-tests.sh run with plain php. CI has no XenForo, no
+        PHPUnit and no Composer. A test calls the code with real inputs and
+        asserts on what comes back.
+        Flag a test that reads a .php file as text and asserts over it, for
+        example file_get_contents followed by preg_match or str_contains.
+        Flag an assertion that a behaviour-preserving refactor would break,
+        such as one on wording, statement order or private structure.
+        Do not ask for tests of code that needs a live XenForo. That code is
+        checked by hand on a dev stack.
+    # Restates CONTRIBUTING.md "Data-only changes without an install".
+    - path: "src/addons/Cav7/*/_output/**"
+      instructions: |
+        XenForo exports these files, and _data/ holds the same items as XML.
+        A change to a file here needs _data/ regenerated to match, with
+        php tools/sync-addon-data.php <addon dir> --to-data or with
+        xf-addon:export, never by hand. CI's consistency check fails when the
+        two disagree, so when you suggest a change here, say to run that.
+        Templates, the .html and .less files, use XenForo template syntax,
+        with <xf:...> tags, {{ }} expressions and {$var} variables. A
+        template is a fragment, not a whole HTML document. Phrases, the .txt
+        files, are text that forum users read.
+    # Restates the ADR paragraph of AGENTS.md "Writing docs".
+    - path: "**/docs/adr/**"
+      instructions: |
+        An ADR is a dated, point-in-time record of a decision, per AGENTS.md
+        "Writing docs". Do not ask to rewrite or delete text in an existing
+        ADR because the code or a later decision has moved on. This repo
+        corrects an ADR with a dated note and keeps the original text. For a
+        new ADR, check that it reads clearly and say if it contradicts
+        another ADR.
+    # Restates AGENTS.md "Writing docs" for every other doc.
+    - path: "**/*.md"
+      instructions: |
+        Apply AGENTS.md "Writing docs", except to ADRs. Flag progress, status,
+        ownership and "coming soon" text, per-item status columns, and
+        "tracked in #N" notes, which belong in the issue tracker. Flag a fact
+        that a doc repeats when it already has a home elsewhere, such as the
+        addon list, whose home is README.md.
+
+  pre_merge_checks:
+    # No repo rule asks for a docblock on every function.
+    docstrings:
+      mode: "off"
+
+  finishing_touches:
+    docstrings:
+      enabled: false
+    # Generated tests would not follow the tests instruction above.
+    unit_tests:
+      enabled: false
+
+knowledge_base:
+  code_guidelines:
+    # AGENTS.md is read by default. These add the docs it points to.
+    filePatterns:
+      - "CONTRIBUTING.md"
+      - "GLOSSARY.md"
+      - "src/addons/Cav7/*/GLOSSARY.md"
+      - files: "docs/addon-format.md"
+        applyTo: "src/addons/**,_skeleton/**"
