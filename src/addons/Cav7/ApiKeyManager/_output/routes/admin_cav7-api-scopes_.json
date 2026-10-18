@@ -2,7 +2,7 @@
     "route_type": "admin",
     "route_prefix": "cav7-api-scopes",
     "sub_name": "",
-    "format": "",
+    "format": ":int<scope_id>/",
     "build_class": "",
     "build_method": "",
     "controller": "Cav7\\ApiKeyManager\\Admin\\Controller\\ApiScope",
