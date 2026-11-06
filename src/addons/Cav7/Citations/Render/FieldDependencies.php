@@ -74,6 +74,12 @@ final class FieldDependencies
         ));
     }
 
+    /** Whether anything on the version prints this value. */
+    public static function used(Version $version, string $value): bool
+    {
+        return self::remadeBy($version, [$value]) !== [];
+    }
+
     /** @return list<TextField|SignatureSlot|RankArtField> */
     public static function memberFields(Version $version): array
     {

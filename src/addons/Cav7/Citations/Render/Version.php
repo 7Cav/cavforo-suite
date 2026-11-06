@@ -44,6 +44,21 @@ final class Version
         return $missing;
     }
 
+    /**
+     * @param 'grant'|'member' $scope
+     * @return list<string>
+     */
+    public function inputKeys(string $scope): array
+    {
+        $keys = [];
+        foreach ($this->inputs as $input) {
+            if ($input->scope === $scope) {
+                $keys[] = $input->key;
+            }
+        }
+        return $keys;
+    }
+
     /** @return list<string> The fonts this version sets text in. */
     public function fontKeys(): array
     {

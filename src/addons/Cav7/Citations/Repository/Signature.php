@@ -8,13 +8,12 @@ use XF\Mvc\Entity\Repository;
 
 class Signature extends Repository
 {
-    /**
-     * Frozen means a grant_signature row names it. That table comes with grants, and this
-     * is the one line to change when it does.
-     */
     public function isFrozen(int $signatureId): bool
     {
-        return false;
+        return (bool) $this->db()->fetchOne(
+            'SELECT 1 FROM xf_cav7_citation_grant_signature WHERE signature_id = ? LIMIT 1',
+            $signatureId
+        );
     }
 
     /**

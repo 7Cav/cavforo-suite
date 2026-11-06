@@ -89,6 +89,26 @@ class TemplateVersion extends Entity
         return $art;
     }
 
+    /** @return list<string> What it serves, as `award:<id>` or `record_type:<id>`. */
+    public function kinds(): array
+    {
+        $kinds = [];
+        foreach ($this->Kinds as $kind) {
+            $kinds[] = "{$kind->kind_type}:{$kind->kind_id}";
+        }
+        return $kinds;
+    }
+
+    /** @return array<string, list<int>> Rank ids with art, by field key. */
+    public function artRanks(): array
+    {
+        $ranks = [];
+        foreach ($this->RankArt as $row) {
+            $ranks[$row->field_key][] = $row->rank_id;
+        }
+        return $ranks;
+    }
+
     protected function verifyFieldDefinitions(&$value): bool
     {
         return $this->definitionsDecode('field_definitions', fn () => FieldDefinitions::fields($value));

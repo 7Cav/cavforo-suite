@@ -1,0 +1,5 @@
+{
+    "description": "<p>Fires after the transaction commits, when a regiment grant is issued, corrected or withdrawn.</p>\n\n<p>Arguments:</p>\n<ol>\n\t<li><code><em>\\Cav7\\Citations\\Entity\\Grant</em> $grant</code></li>\n\t<li><code><em>string</em> $change</code>: <code>issued</code>, <code>corrected</code> or <code>withdrawn</code></li>\n</ol>",
+    "arguments": [],
+    "hint_description": ""
+}

@@ -11,6 +11,18 @@
         "version_string": "1.1.0",
         "hash": "10d04a90bb2249091d3551a33a3943c3"
     },
+    "cav7_cit_refused_already_withdrawn.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "24fd2f310b4f41a1a40c260e7553a321"
+    },
+    "cav7_cit_refused_bad_date.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "d38f57750979886d364353c0ec2f610f"
+    },
     "cav7_cit_refused_bad_printed_lines.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -41,11 +53,35 @@
         "version_string": "1.1.0",
         "hash": "7ea3cfe198ecca81fa996b2e1a6398d6"
     },
+    "cav7_cit_refused_citation_text_required.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "53487690af6ef630c7bdecf8a883a396"
+    },
     "cav7_cit_refused_does_not_parse.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "2dbcb3d61c953930741efa4c373ac14c"
+    },
+    "cav7_cit_refused_duplicate_member.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "aa859026ef0dab4cb124d332050d8919"
+    },
+    "cav7_cit_refused_grant_moved_on.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "3582bef8dfe8fe2df3ae5ca8258e6533"
+    },
+    "cav7_cit_refused_grant_undeletable.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "a6e1bd279b663207da3221622b42d7d8"
     },
     "cav7_cit_refused_image_too_large.txt": {
         "global_cache": false,
@@ -53,11 +89,29 @@
         "version_string": "1.1.0",
         "hash": "dbb3ab43e7a7c2ff86e53e86e14c16d5"
     },
+    "cav7_cit_refused_input_required.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "86f3f0c82333e88310a1976b1430df75"
+    },
     "cav7_cit_refused_input_scope_changed.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "db7d96c96f296ff07223cf06530286c4"
+    },
+    "cav7_cit_refused_kind_not_served.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "b1c54fdd86a6d31998db20e38c66d6a0"
+    },
+    "cav7_cit_refused_name_required.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "92095f8f458ed9424b7d650d1eab9477"
     },
     "cav7_cit_refused_narrow_font_value.txt": {
         "global_cache": false,
@@ -83,6 +137,12 @@
         "version_string": "1.1.0",
         "hash": "36376def59e347fcde915aae276ad105"
     },
+    "cav7_cit_refused_no_members.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "f45cba72fb48513e87bf1ac14be08869"
+    },
     "cav7_cit_refused_no_plate.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -95,11 +155,47 @@
         "version_string": "1.1.0",
         "hash": "4f211844ea5fdd5d8c3bde60c958dd55"
     },
+    "cav7_cit_refused_no_such_grant.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "079b138af6d71c74b206bd01934a0940"
+    },
+    "cav7_cit_refused_no_such_kind.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "dab09f83dbfb8c659c17426158f2f6df"
+    },
+    "cav7_cit_refused_no_such_member.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "9731f2f2c99e32568144b010e0da16c1"
+    },
+    "cav7_cit_refused_no_such_rank.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "29f9606cfb1c2a4fc27bbfb27c337020"
+    },
     "cav7_cit_refused_not_a_draft.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "02f8f04bf86d2d078cbbfe1a1faa01bf"
+    },
+    "cav7_cit_refused_not_a_member_grant.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "8ef021b18f72d1aea94d4ec7c85f6107"
+    },
+    "cav7_cit_refused_not_a_regiment_grant.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "af63ad149c8dd0f25ac647ab3ead039e"
     },
     "cav7_cit_refused_not_an_accepted_image.txt": {
         "global_cache": false,
@@ -119,17 +215,65 @@
         "version_string": "1.1.0",
         "hash": "4d6ac74aaed1a6f044c72f106784d2d5"
     },
+    "cav7_cit_refused_rank_required.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "6bdee43d1bff5c6ff5531285dd58ae77"
+    },
+    "cav7_cit_refused_rank_without_art.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "75468f7b452cf0cd117ae0d16daa136e"
+    },
     "cav7_cit_refused_rank_without_scope.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "aa1165ec2f0b12472d9429fd48efd5bf"
     },
+    "cav7_cit_refused_reason_required.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "a16de843fc0c3811676a33490824e25c"
+    },
+    "cav7_cit_refused_regiment_duplicate.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "64ef198342780b6fa26843be3c70f5dd"
+    },
+    "cav7_cit_refused_regiment_needs_permission.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "e67ee5536b0f0a94485ba79609693579"
+    },
+    "cav7_cit_refused_regiment_takes_no_members.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "252315f06c0df3166ea6b6032fe2b4d0"
+    },
     "cav7_cit_refused_signature_frozen.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "72d9e2eca1cdddefb21e288358253af6"
+    },
+    "cav7_cit_refused_signature_wrong_billet.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "e175348c788d3f19c0b567543c1d19ee"
+    },
+    "cav7_cit_refused_slot_empty.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "0165fc8c151e92e26e9a867e1e77b00f"
     },
     "cav7_cit_refused_template_undeletable.txt": {
         "global_cache": false,
@@ -155,11 +299,47 @@
         "version_string": "1.1.0",
         "hash": "ae6ed9c3164b8e388dce0f513a09dcc1"
     },
+    "cav7_cit_refused_version_needs_member.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "3f8eb7c3e8059fcb712b9ea03dbc65f3"
+    },
+    "cav7_cit_refused_version_not_current.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "da7d36c651536978884c917fdb8b326c"
+    },
+    "cav7_cit_refused_version_not_published.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "a1b813e4bcdd81f2966a136af8f8ba3b"
+    },
     "cav7_cit_refused_version_undeletable.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "4d1036e7e3b1cb012dff93de2a2d7b3c"
+    },
+    "cav7_cit_refused_wrong_template.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "f835bd83894f98ae2db8f9e624670b4d"
+    },
+    "cav7_cit_regiment_awards_not_a_list.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "3f7fb07c787d96b9456bb1b86b5f21de"
+    },
+    "cav7_cit_regiment_awards_unknown.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "c65ef78160903bdf5b02820c4836fc68"
     },
     "cron_entry.cav7CitationsSweep.txt": {
         "global_cache": false,
@@ -167,11 +347,35 @@
         "version_string": "1.0.0",
         "hash": "bb3c5ad2fb46d99c2eb920c6a34fcbc9"
     },
+    "option.cav7CitCutover.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "99588382b092eb51688f3bfb7dfae8f9"
+    },
+    "option.cav7CitRegimentAwardIds.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "84847bbd66250e0cd31ddeaa4c08cdc7"
+    },
     "option.cav7CitationReencodeEnabled.txt": {
         "global_cache": false,
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "bb48b053766ee423c7085c51cf4cc46a"
+    },
+    "option_explain.cav7CitCutover.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "8141a91527d3557536320264b685ff20"
+    },
+    "option_explain.cav7CitRegimentAwardIds.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "ca91907a75da4e62619c8b11180f2f30"
     },
     "option_explain.cav7CitationReencodeEnabled.txt": {
         "global_cache": false,
@@ -190,5 +394,53 @@
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "a42955c246f6d738775e4a5131ee74c3"
+    },
+    "permission.cav7Citations_editTemplateDrafts.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "50fe5fbe566b12c95623153c040b1d02"
+    },
+    "permission.cav7Citations_issueGrants.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "0ed3dcbb7f637136965282ff073e2cb1"
+    },
+    "permission.cav7Citations_manageRegimentGrants.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "d8495a4c8e6879b43577a7074c1312e3"
+    },
+    "permission.cav7Citations_publishTemplates.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "9a0ea39797c6de1c6f8653553f8e872d"
+    },
+    "permission.cav7Citations_removeGrantMembers.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "009cd710c9b2d768e4882df78def878f"
+    },
+    "permission.cav7Citations_viewGrantsTemplates.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "8f89ec90ae52c5af9aad9da61a64baa5"
+    },
+    "permission_interface.cav7CitationModPermissions.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "cd5aeadbdd51799859d17b728401885c"
+    },
+    "permission_interface.cav7CitationPermissions.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "dcfea6a063e24c4d66c9d4539ad49399"
     }
 }

@@ -25,10 +25,15 @@ final class VersionRender
     /**
      * @param list<TextField|SignatureSlot|RankArtField> $fields Only the fields to set.
      * @return array<string, SetField> By field key.
+     * @throws RenderFailed A font file gone from the tree.
      */
     public function typeset(TemplateVersion $version, array $fields, Values $values): array
     {
-        return (new Typesetter($this->metrics))->set($fields, $version->fontPaths($this->files), $values);
+        try {
+            return (new Typesetter($this->metrics))->set($fields, $version->fontPaths($this->files), $values);
+        } catch (\ImagickException | \ImagickDrawException $e) {
+            throw new RenderFailed($e->getMessage(), 0, $e);
+        }
     }
 
     /**

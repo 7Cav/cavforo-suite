@@ -5,9 +5,9 @@
  *
  * The stub adapter runs the storage classes' real SQL against in-memory SQLite, so a test
  * couples to what a query means rather than its text. It is test infrastructure and says
- * nothing about running on SQLite. The one MySQL-only piece, FOR UPDATE, is dropped here:
- * SQLite has one writer, so row locks and GET_LOCK are checked on a dev stack. Collation
- * and type affinity stay the stack's business too.
+ * nothing about running on SQLite. FOR UPDATE is dropped here: SQLite has one writer, so
+ * row locks and GET_LOCK are checked on a dev stack. INSERT IGNORE takes SQLite's spelling.
+ * Collation and type affinity stay the stack's business too.
  */
 
 namespace XF\Db {
@@ -38,7 +38,7 @@ namespace XF\Db {
 
         private function run(string $sql, array $params): \PDOStatement
         {
-            $sql = str_replace(' FOR UPDATE', '', $sql);
+            $sql = str_replace([' FOR UPDATE', 'INSERT IGNORE'], ['', 'INSERT OR IGNORE'], $sql);
             try {
                 $statement = $this->pdo->prepare($sql);
                 $statement->execute(array_values($params));

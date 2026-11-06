@@ -38,7 +38,7 @@ namespace Cav7\Citations\Tests {
     require __DIR__ . '/support/Harness.php';
 
     spl_autoload_register(function (string $class): void {
-        foreach (['Render', 'Template'] as $directory) {
+        foreach (['Render', 'Template', 'Grant'] as $directory) {
             $prefix = "Cav7\\Citations\\$directory\\";
             if (str_starts_with($class, $prefix)) {
                 require __DIR__ . "/../$directory/" . substr($class, strlen($prefix)) . '.php';
@@ -48,10 +48,12 @@ namespace Cav7\Citations\Tests {
 
     use Cav7\Citations\Render\LibraryVersions;
     use Cav7\Citations\Render\Line;
+    use Cav7\Citations\Render\Overrun;
     use Cav7\Citations\Render\PlacedImage;
     use Cav7\Citations\Render\SetField;
     use Cav7\Citations\Template\FileStore;
     use Cav7\Citations\Template\ImageUpload;
+    use Cav7\Citations\Template\OverrunLog;
     use Cav7\Citations\Template\TypesettingRows;
     use Cav7\Citations\Template\UploadRefused;
     use XF\Db\AbstractAdapter;
@@ -187,10 +189,61 @@ namespace Cav7\Citations\Tests {
         'SELECT addon_version_id FROM ' . TypesettingRows::TABLE . " WHERE grant_member_id = 7 AND field_key = 'recipient'"
     ) === 1010071);
 
-    check('the legibility list reads the stored flag', array_map(
-        fn (array $row): string => "{$row['grant_id']}:{$row['field_key']}",
+    $all = $rows->all(1);
+    check('a grant reads back whole, shared apart from each member', array_keys($all->shared) === ['body', 'empty'] && array_keys($all->members) === [7, 8] && count($all->members[7]) === 3);
+    check('a grant holds one set of stamps per version it was made under', count($rows->stamps(1)) === 2);
+
+    $rows->restamp(1, 1010072, new LibraryVersions('7.1.2-40', '2.15.0'));
+    check('a restamp reaches every row of the grant and no other', array_map('intval', array_column($rows->stamps(1), 'addon_version_id')) === [1010072] && (int) $rows->stamps(2)[0]['addon_version_id'] === 1010070);
+    check('a restamp leaves the set data alone', $rows->read(1, 7)['recipient']->size === 38.5);
+    check('--addon-version finds a grant by any row', $rows->grantsStamped(1010072) === [1] && $rows->grantsStamped(1010070) === [2] && $rows->grantsStamped(999) === []);
+
+    // G-48: below_legibility rows joined to their grant.
+    $db->query('CREATE TABLE xf_cav7_citation_grant (grant_id INTEGER, template_version_id INTEGER, kind_title TEXT, withdrawn_date INTEGER)');
+    $db->query('CREATE TABLE xf_cav7_citation_template_version (template_version_id INTEGER, template_id INTEGER, version_number INTEGER)');
+    $db->query("INSERT INTO xf_cav7_citation_grant VALUES (1, 41, 'Bronze Star', 0), (2, 41, 'Silver Star', 0), (3, 41, 'PUC', 1700000000)");
+    $db->query('INSERT INTO xf_cav7_citation_template_version VALUES (41, 6, 3)');
+    $rows->write(1, 8, ['recipient' => new SetField('recipient', 20.0, true, [$nameLine])], 1010070, $libraries, 1000);
+    $rows->write(3, TypesettingRows::SHARED, ['body' => new SetField('body', 12.5, true, [$line])], 1010070, $libraries, 1000);
+
+    $listed = fn (): array => array_map(
+        fn (array $row): string => "{$row['grant_id']}:{$row['grant_member_id']}:{$row['field_key']}",
         $rows->belowLegibility()
-    ) === ['1:body', '2:other']);
+    );
+    check('G-48 a shared field is one entry, a member field one per member, a withdrawn grant none', $listed() === ['1:0:body', '1:8:recipient', '2:0:other'], json_encode($listed()));
+    $entry = $rows->belowLegibility()[0];
+    check('G-48 an entry carries its grant and version', $entry['kind_title'] === 'Bronze Star' && (int) $entry['template_id'] === 6 && (int) $entry['version_number'] === 3);
+
+    $rows->clearMember(1, 8);
+    check('G-48 a removed member\'s rows go with them', $listed() === ['1:0:body', '2:0:other'] && !isset($rows->all(1)->members[8]) && isset($rows->all(1)->members[7]));
+
+    $rows->clearGrant(1);
+    check('moving a version clears only that grant', $rows->all(1)->shared === [] && $rows->all(1)->members === [] && isset($rows->all(2)->shared['other']));
+
+    // G-45.
+    $db->query('CREATE TABLE ' . OverrunLog::TABLE . ' (
+        template_version_id INTEGER, imagemagick_version TEXT, freetype_version TEXT, log_date INTEGER,
+        PRIMARY KEY (template_version_id, imagemagick_version, freetype_version))');
+    $errors = [];
+    $overruns = new OverrunLog($db, function (string $message) use (&$errors): void {
+        $errors[] = $message;
+    });
+    $overrun = new Overrun('body', 3.5);
+
+    $overruns->record(41, 7, $overrun, $libraries, 1000);
+    check('G-45 a first overrun logs, naming what S1 needs', count($errors) === 1
+        && str_contains($errors[0], 'template version 41') && str_contains($errors[0], 'body') && str_contains($errors[0], 'grant member 7')
+        && str_contains($errors[0], '3.50px') && str_contains($errors[0], '7.1.2-34') && str_contains($errors[0], '2.14.3'), $errors[0] ?? '');
+    $overruns->record(41, 8, new Overrun('recipient', 9.0), $libraries, 2000);
+    check('G-45 the same pair logs nothing more', count($errors) === 1);
+    $overruns->record(41, 7, $overrun, new LibraryVersions('7.1.2-34', '2.15.0'), 3000);
+    check('G-45 a new FreeType logs again', count($errors) === 2);
+    $overruns->record(42, 7, $overrun, $libraries, 3000);
+    check('G-45 another version logs', count($errors) === 3);
+
+    $db->query('DROP TABLE ' . OverrunLog::TABLE);
+    $overruns->record(43, 7, $overrun, $libraries, 3000);
+    check('a failure writing the log doesn\'t fail the render', count($errors) === 3);
 
     finish();
 }

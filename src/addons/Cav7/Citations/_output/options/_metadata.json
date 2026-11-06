@@ -1,4 +1,10 @@
 {
+    "cav7CitCutover.json": {
+        "hash": "1e7d361e47517fdc729aadb6f34692d3"
+    },
+    "cav7CitRegimentAwardIds.json": {
+        "hash": "681b41fa9bb0c8523efab1e331e5b48b"
+    },
     "cav7CitationReencodeEnabled.json": {
         "hash": "58065d1dd3c49036dcd99eac6f0e04ce"
     }

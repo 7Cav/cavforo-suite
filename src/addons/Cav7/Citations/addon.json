@@ -12,7 +12,8 @@
     "require": {
         "php": ["8.1.0", "PHP 8.1+"],
         "XF": [2030070, "XenForo 2.3.0+"],
-        "NF/Rosters": [2010570, "Rosters and Personnel Status Reports 2.1.5+"]
+        "NF/Rosters": [2010570, "Rosters and Personnel Status Reports 2.1.5+"],
+        "php-ext/imagick": ["*", "PHP Imagick extension"]
     },
     "icon": ""
 }
