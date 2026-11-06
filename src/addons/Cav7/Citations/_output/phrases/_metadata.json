@@ -1,4 +1,166 @@
 {
+    "cav7_cit_definitions_invalid.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "3e4969967a16e367957bdd2df2404294"
+    },
+    "cav7_cit_plate_width_warning.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "10d04a90bb2249091d3551a33a3943c3"
+    },
+    "cav7_cit_refused_bad_printed_lines.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "0299a12566e552c23ddf7d530aaad32b"
+    },
+    "cav7_cit_refused_bad_transition.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "3723baf93bf3c144785282c59a763a8f"
+    },
+    "cav7_cit_refused_billet_in_use.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "7432c274cbb89cbcf93f5b787b91ec42"
+    },
+    "cav7_cit_refused_box_off_plate.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "a735417c96a32c251ebfc540a772f330"
+    },
+    "cav7_cit_refused_citation_text_outside_wrap.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "7ea3cfe198ecca81fa996b2e1a6398d6"
+    },
+    "cav7_cit_refused_does_not_parse.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "2dbcb3d61c953930741efa4c373ac14c"
+    },
+    "cav7_cit_refused_image_too_large.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "dbb3ab43e7a7c2ff86e53e86e14c16d5"
+    },
+    "cav7_cit_refused_input_scope_changed.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "db7d96c96f296ff07223cf06530286c4"
+    },
+    "cav7_cit_refused_narrow_font_value.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "451a077f119f492e7dfeb70742525bc5"
+    },
+    "cav7_cit_refused_no_billet.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "21a3e247310b0aa50b0ed83250f0bc22"
+    },
+    "cav7_cit_refused_no_catalog_font.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "896e3ca96b4c1f511895d6961a528303"
+    },
+    "cav7_cit_refused_no_kind.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "36376def59e347fcde915aae276ad105"
+    },
+    "cav7_cit_refused_no_plate.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "3dd69033bed7d540aa2b1dc4a03c85e9"
+    },
+    "cav7_cit_refused_no_such_billet.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "4f211844ea5fdd5d8c3bde60c958dd55"
+    },
+    "cav7_cit_refused_not_a_draft.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "02f8f04bf86d2d078cbbfe1a1faa01bf"
+    },
+    "cav7_cit_refused_not_an_accepted_image.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "fd8d6adbb850da09ccede6b01be91917"
+    },
+    "cav7_cit_refused_one_draft.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "0f4685f484e2f8820fd83e8bdde34555"
+    },
+    "cav7_cit_refused_rank_art_without_scope.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "4d6ac74aaed1a6f044c72f106784d2d5"
+    },
+    "cav7_cit_refused_rank_without_scope.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "aa1165ec2f0b12472d9429fd48efd5bf"
+    },
+    "cav7_cit_refused_signature_frozen.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "72d9e2eca1cdddefb21e288358253af6"
+    },
+    "cav7_cit_refused_template_undeletable.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "2f96b84ea0aa187f8ebcdd6646ca05f1"
+    },
+    "cav7_cit_refused_undeclared_input.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "5db2a890069d1d3f21964d50a1c4f588"
+    },
+    "cav7_cit_refused_undecodable_image.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "116c3d328f0233c062b1e2186f7459c7"
+    },
+    "cav7_cit_refused_version_frozen.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "ae6ed9c3164b8e388dce0f513a09dcc1"
+    },
+    "cav7_cit_refused_version_undeletable.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "4d1036e7e3b1cb012dff93de2a2d7b3c"
+    },
     "cron_entry.cav7CitationsSweep.txt": {
         "global_cache": false,
         "version_id": 1000070,

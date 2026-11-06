@@ -1,5 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <phrases>
+  <phrase title="cav7_cit_definitions_invalid" version_id="1010070" version_string="1.1.0"><![CDATA[Those definitions can't be saved: {detail}]]></phrase>
+  <phrase title="cav7_cit_plate_width_warning" version_id="1010070" version_string="1.1.0"><![CDATA[This plate is {width}px wide. Plates aim for about 1275px.]]></phrase>
+  <phrase title="cav7_cit_refused_bad_printed_lines" version_id="1010070" version_string="1.1.0"><![CDATA[A signature needs one to four printed lines, none of them blank.]]></phrase>
+  <phrase title="cav7_cit_refused_bad_transition" version_id="1010070" version_string="1.1.0"><![CDATA[A version can't move to that state.]]></phrase>
+  <phrase title="cav7_cit_refused_billet_in_use" version_id="1010070" version_string="1.1.0"><![CDATA[A signature or a signature slot still names this billet.]]></phrase>
+  <phrase title="cav7_cit_refused_box_off_plate" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: the box runs off the plate.]]></phrase>
+  <phrase title="cav7_cit_refused_citation_text_outside_wrap" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: citation text needs a wrap field.]]></phrase>
+  <phrase title="cav7_cit_refused_does_not_parse" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: the pattern doesn't parse.]]></phrase>
+  <phrase title="cav7_cit_refused_image_too_large" version_id="1010070" version_string="1.1.0"><![CDATA[That image is too large. The limit is 4000px on a side and 12 megapixels.]]></phrase>
+  <phrase title="cav7_cit_refused_input_scope_changed" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: an earlier version gave this input another scope. A key means one thing across versions.]]></phrase>
+  <phrase title="cav7_cit_refused_narrow_font_value" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: this font lacks common accented letters, so it can only set dates and literal text.]]></phrase>
+  <phrase title="cav7_cit_refused_no_billet" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: pick a signing billet.]]></phrase>
+  <phrase title="cav7_cit_refused_no_catalog_font" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: pick a font from the catalog.]]></phrase>
+  <phrase title="cav7_cit_refused_no_kind" version_id="1010070" version_string="1.1.0"><![CDATA[Pick at least one award or record type for this version to serve.]]></phrase>
+  <phrase title="cav7_cit_refused_no_plate" version_id="1010070" version_string="1.1.0"><![CDATA[Upload a plate before publishing.]]></phrase>
+  <phrase title="cav7_cit_refused_no_such_billet" version_id="1010070" version_string="1.1.0"><![CDATA[That signing billet doesn't exist.]]></phrase>
+  <phrase title="cav7_cit_refused_not_a_draft" version_id="1010070" version_string="1.1.0"><![CDATA[A new version must start as a draft.]]></phrase>
+  <phrase title="cav7_cit_refused_not_an_accepted_image" version_id="1010070" version_string="1.1.0"><![CDATA[That file isn't an image type this upload accepts.]]></phrase>
+  <phrase title="cav7_cit_refused_one_draft" version_id="1010070" version_string="1.1.0"><![CDATA[This template already has a draft.]]></phrase>
+  <phrase title="cav7_cit_refused_rank_art_without_scope" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: rank art needs a rank, and this version prints none.]]></phrase>
+  <phrase title="cav7_cit_refused_rank_without_scope" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: the pattern prints a rank, and this version prints none.]]></phrase>
+  <phrase title="cav7_cit_refused_signature_frozen" version_id="1010070" version_string="1.1.0"><![CDATA[A grant uses this signature, so it can't be edited or deleted. It can still be retired.]]></phrase>
+  <phrase title="cav7_cit_refused_template_undeletable" version_id="1010070" version_string="1.1.0"><![CDATA[A template with a published or retired version can't be deleted.]]></phrase>
+  <phrase title="cav7_cit_refused_undeclared_input" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: the pattern uses an input this version doesn't declare.]]></phrase>
+  <phrase title="cav7_cit_refused_undecodable_image" version_id="1010070" version_string="1.1.0"><![CDATA[That image can't be decoded.]]></phrase>
+  <phrase title="cav7_cit_refused_version_frozen" version_id="1010070" version_string="1.1.0"><![CDATA[Published and retired versions can't be edited.]]></phrase>
+  <phrase title="cav7_cit_refused_version_undeletable" version_id="1010070" version_string="1.1.0"><![CDATA[Only a draft can be deleted.]]></phrase>
   <phrase title="cron_entry.cav7CitationsSweep" version_id="1000070" version_string="1.0.0"><![CDATA[Citations: sweep]]></phrase>
   <phrase title="option.cav7CitationReencodeEnabled" version_id="1000070" version_string="1.0.0"><![CDATA[Allow the re-encode]]></phrase>
   <phrase title="option_explain.cav7CitationReencodeEnabled" version_id="1000070" version_string="1.0.0"><![CDATA[With this off, the re-encode command refuses to run. A revert of all runs turns it off, and turning it back on is a decision for leadership.]]></phrase>

@@ -1,0 +1,1 @@
+A template with a published or retired version can't be deleted.

@@ -1,0 +1,1 @@
+This plate is {width}px wide. Plates aim for about 1275px.

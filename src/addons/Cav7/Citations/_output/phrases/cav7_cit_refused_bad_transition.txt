@@ -1,0 +1,1 @@
+A version can't move to that state.
