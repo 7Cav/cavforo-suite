@@ -2,4 +2,5 @@
 <routes>
   <route route_type="public" route_prefix="citations" format=":+int&lt;grant_member_id&gt;/:+str&lt;url_token&gt;/:+int&lt;revision&gt;/:+any&lt;filename&gt;" controller="Cav7\Citations\Pub\Controller\Render"/>
   <route route_type="public" route_prefix="citations" sub_name="regiment" format="regiment/:+int&lt;grant_id&gt;/:+str&lt;url_token&gt;/:+int&lt;revision&gt;/:+any&lt;filename&gt;" controller="Cav7\Citations\Pub\Controller\Render" action_prefix="regiment"/>
+  <route route_type="public" route_prefix="rosters" sub_name="citations" format="citations/:int&lt;grant_id&gt;/" controller="Cav7\Citations\Pub\Controller\Grants" context="nfRosters"/>
 </routes>

@@ -67,6 +67,25 @@ final class GrantRender
         return new Typesetting($set($plan->shared, null), $members);
     }
 
+    /**
+     * Sets and draws a form's values with nothing stored, through the same typesetter an issue
+     * runs, so what it warns about is what the issue would flag.
+     *
+     * @param array<string, PinnedSignature> $signatures By slot key.
+     * @throws RenderFailed
+     */
+    public function preview(TemplateVersion $version, GrantValues $values, ?MemberValues $member, array $signatures): GrantPreview
+    {
+        $design = $version->renderVersion();
+        $rows = PreviewFit::rows($design, $this->render->typeset(
+            $version,
+            PreviewFit::printable($design, $values->date, $signatures),
+            $values->printed($design, $member, $signatures, $version->rankArtFor($values->rankIdFor($design, $member) ?? 0)),
+        ));
+
+        return new GrantPreview($this->render->draw($version, $rows)->jpeg, PreviewFit::of($design, $rows));
+    }
+
     /** @param array<int, int> $memberIds Grant member id by the key in the typesetting, when those differ. */
     public function store(int $grantId, Typesetting $typesetting, array $memberIds = []): void
     {

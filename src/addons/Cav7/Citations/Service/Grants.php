@@ -9,6 +9,7 @@ use Cav7\Citations\Entity\TemplateVersion;
 use Cav7\Citations\Grant\Actor;
 use Cav7\Citations\Grant\Correction;
 use Cav7\Citations\Grant\GrantChanges;
+use Cav7\Citations\Grant\GrantPreview;
 use Cav7\Citations\Grant\GrantRender;
 use Cav7\Citations\Grant\GrantRules;
 use Cav7\Citations\Grant\GrantValues;
@@ -108,6 +109,32 @@ class Grants extends AbstractService
             $this->announce($grant, 'issued');
         }
         return $grant;
+    }
+
+    /**
+     * What a form's values would print, for one member of them or for no member at all.
+     * Nothing is stored and nothing refuses, so a half-filled form still shows.
+     *
+     * @throws RenderFailed
+     */
+    public function preview(TemplateVersion $version, GrantValues $values, int $memberKey): GrantPreview
+    {
+        $values = $this->repo()->snapshotted(
+            $values->withCitationText($this->plain($values->citationText))->fittedTo($version->renderVersion())
+        );
+
+        return $this->render()->preview($version, $values, $values->previewedMember($memberKey), $this->repo()->pinned($values));
+    }
+
+    /** The values a correction or a move would leave, for its preview. */
+    public function correctedValues(Grant $grant, TemplateVersion $version, GrantChanges $changes): GrantValues
+    {
+        $old = $grant->values();
+        $design = $version->renderVersion();
+
+        return $version->template_version_id === $grant->template_version_id
+            ? $old->changed($changes, $design)
+            : $old->movedTo($design, $changes, $this->repo()->billets(array_values($changes->signatures + $old->signatures)));
     }
 
     /**

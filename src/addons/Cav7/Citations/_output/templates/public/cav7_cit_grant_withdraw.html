@@ -1,0 +1,13 @@
+<xf:title>{{ phrase('cav7_cit_withdraw') }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citations') }}">{{ phrase('cav7_cit_citations') }}</xf:breadcrumb>
+<xf:breadcrumb href="{{ link('rosters/citations', $grant) }}">{$grant.kind_title}, {$grant.getDay()}</xf:breadcrumb>
+
+<xf:form action="{{ link('rosters/citations/withdraw', $grant) }}" ajax="true" class="block">
+	<div class="block-container">
+		<div class="block-body">
+			<xf:formrow label="{{ phrase('cav7_cit_citation') }}" explain="{{ phrase('cav7_cit_withdraw_explain') }}">{$grant.kind_title}, {$grant.getDay()}</xf:formrow>
+			<xf:textarearow name="reason" rows="2" autosize="true" label="{{ phrase('reason') }}" hint="{{ phrase('cav7_cit_reason_hint') }}" />
+		</div>
+		<xf:submitrow icon="delete" submit="{{ phrase('cav7_cit_withdraw') }}" />
+	</div>
+</xf:form>

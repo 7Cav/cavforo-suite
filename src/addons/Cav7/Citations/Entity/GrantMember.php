@@ -23,6 +23,7 @@ use XF\Mvc\Entity\Structure;
  *
  * RELATIONS
  * @property-read Grant|null $Grant
+ * @property-read \NF\Rosters\Entity\RosterUser|null $RosterUser null once the milpac is deleted
  */
 class GrantMember extends Entity
 {
@@ -83,6 +84,12 @@ class GrantMember extends Entity
                 'entity' => 'Cav7\Citations:Grant',
                 'type' => self::TO_ONE,
                 'conditions' => 'grant_id',
+                'primary' => true,
+            ],
+            'RosterUser' => [
+                'entity' => 'NF\Rosters:RosterUser',
+                'type' => self::TO_ONE,
+                'conditions' => 'relation_id',
                 'primary' => true,
             ],
         ];

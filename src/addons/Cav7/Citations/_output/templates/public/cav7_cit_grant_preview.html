@@ -1,0 +1,34 @@
+<xf:if is="$tabs is not empty">
+	<div class="block-tabHeader">
+		<xf:foreach loop="$tabs" key="$key" value="$name">
+			<a class="tabs-tab {{ $key == $activeTab ? 'is-active' : '' }}" role="button" tabindex="0" data-preview-member="{$key}">{$name}</a>
+		</xf:foreach>
+	</div>
+</xf:if>
+<div class="block-row">
+	<xf:if is="$src">
+		<div class="cav7Preview-mount"><img src="{$src}" alt="{{ phrase('cav7_cit_preview')|for_attr }}" class="js-grantPreviewImage" /></div>
+		<xf:if is="$text">
+			<div class="cav7Preview-note">
+				{{ phrase('cav7_cit_text_set_at_x', {'size': number($text.size, 1)}) }}<xf:if is="$text.largest">{{ phrase('cav7_cit_templates_largest_size') }}</xf:if>.
+			</div>
+		</xf:if>
+		<xf:foreach loop="$below" value="$field">
+			<div class="blockMessage blockMessage--warning blockMessage--small blockMessage--iconic cav7Preview-warning">
+				<xf:if is="$field.text">
+					{{ phrase('cav7_cit_text_below_threshold', {'size': number($field.size, 1), 'legible': number($field.legible, 0)}) }}
+				<xf:else />
+					{{ phrase('cav7_cit_field_shrank', {'field': $field.key, 'size': number($field.size, 1)}) }}
+				</xf:if>
+			</div>
+		</xf:foreach>
+		<xf:if is="$wantsMember">
+			<div class="cav7Preview-note u-muted">{{ phrase('cav7_cit_add_member_to_see_name') }}</div>
+		</xf:if>
+		<div class="cav7Preview-note"><a href="#" class="js-grantPreviewFull">{{ phrase('cav7_cit_open_full_size') }}</a></div>
+	<xf:elseif is="$failed" />
+		<div class="blockMessage blockMessage--error blockMessage--small">{{ phrase('cav7_cit_preview_failed') }}</div>
+	<xf:else />
+		<div class="cav7Preview-empty">{{ phrase('cav7_cit_preview_empty') }}</div>
+	</xf:if>
+</div>

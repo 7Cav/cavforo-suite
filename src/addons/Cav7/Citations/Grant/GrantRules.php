@@ -50,13 +50,17 @@ final class GrantRules
     /**
      * What the form may list, the same rule the save holds to.
      *
-     * @param list<int> $awardIds
+     * @param list<string> $kinds As `award:<id>` or `record_type:<id>`.
      * @param list<int> $regimentAwardIds
-     * @return list<int>
+     * @return list<string>
      */
-    public static function listableAwards(array $awardIds, array $regimentAwardIds, Actor $actor): array
+    public static function listableKinds(array $kinds, array $regimentAwardIds, Actor $actor): array
     {
-        return $actor->canIssue(true) ? $awardIds : array_values(array_diff($awardIds, $regimentAwardIds));
+        return array_values(array_filter($kinds, function (string $kind) use ($regimentAwardIds, $actor): bool {
+            [$type, $id] = explode(':', $kind);
+
+            return $actor->canIssue(self::isRegiment($type, (int) $id, $regimentAwardIds));
+        }));
     }
 
     /**

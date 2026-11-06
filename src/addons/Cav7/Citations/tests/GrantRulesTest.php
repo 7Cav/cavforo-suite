@@ -25,11 +25,15 @@ use Cav7\Citations\Grant\Actor;
 use Cav7\Citations\Grant\Correction;
 use Cav7\Citations\Grant\FieldChange;
 use Cav7\Citations\Grant\GrantChanges;
+use Cav7\Citations\Grant\GrantForm;
 use Cav7\Citations\Grant\GrantRules;
 use Cav7\Citations\Grant\GrantValues;
 use Cav7\Citations\Grant\IssueRequest;
+use Cav7\Citations\Grant\LogSummary;
 use Cav7\Citations\Grant\MemberChanges;
 use Cav7\Citations\Grant\MemberValues;
+use Cav7\Citations\Grant\PageAccess;
+use Cav7\Citations\Grant\PreviewFit;
 use Cav7\Citations\Grant\RemakePlan;
 use Cav7\Citations\Grant\RetypesetReport;
 use Cav7\Citations\Grant\RetypesetSelection;
@@ -139,8 +143,9 @@ foreach ([
 }
 
 // I-4, G-17.
-check('a clerk\'s form leaves out regiment awards', GrantRules::listableAwards([12, 61, 62], [61], $clerk) === [12, 62]);
-check('a manager\'s form lists them', GrantRules::listableAwards([12, 61, 62], [61], $manager) === [12, 61, 62]);
+$kinds = ['award:12', 'award:61', 'record_type:61'];
+check('a clerk\'s form leaves out regiment awards', GrantRules::listableKinds($kinds, [61], $clerk) === ['award:12', 'record_type:61']);
+check('a manager\'s form lists only what they can issue', GrantRules::listableKinds($kinds, [61], $manager) === ['award:61']);
 
 // I-6.
 foreach ([
@@ -579,6 +584,153 @@ foreach ([
     ],
 ] as $label => [$ok]) {
     check($label, $ok);
+}
+
+// Every grant page answers to one table, a crafted POST included. Null is a page with no kind known yet.
+$none = $actor();
+$view = $actor(Actor::VIEW);
+$issue = $actor(Actor::ISSUE);
+$remove = $actor(Actor::REMOVE_MEMBERS);
+$regimentManager = $actor(Actor::REGIMENT);
+$templates = $actor(Actor::EDIT_DRAFTS, Actor::PUBLISH);
+
+foreach ([
+    ['index', null, [$view, $issue, $remove, $regimentManager], [$none, $templates]],
+    ['index', false, [$view, $issue, $remove], [$none, $regimentManager, $templates]],
+    ['index', true, [$view, $regimentManager], [$none, $issue, $remove, $templates]],
+    ['issue', null, [$issue, $regimentManager], [$none, $view, $remove, $templates]],
+    ['issue', false, [$issue], [$none, $view, $remove, $regimentManager]],
+    ['issue', true, [$regimentManager], [$none, $view, $remove, $issue]],
+    ['form', false, [$issue], [$none, $view, $regimentManager]],
+    ['form', true, [$regimentManager], [$none, $view, $issue]],
+    ['preview', false, [$issue], [$none, $view, $regimentManager]],
+    ['preview', true, [$regimentManager], [$none, $view, $issue]],
+    ['correct', false, [$issue], [$none, $view, $remove, $regimentManager]],
+    ['correct', true, [$regimentManager], [$none, $view, $remove, $issue]],
+    ['move', false, [$issue], [$none, $view, $remove, $regimentManager]],
+    ['move', true, [$regimentManager], [$none, $view, $remove, $issue]],
+    ['addmember', false, [$issue], [$none, $view, $remove, $regimentManager]],
+    ['addmember', true, [], [$issue, $regimentManager]],
+    ['removemember', false, [$remove], [$none, $view, $issue, $regimentManager]],
+    ['removemember', true, [], [$remove, $regimentManager]],
+    ['withdraw', true, [$regimentManager], [$none, $view, $issue, $remove]],
+    ['withdraw', false, [], [$regimentManager, $issue]],
+    ['anythingelse', null, [], [$view, $issue, $remove, $regimentManager, $templates]],
+] as [$action, $regiment, $allowed, $refused]) {
+    $kind = var_export($regiment, true);
+    foreach ($allowed as $i => $who) {
+        check("access: $action on $kind opens for allowed #$i", PageAccess::allows($action, $who, $regiment));
+    }
+    foreach ($refused as $i => $who) {
+        check("access: $action on $kind refuses #$i", !PageAccess::allows($action, $who, $regiment));
+    }
+}
+
+// A form's post. Members arrive as a raw array, so junk in it must come out as nothing.
+$posted = [
+    'date' => '2026-06-29',
+    'citation_text' => 'For valour.',
+    'signatures' => ['sig_co' => 6, 'sig_xo' => 0],
+    'inputs' => ['operation' => '  Lantern '],
+    'rank_id' => 0,
+    'members' => [
+        3 => ['relation_id' => '10', 'name' => ' Silas Castellan ', 'rank_id' => '4', 'inputs' => ['unit' => ' A Troop ']],
+        4 => ['relation_id' => '11', 'name' => 'Rook Tallis', 'rank_id' => '', 'inputs' => ['unit' => ['nested']]],
+        5 => 'junk',
+        6 => ['name' => 'no milpac'],
+    ],
+] + GrantForm::blank();
+$values = GrantForm::values($posted);
+
+foreach ([
+    'a kind reads as its type and id' => [GrantForm::kind('award:15'), ['award', 15]],
+    'a record type reads too' => [GrantForm::kind('record_type:3'), ['record_type', 3]],
+    'a bad kind reads as nothing' => [GrantForm::kind('award:15;drop'), null],
+    'no choice reads as nothing' => [GrantForm::kind(''), null],
+    'an unchosen slot is left out' => [$values->signatures, ['sig_co' => 6]],
+    'inputs are trimmed' => [$values->inputs, ['operation' => 'Lantern']],
+    'no grant rank is null' => [$values->rankId, null],
+    'junk and a member with no milpac drop out' => [array_keys($values->members), [3, 4]],
+    'a member keeps their posted key, trimmed' => [[$values->members[3]->relationId, $values->members[3]->name, $values->members[3]->rankId, $values->members[3]->inputs], [10, 'Silas Castellan', 4, ['unit' => 'A Troop']]],
+    'a blank member rank is null' => [$values->members[4]->rankId, null],
+    'a nested input reads as empty' => [$values->members[4]->inputs, ['unit' => '']],
+    'a correction carries its member changes by id' => [array_keys(GrantForm::changes($posted)->members), [3, 4, 6]],
+    'a correction leaves an unposted rank alone' => [GrantForm::changes($posted)->rankId, null],
+    'remove takes that member off' => [array_keys(GrantForm::acted($posted, 'remove:3')['members']), [4, 5, 6]],
+    'apply copies the fill-all value to everyone' => [
+        array_column(array_column(array_filter(
+            GrantForm::acted(['fill_all' => ['unit' => 'B Troop']] + $posted, 'apply:unit')['members'],
+            'is_array'
+        ), 'inputs'), 'unit'),
+        ['B Troop', 'B Troop', 'B Troop'],
+    ],
+    'no action leaves the form alone' => [GrantForm::acted($posted, ''), $posted],
+] as $label => [$actual, $expected]) {
+    check("form: $label", $actual === $expected, var_export($actual, true));
+}
+
+$reopened = GrantForm::values(GrantForm::fromValues(new GrantValues(
+    '2026-06-29',
+    'For valour.',
+    ['sig_co' => 6],
+    ['operation' => 'Lantern'],
+    9,
+    [14 => new MemberValues(10, 'Silas Castellan', 4, ['unit' => 'A Troop'])],
+)));
+check('form: a stored grant opens as the same values', [$reopened->date, $reopened->citationText, $reopened->signatures, $reopened->rankId, array_keys($reopened->members), $reopened->members[14]->name]
+    === ['2026-06-29', 'For valour.', ['sig_co' => 6], 9, [14], 'Silas Castellan']);
+
+// The stored form keys members by grant member id, so the blank tab asks for a key that isn't there.
+$pair = new GrantValues('2026-06-29', members: [14 => new MemberValues(10, 'First'), 15 => new MemberValues(11, 'Second')]);
+check('preview: the member asked for', $pair->previewedMember(15)->name === 'Second');
+check('preview: otherwise the first', $pair->previewedMember(0)->name === 'First');
+check('preview: nobody on a grant with none', (new GrantValues('2026-06-29'))->previewedMember(0) === null);
+
+// G-47, and what a half-filled form can print.
+$slot = new SignatureSlot('sig_co', 0, 0, 100, 100, 1, 50, 'tinos-regular', 19.0, 14.0, 1.2, '#000000');
+$art = new RankArtField('art', 0, 0, 10, 10);
+$body = new TextField('body', 0, 0, 100, 100, '{citation_text}', 'tinos-regular', 30.0, 23.0, 1.2, 'wrap', 'justify', false, '#000000');
+$dateLine = new TextField('date_line', 0, 0, 100, 100, 'On {day_ordinal} {month}', 'tinos-regular', 24.0, 0.0, 1.2, 'line', 'center', false, '#000000');
+$nameLine = new TextField('name_line', 0, 0, 100, 100, '{name}', 'tinos-regular', 40.0, 26.0, 1.2, 'line', 'center', false, '#000000');
+$design = new Version([$body, $dateLine, $nameLine, $slot, $art], [], 'none');
+$keys = fn (array $fields): array => array_map(fn (object $field): string => $field->key, $fields);
+
+check('fit: a whole form prints everything', $keys(PreviewFit::printable($design, '2026-06-29', ['sig_co' => true])) === ['body', 'date_line', 'name_line', 'sig_co', 'art']);
+check('fit: a slot with no signature waits', $keys(PreviewFit::printable($design, '2026-06-29', [])) === ['body', 'date_line', 'name_line', 'art']);
+check('fit: so does a date line with no whole date', $keys(PreviewFit::printable($design, '2026-13', ['sig_co' => true])) === ['body', 'name_line', 'sig_co', 'art']);
+
+$rows = PreviewFit::rows($design, [
+    'body' => new SetField('body', 17.75, true, []),
+    'name_line' => new SetField('name_line', 20.0, true, []),
+]);
+$fit = PreviewFit::of($design, $rows);
+check('fit: a field left out still has a row to draw', array_keys($rows) === ['body', 'date_line', 'name_line', 'sig_co', 'art']);
+check('fit: rank art stays art', $rows['art']->lines === null && $rows['sig_co']->lines === []);
+check('fit: every flagged field warns', array_column($fit->below, 'key') === ['body', 'name_line']);
+check('fit: a warning says which is the text and its threshold', $fit->below[0]['text'] && !$fit->below[1]['text'] && $fit->below[0]['legible'] === 23.0);
+check('fit: the text size is reported', $fit->text === ['size' => 17.75, 'largest' => false]);
+check('fit: at its cap it says so', PreviewFit::of($design, PreviewFit::rows($design, ['body' => new SetField('body', 30.0, false, [])]))->text['largest']);
+check('fit: no text set reports none', PreviewFit::of($design, PreviewFit::rows($design, []))->text === null);
+
+// The history's "what changed".
+$names = [14 => 'Quenby.T'];
+foreach ([
+    'one line per kind of change, however many there are' => [
+        LogSummary::of('corrected', ['changes' => [['what' => 'input:unit'], ['what' => 'input:operation'], ['what' => 'signature:sig_co'], ['what' => 'signature:sig_xo']]], $names),
+        [['cav7_cit_log_input', []], ['cav7_cit_log_signature', []]],
+    ],
+    'a member\'s change names them' => [
+        LogSummary::of('corrected', ['changes' => [['what' => 'name', 'member' => 14]]], $names),
+        [['cav7_cit_log_member_name', ['name' => 'Quenby.T']]],
+    ],
+    'a member since removed falls back to their id' => [
+        LogSummary::of('corrected', ['changes' => [['what' => 'rank', 'member' => 9]]], $names),
+        [['cav7_cit_log_member_rank', ['name' => '#9']]],
+    ],
+    'an addition names the snapshot' => [LogSummary::of('member_added', ['name' => 'Tobin'], $names), [['cav7_cit_log_member_added', ['name' => 'Tobin']]]],
+    'a removal too' => [LogSummary::of('member_removed', ['name' => 'Lorne'], $names), [['cav7_cit_log_member_removed', ['name' => 'Lorne']]]],
+] as $label => [$actual, $expected]) {
+    check("history: $label", $actual === $expected, var_export($actual, true));
 }
 
 exit($failures === 0 ? 0 : 1);

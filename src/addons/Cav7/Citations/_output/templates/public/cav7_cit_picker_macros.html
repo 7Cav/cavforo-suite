@@ -1,0 +1,39 @@
+<xf:macro id="picker" arg-record="!" arg-rosterUser="!" arg-entries="{{ [] }}">
+	<xf:css src="cav7_cit_pages.less" />
+	<xf:js src="Cav7/Citations/pages.js" addon="Cav7/Citations" min="1" />
+
+	<xf:set var="$keeps" value="{{ $record.citation_date && !$record.citation_grant_member_id }}" />
+	<xf:set var="$name" value="{$rosterUser.User.username}" />
+	<xf:formrow label="{{ phrase('cav7_cit_citation') }}" hint="{{ phrase('cav7_cit_issued_to_x', {'name': $name}) }}">
+		<div data-xf-init="cav7-citation-picker">
+			<xf:if is="count($entries) > 3">
+				<xf:textbox class="input--small cav7PickerFilter js-pickerFilter" placeholder="{{ phrase('cav7_cit_filter_placeholder')|for_attr }}" />
+			</xf:if>
+			<xf:radio name="citation_pick" value="{{ $record.citation_grant_member_id ?: ($keeps ? 'keep' : 'none') }}">
+				<xf:if is="$keeps">
+					<xf:option value="keep">{{ phrase('cav7_cit_keep_current_image') }}</xf:option>
+				</xf:if>
+				<xf:option value="none">{{ phrase('cav7_cit_no_citation') }}</xf:option>
+				<xf:foreach loop="$entries" value="$entry">
+					<xf:option value="{$entry.grant_member_id}">
+						<xf:label>{$entry.kind_title} <span class="u-muted">&middot; {$entry.day}</span></xf:label>
+						<xf:hint>
+							<xf:if is="$entry.row_labels is not empty">{{ phrase('cav7_cit_already_on_x', {'rows': $entry.row_labels|join('; ')}) }}<xf:else />{{ phrase('cav7_cit_not_on_any_row') }}</xf:if>
+							&middot; {{ $entry.generic ? phrase('cav7_cit_generic') : phrase('cav7_cit_written') }}
+							&middot; <a href="{$entry.render_url}" target="_blank">{{ phrase('view') }}</a>
+						</xf:hint>
+					</xf:option>
+				</xf:foreach>
+			</xf:radio>
+			<div class="js-pickerNoMatch u-hidden"><div class="formRow-explain">{{ phrase('cav7_cit_no_citations_match') }}</div></div>
+			<div class="formRow-explain">
+				<xf:if is="$entries is empty">
+					{{ phrase('cav7_cit_none_issued_to_x', {'name': $name}) }}
+				<xf:else />
+					{{ phrase('cav7_cit_picker_explain', {'name': $name}) }}
+					<xf:if is="$record.citation_grant_member_id">{{ phrase('cav7_cit_swap_explain') }}</xf:if>
+				</xf:if>
+			</div>
+		</div>
+	</xf:formrow>
+</xf:macro>

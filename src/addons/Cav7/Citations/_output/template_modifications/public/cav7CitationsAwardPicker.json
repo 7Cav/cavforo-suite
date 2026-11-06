@@ -1,0 +1,9 @@
+{
+    "template": "nf_rosters_user_award_edit",
+    "description": "After cutover the citation picker takes the upload box's place on the award form",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "preg_replace",
+    "find": "#<xf:uploadrow\\s+name=\"upload\"[^>]*/>#s",
+    "replace": "<xf:if is=\"$xf.options.cav7CitCutover\">\n\t<xf:macro id=\"cav7_cit_picker_macros::picker\" arg-record=\"{$record}\" arg-rosterUser=\"{$rosterUser}\" arg-entries=\"{$citationPicker}\" />\n<xf:else />\n\t$0\n</xf:if>"
+}

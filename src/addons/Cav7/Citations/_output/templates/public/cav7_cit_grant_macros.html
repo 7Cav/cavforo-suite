@@ -1,0 +1,33 @@
+<xf:macro id="member_card" arg-member="!" arg-removable="{{ false }}" arg-inputs="{{ [] }}" arg-ranks="{{ [] }}">
+	<div class="cav7MemberCard">
+		<div class="cav7MemberCard-head">
+			<xf:if is="$member.milpac"><a href="{{ link('rosters/profile', $member.milpac) }}" target="_blank">{$member.username}</a><xf:else />{$member.username}</xf:if>
+			<xf:if is="$removable">
+				<button type="button" class="cav7MemberCard-remove" data-form-action="remove:{$member.key}" title="{{ phrase('remove')|for_attr }}" aria-label="{{ phrase('remove')|for_attr }}">&times;</button>
+			</xf:if>
+		</div>
+		<input type="hidden" name="members[{$member.key}][relation_id]" value="{$member.relation_id}" />
+		<div class="cav7MemberCard-fields">
+			<label class="cav7MemberCard-field">
+				<span>{{ phrase('cav7_cit_name_on_certificate') }}</span>
+				<xf:textbox name="members[{$member.key}][name]" value="{$member.name}" class="input--small" />
+			</label>
+			<xf:if is="$ranks is not empty">
+				<label class="cav7MemberCard-field">
+					<span>{{ phrase('cav7_cit_rank') }}</span>
+					<xf:select name="members[{$member.key}][rank_id]" value="{$member.rank_id}" class="input--small">
+						<xf:foreach loop="$ranks" value="$rank">
+							<xf:option value="{$rank.rank_id}">{$rank.title} ({$rank.pay_grade})</xf:option>
+						</xf:foreach>
+					</xf:select>
+				</label>
+			</xf:if>
+			<xf:foreach loop="$inputs" value="$input">
+				<label class="cav7MemberCard-field">
+					<span>{$input.label}<xf:if is="!$input.required"> <em>{{ phrase('cav7_cit_optional') }}</em></xf:if></span>
+					<xf:textbox name="members[{$member.key}][inputs][{$input.key}]" value="{$member.inputs.{$input.key}}" class="input--small" />
+				</label>
+			</xf:foreach>
+		</div>
+	</div>
+</xf:macro>

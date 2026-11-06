@@ -35,6 +35,37 @@ class Template extends Repository
         ));
     }
 
+    /**
+     * Every kind a current version serves, which is what the grant form can list.
+     *
+     * @return list<string> As `award:<id>` or `record_type:<id>`.
+     */
+    public function offeredKinds(): array
+    {
+        $kinds = array_merge([], ...array_column(TemplateChoices::current($this->versionFacts()), 'kinds'));
+
+        return array_values(array_unique($kinds));
+    }
+
+    /**
+     * Where a version move can take a grant: the template's other published versions serving
+     * its kind.
+     *
+     * @return array<int, TemplateVersion> By template version id.
+     */
+    public function movableVersions(int $templateId, int $fromVersionId, string $kind): array
+    {
+        $versions = $this->finder('Cav7\Citations:TemplateVersion')
+            ->where('template_id', $templateId)
+            ->where('state', VersionLifecycle::PUBLISHED)
+            ->where('template_version_id', '<>', $fromVersionId)
+            ->order('version_number', 'DESC')
+            ->fetch()
+            ->toArray();
+
+        return array_filter($versions, fn (TemplateVersion $version): bool => in_array($kind, $version->kinds(), true));
+    }
+
     /** The version a submit pins, and what a form must still match when it comes back. */
     public function currentVersion(int $templateId): ?TemplateVersion
     {

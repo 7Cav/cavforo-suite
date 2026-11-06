@@ -1,2 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<template_modifications/>
+<template_modifications>
+  <modification type="public" template="nf_rosters_user_award_edit" modification_key="cav7CitationsAwardPicker" description="After cutover the citation picker takes the upload box's place on the award form" execution_order="10" enabled="1" action="preg_replace">
+    <find><![CDATA[#<xf:uploadrow\s+name="upload"[^>]*/>#s]]></find>
+    <replace><![CDATA[<xf:if is="$xf.options.cav7CitCutover">
+	<xf:macro id="cav7_cit_picker_macros::picker" arg-record="{$record}" arg-rosterUser="{$rosterUser}" arg-entries="{$citationPicker}" />
+<xf:else />
+	$0
+</xf:if>]]></replace>
+  </modification>
+  <modification type="public" template="nf_rosters_user_record_edit" modification_key="cav7CitationsRecordPicker" description="After cutover the record form shows the citation picker, and the upload box on the one kind that stays open" execution_order="10" enabled="1" action="preg_replace">
+    <find><![CDATA[#<xf:uploadrow\s+name="upload"[^>]*/>#s]]></find>
+    <replace><![CDATA[<xf:if is="$xf.options.cav7CitCutover">
+	<div data-xf-init="cav7-citation-swap" data-open-type="{$citationOpenRecordType}">
+		<div class="js-citationPicker" {{ $record.record_type_id == $citationOpenRecordType ? 'hidden="hidden"' : '' }}>
+			<xf:macro id="cav7_cit_picker_macros::picker" arg-record="{$record}" arg-rosterUser="{$rosterUser}" arg-entries="{$citationPicker}" />
+		</div>
+		<div class="js-citationUpload" {{ $record.record_type_id == $citationOpenRecordType ? '' : 'hidden="hidden"' }}>
+			$0
+		</div>
+	</div>
+<xf:else />
+	$0
+</xf:if>]]></replace>
+  </modification>
+</template_modifications>

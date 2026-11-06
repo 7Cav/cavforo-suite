@@ -1,2 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<navigation/>
+<navigation>
+  <navigation_entry navigation_id="cav7CitGrants" parent_navigation_id="nfRosters" display_order="20" navigation_type_id="basic" enabled="1"><![CDATA[{"link":"{{ link('rosters\/citations') }}","display_condition":"$xf.visitor.hasPermission('cav7Citations', 'viewGrantsTemplates')","extra_attributes":[]}]]></navigation_entry>
+  <navigation_entry navigation_id="cav7CitIssue" parent_navigation_id="nfRosters" display_order="30" navigation_type_id="basic" enabled="1"><![CDATA[{"link":"{{ link('rosters\/citations\/issue') }}","display_condition":"$xf.visitor.hasPermission('cav7Citations', 'viewGrantsTemplates') AND ($xf.visitor.hasPermission('cav7Citations', 'issueGrants') OR $xf.visitor.hasPermission('cav7Citations', 'manageRegimentGrants'))","extra_attributes":[]}]]></navigation_entry>
+  <navigation_entry navigation_id="cav7CitRosters" parent_navigation_id="nfRosters" display_order="10" navigation_type_id="basic" enabled="1"><![CDATA[{"link":"{{ link('rosters') }}","display_condition":"$xf.visitor.hasPermission('cav7Citations', 'viewGrantsTemplates')","extra_attributes":[]}]]></navigation_entry>
+</navigation>

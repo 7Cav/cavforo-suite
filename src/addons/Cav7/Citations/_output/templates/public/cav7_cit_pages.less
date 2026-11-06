@@ -1,0 +1,158 @@
+.cav7GrantLayout
+{
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) ~"clamp(280px, 38%, 440px)";
+	gap: @xf-elementSpacer;
+	align-items: start;
+}
+
+.cav7GrantLayout-form
+{
+	min-width: 0;
+	margin: 0;
+}
+
+.cav7GrantLayout-preview
+{
+	position: sticky;
+	top: 70px;
+	min-width: 0;
+}
+
+@media (max-width: @xf-responsiveMedium)
+{
+	.cav7GrantLayout
+	{
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.cav7GrantLayout-preview
+	{
+		position: static;
+	}
+}
+
+.cav7Preview-mount
+{
+	line-height: 0;
+	border: 1px solid @xf-borderColor;
+
+	img
+	{
+		display: block;
+		width: 100%;
+		height: auto;
+	}
+}
+
+.cav7Preview-empty
+{
+	padding: 60px 20px;
+	text-align: center;
+	color: @xf-textColorMuted;
+}
+
+.cav7Preview-note,
+.cav7Preview-warning
+{
+	margin-top: @xf-paddingMedium;
+}
+
+.cav7MemberCards
+{
+	display: grid;
+	gap: @xf-paddingMedium;
+}
+
+.cav7MemberCard
+{
+	padding: @xf-paddingMedium;
+	border: 1px solid @xf-borderColor;
+	border-radius: @xf-borderRadiusMedium;
+}
+
+.cav7MemberCard-head
+{
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: @xf-paddingMedium;
+}
+
+.cav7MemberCard-remove
+{
+	padding: 0 @xf-paddingSmall;
+	border: 0;
+	background: none;
+	color: @xf-textColorMuted;
+	cursor: pointer;
+	font-size: @xf-fontSizeLarge;
+}
+
+.cav7MemberCard-fields
+{
+	display: flex;
+	flex-wrap: wrap;
+	gap: @xf-paddingMedium;
+}
+
+.cav7MemberCard-field
+{
+	display: flex;
+	flex: 1 1 170px;
+	flex-direction: column;
+	gap: @xf-paddingSmall;
+	min-width: 0;
+	font-size: @xf-fontSizeSmaller;
+	color: @xf-textColorMuted;
+
+	em
+	{
+		font-style: normal;
+	}
+}
+
+.cav7GenericText
+{
+	padding: @xf-paddingLarge;
+	border: 1px solid @xf-borderColor;
+	border-radius: @xf-borderRadiusSmall;
+	color: @xf-textColorMuted;
+	white-space: pre-wrap;
+}
+
+.cav7Pre
+{
+	white-space: pre-wrap;
+}
+
+.cav7Retired
+{
+	margin-top: @xf-paddingMedium;
+}
+
+.cav7GrantFilters
+{
+	display: flex;
+	flex-wrap: wrap;
+	gap: @xf-paddingMedium;
+	align-items: center;
+
+	.input
+	{
+		width: auto;
+	}
+}
+
+.formRow .awardCitation img,
+.formRow .recordCitation img
+{
+	display: block;
+	max-width: 220px;
+	border: 1px solid @xf-borderColor;
+}
+
+.cav7PickerFilter
+{
+	margin-bottom: @xf-paddingLarge;
+}
