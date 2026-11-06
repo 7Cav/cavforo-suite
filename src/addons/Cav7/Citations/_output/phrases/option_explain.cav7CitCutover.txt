@@ -1,0 +1,1 @@
+With this on, the award and record forms pick a citation in place of the upload, and uploads are refused on every kind but Disciplinary. Turning it off reopens upload. Attached citations stay either way.

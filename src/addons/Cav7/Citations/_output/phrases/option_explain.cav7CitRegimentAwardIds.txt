@@ -1,0 +1,1 @@
+Comma-separated award ids. A grant of one of these awards is a regiment grant. Removing an award here doesn't change a grant already issued.

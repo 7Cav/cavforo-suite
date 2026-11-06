@@ -1,0 +1,13 @@
+{
+    "edit_format": "textbox",
+    "edit_format_params": "",
+    "data_type": "string",
+    "sub_options": [],
+    "validation_class": "Cav7\\Citations\\Option\\RegimentAwards",
+    "validation_method": "verifyOption",
+    "advanced": false,
+    "default_value": "61",
+    "relations": {
+        "cav7Citations": 30
+    }
+}

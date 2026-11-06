@@ -1,2 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<code_events/>
+<code_events>
+  <event event_id="cav7_citation_regiment_grant_changed"><![CDATA[<p>Fires after the transaction commits, when a regiment grant is issued, corrected or withdrawn.</p>
+
+<p>Arguments:</p>
+<ol>
+	<li><code><em>\Cav7\Citations\Entity\Grant</em> $grant</code></li>
+	<li><code><em>string</em> $change</code>: <code>issued</code>, <code>corrected</code> or <code>withdrawn</code></li>
+</ol>]]></event>
+</code_events>

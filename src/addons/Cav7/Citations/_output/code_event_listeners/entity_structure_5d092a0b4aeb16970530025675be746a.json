@@ -5,5 +5,5 @@
     "callback_method": "awardStructure",
     "active": true,
     "hint": "NF\\Rosters\\Entity\\RosterUserAward",
-    "description": "Adds the citation reference and its blob relation to the row entity"
+    "description": "Adds the citation reference, the grant links and their relations to the row entity"
 }

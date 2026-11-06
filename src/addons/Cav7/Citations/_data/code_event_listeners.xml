@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <code_event_listeners>
-  <listener event_id="entity_structure" execute_order="10" callback_class="Cav7\Citations\Listener" callback_method="awardStructure" active="1" hint="NF\Rosters\Entity\RosterUserAward" description="Adds the citation reference and its blob relation to the row entity"/>
-  <listener event_id="entity_structure" execute_order="10" callback_class="Cav7\Citations\Listener" callback_method="recordStructure" active="1" hint="NF\Rosters\Entity\ServiceRecord" description="Adds the citation reference and its blob relation to the row entity"/>
+  <listener event_id="entity_structure" execute_order="10" callback_class="Cav7\Citations\Listener" callback_method="awardStructure" active="1" hint="NF\Rosters\Entity\RosterUserAward" description="Adds the citation reference, the grant links and their relations to the row entity"/>
+  <listener event_id="entity_structure" execute_order="10" callback_class="Cav7\Citations\Listener" callback_method="recordStructure" active="1" hint="NF\Rosters\Entity\ServiceRecord" description="Adds the citation reference, the grant links and their relations to the row entity"/>
 </code_event_listeners>

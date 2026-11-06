@@ -7,21 +7,29 @@ then takes each new file in, and the roster links to the blob. An operator can a
 re-encode the corpus to JPEG, revert that, and delete the originals once the archive
 holds them.
 
-The terms this README uses are defined in [GLOSSARY.md](GLOSSARY.md) and the suite-wide
-[GLOSSARY.md](../../../../GLOSSARY.md).
+The addon also generates citations. A grant holds one citation's text, date and
+signatures, and a template sets it on a plate. Attach a grant to a roster row and the
+row's Citation link goes to a render, a JPEG drawn from the stored typesetting on each
+request. Grants have no pages, so only code can issue or attach one.
+
+[GLOSSARY.md](GLOSSARY.md) and the suite-wide [GLOSSARY.md](../../../../GLOSSARY.md)
+define the terms. [docs/adr](docs/adr/) has the reasons behind the generator.
 
 ## Requirements
 
-- XenForo 2.3.0+
-- NF/Rosters 2.1.5+ (declared in `addon.json`; the floor is the version the code was
-  read against, in the vendor's own `version_id` numbering)
-- PHP 8.1+
-- Imagick with JPEG support, for the re-encode only. The addon installs without it,
-  and `cav7-citations:reencode` refuses to run.
+- XenForo 2.3.0+, NF/Rosters 2.1.5+ and PHP 8.1+. The NF/Rosters floor is in the
+  vendor's own `version_id` numbering.
+- Imagick with JPEG, PNG and FreeType support. The re-encode, every plate, ink and rank
+  art upload, and every draw need it. The addon installs without it, and
+  `cav7-citations:reencode` refuses to run.
+- GD on the same PHP. Imagick can't report its FreeType version, so a typesetting reads
+  it from GD and records `unknown` without it.
 - `Cav7/RosterAudit` 1.1.3+ if that addon is installed. An older version logs a line
-  every time an upload clears a citation reference.
-- A local data directory. The sweep reads files directly, so a board that overrides
-  `fsAdapters['data']` can't run it.
+  every time an upload clears a citation reference. It logs every change to a grant link
+  with no help from this addon.
+- Local `data` and `internal_data` directories. The sweep reads files directly and
+  Imagick needs real paths, so a board that overrides `fsAdapters['data']` or
+  `fsAdapters['internal-data']` can't run this addon.
 
 ## Installation
 
@@ -29,31 +37,35 @@ The terms this README uses are defined in [GLOSSARY.md](GLOSSARY.md) and the sui
    to the same path and run `php cmd.php xf-addon:install Cav7/Citations`.
 2. Add the nginx lines from the [runbook](docs/runbook.md#nginx).
 
-The install creates four `xf_cav7_citation_*` tables and adds `citation_blob_id` to
-the two vendor row tables. Nothing changes for members until the first sweep.
+The install creates the `xf_cav7_citation_*` tables, adds `citation_blob_id`,
+`citation_grant_member_id` and `citation_regiment_grant_id` to the two vendor row tables,
+and fills the pay grade list from the NF/Rosters rank titles it recognises. Nothing changes
+for members until the first sweep.
 
-**Once the sweep has run, the addon can't be turned off.** With it disabled or
-uninstalled, the vendor's own links point at legacy files the sweep has deleted, so
-every swept citation 404s. Uninstalling keeps the tables, the column and the blob tree,
-and reinstalling picks them back up.
+**Once the sweep has run, the addon can't be turned off.** The vendor's own links point
+at legacy files the sweep has deleted, so every swept citation 404s. Uninstalling keeps
+the tables, the columns on the vendor tables, the blob tree and
+`internal_data/cav7_citation_files/`, and reinstalling picks them back up.
+
+`internal_data/cav7_citation_files/` holds plates, signature ink, rank art and the fonts
+a published template version pins. The archive doesn't cover it and nothing can re-derive
+it, so keep it in the board's backups. The [runbook](docs/runbook.md#backups) says how.
 
 ## Using it
 
 Everything runs from `cmd.php`, as the same user PHP-FPM runs as. The
-[runbook](docs/runbook.md) has the order to run things in on a live board.
+[runbook](docs/runbook.md) has the flags and the order to run things in on a live board.
 
 | Command | What it does |
 |---|---|
-| `cav7-citations:sweep` | Takes legacy files in, reports damage, deletes orphans and zero-reference blobs. Takes `--dry-run`, `--lift-brake` and `--verify-hashes`. |
-| `cav7-citations:reencode --synced-at=<ISO 8601>` | Replaces eligible source blobs with encoded blobs, after an archive sync. |
-| `cav7-citations:revert plan\|apply <scope>` | Puts source blobs back. The scope is `--run=N`, `--all`, `--blob=ID` or `--row=award:ID`. `apply` takes `--from=<dir>`. |
-| `cav7-citations:purge-sources` | Deletes replaced sources from a list checked against the archive. `--dry-run --out=<file>` writes the list and `--list=<file>` acts on it. |
+| `cav7-citations:sweep` | Takes legacy files in, reports damage, deletes orphans and zero-reference blobs. |
+| `cav7-citations:reencode` | Replaces eligible source blobs with encoded blobs, after an archive sync. |
+| `cav7-citations:revert` | Puts source blobs back, with `plan` and then `apply`. |
+| `cav7-citations:purge-sources` | Deletes replaced sources from a list checked against the archive. |
+| `cav7-citations:retypeset` | Remakes the typesetting of chosen grants with the current renderer, and moves each one's revision. |
 
 The cron entry **Citations: sweep** runs daily at 03:10 and installs inactive. Enable
 it under **Tools > Cron entries** after the first CLI sweep.
-
-One option, under **Setup > Options > Citations**: **Allow the re-encode**, on by
-default. With it off the re-encode refuses to run. `revert apply --all` turns it off.
 
 A citation's URL changes when its image moves into a blob, is re-encoded or is
 reverted. The roster always links the current one. A legacy URL pasted somewhere else
@@ -62,8 +74,49 @@ reverted. The roster always links the current one. A legacy URL pasted somewhere
 Citation images stay public by URL, disciplinary documents included. The addon checks
 no permission on a read.
 
+### Options
+
+These are under **Setup > Options > Citations**.
+
+| Option | Default | What it does |
+|---|---|---|
+| **Allow the re-encode** | On | With it off the re-encode refuses to run. `revert apply --all` turns it off. |
+| **Regiment awards** | `61` | Comma-separated award ids. A grant of one of these awards is a regiment grant, issued to the whole regiment. Changing the list leaves issued grants alone. |
+| **Citation cutover** | Off | With it on, a citation file is refused on every row but a Disciplinary record. Renders and attached citations never read it. |
+
+A row with a grant link refuses a file whatever the cutover says. To put an upload there,
+tick "Delete current image" and save, then upload in a second save.
+
+### Permissions
+
+The vendor's own award and record permissions cover the rows, so attaching and removing a
+citation need nothing from this list. All six flags start at no, and they split into two
+interface groups.
+
+| Permission | Group | Lets a member |
+|---|---|---|
+| View grants and templates | Citation permissions | Open the grants and the template manager, read-only. |
+| Issue and correct grants to members | Citation moderator permissions | Issue, correct and add members to member grants. |
+| Remove members from grants | Citation moderator permissions | Remove a member from a grant, which clears every row linked to them. |
+| Manage regiment grants | Citation moderator permissions | Issue, correct and withdraw regiment grants. |
+| Edit template drafts | Citation moderator permissions | Create templates and versions, and edit their uploads and fields. |
+| Publish templates and manage signatures and pay grades | Citation moderator permissions | Publish and retire versions, and manage signatures, billets and pay grades. |
+
+### Renders
+
+A render's URL is `citations/{grant_member_id}/{token}/{revision}/{filename}.jpg`, or
+`citations/regiment/{grant_id}/{token}/{revision}/{filename}.jpg` for a regiment grant.
+Anyone with the URL can read it, banned visitors and a closed board included.
+
+No render is stored. Cloudflare holds each one for 8 days, and that cache is what makes a
+draw on every request affordable. A correction or a retypeset moves the revision, and the
+old URL redirects to the new one. Removing a member or withdrawing a regiment grant 404s
+at the origin at once, but Cloudflare can serve its copy until it expires, and nothing here
+purges it.
+
 ## License
 
-MIT License, see [LICENSE](LICENSE) for details.
+MIT License, see [LICENSE](LICENSE) for details. The fonts in `fonts/` are under the SIL
+Open Font License, with each family's licence beside it.
 
 Copyright (c) 2026 7Cav

@@ -1,2 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<permissions/>
+<permissions>
+  <permission permission_group_id="cav7Citations" permission_id="editTemplateDrafts" permission_type="flag" interface_group_id="cav7CitationModPermissions" display_order="40"/>
+  <permission permission_group_id="cav7Citations" permission_id="issueGrants" permission_type="flag" interface_group_id="cav7CitationModPermissions" display_order="10"/>
+  <permission permission_group_id="cav7Citations" permission_id="manageRegimentGrants" permission_type="flag" interface_group_id="cav7CitationModPermissions" display_order="30"/>
+  <permission permission_group_id="cav7Citations" permission_id="publishTemplates" permission_type="flag" interface_group_id="cav7CitationModPermissions" display_order="50"/>
+  <permission permission_group_id="cav7Citations" permission_id="removeGrantMembers" permission_type="flag" interface_group_id="cav7CitationModPermissions" display_order="20"/>
+  <permission permission_group_id="cav7Citations" permission_id="viewGrantsTemplates" permission_type="flag" interface_group_id="cav7CitationPermissions" display_order="10"/>
+</permissions>

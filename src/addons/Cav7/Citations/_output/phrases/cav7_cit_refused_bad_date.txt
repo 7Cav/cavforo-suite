@@ -1,0 +1,1 @@
+Enter a real date as YYYY-MM-DD.
