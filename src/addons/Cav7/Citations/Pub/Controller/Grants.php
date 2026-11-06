@@ -509,6 +509,8 @@ class Grants extends AbstractController
             'members' => 'array',
             'show_retired' => 'array-str',
             'fill_all' => 'array-str',
+            'reason' => 'str',
+            'revision' => 'uint',
         ]);
         $post['members'] = array_filter($post['members'], 'is_array');
 

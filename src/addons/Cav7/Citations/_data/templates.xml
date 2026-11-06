@@ -73,7 +73,7 @@
 	</div>
 </div>
 ]]></template>
-  <template type="public" title="cav7_cit_grant_form_body" version_id="1010070" version_string="1.1.0"><![CDATA[<div class="block-container js-grantFormBody">
+  <template type="public" title="cav7_cit_grant_form_body" version_id="1020070" version_string="1.2.0"><![CDATA[<div class="block-container js-grantFormBody">
 	<div class="block-body">
 		<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_the_citation') }}</h3>
 
@@ -120,7 +120,7 @@
 			<xf:else />
 				<xf:formrow label="{{ phrase('cav7_cit_template') }}">{$version.Template.title}, {{ phrase('cav7_cit_version_x', {'number': $version.version_number}) }}</xf:formrow>
 			</xf:if>
-			<xf:hiddenval name="revision" value="{$grant.revision}" />
+			<xf:hiddenval name="revision" value="{{ $post.revision ?: $grant.revision }}" />
 		</xf:if>
 
 		<xf:if is="$version">
@@ -233,7 +233,7 @@
 
 			<xf:if is="$mode != 'issue'">
 				<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_correction') }}</h3>
-				<xf:textarearow name="reason" rows="2" autosize="true" label="{{ phrase('reason') }}" hint="{{ phrase('cav7_cit_reason_hint') }}"
+				<xf:textarearow name="reason" value="{$post.reason}" rows="2" autosize="true" label="{{ phrase('reason') }}" hint="{{ phrase('cav7_cit_reason_hint') }}"
 					placeholder="{{ phrase('cav7_cit_reason_placeholder')|for_attr }}" />
 			</xf:if>
 		</xf:if>
