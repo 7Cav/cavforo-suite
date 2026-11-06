@@ -1,0 +1,18 @@
+{
+    "legacy_addon_id": "",
+    "title": "7Cav - Citations",
+    "description": "Stores NF/Rosters citation images as deduplicated citation blobs, moves them out of the vendor's per-row files, and re-encodes them under an operator's hand.",
+    "version_id": 1000070,
+    "version_string": "1.0.0",
+    "dev": "Cav7",
+    "dev_url": "https://github.com/7Cav",
+    "faq_url": "",
+    "support_url": "",
+    "extra_urls": [],
+    "require": {
+        "php": ["8.1.0", "PHP 8.1+"],
+        "XF": [2030070, "XenForo 2.3.0+"],
+        "NF/Rosters": [2010570, "Rosters and Personnel Status Reports 2.1.5+"]
+    },
+    "icon": ""
+}

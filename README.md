@@ -31,6 +31,7 @@ Addons sit at `src/addons/Cav7/<AddonId>/`, mirroring a XenForo install's tree, 
 | `Cav7/TicketWebhook` | Opens an NF/Tickets ticket when a remote tool such as WUD calls a hook, and replies to it when a later call names the same alert key, so one alert is one ticket in the right queue |
 | `Cav7/EnlistmentNextSteps` | Lands a recruit on a next-steps page the moment their Enlistment application is accepted, in place of the vendor's toast |
 | `Cav7/FormsUserQuestion` | Adds Advanced Forms question types that accept only names belonging to forum users, in place of a free-text name |
+| `Cav7/Citations` | Stores roster citation images as deduplicated citation blobs, takes the vendor's per-row files in with a sweep, and re-encodes them under an operator's hand |
 
 The vendor prefix is `Cav7`, not `7Cav`, because a PHP namespace cannot start with a digit. The GitHub org is `7Cav`; the code vendor is `Cav7`.
 
