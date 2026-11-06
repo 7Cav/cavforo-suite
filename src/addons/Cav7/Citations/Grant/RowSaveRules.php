@@ -22,7 +22,7 @@ final class RowSaveRules
 
     // Disciplinary on this install, the one kind that stays open to a file. An id, not an
     // option: reopening another kind is a code change by design.
-    private const OPEN_RECORD_TYPE = 4;
+    public const OPEN_RECORD_TYPE = 4;
 
     /**
      * @param int $recordTypeId The submitted record type, ignored on an award.

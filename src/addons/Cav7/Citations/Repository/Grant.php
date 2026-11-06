@@ -8,11 +8,14 @@ use Cav7\Citations\Grant\GrantValues;
 use Cav7\Citations\Render\PinnedSignature;
 use Cav7\Citations\Render\RankSnapshot;
 use XF\Entity\User;
+use XF\Mvc\Entity\Finder;
 use XF\Mvc\Entity\Repository;
 
 /** Assumes NF/Rosters keeps award and record type titles in `title`, as NF\Rosters:Award and :RecordType. */
 class Grant extends Repository
 {
+    private const LISTED_MEMBERS = 3;
+
     /** The permission check pages use: `actor(\XF::visitor())->canOpenGrantList()` and so on. */
     public function actor(User $user): Actor
     {
@@ -91,6 +94,77 @@ class Grant extends Repository
             LIMIT 1",
             [$awardId, $grantDate, $exceptGrantId]
         );
+    }
+
+    /**
+     * Grants of one type, newest first.
+     *
+     * @param array{string, int}|null $kind
+     * @param int|null $day Midnight UTC.
+     * @param int|null $relationId Only grants this milpac is on.
+     */
+    public function listed(bool $regiment, ?array $kind, ?int $day, ?int $relationId): Finder
+    {
+        $finder = $this->finder('Cav7\Citations:Grant')
+            ->where('is_regiment', $regiment)
+            ->with('Version.Template')
+            ->order([['grant_date', 'DESC'], ['grant_id', 'DESC']]);
+
+        if ($kind !== null) {
+            $finder->where(['kind_type' => $kind[0], 'kind_id' => $kind[1]]);
+        }
+        if ($day !== null) {
+            $finder->where('grant_date', $day);
+        }
+        if ($relationId !== null) {
+            $finder->where('grant_id', $this->db()->fetchAllColumn(
+                'SELECT grant_id FROM xf_cav7_citation_grant_member WHERE relation_id = ?',
+                $relationId
+            ));
+        }
+        return $finder;
+    }
+
+    /** @return array<string, string> Kind titles by `award:<id>` or `record_type:<id>`, what the list can filter on. */
+    public function issuedKinds(): array
+    {
+        return $this->db()->fetchPairs(
+            "SELECT DISTINCT CONCAT(kind_type, ':', kind_id), kind_title FROM xf_cav7_citation_grant ORDER BY kind_title"
+        );
+    }
+
+    /**
+     * The list's members column: the first few usernames, and how many more. The snapshot name
+     * stands in where a milpac has gone.
+     *
+     * @param list<int> $grantIds
+     * @return array<int, string> By grant.
+     */
+    public function memberSummaries(array $grantIds): array
+    {
+        if ($grantIds === []) {
+            return [];
+        }
+
+        $rows = $this->db()->fetchAll(
+            'SELECT m.grant_id, COALESCE(u.username, m.name) AS name
+            FROM xf_cav7_citation_grant_member AS m
+            LEFT JOIN xf_nf_rosters_user AS r ON r.relation_id = m.relation_id
+            LEFT JOIN xf_user AS u ON u.user_id = r.user_id
+            WHERE m.grant_id IN (' . $this->db()->quote($grantIds) . ')
+            ORDER BY m.grant_member_id'
+        );
+
+        $names = [];
+        foreach ($rows as $row) {
+            $names[(int) $row['grant_id']][] = $row['name'];
+        }
+
+        return array_map(function (array $all): string {
+            $shown = implode(', ', array_slice($all, 0, self::LISTED_MEMBERS));
+
+            return count($all) > self::LISTED_MEMBERS ? $shown . ', +' . (count($all) - self::LISTED_MEMBERS) : $shown;
+        }, $names);
     }
 
     /**

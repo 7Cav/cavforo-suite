@@ -1,0 +1,42 @@
+<xf:title>{{ phrase('cav7_cit_legibility_list') }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citation-templates') }}">{{ phrase('cav7_cit_citation_templates') }}</xf:breadcrumb>
+
+<div class="block">
+	<div class="block-container">
+		<div class="block-body block-row">
+			<xf:if is="$entries is not empty">
+				<div class="dataList">
+					<table class="dataList-table">
+						<tr class="dataList-row dataList-row--header dataList-row--noHover">
+							<th class="dataList-cell">{{ phrase('cav7_cit_citation') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_member') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_template') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_field') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_size_px') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_reading_size') }}</th>
+							<th class="dataList-cell">&nbsp;</th>
+						</tr>
+						<xf:foreach loop="$entries" value="$entry">
+							<tr class="dataList-row">
+								<td class="dataList-cell"><a href="{{ link('rosters/citations', {'grant_id': $entry.grant_id}) }}">{$entry.kind_title}, {{ date($entry.grant_date, 'Y-m-d') }}</a></td>
+								<td class="dataList-cell">{{ $entry.member_name ?: phrase('cav7_cit_shared') }}</td>
+								<td class="dataList-cell"><a href="{{ link('rosters/citation-versions', {'template_version_id': $entry.template_version_id}) }}">{$entry.template_title}, v{$entry.version_number}</a></td>
+								<td class="dataList-cell">{$entry.field_key}</td>
+								<td class="dataList-cell">{{ number($entry.size, 2) }}</td>
+								<td class="dataList-cell">{{ number($entry.legible, 2) }}</td>
+								<td class="dataList-cell dataList-cell--action">
+									<xf:if is="$entry.can_move">
+										<xf:button href="{{ link('rosters/citations/move', {'grant_id': $entry.grant_id}) }}" class="button--small">{{ phrase('cav7_cit_move_version_short') }}</xf:button>
+									</xf:if>
+								</td>
+							</tr>
+						</xf:foreach>
+					</table>
+				</div>
+			<xf:else />
+				{{ phrase('cav7_cit_legibility_empty') }}
+			</xf:if>
+		</div>
+		<div class="block-footer">{{ phrase('cav7_cit_legibility_note') }}</div>
+	</div>
+</div>

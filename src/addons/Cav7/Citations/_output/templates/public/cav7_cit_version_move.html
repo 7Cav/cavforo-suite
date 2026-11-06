@@ -1,0 +1,44 @@
+<xf:title>{{ phrase('cav7_cit_move_citations_off_x', {'title': $version.Template.title, 'number': $version.version_number}) }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citation-templates') }}">{{ phrase('cav7_cit_citation_templates') }}</xf:breadcrumb>
+<xf:breadcrumb href="{{ link('rosters/citation-templates', $version.Template) }}">{$version.Template.title}</xf:breadcrumb>
+<xf:css src="cav7_cit_pages.less" />
+
+<xf:if is="$targets is empty OR $grants is empty">
+	<div class="blockMessage">{{ phrase('cav7_cit_nothing_to_move') }}</div>
+<xf:else />
+	<xf:form action="{{ link('rosters/citation-versions/move-citations', $version) }}" class="block">
+		<div class="block-container">
+			<div class="block-body">
+				<xf:selectrow name="target_version_id" label="{{ phrase('cav7_cit_move_them_to') }}" explain="{{ phrase('cav7_cit_move_many_explain') }}">
+					<xf:foreach loop="$targets" value="$target">
+						<xf:option value="{$target.template_version_id}">{{ phrase('cav7_cit_version_cap_x', {'number': $target.version_number}) }}</xf:option>
+					</xf:foreach>
+				</xf:selectrow>
+				<xf:textarearow name="reason" rows="2" autosize="true" label="{{ phrase('reason') }}" hint="{{ phrase('cav7_cit_reason_hint') }}" />
+			</div>
+			<div class="block-body block-row">
+				<div class="dataList">
+					<table class="dataList-table">
+						<tr class="dataList-row dataList-row--header dataList-row--noHover">
+							<th class="dataList-cell dataList-cell--min"><xf:checkbox standalone="true"><xf:option check-all="< .dataList" title="{{ phrase('select_all')|for_attr }}" /></xf:checkbox></th>
+							<th class="dataList-cell">{{ phrase('date') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_citation') }}</th>
+							<th class="dataList-cell">{{ phrase('members') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_issued_by') }}</th>
+						</tr>
+						<xf:foreach loop="$grants" value="$grant">
+							<tr class="dataList-row">
+								<td class="dataList-cell dataList-cell--min"><xf:checkbox standalone="true"><xf:option name="grant_ids[]" value="{$grant.grant_id}" /></xf:checkbox></td>
+								<td class="dataList-cell">{$grant.getDay()}</td>
+								<td class="dataList-cell"><a href="{{ link('rosters/citations', $grant) }}">{$grant.kind_title}</a></td>
+								<td class="dataList-cell">{{ $grant.is_regiment ? phrase('cav7_cit_every_milpac') : $names.{$grant.grant_id} }}</td>
+								<td class="dataList-cell">{$grant.issue_username}</td>
+							</tr>
+						</xf:foreach>
+					</table>
+				</div>
+			</div>
+			<xf:submitrow submit="{{ phrase('cav7_cit_move_citations') }}" />
+		</div>
+	</xf:form>
+</xf:if>

@@ -1,0 +1,1 @@
+This design doesn't print a name, so every member's certificate looks the same. Each member still gets their own citation to pick on their rows.

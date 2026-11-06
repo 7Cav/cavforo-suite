@@ -1,0 +1,133 @@
+<xf:title>{{ phrase('cav7_cit_x_version_y', {'title': $version.Template.title, 'number': $version.version_number}) }}</xf:title>
+<xf:h1>{{ phrase('cav7_cit_x_version_y', {'title': $version.Template.title, 'number': $version.version_number}) }} <xf:macro id="cav7_cit_manager_macros::state_label" arg-state="{$version.state}" /></xf:h1>
+<xf:breadcrumb href="{{ link('rosters/citation-templates') }}">{{ phrase('cav7_cit_citation_templates') }}</xf:breadcrumb>
+<xf:breadcrumb href="{{ link('rosters/citation-templates', $version.Template) }}">{$version.Template.title}</xf:breadcrumb>
+<xf:css src="cav7_cit_pages.less" />
+<xf:js src="Cav7/Citations/manager.js" addon="Cav7/Citations" min="1" />
+
+<xf:if is="$can.publish">
+	<xf:pageaction>
+		<xf:button href="{{ link('rosters/citation-versions/publish', $version) }}" overlay="true" icon="confirm">{{ phrase('cav7_cit_publish') }}</xf:button>
+	</xf:pageaction>
+</xf:if>
+
+<xf:if is="$version.state != 'draft'">
+	<div class="blockMessage blockMessage--iconic">
+		{{ phrase('cav7_cit_version_frozen_note', {'state': phrase_dynamic('cav7_cit_state_' . $version.state)}) }}
+		<xf:if is="$version.state == 'retired'">{{ phrase('cav7_cit_retired_still_renders') }}</xf:if>
+	</div>
+</xf:if>
+
+<div class="cav7GrantLayout cav7GrantLayout--editor">
+	<div class="cav7GrantLayout-form">
+		<div class="block">
+			<div class="block-container">
+				<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_plate') }}</h3>
+				<div class="block-row">
+					<div class="contentRow">
+						<xf:if is="$version.plate_format">
+							<div class="contentRow-figure">
+								<img class="cav7Thumb cav7Thumb--plate" alt="" src="{{ link('rosters/citation-versions/plate', $version, {'h': $version.plate_hash}) }}" />
+							</div>
+						</xf:if>
+						<div class="contentRow-main">
+							<xf:if is="$version.plate_format">
+								<div class="contentRow-title">{{ phrase('cav7_cit_x_by_y_pixels', {'width': $version.plate_width, 'height': $version.plate_height}) }}</div>
+							<xf:else />
+								<div class="contentRow-title">{{ phrase('cav7_cit_no_plate_yet') }}</div>
+							</xf:if>
+							<div class="contentRow-minor">{{ phrase('cav7_cit_plate_explain') }}</div>
+							<xf:if is="$plateWarns">
+								<div class="blockMessage blockMessage--warning blockMessage--small cav7Preview-warning">{{ phrase('cav7_cit_plate_width_warning', {'width': $version.plate_width}) }}</div>
+							</xf:if>
+							<xf:if is="$can.edit">
+								<div class="cav7Preview-note">
+									<xf:button href="{{ link('rosters/citation-versions/upload-plate', $version) }}" class="button--small" overlay="true" icon="upload">{{ $version.plate_format ? phrase('cav7_cit_replace_plate') : phrase('cav7_cit_upload_plate') }}</xf:button>
+								</div>
+							</xf:if>
+						</div>
+					</div>
+				</div>
+
+				<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_information') }}</h3>
+				<div class="block-body block-row">
+					<xf:macro id="cav7_cit_manager_macros::information" arg-version="{$version}" arg-serves="{$serves}" arg-inputs="{$inputs}" />
+					<xf:if is="$can.edit">
+						<div class="cav7Preview-note">
+							<xf:button href="{{ link('rosters/citation-versions/settings', $version) }}" class="button--small" overlay="true" icon="edit">{{ phrase('edit') }}</xf:button>
+						</div>
+					</xf:if>
+				</div>
+
+				<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_fields') }}</h3>
+				<div class="block-body block-row">
+					<xf:if is="$fields is not empty">
+						<xf:form action="{{ link('rosters/citation-versions/move-field', $version) }}">
+							<div class="dataList">
+								<table class="dataList-table">
+									<tr class="dataList-row dataList-row--header dataList-row--noHover">
+										<th class="dataList-cell">{{ phrase('cav7_cit_field') }}</th>
+										<th class="dataList-cell">{{ phrase('cav7_cit_what_it_sets') }}</th>
+										<th class="dataList-cell">{{ phrase('cav7_cit_box') }}</th>
+										<th class="dataList-cell">&nbsp;</th>
+									</tr>
+									<xf:foreach loop="$fields" value="$field">
+										<tr class="dataList-row">
+											<td class="dataList-cell"><a href="{{ link('rosters/citation-versions/field', $version, {'key': $field.key}) }}" data-xf-click="overlay" data-cache="false">{$field.key}</a></td>
+											<td class="dataList-cell">
+												<xf:if is="$field.kind == 'text'">
+													<code>{{ snippet($field.pattern, 44) }}</code>
+													<div class="u-muted">{$field.font_label}, {{ phrase('cav7_cit_up_to_x_px', {'size': $field.size}) }}<xf:if is="$field.caps">, {{ phrase('cav7_cit_capitals') }}</xf:if><xf:if is="$field.mode == 'wrap'">, {{ phrase('cav7_cit_wraps') }}</xf:if></div>
+													<xf:if is="$field.error">
+														<div class="blockMessage blockMessage--error blockMessage--small cav7Preview-warning">{{ phrase('cav7_cit_pattern_error_at', {'at': $field.error.at, 'message': $field.error.message}) }}</div>
+													</xf:if>
+												<xf:elseif is="$field.kind == 'signature'" />
+													{{ phrase('cav7_cit_signature_slot_x', {'billet': $field.billet ?: '?'}) }}
+												<xf:else />
+													<a href="{{ link('rosters/citation-versions/rank-art', $version, {'key': $field.key}) }}">{{ phrase('cav7_cit_rank_art') }}</a>
+												</xf:if>
+											</td>
+											<td class="dataList-cell">{$field.x}, {$field.y}, {$field.w} &times; {$field.h}</td>
+											<td class="dataList-cell cav7Actions">
+												<xf:if is="$can.edit">
+													<button type="submit" name="move" value="{$field.key}:up" class="button button--small" title="{{ phrase('cav7_cit_draw_earlier')|for_attr }}" aria-label="{{ phrase('cav7_cit_draw_earlier')|for_attr }}">&uarr;</button>
+													<button type="submit" name="move" value="{$field.key}:down" class="button button--small" title="{{ phrase('cav7_cit_draw_later')|for_attr }}" aria-label="{{ phrase('cav7_cit_draw_later')|for_attr }}">&darr;</button>
+													<xf:button href="{{ link('rosters/citation-versions/field', $version, {'key': $field.key}) }}" icon="edit" class="button--small" overlay="true" data-cache="false">{{ phrase('edit') }}</xf:button>
+													<xf:button href="{{ link('rosters/citation-versions/remove-field', $version, {'key': $field.key}) }}" icon="delete" class="button--small" overlay="true">{{ phrase('delete') }}</xf:button>
+												</xf:if>
+											</td>
+										</tr>
+									</xf:foreach>
+								</table>
+							</div>
+						</xf:form>
+					<xf:else />
+						{{ phrase('cav7_cit_no_fields_yet') }}
+					</xf:if>
+				</div>
+				<xf:if is="$can.edit">
+					<div class="block-footer">
+						<xf:button href="{{ link('rosters/citation-versions/field', $version) }}" icon="add" overlay="true" data-cache="false">{{ phrase('cav7_cit_add_field') }}</xf:button>
+					</div>
+				</xf:if>
+			</div>
+		</div>
+	</div>
+
+	<xf:if is="$panel.can">
+		<div class="cav7GrantLayout-preview">
+			<div class="block-container">
+				<h3 class="block-header">{{ phrase('cav7_cit_preview') }} <span class="block-desc">{{ phrase('cav7_cit_with_sample_data') }}</span></h3>
+				<div class="block-row">
+					<xf:if is="$version.plate_format">
+						<form class="js-platePanel">
+							<xf:macro id="cav7_cit_manager_macros::plate_preview" arg-version="{$version}" arg-panel="{$panel}" />
+						</form>
+					<xf:else />
+						<div class="cav7Preview-empty">{{ phrase('cav7_cit_preview_no_plate') }}</div>
+					</xf:if>
+				</div>
+			</div>
+		</div>
+	</xf:if>
+</div>

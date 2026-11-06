@@ -1,0 +1,1 @@
+Only awards and record types with a published template are listed.

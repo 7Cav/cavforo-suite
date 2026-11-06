@@ -1,0 +1,111 @@
+<xf:macro id="state_label" arg-state="!">
+	<xf:if is="$state == 'draft'">
+		<span class="label label--yellow">{{ phrase('cav7_cit_draft') }}</span>
+	<xf:elseif is="$state == 'published'" />
+		<span class="label label--green">{{ phrase('cav7_cit_published') }}</span>
+	<xf:else />
+		<span class="label label--silver">{{ phrase('cav7_cit_retired') }}</span>
+	</xf:if>
+</xf:macro>
+
+<xf:macro id="information" arg-version="!" arg-serves="!" arg-inputs="!">
+	<dl class="pairs pairs--columns pairs--fixedSmall">
+		<dt>{{ phrase('cav7_cit_serves') }}</dt>
+		<dd>
+			<xf:if is="$serves is not empty">
+				<xf:foreach loop="$serves" value="$title" i="$i"><xf:if is="$i > 1">, </xf:if>{$title}</xf:foreach>
+			<xf:else />-</xf:if>
+		</dd>
+	</dl>
+	<dl class="pairs pairs--columns pairs--fixedSmall">
+		<dt>{{ phrase('cav7_cit_rank') }}</dt>
+		<dd>{{ phrase_dynamic('cav7_cit_rank_scope_' . $version.rank_scope) }}</dd>
+	</dl>
+	<dl class="pairs pairs--columns pairs--fixedSmall">
+		<dt>{{ phrase('cav7_cit_template_inputs') }}</dt>
+		<dd>
+			<xf:if is="$inputs is not empty">
+				<xf:foreach loop="$inputs" value="$input">
+					<div>{$input.label} <span class="u-muted">({{ $input.scope == 'member' ? phrase('cav7_cit_per_member') : phrase('cav7_cit_per_citation') }}, {{ $input.required ? phrase('cav7_cit_required') : phrase('cav7_cit_optional') }})</span></div>
+				</xf:foreach>
+			<xf:else />
+				{{ phrase('none') }}
+			</xf:if>
+		</dd>
+	</dl>
+</xf:macro>
+
+<xf:macro id="plate_preview" arg-version="!" arg-panel="!">
+	<div class="cav7Plate" data-xf-init="cav7-plate-preview"
+		data-preview-url="{{ link('rosters/citation-versions/preview', $version) }}"
+		data-plate-width="{$version.plate_width}" data-plate-height="{$version.plate_height}"
+		data-boxes="{$panel.boxes}">
+
+		<div class="cav7Plate-tools">
+			<div class="buttonGroup">
+				<button type="button" class="button button--small js-zoomOut" title="{{ phrase('cav7_cit_zoom_out')|for_attr }}" aria-label="{{ phrase('cav7_cit_zoom_out')|for_attr }}">&minus;</button>
+				<button type="button" class="button button--small js-zoomFit">{{ phrase('cav7_cit_zoom_fit') }}</button>
+				<button type="button" class="button button--small js-zoomIn" title="{{ phrase('cav7_cit_zoom_in')|for_attr }}" aria-label="{{ phrase('cav7_cit_zoom_in')|for_attr }}">+</button>
+			</div>
+			<span class="cav7Plate-zoom js-zoomLabel" aria-live="polite"></span>
+			<label class="iconic iconic--checkbox iconic--labelled"><input type="checkbox" class="js-showBoxes" checked="checked" /><i aria-hidden="true"></i><span class="iconic-label">{{ phrase('cav7_cit_show_field_boxes') }}</span></label>
+		</div>
+
+		<div class="cav7Plate-viewport js-plateViewport" tabindex="0">
+			<div class="cav7Plate-stage js-plateStage">
+				<img class="js-plateImage" alt="{{ phrase('cav7_cit_preview')|for_attr }}" />
+			</div>
+		</div>
+
+		<div class="js-plateReport"></div>
+
+		<details class="cav7Plate-sample">
+			<summary>{{ phrase('cav7_cit_sample_values') }}</summary>
+			<div class="cav7Plate-sampleFields">
+				<label class="cav7MemberCard-field">
+					<span>{{ phrase('cav7_cit_name_on_certificate') }}</span>
+					<xf:textbox name="sample[name]" value="{$panel.sample.name}" class="input--small" />
+				</label>
+				<label class="cav7MemberCard-field">
+					<span>{{ phrase('cav7_cit_rank') }}</span>
+					<xf:select name="sample[rank_id]" value="{$panel.sample.rankId}" class="input--small">
+						<xf:foreach loop="$panel.ranks" value="$rank">
+							<xf:option value="{$rank.rank_id}">{$rank.title} ({$rank.pay_grade})</xf:option>
+						</xf:foreach>
+					</xf:select>
+				</label>
+				<label class="cav7MemberCard-field">
+					<span>{{ phrase('date') }}</span>
+					<xf:dateinput name="sample[date]" value="{$panel.sample.date}" class="input--small" />
+				</label>
+				<xf:foreach loop="$panel.inputs" value="$input">
+					<label class="cav7MemberCard-field">
+						<span>{$input.label}</span>
+						<xf:textbox name="sample[inputs][{$input.key}]" value="{$panel.sample.inputs.{$input.key}}" class="input--small" />
+					</label>
+				</xf:foreach>
+				<xf:foreach loop="$panel.slots" value="$slot">
+					<label class="cav7MemberCard-field">
+						<span>{$slot.key}</span>
+						<xf:if is="$slot.options is not empty">
+							<xf:select name="sample[signatures][{$slot.key}]" class="input--small">
+								<xf:foreach loop="$slot.options" key="$id" value="$line">
+									<xf:option value="{$id}">{$line}</xf:option>
+								</xf:foreach>
+							</xf:select>
+						<xf:else />
+							<em>{{ phrase('cav7_cit_undrawn_no_signature') }}</em>
+						</xf:if>
+					</label>
+				</xf:foreach>
+				<label class="cav7MemberCard-field cav7Plate-sampleText">
+					<span>{{ phrase('cav7_cit_citation_text') }}</span>
+					<xf:textarea name="sample[text]" value="{$panel.sample.citationText}" rows="4" class="input--small" />
+				</label>
+				<xf:checkbox>
+					<xf:option name="sample[long]" value="1" label="{{ phrase('cav7_cit_use_long_sample') }}" />
+				</xf:checkbox>
+			</div>
+		</details>
+	</div>
+</xf:macro>

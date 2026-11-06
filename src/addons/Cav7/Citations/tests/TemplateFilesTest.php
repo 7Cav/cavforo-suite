@@ -199,10 +199,14 @@ namespace Cav7\Citations\Tests {
     check('--addon-version finds a grant by any row', $rows->grantsStamped(1010072) === [1] && $rows->grantsStamped(1010070) === [2] && $rows->grantsStamped(999) === []);
 
     // G-48: below_legibility rows joined to their grant.
-    $db->query('CREATE TABLE xf_cav7_citation_grant (grant_id INTEGER, template_version_id INTEGER, kind_title TEXT, withdrawn_date INTEGER)');
+    $db->query('CREATE TABLE xf_cav7_citation_grant (grant_id INTEGER, template_version_id INTEGER, kind_title TEXT, grant_date INTEGER, is_regiment INTEGER, withdrawn_date INTEGER)');
     $db->query('CREATE TABLE xf_cav7_citation_template_version (template_version_id INTEGER, template_id INTEGER, version_number INTEGER)');
-    $db->query("INSERT INTO xf_cav7_citation_grant VALUES (1, 41, 'Bronze Star', 0), (2, 41, 'Silver Star', 0), (3, 41, 'PUC', 1700000000)");
+    $db->query('CREATE TABLE xf_cav7_citation_template (template_id INTEGER, title TEXT)');
+    $db->query('CREATE TABLE xf_cav7_citation_grant_member (grant_member_id INTEGER, name TEXT)');
+    $db->query("INSERT INTO xf_cav7_citation_grant VALUES (1, 41, 'Bronze Star', 1700000000, 0, 0), (2, 41, 'Silver Star', 1700000000, 0, 0), (3, 41, 'PUC', 1700000000, 1, 1700000000)");
     $db->query('INSERT INTO xf_cav7_citation_template_version VALUES (41, 6, 3)');
+    $db->query("INSERT INTO xf_cav7_citation_template VALUES (6, 'Bronze Star Medal')");
+    $db->query("INSERT INTO xf_cav7_citation_grant_member VALUES (8, 'Ewan McQuill')");
     $rows->write(1, 8, ['recipient' => new SetField('recipient', 20.0, true, [$nameLine])], 1010070, $libraries, 1000);
     $rows->write(3, TypesettingRows::SHARED, ['body' => new SetField('body', 12.5, true, [$line])], 1010070, $libraries, 1000);
 
@@ -212,7 +216,8 @@ namespace Cav7\Citations\Tests {
     );
     check('G-48 a shared field is one entry, a member field one per member, a withdrawn grant none', $listed() === ['1:0:body', '1:8:recipient', '2:0:other'], json_encode($listed()));
     $entry = $rows->belowLegibility()[0];
-    check('G-48 an entry carries its grant and version', $entry['kind_title'] === 'Bronze Star' && (int) $entry['template_id'] === 6 && (int) $entry['version_number'] === 3);
+    check('G-48 an entry carries its grant and version', $entry['kind_title'] === 'Bronze Star' && (int) $entry['template_id'] === 6 && (int) $entry['version_number'] === 3 && $entry['template_title'] === 'Bronze Star Medal');
+    check('G-48 a shared entry has no member, and a member entry names theirs', $entry['member_name'] === null && $rows->belowLegibility()[1]['member_name'] === 'Ewan McQuill');
 
     $rows->clearMember(1, 8);
     check('G-48 a removed member\'s rows go with them', $listed() === ['1:0:body', '2:0:other'] && !isset($rows->all(1)->members[8]) && isset($rows->all(1)->members[7]));

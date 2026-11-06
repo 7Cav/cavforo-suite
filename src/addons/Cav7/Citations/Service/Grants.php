@@ -9,6 +9,7 @@ use Cav7\Citations\Entity\TemplateVersion;
 use Cav7\Citations\Grant\Actor;
 use Cav7\Citations\Grant\Correction;
 use Cav7\Citations\Grant\GrantChanges;
+use Cav7\Citations\Grant\GrantPreview;
 use Cav7\Citations\Grant\GrantRender;
 use Cav7\Citations\Grant\GrantRules;
 use Cav7\Citations\Grant\GrantValues;
@@ -111,6 +112,32 @@ class Grants extends AbstractService
     }
 
     /**
+     * What a form's values would print, for one member of them or for no member at all.
+     * Nothing is stored and nothing refuses, so a half-filled form still shows.
+     *
+     * @throws RenderFailed
+     */
+    public function preview(TemplateVersion $version, GrantValues $values, int $memberKey): GrantPreview
+    {
+        $values = $this->repo()->snapshotted(
+            $values->withCitationText($this->plain($values->citationText))->fittedTo($version->renderVersion())
+        );
+
+        return $this->render()->preview($version, $values, $values->previewedMember($memberKey), $this->repo()->pinned($values));
+    }
+
+    /** The values a correction or a move would leave, for its preview. */
+    public function correctedValues(Grant $grant, TemplateVersion $version, GrantChanges $changes): GrantValues
+    {
+        $old = $grant->values();
+        $design = $version->renderVersion();
+
+        return $version->template_version_id === $grant->template_version_id
+            ? $old->changed($changes, $design)
+            : $old->movedTo($design, $changes, $this->repo()->billets(array_values($changes->signatures + $old->signatures)));
+    }
+
+    /**
      * @return bool False when the changes changed nothing, so nothing was written.
      * @throws PrintableException
      * @throws RenderFailed
@@ -203,8 +230,8 @@ class Grants extends AbstractService
 
     /**
      * Each grant moves as its own correction, sharing this service's width table. A grant with
-     * something missing or in the way is skipped and reported, and so is a regiment grant
-     * unless the actor manages them.
+     * something missing or in the way is skipped and reported, and so is a kind of grant the
+     * actor can't issue.
      *
      * @param list<int> $grantIds
      * @return array{moved: list<int>, skipped: array<int, list<string>>} `skipped` holds why, by grant id.
@@ -221,8 +248,10 @@ class Grants extends AbstractService
                 $skipped[$grantId] = [(string) \XF::phrase('cav7_cit_refused_no_such_grant')];
                 continue;
             }
-            if ($grant->is_regiment && !$actor->canIssue(true)) {
-                $skipped[$grantId] = [(string) \XF::phrase('cav7_cit_refused_regiment_needs_permission')];
+            if (!$actor->canIssue($grant->is_regiment)) {
+                $skipped[$grantId] = [(string) \XF::phrase(
+                    $grant->is_regiment ? 'cav7_cit_refused_regiment_needs_permission' : 'cav7_cit_refused_member_grant_needs_permission'
+                )];
                 continue;
             }
 

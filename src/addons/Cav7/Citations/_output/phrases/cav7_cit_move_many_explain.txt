@@ -1,0 +1,1 @@
+Each citation moves as its own logged correction. One that needs something the new version asks for is skipped and listed.

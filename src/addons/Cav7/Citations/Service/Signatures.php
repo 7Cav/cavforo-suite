@@ -22,9 +22,17 @@ class Signatures extends AbstractService
         return $signature;
     }
 
-    public function replaceInk(Signature $signature, string $inkPath): void
+    /**
+     * @param list<string> $printedLines
+     * @param string|null $inkPath Null keeps the ink it has.
+     */
+    public function update(Signature $signature, int $billetId, array $printedLines, ?string $inkPath): void
     {
-        $this->takeInk($signature, $inkPath);
+        $signature->billet_id = $billetId;
+        $signature->setPrintedLines($printedLines);
+        if ($inkPath !== null) {
+            $this->takeInk($signature, $inkPath);
+        }
         $signature->save();
     }
 

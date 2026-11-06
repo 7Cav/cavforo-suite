@@ -4,15 +4,15 @@ namespace Cav7\Citations\Service;
 
 use Cav7\Citations\Entity\Template;
 use Cav7\Citations\Entity\TemplateVersion;
+use Cav7\Citations\Template\FieldForm;
 use Cav7\Citations\Template\ImageUpload;
 use Cav7\Citations\Template\VersionLifecycle;
 use XF\Phrase;
 use XF\Service\AbstractService;
 
 /**
- * Starting, filling and deleting drafts. Definitions and rank scope are plain columns on
- * the entity, and removing rank art is a delete on its row. All of it freezes on publish
- * in the entities, so a caller can't skip that.
+ * Starting, filling and deleting drafts. All of it freezes on publish in the entities, so a
+ * caller can't skip that.
  */
 class Drafts extends AbstractService
 {
@@ -60,6 +60,42 @@ class Drafts extends AbstractService
         $draft->clearCache('Kinds');
     }
 
+    /**
+     * @param list<array<string, mixed>> $inputs
+     * @param list<array{'award'|'record_type', int}> $kinds
+     */
+    public function saveSettings(TemplateVersion $draft, string $rankScope, array $inputs, array $kinds): void
+    {
+        $this->db()->executeTransaction(function () use ($draft, $rankScope, $inputs, $kinds): void {
+            $draft->rank_scope = $rankScope;
+            $draft->input_definitions = self::json($inputs);
+            $draft->save(true, false);
+
+            $this->setKinds($draft, $kinds);
+        });
+    }
+
+    /** @param array<string, mixed> $definition */
+    public function saveField(TemplateVersion $draft, ?string $originalKey, array $definition): void
+    {
+        $this->writeFields(
+            $draft,
+            FieldForm::placed($draft->fieldDefinitions(), $originalKey, $definition),
+            $originalKey === null ? [] : [$originalKey => $definition['key']]
+        );
+    }
+
+    public function removeField(TemplateVersion $draft, string $key): void
+    {
+        $this->writeFields($draft, FieldForm::without($draft->fieldDefinitions(), $key));
+    }
+
+    /** @param -1|1 $step */
+    public function moveField(TemplateVersion $draft, string $key, int $step): void
+    {
+        $this->writeFields($draft, FieldForm::stepped($draft->fieldDefinitions(), $key, $step));
+    }
+
     /** @return Phrase|null A warning when the plate is off the width plates aim for. It saved either way. */
     public function setPlate(TemplateVersion $draft, string $path): ?Phrase
     {
@@ -89,6 +125,13 @@ class Drafts extends AbstractService
         $draft->clearCache('RankArt');
     }
 
+    public function removeRankArt(TemplateVersion $draft, string $fieldKey, int $rankId): void
+    {
+        $id = ['template_version_id' => $draft->template_version_id, 'field_key' => $fieldKey, 'rank_id' => $rankId];
+        $this->em()->find('Cav7\Citations:RankArt', $id)?->delete();
+        $draft->clearCache('RankArt');
+    }
+
     /** A template left with no version has nothing to show, so it goes with its last draft. */
     public function deleteDraft(TemplateVersion $draft): void
     {
@@ -102,6 +145,45 @@ class Drafts extends AbstractService
                 $template->delete(true, false);
             }
         });
+    }
+
+    /**
+     * Rank art follows its field: a rename carries it, and a field gone or no longer rank art
+     * takes it along, so a later field under the same key doesn't inherit it.
+     *
+     * @param list<array<string, mixed>> $definitions
+     * @param array<string, string> $renamed New key by old key.
+     */
+    private function writeFields(TemplateVersion $draft, array $definitions, array $renamed = []): void
+    {
+        $artKeys = [];
+        foreach ($definitions as $field) {
+            if ($field['kind'] === 'rank_art') {
+                $artKeys[] = $field['key'];
+            }
+        }
+
+        $this->db()->executeTransaction(function () use ($draft, $definitions, $renamed, $artKeys): void {
+            $draft->field_definitions = self::json($definitions);
+            $draft->save(true, false);
+
+            foreach ($draft->RankArt as $art) {
+                $key = $renamed[$art->field_key] ?? $art->field_key;
+                if (!in_array($key, $artKeys, true)) {
+                    $art->delete(true, false);
+                } elseif ($key !== $art->field_key) {
+                    $art->field_key = $key;
+                    $art->save(true, false);
+                }
+            }
+        });
+        $draft->clearCache('RankArt');
+    }
+
+    /** @param list<array<string, mixed>> $definitions */
+    private static function json(array $definitions): string
+    {
+        return json_encode($definitions, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     /** @param array<string, mixed> $design */

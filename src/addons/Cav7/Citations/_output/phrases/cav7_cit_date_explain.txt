@@ -1,0 +1,1 @@
+It prints in the template's own wording.

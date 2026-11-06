@@ -1,0 +1,78 @@
+<xf:title>{{ phrase('cav7_cit_citations') }}</xf:title>
+<xf:css src="cav7_cit_pages.less" />
+
+<xf:if is="$canIssue">
+	<xf:pageaction>
+		<xf:button href="{{ link('rosters/citations/issue') }}" class="button--cta" icon="add">{{ phrase('cav7_cit_issue_a_citation') }}</xf:button>
+	</xf:pageaction>
+</xf:if>
+
+<xf:macro id="table" arg-grants="!" arg-names="{{ [] }}">
+	<div class="dataList">
+		<table class="dataList-table">
+			<tr class="dataList-row dataList-row--header dataList-row--noHover">
+				<th class="dataList-cell">{{ phrase('date') }}</th>
+				<th class="dataList-cell">{{ phrase('cav7_cit_citation') }}</th>
+				<th class="dataList-cell">{{ phrase('members') }}</th>
+				<th class="dataList-cell">{{ phrase('cav7_cit_template') }}</th>
+				<th class="dataList-cell">{{ phrase('cav7_cit_issued_by') }}</th>
+				<th class="dataList-cell">{{ phrase('cav7_cit_corrections') }}</th>
+			</tr>
+			<xf:foreach loop="$grants" value="$grant">
+				<tr class="dataList-row">
+					<td class="dataList-cell">{$grant.getDay()}</td>
+					<td class="dataList-cell">
+						<a href="{{ link('rosters/citations', $grant) }}">{$grant.kind_title}</a>
+						<xf:if is="$grant.kind_type == 'record_type'"><span class="u-muted">{{ phrase('cav7_cit_record_note') }}</span></xf:if>
+						<xf:if is="$grant.withdrawn_date"><span class="label label--orange">{{ phrase('cav7_cit_withdrawn') }}</span></xf:if>
+					</td>
+					<td class="dataList-cell">
+						<xf:if is="$grant.is_regiment">
+							<span class="u-muted">{{ phrase('cav7_cit_every_milpac') }}</span>
+						<xf:else />
+							{$names.{$grant.grant_id}}
+						</xf:if>
+					</td>
+					<td class="dataList-cell">{$grant.Version.Template.title}, v{$grant.Version.version_number}</td>
+					<td class="dataList-cell">{$grant.issue_username}</td>
+					<td class="dataList-cell">
+						<xf:if is="$grant.revision > 1">{{ phrase('cav7_cit_corrected_rev_x', {'revision': $grant.revision}) }}<xf:else />-</xf:if>
+					</td>
+				</tr>
+			</xf:foreach>
+		</table>
+	</div>
+</xf:macro>
+
+<div class="block">
+	<div class="block-container">
+		<form action="{{ link('rosters/citations') }}" method="get" class="cav7GrantFilters block-row">
+			<select name="kind" class="input" aria-label="{{ phrase('cav7_cit_award_or_record_type')|for_attr }}">
+				<option value="">{{ phrase('cav7_cit_any_award_or_record_type') }}</option>
+				<xf:foreach loop="$kinds" key="$kindKey" value="$kindTitle">
+					<option value="{$kindKey}" {{ $filters.kind == $kindKey ? 'selected="selected"' : '' }}>{$kindTitle}</option>
+				</xf:foreach>
+			</select>
+			<xf:dateinput name="date" value="{$filters.date}" aria-label="{{ phrase('date')|for_attr }}" />
+			<xf:textbox name="member" value="{$filters.member}" ac="single" placeholder="{{ phrase('cav7_cit_member')|for_attr }}" aria-label="{{ phrase('cav7_cit_member')|for_attr }}" />
+			<xf:button type="submit" icon="search">{{ phrase('filter') }}</xf:button>
+		</form>
+
+		<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_issued') }}</h3>
+		<div class="block-body block-row">
+			<xf:if is="$grants is not empty">
+				<xf:macro id="table" arg-grants="{$grants}" arg-names="{$names}" />
+			<xf:else />
+				{{ phrase('cav7_cit_nothing_issued') }}
+			</xf:if>
+		</div>
+
+		<xf:if is="$regimentGrants is not empty">
+			<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_regiment_citations') }}</h3>
+			<div class="block-body block-row">
+				<xf:macro id="table" arg-grants="{$regimentGrants}" />
+			</div>
+		</xf:if>
+	</div>
+	<xf:pagenav page="{$page}" perpage="{$perPage}" total="{$total}" link="rosters/citations" params="{$filters}" wrapperclass="block-outer block-outer--after" />
+</div>

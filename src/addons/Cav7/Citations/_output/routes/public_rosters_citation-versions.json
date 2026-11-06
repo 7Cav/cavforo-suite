@@ -1,0 +1,11 @@
+{
+    "route_type": "public",
+    "route_prefix": "rosters",
+    "sub_name": "citation-versions",
+    "format": "citation-versions/:int<template_version_id>/",
+    "build_class": "",
+    "build_method": "",
+    "controller": "Cav7\\Citations\\Pub\\Controller\\TemplateVersions",
+    "context": "nfRosters",
+    "action_prefix": ""
+}

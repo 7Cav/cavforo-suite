@@ -1,0 +1,1 @@
+The citation text comes out at {size} pt, below this template's {legible} pt reading size. You can still issue it. The template manager will list it so S1 can publish a version with a bigger box.

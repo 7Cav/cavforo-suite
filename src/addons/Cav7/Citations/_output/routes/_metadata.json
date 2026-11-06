@@ -4,5 +4,17 @@
     },
     "public_citations_regiment.json": {
         "hash": "5e9d4877564e994d4644d316667326e9"
+    },
+    "public_rosters_citation-signatures.json": {
+        "hash": "d04088f2474ad86d4881fc0f71b2bedf"
+    },
+    "public_rosters_citation-templates.json": {
+        "hash": "a0f44328cf65819f81ab17ecfe061c5e"
+    },
+    "public_rosters_citation-versions.json": {
+        "hash": "87c4a479d4f4d8fd2c183c890c3ca726"
+    },
+    "public_rosters_citations.json": {
+        "hash": "a2f48bf4361971c2113068e4e0c20f9a"
     }
 }

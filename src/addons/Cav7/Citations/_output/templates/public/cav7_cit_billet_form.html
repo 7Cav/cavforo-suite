@@ -1,0 +1,12 @@
+<xf:title>{{ $billet.billet_id ? phrase('cav7_cit_edit_billet') : phrase('cav7_cit_add_billet') }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citation-signatures') }}">{{ phrase('cav7_cit_signatures') }}</xf:breadcrumb>
+
+<xf:form action="{{ $billet.billet_id ? link('rosters/citation-signatures/edit-billet', null, {'billet_id': $billet.billet_id}) : link('rosters/citation-signatures/add-billet') }}" ajax="true" class="block">
+	<div class="block-container">
+		<div class="block-body">
+			<xf:textboxrow name="title" value="{$billet.title}" maxlength="100" label="{{ phrase('title') }}" explain="{{ phrase('cav7_cit_billet_explain') }}" />
+			<xf:numberboxrow name="display_order" value="{$billet.display_order}" min="0" label="{{ phrase('display_order') }}" />
+		</div>
+		<xf:submitrow icon="save" />
+	</div>
+</xf:form>

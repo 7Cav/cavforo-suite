@@ -1,7 +1,210 @@
 <?xml version="1.0" encoding="utf-8"?>
 <phrases>
+  <phrase title="cav7_cit_abbreviation" version_id="1020070" version_string="1.2.0"><![CDATA[Abbreviation]]></phrase>
+  <phrase title="cav7_cit_active" version_id="1020070" version_string="1.2.0"><![CDATA[Active]]></phrase>
+  <phrase title="cav7_cit_active_signatures" version_id="1020070" version_string="1.2.0"><![CDATA[Active signatures]]></phrase>
+  <phrase title="cav7_cit_add" version_id="1010070" version_string="1.1.0"><![CDATA[Add]]></phrase>
+  <phrase title="cav7_cit_add_a_member" version_id="1010070" version_string="1.1.0"><![CDATA[Add a member]]></phrase>
+  <phrase title="cav7_cit_add_billet" version_id="1020070" version_string="1.2.0"><![CDATA[Add billet]]></phrase>
+  <phrase title="cav7_cit_add_field" version_id="1020070" version_string="1.2.0"><![CDATA[Add field]]></phrase>
+  <phrase title="cav7_cit_add_member" version_id="1010070" version_string="1.1.0"><![CDATA[Add member]]></phrase>
+  <phrase title="cav7_cit_add_member_explain" version_id="1010070" version_string="1.1.0"><![CDATA[Their name and rank come from today's milpac, and you can correct them on the next step.]]></phrase>
+  <phrase title="cav7_cit_add_member_left_off" version_id="1010070" version_string="1.1.0"><![CDATA[Add a member left off]]></phrase>
+  <phrase title="cav7_cit_add_member_to_see_name" version_id="1010070" version_string="1.1.0"><![CDATA[Add a member to see their name on it.]]></phrase>
+  <phrase title="cav7_cit_add_signature" version_id="1020070" version_string="1.2.0"><![CDATA[Add signature]]></phrase>
+  <phrase title="cav7_cit_add_template" version_id="1020070" version_string="1.2.0"><![CDATA[Add template]]></phrase>
+  <phrase title="cav7_cit_added_to_list_x" version_id="1010070" version_string="1.1.0"><![CDATA[Added to the list above: {names}.]]></phrase>
+  <phrase title="cav7_cit_already_on_x" version_id="1010070" version_string="1.1.0"><![CDATA[Already on: {rows}]]></phrase>
+  <phrase title="cav7_cit_any_award_or_record_type" version_id="1010070" version_string="1.1.0"><![CDATA[Any award or record type]]></phrase>
+  <phrase title="cav7_cit_apply_to_all" version_id="1010070" version_string="1.1.0"><![CDATA[Apply to all]]></phrase>
+  <phrase title="cav7_cit_art" version_id="1020070" version_string="1.2.0"><![CDATA[Art]]></phrase>
+  <phrase title="cav7_cit_award" version_id="1010070" version_string="1.1.0"><![CDATA[Award]]></phrase>
+  <phrase title="cav7_cit_award_or_record_type" version_id="1010070" version_string="1.1.0"><![CDATA[Award or record type]]></phrase>
+  <phrase title="cav7_cit_awards" version_id="1010070" version_string="1.1.0"><![CDATA[Awards]]></phrase>
+  <phrase title="cav7_cit_back_to_x" version_id="1020070" version_string="1.2.0"><![CDATA[Back to {title}]]></phrase>
+  <phrase title="cav7_cit_below_reading_size" version_id="1020070" version_string="1.2.0"><![CDATA[Below the {legible}px reading size]]></phrase>
+  <phrase title="cav7_cit_billet" version_id="1020070" version_string="1.2.0"><![CDATA[Billet]]></phrase>
+  <phrase title="cav7_cit_billet_explain" version_id="1020070" version_string="1.2.0"><![CDATA[A billet is only a matching key between a template's slot and the signatures S1 keeps. It never prints.]]></phrase>
+  <phrase title="cav7_cit_box" version_id="1020070" version_string="1.2.0"><![CDATA[Box]]></phrase>
+  <phrase title="cav7_cit_by" version_id="1010070" version_string="1.1.0"><![CDATA[By]]></phrase>
+  <phrase title="cav7_cit_cant_publish_yet" version_id="1020070" version_string="1.2.0"><![CDATA[This version can't publish yet:]]></phrase>
+  <phrase title="cav7_cit_capitals" version_id="1020070" version_string="1.2.0"><![CDATA[capitals]]></phrase>
+  <phrase title="cav7_cit_centred" version_id="1020070" version_string="1.2.0"><![CDATA[Centred]]></phrase>
+  <phrase title="cav7_cit_choose" version_id="1010070" version_string="1.1.0"><![CDATA[Choose...]]></phrase>
+  <phrase title="cav7_cit_choose_a_signature" version_id="1010070" version_string="1.1.0"><![CDATA[Choose a signature...]]></phrase>
+  <phrase title="cav7_cit_citation" version_id="1010070" version_string="1.1.0"><![CDATA[Citation]]></phrase>
+  <phrase title="cav7_cit_citation_issued" version_id="1010070" version_string="1.1.0"><![CDATA[The citation has been issued.]]></phrase>
+  <phrase title="cav7_cit_citation_templates" version_id="1020070" version_string="1.2.0"><![CDATA[Citation templates]]></phrase>
+  <phrase title="cav7_cit_citation_text" version_id="1010070" version_string="1.1.0"><![CDATA[Citation text]]></phrase>
+  <phrase title="cav7_cit_citations" version_id="1010070" version_string="1.1.0"><![CDATA[Citations]]></phrase>
+  <phrase title="cav7_cit_citations_issued" version_id="1020070" version_string="1.2.0"><![CDATA[Citations issued]]></phrase>
+  <phrase title="cav7_cit_citations_on_it" version_id="1020070" version_string="1.2.0"><![CDATA[Citations on it]]></phrase>
+  <phrase title="cav7_cit_colour" version_id="1020070" version_string="1.2.0"><![CDATA[Colour]]></phrase>
+  <phrase title="cav7_cit_correct" version_id="1010070" version_string="1.1.0"><![CDATA[Correct]]></phrase>
+  <phrase title="cav7_cit_correct_x" version_id="1010070" version_string="1.1.0"><![CDATA[Correct: {title}, {date}]]></phrase>
+  <phrase title="cav7_cit_corrected_rev_x" version_id="1010070" version_string="1.1.0"><![CDATA[Corrected (rev. {revision})]]></phrase>
+  <phrase title="cav7_cit_correction" version_id="1010070" version_string="1.1.0"><![CDATA[Correction]]></phrase>
+  <phrase title="cav7_cit_correction_saved" version_id="1010070" version_string="1.1.0"><![CDATA[The correction has been saved.]]></phrase>
+  <phrase title="cav7_cit_correction_warning" version_id="1010070" version_string="1.1.0"><![CDATA[A correction changes this citation for every member on it, and every row that shows it. It's saved to the citation's history with your reason.]]></phrase>
+  <phrase title="cav7_cit_corrections" version_id="1010070" version_string="1.1.0"><![CDATA[Corrections]]></phrase>
+  <phrase title="cav7_cit_date_explain" version_id="1010070" version_string="1.1.0"><![CDATA[It prints in the template's own wording.]]></phrase>
   <phrase title="cav7_cit_definitions_invalid" version_id="1010070" version_string="1.1.0"><![CDATA[Those definitions can't be saved: {detail}]]></phrase>
+  <phrase title="cav7_cit_delete_draft_x" version_id="1020070" version_string="1.2.0"><![CDATA[Delete draft version {number} of <strong>{title}</strong>?]]></phrase>
+  <phrase title="cav7_cit_delete_the_billet_x" version_id="1020070" version_string="1.2.0"><![CDATA[Delete the billet <strong>{title}</strong>?]]></phrase>
+  <phrase title="cav7_cit_delete_the_field_x" version_id="1020070" version_string="1.2.0"><![CDATA[Delete the field <strong>{key}</strong>?]]></phrase>
+  <phrase title="cav7_cit_delete_the_signature_x" version_id="1020070" version_string="1.2.0"><![CDATA[Delete the signature <strong>{line}</strong>?]]></phrase>
+  <phrase title="cav7_cit_draft" version_id="1020070" version_string="1.2.0"><![CDATA[Draft]]></phrase>
+  <phrase title="cav7_cit_draw_earlier" version_id="1020070" version_string="1.2.0"><![CDATA[Draw earlier]]></phrase>
+  <phrase title="cav7_cit_draw_later" version_id="1020070" version_string="1.2.0"><![CDATA[Draw later]]></phrase>
+  <phrase title="cav7_cit_edit_billet" version_id="1020070" version_string="1.2.0"><![CDATA[Edit billet]]></phrase>
+  <phrase title="cav7_cit_edit_signature" version_id="1020070" version_string="1.2.0"><![CDATA[Edit signature]]></phrase>
+  <phrase title="cav7_cit_every_milpac" version_id="1010070" version_string="1.1.0"><![CDATA[Every milpac]]></phrase>
+  <phrase title="cav7_cit_field" version_id="1020070" version_string="1.2.0"><![CDATA[Field]]></phrase>
+  <phrase title="cav7_cit_field_name" version_id="1020070" version_string="1.2.0"><![CDATA[Field name]]></phrase>
+  <phrase title="cav7_cit_field_name_placeholder" version_id="1020070" version_string="1.2.0"><![CDATA[For example: member]]></phrase>
+  <phrase title="cav7_cit_field_shrank" version_id="1010070" version_string="1.1.0"><![CDATA[The {field} line shrank to {size} pt to fit.]]></phrase>
+  <phrase title="cav7_cit_field_x" version_id="1020070" version_string="1.2.0"><![CDATA[Field: {key}]]></phrase>
+  <phrase title="cav7_cit_fields" version_id="1020070" version_string="1.2.0"><![CDATA[Fields]]></phrase>
+  <phrase title="cav7_cit_fill_all_explain" version_id="1010070" version_string="1.1.0"><![CDATA[Fills it in for every member. You can still change it member by member below.]]></phrase>
+  <phrase title="cav7_cit_filter_placeholder" version_id="1010070" version_string="1.1.0"><![CDATA[Filter...]]></phrase>
+  <phrase title="cav7_cit_font" version_id="1020070" version_string="1.2.0"><![CDATA[Font]]></phrase>
+  <phrase title="cav7_cit_font_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Text is set at the largest size that fits the box. Below the reading size the clerk gets a warning and S1 gets the citation listed here.]]></phrase>
+  <phrase title="cav7_cit_frozen_note" version_id="1020070" version_string="1.2.0"><![CDATA[Frozen. Changes need a new signature.]]></phrase>
+  <phrase title="cav7_cit_generic" version_id="1010070" version_string="1.1.0"><![CDATA[Generic]]></phrase>
+  <phrase title="cav7_cit_generic_explain" version_id="1010070" version_string="1.1.0"><![CDATA[A generic citation's text belongs to its template, so there's nothing to type.]]></phrase>
+  <phrase title="cav7_cit_generic_page_note" version_id="1010070" version_string="1.1.0"><![CDATA[Generic citation. Its text belongs to the template version.]]></phrase>
+  <phrase title="cav7_cit_generic_template_note" version_id="1010070" version_string="1.1.0"><![CDATA[Generic: the text is part of the template]]></phrase>
+  <phrase title="cav7_cit_grant_withdrawn" version_id="1010070" version_string="1.1.0"><![CDATA[The citation has been withdrawn.]]></phrase>
+  <phrase title="cav7_cit_height" version_id="1020070" version_string="1.2.0"><![CDATA[Height]]></phrase>
+  <phrase title="cav7_cit_history" version_id="1010070" version_string="1.1.0"><![CDATA[History]]></phrase>
+  <phrase title="cav7_cit_information" version_id="1010070" version_string="1.1.0"><![CDATA[Information]]></phrase>
+  <phrase title="cav7_cit_ink" version_id="1020070" version_string="1.2.0"><![CDATA[Ink]]></phrase>
+  <phrase title="cav7_cit_ink_height" version_id="1020070" version_string="1.2.0"><![CDATA[Ink height]]></phrase>
+  <phrase title="cav7_cit_ink_height_explain" version_id="1020070" version_string="1.2.0"><![CDATA[The top of the box holds the ink, and the printed lines take the rest.]]></phrase>
+  <phrase title="cav7_cit_ink_image" version_id="1020070" version_string="1.2.0"><![CDATA[Ink image]]></phrase>
+  <phrase title="cav7_cit_ink_image_hint" version_id="1020070" version_string="1.2.0"><![CDATA[The signature only, at plate scale]]></phrase>
+  <phrase title="cav7_cit_ink_keep_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Leave this empty to keep the ink it has.]]></phrase>
+  <phrase title="cav7_cit_input_key" version_id="1020070" version_string="1.2.0"><![CDATA[Key, such as unit]]></phrase>
+  <phrase title="cav7_cit_input_label" version_id="1020070" version_string="1.2.0"><![CDATA[Label on the form]]></phrase>
+  <phrase title="cav7_cit_inputs_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Values the clerk fills in. A pattern prints one as {input:key}. A key keeps its scope across versions.]]></phrase>
+  <phrase title="cav7_cit_issue_a_citation" version_id="1010070" version_string="1.1.0"><![CDATA[Issue a citation]]></phrase>
+  <phrase title="cav7_cit_issue_citation" version_id="1010070" version_string="1.1.0"><![CDATA[Issue citation]]></phrase>
+  <phrase title="cav7_cit_issued" version_id="1010070" version_string="1.1.0"><![CDATA[Issued]]></phrase>
+  <phrase title="cav7_cit_issued_by" version_id="1010070" version_string="1.1.0"><![CDATA[Issued by]]></phrase>
+  <phrase title="cav7_cit_issued_to_x" version_id="1010070" version_string="1.1.0"><![CDATA[Issued to {name}]]></phrase>
+  <phrase title="cav7_cit_justified" version_id="1020070" version_string="1.2.0"><![CDATA[Justified]]></phrase>
+  <phrase title="cav7_cit_keep_current_image" version_id="1010070" version_string="1.1.0"><![CDATA[Keep the current image]]></phrase>
+  <phrase title="cav7_cit_kind" version_id="1020070" version_string="1.2.0"><![CDATA[Kind]]></phrase>
+  <phrase title="cav7_cit_kinds_explain" version_id="1010070" version_string="1.1.0"><![CDATA[Only awards and record types with a published template are listed.]]></phrase>
+  <phrase title="cav7_cit_landscape" version_id="1010070" version_string="1.1.0"><![CDATA[landscape]]></phrase>
+  <phrase title="cav7_cit_largest_size" version_id="1020070" version_string="1.2.0"><![CDATA[Largest size (px)]]></phrase>
+  <phrase title="cav7_cit_left" version_id="1020070" version_string="1.2.0"><![CDATA[Left]]></phrase>
+  <phrase title="cav7_cit_legibility_empty" version_id="1020070" version_string="1.2.0"><![CDATA[No citation has a field below its reading size.]]></phrase>
+  <phrase title="cav7_cit_legibility_list" version_id="1020070" version_string="1.2.0"><![CDATA[Legibility list]]></phrase>
+  <phrase title="cav7_cit_legibility_note" version_id="1020070" version_string="1.2.0"><![CDATA[Citations with a field set below its reading size. A citation leaves the list when a correction or move sets the field large enough.]]></phrase>
+  <phrase title="cav7_cit_line_height" version_id="1020070" version_string="1.2.0"><![CDATA[Line height]]></phrase>
+  <phrase title="cav7_cit_log_citation_text" version_id="1010070" version_string="1.1.0"><![CDATA[Citation text]]></phrase>
+  <phrase title="cav7_cit_log_date" version_id="1010070" version_string="1.1.0"><![CDATA[Date]]></phrase>
+  <phrase title="cav7_cit_log_input" version_id="1010070" version_string="1.1.0"><![CDATA[Template inputs]]></phrase>
+  <phrase title="cav7_cit_log_issued" version_id="1010070" version_string="1.1.0"><![CDATA[Issued]]></phrase>
+  <phrase title="cav7_cit_log_member_added" version_id="1010070" version_string="1.1.0"><![CDATA[Added {name}]]></phrase>
+  <phrase title="cav7_cit_log_member_input" version_id="1010070" version_string="1.1.0"><![CDATA[Inputs for {name}]]></phrase>
+  <phrase title="cav7_cit_log_member_name" version_id="1010070" version_string="1.1.0"><![CDATA[Name for {name}]]></phrase>
+  <phrase title="cav7_cit_log_member_rank" version_id="1010070" version_string="1.1.0"><![CDATA[Rank for {name}]]></phrase>
+  <phrase title="cav7_cit_log_member_removed" version_id="1010070" version_string="1.1.0"><![CDATA[Removed {name}]]></phrase>
+  <phrase title="cav7_cit_log_puc_sync" version_id="1010070" version_string="1.1.0"><![CDATA[PUC sync]]></phrase>
+  <phrase title="cav7_cit_log_rank" version_id="1010070" version_string="1.1.0"><![CDATA[Rank]]></phrase>
+  <phrase title="cav7_cit_log_retypeset" version_id="1010070" version_string="1.1.0"><![CDATA[Retypeset]]></phrase>
+  <phrase title="cav7_cit_log_signature" version_id="1010070" version_string="1.1.0"><![CDATA[Signatures]]></phrase>
+  <phrase title="cav7_cit_log_template_version" version_id="1010070" version_string="1.1.0"><![CDATA[Template version]]></phrase>
+  <phrase title="cav7_cit_log_withdrawn" version_id="1010070" version_string="1.1.0"><![CDATA[Withdrawn]]></phrase>
+  <phrase title="cav7_cit_loses_on_x" version_id="1010070" version_string="1.1.0"><![CDATA[Loses it on: {rows}]]></phrase>
+  <phrase title="cav7_cit_member" version_id="1010070" version_string="1.1.0"><![CDATA[Member]]></phrase>
+  <phrase title="cav7_cit_member_added" version_id="1010070" version_string="1.1.0"><![CDATA[The member has been added.]]></phrase>
+  <phrase title="cav7_cit_member_already_on" version_id="1010070" version_string="1.1.0"><![CDATA[{name} is already on this citation.]]></phrase>
+  <phrase title="cav7_cit_member_not_found" version_id="1010070" version_string="1.1.0"><![CDATA[The following members could not be found: {name}]]></phrase>
+  <phrase title="cav7_cit_member_removed" version_id="1010070" version_string="1.1.0"><![CDATA[The member has been removed.]]></phrase>
+  <phrase title="cav7_cit_members_explain" version_id="1010070" version_string="1.1.0"><![CDATA[Name and rank are copied from the member's milpac. Correct them here if they need it.]]></phrase>
+  <phrase title="cav7_cit_move_citations" version_id="1020070" version_string="1.2.0"><![CDATA[Move citations]]></phrase>
+  <phrase title="cav7_cit_move_citations_off_x" version_id="1020070" version_string="1.2.0"><![CDATA[Move citations off {title}, version {number}]]></phrase>
+  <phrase title="cav7_cit_move_explain" version_id="1010070" version_string="1.1.0"><![CDATA[The citation moves to this version as one logged correction, and every field is set again.]]></phrase>
+  <phrase title="cav7_cit_move_many_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Each citation moves as its own logged correction. One that needs something the new version asks for is skipped and listed.]]></phrase>
+  <phrase title="cav7_cit_move_them_to" version_id="1020070" version_string="1.2.0"><![CDATA[Move them to]]></phrase>
+  <phrase title="cav7_cit_move_version" version_id="1010070" version_string="1.1.0"><![CDATA[Move to another template version]]></phrase>
+  <phrase title="cav7_cit_move_version_short" version_id="1020070" version_string="1.2.0"><![CDATA[Move version]]></phrase>
+  <phrase title="cav7_cit_name_on_certificate" version_id="1010070" version_string="1.1.0"><![CDATA[Name on certificate]]></phrase>
+  <phrase title="cav7_cit_no_art" version_id="1020070" version_string="1.2.0"><![CDATA[No art]]></phrase>
+  <phrase title="cav7_cit_no_billets" version_id="1020070" version_string="1.2.0"><![CDATA[No billets yet.]]></phrase>
+  <phrase title="cav7_cit_no_citation" version_id="1010070" version_string="1.1.0"><![CDATA[No citation]]></phrase>
+  <phrase title="cav7_cit_no_citations_match" version_id="1010070" version_string="1.1.0"><![CDATA[No citations match.]]></phrase>
+  <phrase title="cav7_cit_no_fields_yet" version_id="1020070" version_string="1.2.0"><![CDATA[No fields yet.]]></phrase>
+  <phrase title="cav7_cit_no_members_left" version_id="1010070" version_string="1.1.0"><![CDATA[No members are left on this citation.]]></phrase>
+  <phrase title="cav7_cit_no_name_explain" version_id="1010070" version_string="1.1.0"><![CDATA[This design doesn't print a name, so every member's certificate looks the same. Each member still gets their own citation to pick on their rows.]]></phrase>
+  <phrase title="cav7_cit_no_plate_yet" version_id="1020070" version_string="1.2.0"><![CDATA[No plate yet]]></phrase>
+  <phrase title="cav7_cit_no_retired_on_file" version_id="1010070" version_string="1.1.0"><![CDATA[No retired signatures are on file for this billet.]]></phrase>
+  <phrase title="cav7_cit_no_signatures" version_id="1020070" version_string="1.2.0"><![CDATA[No signatures yet.]]></phrase>
+  <phrase title="cav7_cit_no_templates" version_id="1020070" version_string="1.2.0"><![CDATA[No templates match.]]></phrase>
+  <phrase title="cav7_cit_no_version_to_move_to" version_id="1010070" version_string="1.1.0"><![CDATA[This citation has no other published version to move to.]]></phrase>
+  <phrase title="cav7_cit_nobody_added" version_id="1010070" version_string="1.1.0"><![CDATA[Nobody added yet.]]></phrase>
+  <phrase title="cav7_cit_none_issued_to_x" version_id="1010070" version_string="1.1.0"><![CDATA[S1 Citations hasn't issued any citations to {name} yet. You can come back and pick one once they have.]]></phrase>
+  <phrase title="cav7_cit_not_on_a_row" version_id="1010070" version_string="1.1.0"><![CDATA[Not on a row yet]]></phrase>
+  <phrase title="cav7_cit_not_on_any_row" version_id="1010070" version_string="1.1.0"><![CDATA[Not on any row yet]]></phrase>
+  <phrase title="cav7_cit_not_used_yet" version_id="1020070" version_string="1.2.0"><![CDATA[Not used yet]]></phrase>
+  <phrase title="cav7_cit_nothing_changed" version_id="1010070" version_string="1.1.0"><![CDATA[Nothing has changed.]]></phrase>
+  <phrase title="cav7_cit_nothing_issued" version_id="1010070" version_string="1.1.0"><![CDATA[Nothing has been issued yet.]]></phrase>
+  <phrase title="cav7_cit_nothing_to_move" version_id="1020070" version_string="1.2.0"><![CDATA[There are no citations here that can move to another version.]]></phrase>
+  <phrase title="cav7_cit_on_rows" version_id="1010070" version_string="1.1.0"><![CDATA[On rows]]></phrase>
+  <phrase title="cav7_cit_on_the_plate" version_id="1010070" version_string="1.1.0"><![CDATA[On the plate]]></phrase>
+  <phrase title="cav7_cit_one_citation" version_id="1020070" version_string="1.2.0"><![CDATA[1 citation]]></phrase>
+  <phrase title="cav7_cit_open_certificate" version_id="1010070" version_string="1.1.0"><![CDATA[Open the certificate]]></phrase>
+  <phrase title="cav7_cit_open_full_size" version_id="1010070" version_string="1.1.0"><![CDATA[Open full size]]></phrase>
+  <phrase title="cav7_cit_optional" version_id="1010070" version_string="1.1.0"><![CDATA[optional]]></phrase>
+  <phrase title="cav7_cit_pattern" version_id="1020070" version_string="1.2.0"><![CDATA[Pattern]]></phrase>
+  <phrase title="cav7_cit_pattern_error_at" version_id="1020070" version_string="1.2.0"><![CDATA[Pattern error at character {at}: {message}]]></phrase>
+  <phrase title="cav7_cit_pattern_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Put part in [square brackets] to print it only when every value in it is filled in, such as <code>{rank}[ ({pay_grade})]</code>.]]></phrase>
+  <phrase title="cav7_cit_pattern_hint" version_id="1020070" version_string="1.2.0"><![CDATA[Literal text and values]]></phrase>
+  <phrase title="cav7_cit_pay_grade" version_id="1020070" version_string="1.2.0"><![CDATA[Pay grade]]></phrase>
+  <phrase title="cav7_cit_pay_grades" version_id="1020070" version_string="1.2.0"><![CDATA[Pay grades]]></phrase>
+  <phrase title="cav7_cit_pay_grades_note" version_id="1020070" version_string="1.2.0"><![CDATA[An edit here reaches later citations only. Citations already issued keep the pay grade they were set with.]]></phrase>
+  <phrase title="cav7_cit_per_citation" version_id="1020070" version_string="1.2.0"><![CDATA[per citation]]></phrase>
+  <phrase title="cav7_cit_per_member" version_id="1020070" version_string="1.2.0"><![CDATA[per member]]></phrase>
+  <phrase title="cav7_cit_pick_the_signature" version_id="1010070" version_string="1.1.0"><![CDATA[Pick the signature this slot carries.]]></phrase>
+  <phrase title="cav7_cit_picker_explain" version_id="1010070" version_string="1.1.0"><![CDATA[Every citation S1 Citations has issued to {name}, newest first. A citation can go on more than one row.]]></phrase>
+  <phrase title="cav7_cit_plain_text" version_id="1010070" version_string="1.1.0"><![CDATA[Plain text]]></phrase>
+  <phrase title="cav7_cit_plate" version_id="1020070" version_string="1.2.0"><![CDATA[Plate]]></phrase>
+  <phrase title="cav7_cit_plate_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Exported from S1's design file with the fixed wording in place and no signature. Boxes below are measured in these pixels.]]></phrase>
+  <phrase title="cav7_cit_plate_is_x_by_y" version_id="1020070" version_string="1.2.0"><![CDATA[Plate is {width} &times; {height}]]></phrase>
+  <phrase title="cav7_cit_plate_upload_explain" version_id="1020070" version_string="1.2.0"><![CDATA[PNG or JPEG, about 1275 pixels wide.]]></phrase>
   <phrase title="cav7_cit_plate_width_warning" version_id="1010070" version_string="1.1.0"><![CDATA[This plate is {width}px wide. Plates aim for about 1275px.]]></phrase>
+  <phrase title="cav7_cit_portrait" version_id="1010070" version_string="1.1.0"><![CDATA[portrait]]></phrase>
+  <phrase title="cav7_cit_preview" version_id="1010070" version_string="1.1.0"><![CDATA[Preview]]></phrase>
+  <phrase title="cav7_cit_preview_desc" version_id="1010070" version_string="1.1.0"><![CDATA[What anyone opening the citation will see]]></phrase>
+  <phrase title="cav7_cit_preview_empty" version_id="1010070" version_string="1.1.0"><![CDATA[Choose what's being awarded and a template to see the certificate.]]></phrase>
+  <phrase title="cav7_cit_preview_failed" version_id="1010070" version_string="1.1.0"><![CDATA[The preview couldn't be drawn. The error is in the server log.]]></phrase>
+  <phrase title="cav7_cit_preview_no_plate" version_id="1020070" version_string="1.2.0"><![CDATA[Upload a plate to see the preview.]]></phrase>
+  <phrase title="cav7_cit_preview_waiting" version_id="1020070" version_string="1.2.0"><![CDATA[The preview is waiting on this field: {detail}]]></phrase>
+  <phrase title="cav7_cit_preview_with_sample_data" version_id="1020070" version_string="1.2.0"><![CDATA[Preview with sample data]]></phrase>
+  <phrase title="cav7_cit_printed_line_placeholder" version_id="1020070" version_string="1.2.0"><![CDATA[Name, such as Lieutenant Colonel Ansel Marchbanks]]></phrase>
+  <phrase title="cav7_cit_printed_lines" version_id="1020070" version_string="1.2.0"><![CDATA[Printed lines]]></phrase>
+  <phrase title="cav7_cit_printed_lines_hint" version_id="1020070" version_string="1.2.0"><![CDATA[Set under the signature, as typed]]></phrase>
+  <phrase title="cav7_cit_prints_as_x" version_id="1010070" version_string="1.1.0"><![CDATA[Prints as: {lines}]]></phrase>
+  <phrase title="cav7_cit_publish" version_id="1020070" version_string="1.2.0"><![CDATA[Publish]]></phrase>
+  <phrase title="cav7_cit_publish_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Publishing freezes version {number} of <strong>{title}</strong>. Its plate and fields can't change after this. S1 Citations clerks will see it on the citation form straight away.]]></phrase>
+  <phrase title="cav7_cit_publish_version_x" version_id="1020070" version_string="1.2.0"><![CDATA[Publish version {number}?]]></phrase>
+  <phrase title="cav7_cit_published" version_id="1010070" version_string="1.1.0"><![CDATA[Published]]></phrase>
+  <phrase title="cav7_cit_published_x" version_id="1010070" version_string="1.1.0"><![CDATA[published {date}]]></phrase>
+  <phrase title="cav7_cit_rank" version_id="1010070" version_string="1.1.0"><![CDATA[Rank]]></phrase>
+  <phrase title="cav7_cit_rank_art" version_id="1020070" version_string="1.2.0"><![CDATA[Rank art]]></phrase>
+  <phrase title="cav7_cit_rank_art_x" version_id="1020070" version_string="1.2.0"><![CDATA[Rank art: {key}]]></phrase>
+  <phrase title="cav7_cit_rank_scope_grant" version_id="1020070" version_string="1.2.0"><![CDATA[One rank the citation sets for everyone]]></phrase>
+  <phrase title="cav7_cit_rank_scope_member" version_id="1020070" version_string="1.2.0"><![CDATA[Each member's rank, copied from their milpac]]></phrase>
+  <phrase title="cav7_cit_rank_scope_none" version_id="1020070" version_string="1.2.0"><![CDATA[Not printed from data (on the plate, or not at all)]]></phrase>
+  <phrase title="cav7_cit_reading_size" version_id="1020070" version_string="1.2.0"><![CDATA[Reading size (px)]]></phrase>
+  <phrase title="cav7_cit_reason_hint" version_id="1010070" version_string="1.1.0"><![CDATA[Required, kept in the citation's history]]></phrase>
+  <phrase title="cav7_cit_reason_placeholder" version_id="1010070" version_string="1.1.0"><![CDATA[For example: typo reported by the member]]></phrase>
+  <phrase title="cav7_cit_recipient" version_id="1010070" version_string="1.1.0"><![CDATA[Recipient]]></phrase>
+  <phrase title="cav7_cit_record_note" version_id="1010070" version_string="1.1.0"><![CDATA[(record)]]></phrase>
+  <phrase title="cav7_cit_record_type" version_id="1010070" version_string="1.1.0"><![CDATA[Record type]]></phrase>
   <phrase title="cav7_cit_refused_already_withdrawn" version_id="1000070" version_string="1.0.0"><![CDATA[This grant is already withdrawn.]]></phrase>
   <phrase title="cav7_cit_refused_bad_date" version_id="1000070" version_string="1.0.0"><![CDATA[Enter a real date as YYYY-MM-DD.]]></phrase>
   <phrase title="cav7_cit_refused_bad_printed_lines" version_id="1010070" version_string="1.1.0"><![CDATA[A signature needs one to four printed lines, none of them blank.]]></phrase>
@@ -20,10 +223,13 @@
   <phrase title="cav7_cit_refused_input_required" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: this value is required.]]></phrase>
   <phrase title="cav7_cit_refused_input_scope_changed" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: an earlier version gave this input another scope. A key means one thing across versions.]]></phrase>
   <phrase title="cav7_cit_refused_kind_not_served" version_id="1000070" version_string="1.0.0"><![CDATA[That template version doesn't serve this award or record type.]]></phrase>
+  <phrase title="cav7_cit_refused_member_grant_needs_permission" version_id="1020070" version_string="1.2.0"><![CDATA[Moving a member citation needs Issue and correct grants to members.]]></phrase>
   <phrase title="cav7_cit_refused_name_required" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: this template prints a name, so enter one.]]></phrase>
   <phrase title="cav7_cit_refused_narrow_font_value" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: this font lacks common accented letters, so it can only set dates and literal text.]]></phrase>
   <phrase title="cav7_cit_refused_no_billet" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: pick a signing billet.]]></phrase>
   <phrase title="cav7_cit_refused_no_catalog_font" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: pick a font from the catalog.]]></phrase>
+  <phrase title="cav7_cit_refused_no_citations_chosen" version_id="1020070" version_string="1.2.0"><![CDATA[Choose at least one citation to move.]]></phrase>
+  <phrase title="cav7_cit_refused_no_file" version_id="1020070" version_string="1.2.0"><![CDATA[Choose a file to upload.]]></phrase>
   <phrase title="cav7_cit_refused_no_kind" version_id="1010070" version_string="1.1.0"><![CDATA[Pick at least one award or record type for this version to serve.]]></phrase>
   <phrase title="cav7_cit_refused_no_members" version_id="1000070" version_string="1.0.0"><![CDATA[A member grant needs at least one milpac.]]></phrase>
   <phrase title="cav7_cit_refused_no_plate" version_id="1010070" version_string="1.1.0"><![CDATA[Upload a plate before publishing.]]></phrase>
@@ -64,7 +270,107 @@
   <phrase title="cav7_cit_refused_wrong_template" version_id="1000070" version_string="1.0.0"><![CDATA[A grant moves only between versions of its own template.]]></phrase>
   <phrase title="cav7_cit_regiment_awards_not_a_list" version_id="1000070" version_string="1.0.0"><![CDATA[Enter award ids separated by commas.]]></phrase>
   <phrase title="cav7_cit_regiment_awards_unknown" version_id="1000070" version_string="1.0.0"><![CDATA[These awards don't exist: {ids}.]]></phrase>
+  <phrase title="cav7_cit_regiment_citations" version_id="1010070" version_string="1.1.0"><![CDATA[Regiment citations]]></phrase>
+  <phrase title="cav7_cit_regiment_note" version_id="1010070" version_string="1.1.0"><![CDATA[This citation goes to the whole regiment. Every milpac carries a row for it, kept by the PUC sync.]]></phrase>
+  <phrase title="cav7_cit_regiment_note_short" version_id="1020070" version_string="1.2.0"><![CDATA[(regiment)]]></phrase>
+  <phrase title="cav7_cit_reinstate" version_id="1020070" version_string="1.2.0"><![CDATA[Reinstate]]></phrase>
+  <phrase title="cav7_cit_reinstate_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Clerks will be offered version {number} of <strong>{title}</strong> again if it is the newest published version.]]></phrase>
+  <phrase title="cav7_cit_reinstate_version_x" version_id="1020070" version_string="1.2.0"><![CDATA[Reinstate version {number}?]]></phrase>
+  <phrase title="cav7_cit_remove_a_member" version_id="1010070" version_string="1.1.0"><![CDATA[Remove a member]]></phrase>
+  <phrase title="cav7_cit_remove_explain" version_id="1010070" version_string="1.1.0"><![CDATA[The citation comes off every row listed, and the member can only come back as a new citation.]]></phrase>
+  <phrase title="cav7_cit_remove_member" version_id="1010070" version_string="1.1.0"><![CDATA[Remove member]]></phrase>
+  <phrase title="cav7_cit_replace_plate" version_id="1020070" version_string="1.2.0"><![CDATA[Replace plate]]></phrase>
+  <phrase title="cav7_cit_required" version_id="1020070" version_string="1.2.0"><![CDATA[required]]></phrase>
+  <phrase title="cav7_cit_retire" version_id="1020070" version_string="1.2.0"><![CDATA[Retire]]></phrase>
+  <phrase title="cav7_cit_retire_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Clerks won't be offered version {number} of <strong>{title}</strong> any more. The {count} citations issued on it keep rendering exactly as issued. Nothing moves to a newer version unless S1 moves it as a logged correction.]]></phrase>
+  <phrase title="cav7_cit_retire_explain_one" version_id="1020070" version_string="1.2.0"><![CDATA[Clerks won't be offered version {number} of <strong>{title}</strong> any more. The 1 citation issued on it keeps rendering exactly as issued. Nothing moves to a newer version unless S1 moves it as a logged correction.]]></phrase>
+  <phrase title="cav7_cit_retire_version_x" version_id="1020070" version_string="1.2.0"><![CDATA[Retire version {number}?]]></phrase>
+  <phrase title="cav7_cit_retired" version_id="1010070" version_string="1.1.0"><![CDATA[Retired]]></phrase>
+  <phrase title="cav7_cit_retired_still_renders" version_id="1020070" version_string="1.2.0"><![CDATA[It still renders for every citation issued on it.]]></phrase>
+  <phrase title="cav7_cit_revision" version_id="1010070" version_string="1.1.0"><![CDATA[Revision]]></phrase>
+  <phrase title="cav7_cit_right" version_id="1020070" version_string="1.2.0"><![CDATA[Right]]></phrase>
+  <phrase title="cav7_cit_row_award" version_id="1010070" version_string="1.1.0"><![CDATA[{title} award, {date}]]></phrase>
+  <phrase title="cav7_cit_row_record" version_id="1010070" version_string="1.1.0"><![CDATA[{title} record, {date}]]></phrase>
+  <phrase title="cav7_cit_sample_values" version_id="1020070" version_string="1.2.0"><![CDATA[Sample values]]></phrase>
+  <phrase title="cav7_cit_save_correction" version_id="1010070" version_string="1.1.0"><![CDATA[Save correction]]></phrase>
+  <phrase title="cav7_cit_serves" version_id="1020070" version_string="1.2.0"><![CDATA[Serves]]></phrase>
+  <phrase title="cav7_cit_serves_explain" version_id="1020070" version_string="1.2.0"><![CDATA[The grant form offers this template for what's ticked here, once this version is published.]]></phrase>
+  <phrase title="cav7_cit_service_records" version_id="1010070" version_string="1.1.0"><![CDATA[Service records]]></phrase>
+  <phrase title="cav7_cit_set_in_capitals" version_id="1020070" version_string="1.2.0"><![CDATA[Set in capitals]]></phrase>
+  <phrase title="cav7_cit_setting" version_id="1020070" version_string="1.2.0"><![CDATA[Setting]]></phrase>
+  <phrase title="cav7_cit_several_on_file" version_id="1010070" version_string="1.1.0"><![CDATA[More than one signature is on file for this billet, so pick one.]]></phrase>
+  <phrase title="cav7_cit_shared" version_id="1020070" version_string="1.2.0"><![CDATA[Shared]]></phrase>
+  <phrase title="cav7_cit_show_field_boxes" version_id="1020070" version_string="1.2.0"><![CDATA[Show field boxes]]></phrase>
+  <phrase title="cav7_cit_show_retired" version_id="1010070" version_string="1.1.0"><![CDATA[Show retired signatures]]></phrase>
+  <phrase title="cav7_cit_signature_active_again" version_id="1020070" version_string="1.2.0"><![CDATA[The signature is active again.]]></phrase>
+  <phrase title="cav7_cit_signature_billet_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Clerks see this signature in every slot that takes this billet.]]></phrase>
+  <phrase title="cav7_cit_signature_retired" version_id="1020070" version_string="1.2.0"><![CDATA[The signature is retired.]]></phrase>
+  <phrase title="cav7_cit_signature_slot" version_id="1020070" version_string="1.2.0"><![CDATA[Signature slot]]></phrase>
+  <phrase title="cav7_cit_signature_slot_x" version_id="1020070" version_string="1.2.0"><![CDATA[Signature slot: {billet}]]></phrase>
+  <phrase title="cav7_cit_signatures" version_id="1010070" version_string="1.1.0"><![CDATA[Signatures]]></phrase>
+  <phrase title="cav7_cit_signing_billet" version_id="1020070" version_string="1.2.0"><![CDATA[Signing billet]]></phrase>
+  <phrase title="cav7_cit_signing_billets" version_id="1020070" version_string="1.2.0"><![CDATA[Signing billets]]></phrase>
+  <phrase title="cav7_cit_size_px" version_id="1020070" version_string="1.2.0"><![CDATA[Size (px)]]></phrase>
+  <phrase title="cav7_cit_skipped" version_id="1020070" version_string="1.2.0"><![CDATA[Skipped]]></phrase>
+  <phrase title="cav7_cit_start_new_draft" version_id="1020070" version_string="1.2.0"><![CDATA[Start a new draft]]></phrase>
+  <phrase title="cav7_cit_state_published" version_id="1020070" version_string="1.2.0"><![CDATA[published]]></phrase>
+  <phrase title="cav7_cit_state_retired" version_id="1020070" version_string="1.2.0"><![CDATA[retired]]></phrase>
+  <phrase title="cav7_cit_swap_explain" version_id="1010070" version_string="1.1.0"><![CDATA[To swap it, pick another. To take it off this row, pick No citation.]]></phrase>
+  <phrase title="cav7_cit_template" version_id="1010070" version_string="1.1.0"><![CDATA[Template]]></phrase>
+  <phrase title="cav7_cit_template_inputs" version_id="1020070" version_string="1.2.0"><![CDATA[Template inputs]]></phrase>
+  <phrase title="cav7_cit_template_slots" version_id="1020070" version_string="1.2.0"><![CDATA[Template slots]]></phrase>
+  <phrase title="cav7_cit_template_title_explain" version_id="1020070" version_string="1.2.0"><![CDATA[What the citation form lists. It never prints.]]></phrase>
+  <phrase title="cav7_cit_templates_explain" version_id="1010070" version_string="1.1.0"><![CDATA[Only templates made for this award or record type are offered.]]></phrase>
+  <phrase title="cav7_cit_templates_largest_size" version_id="1010070" version_string="1.1.0"><![CDATA[, the template's largest size]]></phrase>
+  <phrase title="cav7_cit_text" version_id="1010070" version_string="1.1.0"><![CDATA[Text]]></phrase>
+  <phrase title="cav7_cit_text_below_threshold" version_id="1010070" version_string="1.1.0"><![CDATA[The citation text comes out at {size} pt, below this template's {legible} pt reading size. You can still issue it. The template manager will list it so S1 can publish a version with a bigger box.]]></phrase>
+  <phrase title="cav7_cit_text_explain" version_id="1010070" version_string="1.1.0"><![CDATA[Paragraph breaks are kept. Name, rank and date are separate fields, so leave them out of the text unless the prose itself uses them.]]></phrase>
+  <phrase title="cav7_cit_text_placeholder" version_id="1010070" version_string="1.1.0"><![CDATA[Paste the proofread citation text here.]]></phrase>
+  <phrase title="cav7_cit_text_set_at_x" version_id="1010070" version_string="1.1.0"><![CDATA[Citation text set at {size} pt]]></phrase>
+  <phrase title="cav7_cit_the_approval_date" version_id="1010070" version_string="1.1.0"><![CDATA[The approval date]]></phrase>
+  <phrase title="cav7_cit_the_citation" version_id="1010070" version_string="1.1.0"><![CDATA[The citation]]></phrase>
+  <phrase title="cav7_cit_typesetting_failed" version_id="1010070" version_string="1.1.0"><![CDATA[The citation couldn't be set, so nothing was saved. The error is in the server log.]]></phrase>
+  <phrase title="cav7_cit_undrawn_no_art" version_id="1020070" version_string="1.2.0"><![CDATA[Not drawn: no art for this rank]]></phrase>
+  <phrase title="cav7_cit_undrawn_no_signature" version_id="1020070" version_string="1.2.0"><![CDATA[Not drawn: no signature on this billet]]></phrase>
+  <phrase title="cav7_cit_undrawn_nothing_to_print" version_id="1020070" version_string="1.2.0"><![CDATA[Not drawn: nothing to print]]></phrase>
+  <phrase title="cav7_cit_up_to_x_px" version_id="1020070" version_string="1.2.0"><![CDATA[up to {size}px]]></phrase>
+  <phrase title="cav7_cit_upload_plate" version_id="1020070" version_string="1.2.0"><![CDATA[Upload plate]]></phrase>
+  <phrase title="cav7_cit_use_long_sample" version_id="1020070" version_string="1.2.0"><![CDATA[Use a long citation text]]></phrase>
+  <phrase title="cav7_cit_used_on" version_id="1020070" version_string="1.2.0"><![CDATA[Used on]]></phrase>
+  <phrase title="cav7_cit_username" version_id="1010070" version_string="1.1.0"><![CDATA[Username]]></phrase>
+  <phrase title="cav7_cit_version" version_id="1020070" version_string="1.2.0"><![CDATA[Version]]></phrase>
+  <phrase title="cav7_cit_version_cap_x" version_id="1020070" version_string="1.2.0"><![CDATA[Version {number}]]></phrase>
+  <phrase title="cav7_cit_version_frozen_note" version_id="1020070" version_string="1.2.0"><![CDATA[This version is {state}, so it's frozen. Its plate and fields can't change.]]></phrase>
+  <phrase title="cav7_cit_version_x" version_id="1010070" version_string="1.1.0"><![CDATA[version {number}]]></phrase>
+  <phrase title="cav7_cit_version_x_published" version_id="1020070" version_string="1.2.0"><![CDATA[Version {number} is published.]]></phrase>
+  <phrase title="cav7_cit_version_x_retired" version_id="1020070" version_string="1.2.0"><![CDATA[Version {number} is retired.]]></phrase>
+  <phrase title="cav7_cit_versions" version_id="1020070" version_string="1.2.0"><![CDATA[Versions]]></phrase>
+  <phrase title="cav7_cit_what_changed" version_id="1010070" version_string="1.1.0"><![CDATA[What changed]]></phrase>
+  <phrase title="cav7_cit_what_it_sets" version_id="1020070" version_string="1.2.0"><![CDATA[What it sets]]></phrase>
+  <phrase title="cav7_cit_width" version_id="1020070" version_string="1.2.0"><![CDATA[Width]]></phrase>
+  <phrase title="cav7_cit_with_sample_data" version_id="1020070" version_string="1.2.0"><![CDATA[With sample data]]></phrase>
+  <phrase title="cav7_cit_withdraw" version_id="1010070" version_string="1.1.0"><![CDATA[Withdraw]]></phrase>
+  <phrase title="cav7_cit_withdraw_explain" version_id="1010070" version_string="1.1.0"><![CDATA[The citation stops showing at once. The PUC sync takes its rows off every milpac, and there is no undoing it.]]></phrase>
+  <phrase title="cav7_cit_withdrawn" version_id="1010070" version_string="1.1.0"><![CDATA[Withdrawn]]></phrase>
+  <phrase title="cav7_cit_wrap_onto_several_lines" version_id="1020070" version_string="1.2.0"><![CDATA[Wrap onto several lines]]></phrase>
+  <phrase title="cav7_cit_wraps" version_id="1020070" version_string="1.2.0"><![CDATA[wraps]]></phrase>
+  <phrase title="cav7_cit_written" version_id="1010070" version_string="1.1.0"><![CDATA[Written]]></phrase>
+  <phrase title="cav7_cit_x_by_y_pixels" version_id="1020070" version_string="1.2.0"><![CDATA[{width} &times; {height} pixels]]></phrase>
+  <phrase title="cav7_cit_x_citations" version_id="1020070" version_string="1.2.0"><![CDATA[{count} citations]]></phrase>
+  <phrase title="cav7_cit_x_for_everyone" version_id="1010070" version_string="1.1.0"><![CDATA[{label} for everyone]]></phrase>
+  <phrase title="cav7_cit_x_moved" version_id="1020070" version_string="1.2.0"><![CDATA[{count} moved.]]></phrase>
+  <phrase title="cav7_cit_x_px" version_id="1020070" version_string="1.2.0"><![CDATA[{size}px]]></phrase>
+  <phrase title="cav7_cit_x_retired" version_id="1010070" version_string="1.1.0"><![CDATA[{name} (retired)]]></phrase>
+  <phrase title="cav7_cit_x_version_y" version_id="1020070" version_string="1.2.0"><![CDATA[{title}: version {number}]]></phrase>
+  <phrase title="cav7_cit_zoom_fit" version_id="1020070" version_string="1.2.0"><![CDATA[Fit]]></phrase>
+  <phrase title="cav7_cit_zoom_in" version_id="1020070" version_string="1.2.0"><![CDATA[Zoom in]]></phrase>
+  <phrase title="cav7_cit_zoom_out" version_id="1020070" version_string="1.2.0"><![CDATA[Zoom out]]></phrase>
   <phrase title="cron_entry.cav7CitationsSweep" version_id="1000070" version_string="1.0.0"><![CDATA[Citations: sweep]]></phrase>
+  <phrase title="nav.cav7CitGrants" version_id="1010070" version_string="1.1.0"><![CDATA[Citations]]></phrase>
+  <phrase title="nav.cav7CitIssue" version_id="1010070" version_string="1.1.0"><![CDATA[Issue a citation]]></phrase>
+  <phrase title="nav.cav7CitRosters" version_id="1010070" version_string="1.1.0"><![CDATA[Rosters]]></phrase>
+  <phrase title="nav.cav7CitSignatures" version_id="1020070" version_string="1.2.0"><![CDATA[Signatures]]></phrase>
+  <phrase title="nav.cav7CitTemplates" version_id="1020070" version_string="1.2.0"><![CDATA[Citation templates]]></phrase>
   <phrase title="option.cav7CitCutover" version_id="1000070" version_string="1.0.0"><![CDATA[Citation cutover]]></phrase>
   <phrase title="option.cav7CitRegimentAwardIds" version_id="1000070" version_string="1.0.0"><![CDATA[Regiment awards]]></phrase>
   <phrase title="option.cav7CitationReencodeEnabled" version_id="1000070" version_string="1.0.0"><![CDATA[Allow the re-encode]]></phrase>

@@ -1,0 +1,1 @@
+Publishing freezes version {number} of <strong>{title}</strong>. Its plate and fields can't change after this. S1 Citations clerks will see it on the citation form straight away.

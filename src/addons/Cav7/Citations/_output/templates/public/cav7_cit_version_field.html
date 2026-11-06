@@ -1,0 +1,100 @@
+<xf:title>{{ $originalKey ? phrase('cav7_cit_field_x', {'key': $originalKey}) : phrase('cav7_cit_add_field') }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citation-versions', $version) }}">{{ phrase('cav7_cit_x_version_y', {'title': $version.Template.title, 'number': $version.version_number}) }}</xf:breadcrumb>
+<xf:css src="cav7_cit_pages.less" />
+<xf:js src="Cav7/Citations/manager.js" addon="Cav7/Citations" min="1" />
+
+<xf:form action="{{ link('rosters/citation-versions/save-field', $version) }}" ajax="true" class="block">
+	<input type="hidden" name="original_key" value="{$originalKey}" />
+	<div class="block-container">
+		<div class="cav7FieldEditor">
+			<fieldset class="block-body cav7FieldEditor-form" {{ $canEdit ? '' : 'disabled="disabled"' }}>
+				<xf:textboxrow name="field[key]" value="{$field.key}" maxlength="50" label="{{ phrase('cav7_cit_field_name') }}" placeholder="{{ phrase('cav7_cit_field_name_placeholder')|for_attr }}" />
+
+				<xf:radiorow name="field[kind]" value="{$field.kind}" label="{{ phrase('cav7_cit_kind') }}" listclass="inputChoices--inline">
+					<xf:option value="text" data-xf-init="disabler" data-container=".js-fieldText" data-hide="true">{{ phrase('cav7_cit_text') }}</xf:option>
+					<xf:option value="signature" data-xf-init="disabler" data-container=".js-fieldSlot" data-hide="true">{{ phrase('cav7_cit_signature_slot') }}</xf:option>
+					<xf:option value="rank_art" data-xf-init="disabler" data-container=".js-fieldType" data-hide="true" data-invert="true">{{ phrase('cav7_cit_rank_art') }}</xf:option>
+				</xf:radiorow>
+
+				<div class="js-fieldText">
+					<xf:formrow rowtype="input" label="{{ phrase('cav7_cit_pattern') }}" hint="{{ phrase('cav7_cit_pattern_hint') }}" explain="{{ phrase('cav7_cit_pattern_explain') }}">
+						<xf:textarea name="field[pattern]" value="{$field.pattern}" rows="2" class="js-fieldPattern" />
+						<div class="cav7Chips">
+							<xf:foreach loop="$placeholders" value="$placeholder">
+								<button type="button" class="cav7Chip js-patternChip">{$placeholder}</button>
+							</xf:foreach>
+						</div>
+					</xf:formrow>
+				</div>
+
+				<div class="js-fieldSlot">
+					<xf:selectrow name="field[billet_id]" value="{$field.billet_id}" label="{{ phrase('cav7_cit_signing_billet') }}">
+						<xf:foreach loop="$billets" value="$billet">
+							<xf:option value="{$billet.billet_id}">{$billet.title}</xf:option>
+						</xf:foreach>
+					</xf:selectrow>
+				</div>
+
+				<xf:formrow rowtype="input" label="{{ phrase('cav7_cit_box') }}" hint="{{ phrase('cav7_cit_plate_is_x_by_y', {'width': $version.plate_width, 'height': $version.plate_height}) }}">
+					<div class="cav7NumRow">
+						<label><span>X</span><input type="number" class="input input--number" name="field[x]" value="{$field.x}" min="0" step="1" /></label>
+						<label><span>Y</span><input type="number" class="input input--number" name="field[y]" value="{$field.y}" min="0" step="1" /></label>
+						<label><span>{{ phrase('cav7_cit_width') }}</span><input type="number" class="input input--number" name="field[w]" value="{$field.w}" min="1" step="1" /></label>
+						<label><span>{{ phrase('cav7_cit_height') }}</span><input type="number" class="input input--number" name="field[h]" value="{$field.h}" min="1" step="1" /></label>
+					</div>
+				</xf:formrow>
+
+				<div class="js-fieldSlot">
+					<xf:formrow rowtype="input" label="{{ phrase('cav7_cit_ink_height') }}" explain="{{ phrase('cav7_cit_ink_height_explain') }}">
+						<div class="cav7NumRow">
+							<label><input type="number" class="input input--number" name="field[ink_height]" value="{$field.ink_height}" min="1" step="1" /></label>
+						</div>
+					</xf:formrow>
+				</div>
+
+				<div class="js-fieldType">
+					<xf:formrow rowtype="input" label="{{ phrase('cav7_cit_font') }}" explain="{{ phrase('cav7_cit_font_explain') }}">
+						<xf:select name="field[font]" value="{$field.font}">
+							<xf:foreach loop="$fonts" key="$fontKey" value="$fontLabel">
+								<xf:option value="{$fontKey}">{$fontLabel}</xf:option>
+							</xf:foreach>
+						</xf:select>
+						<div class="cav7NumRow">
+							<label><span>{{ phrase('cav7_cit_largest_size') }}</span><input type="number" class="input input--number" name="field[size]" value="{$field.size}" min="1" step="0.25" /></label>
+							<label><span>{{ phrase('cav7_cit_reading_size') }}</span><input type="number" class="input input--number" name="field[legible_size]" value="{$field.legible_size}" min="0" step="0.25" /></label>
+							<label><span>{{ phrase('cav7_cit_line_height') }}</span><input type="number" class="input input--number" name="field[leading]" value="{$field.leading}" min="0.1" step="0.01" /></label>
+							<label><span>{{ phrase('cav7_cit_colour') }}</span><input type="color" class="input cav7Colour" name="field[colour]" value="{$field.colour}" /></label>
+						</div>
+					</xf:formrow>
+				</div>
+
+				<div class="js-fieldText">
+					<xf:radiorow name="field[align]" value="{$field.align}" label="{{ phrase('cav7_cit_setting') }}" listclass="inputChoices--inline">
+						<xf:option value="center">{{ phrase('cav7_cit_centred') }}</xf:option>
+						<xf:option value="left">{{ phrase('cav7_cit_left') }}</xf:option>
+						<xf:option value="right">{{ phrase('cav7_cit_right') }}</xf:option>
+						<xf:option value="justify">{{ phrase('cav7_cit_justified') }}</xf:option>
+					</xf:radiorow>
+					<xf:checkboxrow label="">
+						<xf:option name="field[caps]" value="1" selected="$field.caps">{{ phrase('cav7_cit_set_in_capitals') }}</xf:option>
+						<xf:option name="field[wrap]" value="1" selected="$field.mode == 'wrap'">{{ phrase('cav7_cit_wrap_onto_several_lines') }}</xf:option>
+					</xf:checkboxrow>
+				</div>
+			</fieldset>
+
+			<xf:if is="$panel.can">
+				<div class="cav7FieldEditor-preview">
+					<div class="u-muted">{{ phrase('cav7_cit_preview_with_sample_data') }}</div>
+					<xf:if is="$version.plate_format">
+						<xf:macro id="cav7_cit_manager_macros::plate_preview" arg-version="{$version}" arg-panel="{$panel}" />
+					<xf:else />
+						<div class="cav7Preview-empty">{{ phrase('cav7_cit_preview_no_plate') }}</div>
+					</xf:if>
+				</div>
+			</xf:if>
+		</div>
+		<xf:if is="$canEdit">
+			<xf:submitrow icon="save" />
+		</xf:if>
+	</div>
+</xf:form>

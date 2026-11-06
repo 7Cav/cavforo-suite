@@ -1,0 +1,1 @@
+Put part in [square brackets] to print it only when every value in it is filled in, such as <code>{rank}[ ({pay_grade})]</code>.
