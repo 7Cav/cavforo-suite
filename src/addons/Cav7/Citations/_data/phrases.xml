@@ -12,6 +12,8 @@
   <phrase title="cav7_cit_refused_citation_text_required" version_id="1000070" version_string="1.0.0"><![CDATA[This template prints citation text, so enter some.]]></phrase>
   <phrase title="cav7_cit_refused_does_not_parse" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: the pattern doesn't parse.]]></phrase>
   <phrase title="cav7_cit_refused_duplicate_member" version_id="1000070" version_string="1.0.0"><![CDATA[Milpac {field} is already on this grant.]]></phrase>
+  <phrase title="cav7_cit_refused_file_on_closed_kind" version_id="1010070" version_string="1.1.0"><![CDATA[Citations for this kind of row come from a grant, so it can't take an uploaded file.]]></phrase>
+  <phrase title="cav7_cit_refused_file_on_linked_row" version_id="1010070" version_string="1.1.0"><![CDATA[This row holds a generated citation. Tick "Delete current image" and save, then upload the file in a second save.]]></phrase>
   <phrase title="cav7_cit_refused_grant_moved_on" version_id="1000070" version_string="1.0.0"><![CDATA[This grant changed while you were working. Open it again and retry.]]></phrase>
   <phrase title="cav7_cit_refused_grant_undeletable" version_id="1000070" version_string="1.0.0"><![CDATA[Grants are never deleted.]]></phrase>
   <phrase title="cav7_cit_refused_image_too_large" version_id="1010070" version_string="1.1.0"><![CDATA[That image is too large. The limit is 4000px on a side and 12 megapixels.]]></phrase>
@@ -29,12 +31,17 @@
   <phrase title="cav7_cit_refused_no_such_grant" version_id="1000070" version_string="1.0.0"><![CDATA[That grant doesn't exist.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_kind" version_id="1000070" version_string="1.0.0"><![CDATA[That award or record type doesn't exist.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_member" version_id="1000070" version_string="1.0.0"><![CDATA[Grant member {field} isn't on this grant.]]></phrase>
+  <phrase title="cav7_cit_refused_no_such_pick" version_id="1010070" version_string="1.1.0"><![CDATA[That citation no longer exists. Reload the form and pick again.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_rank" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: that rank doesn't exist.]]></phrase>
+  <phrase title="cav7_cit_refused_no_such_row" version_id="1010070" version_string="1.1.0"><![CDATA[That row no longer exists.]]></phrase>
   <phrase title="cav7_cit_refused_not_a_draft" version_id="1010070" version_string="1.1.0"><![CDATA[A new version must start as a draft.]]></phrase>
   <phrase title="cav7_cit_refused_not_a_member_grant" version_id="1000070" version_string="1.0.0"><![CDATA[Only a member grant takes members.]]></phrase>
   <phrase title="cav7_cit_refused_not_a_regiment_grant" version_id="1000070" version_string="1.0.0"><![CDATA[Only a regiment grant can be withdrawn.]]></phrase>
   <phrase title="cav7_cit_refused_not_an_accepted_image" version_id="1010070" version_string="1.1.0"><![CDATA[That file isn't an image type this upload accepts.]]></phrase>
   <phrase title="cav7_cit_refused_one_draft" version_id="1010070" version_string="1.1.0"><![CDATA[This template already has a draft.]]></phrase>
+  <phrase title="cav7_cit_refused_pick_before_cutover" version_id="1010070" version_string="1.1.0"><![CDATA[The citation picker isn't on yet.]]></phrase>
+  <phrase title="cav7_cit_refused_pick_from_another_milpac" version_id="1010070" version_string="1.1.0"><![CDATA[That citation was issued to a different member.]]></phrase>
+  <phrase title="cav7_cit_refused_pick_on_disciplinary" version_id="1010070" version_string="1.1.0"><![CDATA[A Disciplinary record takes an uploaded file, not a generated citation.]]></phrase>
   <phrase title="cav7_cit_refused_rank_art_without_scope" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: rank art needs a rank, and this version prints none.]]></phrase>
   <phrase title="cav7_cit_refused_rank_required" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: this template prints a rank, so choose one.]]></phrase>
   <phrase title="cav7_cit_refused_rank_without_art" version_id="1000070" version_string="1.0.0"><![CDATA[This template has no rank art for that rank.]]></phrase>

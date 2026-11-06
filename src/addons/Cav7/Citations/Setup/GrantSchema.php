@@ -2,6 +2,8 @@
 
 namespace Cav7\Citations\Setup;
 
+use Cav7\Citations\Storage\RowKind;
+use XF\Db\Schema\Alter;
 use XF\Db\Schema\Create;
 use XF\Db\SchemaManager;
 
@@ -76,6 +78,19 @@ final class GrantSchema
             $table->addPrimaryKey(['grant_id', 'field_key']);
             $table->addKey('signature_id');
         });
+
+        foreach (RowKind::cases() as $kind) {
+            if ($schema->columnExists($kind->table(), 'citation_grant_member_id')) {
+                continue;
+            }
+
+            $schema->alterTable($kind->table(), function (Alter $table) {
+                $table->addColumn('citation_grant_member_id', 'int')->nullable()->setDefault(null)->after('citation_blob_id');
+                $table->addColumn('citation_regiment_grant_id', 'int')->nullable()->setDefault(null)->after('citation_grant_member_id');
+                $table->addKey('citation_grant_member_id');
+                $table->addKey('citation_regiment_grant_id');
+            });
+        }
     }
 
     private static function addRankColumns(Create $table): void

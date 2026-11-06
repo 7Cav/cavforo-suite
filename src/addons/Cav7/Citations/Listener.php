@@ -22,7 +22,7 @@ class Listener
         self::addCitationReference($structure);
     }
 
-    // The relation rides in defaultWith because the profile page reads a blob per row
+    // The relations ride in defaultWith because the profile page reads an image URL per row
     // and its finders load nothing for us.
     private static function addCitationReference(Structure $structure): void
     {
@@ -33,6 +33,20 @@ class Listener
             'conditions' => [['blob_id', '=', '$citation_blob_id']],
             'primary' => true,
         ];
-        $structure->defaultWith[] = 'CitationBlob';
+        $structure->columns['citation_grant_member_id'] = ['type' => Entity::UINT, 'nullable' => true, 'default' => null];
+        $structure->columns['citation_regiment_grant_id'] = ['type' => Entity::UINT, 'nullable' => true, 'default' => null];
+        $structure->relations['CitationGrantMember'] = [
+            'entity' => 'Cav7\Citations:GrantMember',
+            'type' => Entity::TO_ONE,
+            'conditions' => [['grant_member_id', '=', '$citation_grant_member_id']],
+            'primary' => true,
+        ];
+        $structure->relations['CitationRegimentGrant'] = [
+            'entity' => 'Cav7\Citations:Grant',
+            'type' => Entity::TO_ONE,
+            'conditions' => [['grant_id', '=', '$citation_regiment_grant_id']],
+            'primary' => true,
+        ];
+        array_push($structure->defaultWith, 'CitationBlob', 'CitationGrantMember.Grant', 'CitationRegimentGrant');
     }
 }

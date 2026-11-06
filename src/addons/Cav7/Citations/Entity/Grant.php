@@ -4,6 +4,7 @@ namespace Cav7\Citations\Entity;
 
 use Cav7\Citations\Grant\GrantRules;
 use Cav7\Citations\Grant\GrantValues;
+use Cav7\Citations\Grant\RenderFilename;
 use XF\Mvc\Entity\AbstractCollection;
 use XF\Mvc\Entity\Entity;
 use XF\Mvc\Entity\Structure;
@@ -71,6 +72,29 @@ class Grant extends Entity
             'input_values' => $values->inputs,
         ]);
         $this->takeRank($values->rankId, $values->rank);
+    }
+
+    /** A regiment grant's render. Member grants render per grant member. */
+    public function renderUrl(bool $canonical = false): string
+    {
+        return $this->app()->router('public')->buildLink(($canonical ? 'canonical:' : '') . 'citations/regiment', [
+            'grant_id' => $this->grant_id,
+            'url_token' => $this->url_token,
+            'revision' => $this->revision,
+            'filename' => $this->renderFilename(),
+        ]);
+    }
+
+    public function renderFilename(): string
+    {
+        $router = $this->app()->router('public');
+
+        return RenderFilename::forRegiment(
+            $this->kind_title,
+            $this->grant_date,
+            $this->grant_id,
+            fn (string $value): string => $router->prepareStringForUrl($value, true),
+        );
     }
 
     protected function _preDelete(): void

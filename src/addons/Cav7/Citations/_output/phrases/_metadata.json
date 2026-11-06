@@ -71,6 +71,18 @@
         "version_string": "1.0.0",
         "hash": "aa859026ef0dab4cb124d332050d8919"
     },
+    "cav7_cit_refused_file_on_closed_kind.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "968660c654c402ee9b2e2e54affd3788"
+    },
+    "cav7_cit_refused_file_on_linked_row.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "f93c0de09543186f592bd4d56e7918e2"
+    },
     "cav7_cit_refused_grant_moved_on.txt": {
         "global_cache": false,
         "version_id": 1000070,
@@ -173,11 +185,23 @@
         "version_string": "1.0.0",
         "hash": "9731f2f2c99e32568144b010e0da16c1"
     },
+    "cav7_cit_refused_no_such_pick.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "c3726e95f30b792f0b55232a2f4a1d81"
+    },
     "cav7_cit_refused_no_such_rank.txt": {
         "global_cache": false,
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "29f9606cfb1c2a4fc27bbfb27c337020"
+    },
+    "cav7_cit_refused_no_such_row.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "4e9b82f11bb2f8d9a00488cf684024e7"
     },
     "cav7_cit_refused_not_a_draft.txt": {
         "global_cache": false,
@@ -208,6 +232,24 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "0f4685f484e2f8820fd83e8bdde34555"
+    },
+    "cav7_cit_refused_pick_before_cutover.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "cee0bb960da461a6c9cc049763a7f2f9"
+    },
+    "cav7_cit_refused_pick_from_another_milpac.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "3927a3a96f526126f40df8a1e38c87c5"
+    },
+    "cav7_cit_refused_pick_on_disciplinary.txt": {
+        "global_cache": false,
+        "version_id": 1010070,
+        "version_string": "1.1.0",
+        "hash": "a43c669beb1ada667227ebd6397b79dc"
     },
     "cav7_cit_refused_rank_art_without_scope.txt": {
         "global_cache": false,

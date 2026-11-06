@@ -185,6 +185,16 @@ check(
         && (int) $log[0]['byte_size'] === strlen(png()) && $log[0]['blob_id'] === null
 );
 
+foreach (['citation_grant_member_id', 'citation_regiment_grant_id'] as $link) {
+    $stage = new Stage();
+    $stage->row($award, 5, 500);
+    $stage->db->update($award->table(), [$link => 9], 'record_id = ?', [5]);
+    $file = $stage->legacyFile($award, 5, png());
+    $run = $stage->sweep();
+    check("a legacy file on a row with a $link is an orphan", !$stage->exists($file) && count($stage->deletions('orphan_grant_linked')) === 1);
+    check('and the row takes no reference and reports no damage', $stage->refOf($award, 5) === null && $run->damage === 0);
+}
+
 // Brake on orphans: refuses that kind and carries on with everything else.
 $stage = new Stage();
 for ($id = 1; $id <= 51; $id++) {

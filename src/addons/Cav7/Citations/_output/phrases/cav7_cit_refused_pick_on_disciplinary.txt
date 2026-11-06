@@ -1,0 +1,1 @@
+A Disciplinary record takes an uploaded file, not a generated citation.

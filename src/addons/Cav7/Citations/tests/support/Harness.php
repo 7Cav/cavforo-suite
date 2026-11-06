@@ -217,7 +217,8 @@ namespace Cav7\Citations\Tests {
             $this->db = new AbstractAdapter();
             foreach (RowKind::cases() as $kind) {
                 $this->db->query("CREATE TABLE {$kind->table()} (
-                    record_id INTEGER PRIMARY KEY, citation_date INTEGER NOT NULL DEFAULT 0, citation_blob_id INTEGER NULL)");
+                    record_id INTEGER PRIMARY KEY, citation_date INTEGER NOT NULL DEFAULT 0, citation_blob_id INTEGER NULL,
+                    citation_grant_member_id INTEGER NULL, citation_regiment_grant_id INTEGER NULL)");
             }
             $this->db->query('CREATE TABLE ' . BlobStore::TABLE . " (
                 blob_id INTEGER PRIMARY KEY AUTOINCREMENT, content_hash BLOB NOT NULL UNIQUE, url_token TEXT NOT NULL,

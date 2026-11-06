@@ -3,6 +3,7 @@
 namespace Cav7\Citations\Entity;
 
 use Cav7\Citations\Grant\MemberValues;
+use Cav7\Citations\Grant\RenderFilename;
 use XF\Mvc\Entity\Entity;
 use XF\Mvc\Entity\Structure;
 
@@ -36,6 +37,29 @@ class GrantMember extends Entity
     {
         $this->bulkSet(['name' => $values->name, 'input_values' => $values->inputs]);
         $this->takeRank($values->rankId, $values->rank);
+    }
+
+    public function renderUrl(bool $canonical = false): string
+    {
+        return $this->app()->router('public')->buildLink(($canonical ? 'canonical:' : '') . 'citations', [
+            'grant_member_id' => $this->grant_member_id,
+            'url_token' => $this->url_token,
+            'revision' => $this->Grant->revision,
+            'filename' => $this->renderFilename(),
+        ]);
+    }
+
+    public function renderFilename(): string
+    {
+        $router = $this->app()->router('public');
+
+        return RenderFilename::forMember(
+            $this->name,
+            $this->Grant->kind_title,
+            $this->Grant->grant_date,
+            $this->grant_member_id,
+            fn (string $value): string => $router->prepareStringForUrl($value, true),
+        );
     }
 
     public static function getStructure(Structure $structure): Structure
