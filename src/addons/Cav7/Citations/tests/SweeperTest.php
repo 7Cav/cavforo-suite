@@ -322,4 +322,18 @@ $counts = fn (Stage $board) => [
 check('a stepped run ends where a whole run ends', $counts($stepped) === $counts($whole));
 check('and finishes the work', $progress->tookIn === 4 && $progress->orphansDeleted === 1 && $progress->zeroDeleted === 1);
 
+// The job drops the lock between steps, so a revert can free blobs after the brake's count.
+$stage = new Stage();
+$progress = new SweepProgress();
+while (!$progress->done()) {
+    $counting = $progress->phase === SweepProgress::ZERO_COUNT;
+    $stage->sweeper()->advance($progress);
+    if ($counting) {
+        for ($i = 1; $i <= 51; $i++) {
+            $stage->blob(png(1, 1, sprintf('#%06x', $i)));
+        }
+    }
+}
+check('blobs freed after the count wait for the next run', $progress->zeroDeleted === 0 && blobCount($stage) === 51);
+
 finish();

@@ -63,8 +63,7 @@ final class Sweeper
             ),
             SweepProgress::RECOUNT => $this->recount($p),
             SweepProgress::BLOBS => $this->blobPass($p),
-            SweepProgress::ZERO_COUNT => $this->countZeroReference($p),
-            SweepProgress::ZERO_DELETE => $this->deleteZeroReference($p),
+            SweepProgress::ZERO_COUNT => $this->settleZeroReference($p),
         };
 
         $p->damage = $this->damage->total;
@@ -387,7 +386,11 @@ final class Sweeper
         );
     }
 
-    private function countZeroReference(SweepProgress $p): void
+    /**
+     * Counts and deletes in one step, because the job drops the lock between steps and the
+     * brake has to judge the set it deletes.
+     */
+    private function settleZeroReference(SweepProgress $p): void
     {
         $blobs = $this->zeroReferenceBlobs();
         $p->zeroReference = count($blobs);
@@ -398,19 +401,16 @@ final class Sweeper
             }
         }
 
-        $p->enter($this->mayDelete($p, 'zero-reference blobs', $p->zeroReference) ? SweepProgress::ZERO_DELETE : SweepProgress::DONE);
-    }
+        if ($this->mayDelete($p, 'zero-reference blobs', $p->zeroReference)) {
+            foreach ($blobs as $blob) {
+                $blobId = (int) $blob['blob_id'];
+                if ($this->rows->hasReference($blobId)) {
+                    continue;
+                }
 
-    private function deleteZeroReference(SweepProgress $p): void
-    {
-        foreach ($this->zeroReferenceBlobs() as $blob) {
-            $blobId = (int) $blob['blob_id'];
-            if ($this->rows->hasReference($blobId)) {
-                continue;
+                $this->blobs->delete($blob, 'zero_reference', $p->lastRefCounts[$blobId] ?? (int) $blob['ref_count'], $p->liftBrake);
+                $p->zeroDeleted++;
             }
-
-            $this->blobs->delete($blob, 'zero_reference', $p->lastRefCounts[$blobId] ?? (int) $blob['ref_count'], $p->liftBrake);
-            $p->zeroDeleted++;
         }
 
         $p->enter(SweepProgress::DONE);

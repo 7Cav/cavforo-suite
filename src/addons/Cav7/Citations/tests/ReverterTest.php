@@ -75,6 +75,14 @@ check('the next sweep deletes the zero-reference encoded blob', $stage->blobs->b
 $stage->reencode();
 check('no later run encodes a reverted source', $stage->refOf($award, 1) === (int) $first['blob_id']);
 
+// A source file on the box that no longer matches its hash is damage, whatever it decodes as.
+[$stage, $first, $second, $run] = reencoded();
+$encodedId = $stage->refOf($award, 1);
+file_put_contents($stage->disk->path(BlobFile::keyOf($first)), photoPng(9));
+$result = $stage->reverter()->apply(scope($stage, blob: (string) $encodedId), null);
+check('a changed source on the box is damage for its rows', $result['damage'] === 2 && $result['reverted'] === 0);
+check('and they stay encoded', $stage->refOf($award, 1) === $encodedId && $stage->refOf($award, 2) === $encodedId);
+
 // A purged source comes back from the archive under a new id.
 [$stage, $first, $second, $run] = reencoded();
 $encodedId = $stage->refOf($award, 1);

@@ -134,6 +134,10 @@ final class Reverter
             ? $this->disk->path(BlobFile::keyOf($onBox))
             : $this->fetchedFile($entry, $fetchedDir);
 
+        if (!is_file($file) || !hash_equals($hash, (string) hash_file('sha256', $file, true))) {
+            throw new BlobDamage('source file missing or hash mismatch');
+        }
+
         return $this->resolved[$hash] = $this->blobs->findOrCreate($file, 'source');
     }
 
@@ -146,9 +150,6 @@ final class Reverter
         $file = rtrim((string) $fetchedDir, '/') . '/' . $entry['source_archive_key'];
         if ($fetchedDir === null || !is_file($file)) {
             throw new BlobDamage('source not on the box or in the fetched directory');
-        }
-        if (!hash_equals($entry['source_hash'], hash_file('sha256', $file, true))) {
-            throw new BlobDamage('fetched file hash mismatch');
         }
 
         return $file;

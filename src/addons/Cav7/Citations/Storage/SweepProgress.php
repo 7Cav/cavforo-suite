@@ -16,7 +16,6 @@ final class SweepProgress
     public const RECOUNT = 'recount';
     public const BLOBS = 'blobs';
     public const ZERO_COUNT = 'zero_count';
-    public const ZERO_DELETE = 'zero_delete';
     public const DONE = 'done';
 
     public string $phase = self::TAKE_IN;
