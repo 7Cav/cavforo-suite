@@ -128,16 +128,18 @@ final class TypesettingRows
      * The legibility list, reading the stored flag and measuring nothing. A shared field is
      * one entry. A removed member's rows went with them, so only withdrawn grants need leaving out.
      *
-     * @return list<array{grant_id: int|string, grant_member_id: int|string, field_key: string, size: string, kind_title: string, template_version_id: int|string, template_id: int|string, version_number: int|string}>
+     * @return list<array{grant_id: int|string, grant_member_id: int|string, field_key: string, size: string, kind_title: string, grant_date: int|string, is_regiment: int|string, member_name: string|null, template_version_id: int|string, template_id: int|string, template_title: string, version_number: int|string}>
      */
     public function belowLegibility(): array
     {
         return $this->db->fetchAll(
-            'SELECT t.grant_id, t.grant_member_id, t.field_key, t.size, g.kind_title,
-                g.template_version_id, v.template_id, v.version_number
+            'SELECT t.grant_id, t.grant_member_id, t.field_key, t.size, g.kind_title, g.grant_date, g.is_regiment,
+                m.name AS member_name, g.template_version_id, v.template_id, tpl.title AS template_title, v.version_number
             FROM ' . self::TABLE . ' AS t
             INNER JOIN xf_cav7_citation_grant AS g ON g.grant_id = t.grant_id
             INNER JOIN xf_cav7_citation_template_version AS v ON v.template_version_id = g.template_version_id
+            INNER JOIN xf_cav7_citation_template AS tpl ON tpl.template_id = v.template_id
+            LEFT JOIN xf_cav7_citation_grant_member AS m ON m.grant_member_id = t.grant_member_id
             WHERE t.below_legibility = 1 AND g.withdrawn_date = 0
             ORDER BY t.grant_id, t.grant_member_id, t.field_key'
         );

@@ -76,6 +76,42 @@ class Template extends Repository
             : $this->em->find('Cav7\Citations:TemplateVersion', $current['template_version_id']);
     }
 
+    /** @return array<int, int> Each template's current version, by template id. */
+    public function currentVersionIds(): array
+    {
+        return array_column(TemplateChoices::current($this->versionFacts()), 'template_version_id', 'template_id');
+    }
+
+    /** @return array<int, int> How many grants pin each version, withdrawn ones included. */
+    public function versionPins(): array
+    {
+        return array_map('intval', $this->db()->fetchPairs(
+            'SELECT template_version_id, COUNT(*) FROM xf_cav7_citation_grant GROUP BY template_version_id'
+        ));
+    }
+
+    /**
+     * Every NF/Rosters award and record type, whether or not a template serves it. Assumes the
+     * vendor keeps their titles in `title`, as NF\Rosters:Award and :RecordType.
+     *
+     * @return array{awards: array<string, string>, records: array<string, string>} Titles by kind.
+     */
+    public function kindOptions(): array
+    {
+        $titles = function (string $entity, string $type): array {
+            $titles = [];
+            foreach ($this->finder($entity)->order('title')->fetch() as $id => $kind) {
+                $titles["$type:$id"] = $kind->title;
+            }
+            return $titles;
+        };
+
+        return [
+            'awards' => $titles('NF\Rosters:Award', 'award'),
+            'records' => $titles('NF\Rosters:RecordType', 'record_type'),
+        ];
+    }
+
     /** @return list<array{template_version_id: int, template_id: int, version_number: int, state: string, kinds: list<string>}> */
     private function versionFacts(): array
     {

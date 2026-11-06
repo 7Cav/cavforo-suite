@@ -1,4 +1,9 @@
 {
+    "public/cav7_cit_billet_form.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "a8c41561c39a0723dd4f6796b84f6284"
+    },
     "public/cav7_cit_grant_add_member.html": {
         "version_id": 1010070,
         "version_string": "1.1.0",
@@ -37,21 +42,106 @@
     "public/cav7_cit_grant_view.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "ce6ddc1c5fe383bc1659dfae5682e7db"
+        "hash": "166ae197d8eb4930e59c837e235805b8"
     },
     "public/cav7_cit_grant_withdraw.html": {
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "717f8dc4eb4c4a410938fadeffab3914"
     },
+    "public/cav7_cit_legibility.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "bc3e211635182eaee30ee71eccb0cb69"
+    },
+    "public/cav7_cit_manager_confirm.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "109c11bd6f1ef2f3d3931b92e1e85810"
+    },
+    "public/cav7_cit_manager_macros.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "a0b5d3b97268271f569e907f94051b6f"
+    },
     "public/cav7_cit_pages.less": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "fd45a6167e7024e20659369942c02c34"
+        "hash": "52437605afa7f91e203b6f4f6464cd49"
+    },
+    "public/cav7_cit_pay_grades.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "cacd9431ceecab00ad820165f2c28bb5"
     },
     "public/cav7_cit_picker_macros.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
         "hash": "796ef5053577cd103dd2b629bac7bfd6"
+    },
+    "public/cav7_cit_signature_form.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "351aae0263f99aabb2150a7400033fce"
+    },
+    "public/cav7_cit_signature_list.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "6fa713345b081d5a93ea98b004eb57f9"
+    },
+    "public/cav7_cit_template_add.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "226caa1fde759bacf4f9f9887e3b42b2"
+    },
+    "public/cav7_cit_template_list.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "bb63ae033870cd135c020023f7794cec"
+    },
+    "public/cav7_cit_template_view.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "d91a02c2050bb049f6d9f640aced0bbd"
+    },
+    "public/cav7_cit_version_field.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "30306427325e11d9fe21dd1500aab86b"
+    },
+    "public/cav7_cit_version_move.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "521b4b56b5430c1215088c6de104d149"
+    },
+    "public/cav7_cit_version_moved.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "2116e8c43f4e8977fa330cf5f887e467"
+    },
+    "public/cav7_cit_version_plate.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "b1437388754191dcbf6759386b8352af"
+    },
+    "public/cav7_cit_version_preview.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "0b288fd4e14d9f63f7bae106d9029cf4"
+    },
+    "public/cav7_cit_version_rank_art.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "1687f7cc9cc9b702d7381f5361e51876"
+    },
+    "public/cav7_cit_version_settings.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "b4f5f8c71332d8175c10f6734304378e"
+    },
+    "public/cav7_cit_version_view.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "7a1967fd8ea85991f2cea6b14476836b"
     }
 }

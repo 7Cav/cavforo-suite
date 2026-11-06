@@ -1,4 +1,22 @@
 {
+    "cav7_cit_abbreviation.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "b54d58d7e43c404563f91e38d3efbcac"
+    },
+    "cav7_cit_active.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "4d3d769b812b6faa6b76e1a8abaece2d"
+    },
+    "cav7_cit_active_signatures.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "84a7f92f2c747cadd0d6474bf905a12c"
+    },
     "cav7_cit_add.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -10,6 +28,18 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "14ea5f9e44923c5b023621db7a156dae"
+    },
+    "cav7_cit_add_billet.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "1447804765fc08a001a778d711362737"
+    },
+    "cav7_cit_add_field.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "4589d5ce7cea130d77c1bab647ffd459"
     },
     "cav7_cit_add_member.txt": {
         "global_cache": false,
@@ -35,6 +65,18 @@
         "version_string": "1.1.0",
         "hash": "38b76cc2ca826e78b149ba67ef25108d"
     },
+    "cav7_cit_add_signature.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "837945ca5b744d133a1cde26cc4532c0"
+    },
+    "cav7_cit_add_template.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "ad4ed0f42dcaf4d181e77ca32c45aca3"
+    },
     "cav7_cit_added_to_list_x.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -59,6 +101,12 @@
         "version_string": "1.1.0",
         "hash": "9598b1c5e12ba38ea5347dfef055fd95"
     },
+    "cav7_cit_art.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "978d7d6bde930f0fa9615627a15b2fc1"
+    },
     "cav7_cit_award.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -77,11 +125,59 @@
         "version_string": "1.1.0",
         "hash": "f66cdb8a3ef49c79c633e1bffcfd1e74"
     },
+    "cav7_cit_back_to_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "ab86ca4bedc48b5568e8ff63200900a4"
+    },
+    "cav7_cit_below_reading_size.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "1ec67982031bb03deffc9c53c0a73aa0"
+    },
+    "cav7_cit_billet.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "c82948ead63d3c70c7861f6c439dc82f"
+    },
+    "cav7_cit_billet_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "4112a4568cb18f9c6db7970647967b9a"
+    },
+    "cav7_cit_box.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "3cfce651e667ab85486dd42a8185f98a"
+    },
     "cav7_cit_by.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "53e5aa2c97fef1555d2511de8218c544"
+    },
+    "cav7_cit_cant_publish_yet.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "2cc4eb9f9f9cdf34e79288fec05d92aa"
+    },
+    "cav7_cit_capitals.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "a14ee3d45c3e225b6976104ec78579e0"
+    },
+    "cav7_cit_centred.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "398124682999fe955755feb5cfccf031"
     },
     "cav7_cit_choose.txt": {
         "global_cache": false,
@@ -107,6 +203,12 @@
         "version_string": "1.1.0",
         "hash": "5cfd3274bd137d8f7819c7efc071a158"
     },
+    "cav7_cit_citation_templates.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "84cd74a6d600342fa327196efe7856b4"
+    },
     "cav7_cit_citation_text.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -118,6 +220,24 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "027b53670d4e8a6c3d6d8a3db356eb26"
+    },
+    "cav7_cit_citations_issued.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "d0ed2de791cd89e16b61708a07b73f94"
+    },
+    "cav7_cit_citations_on_it.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "9dc36e970605e9ff39479de8234fecc0"
+    },
+    "cav7_cit_colour.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "dfe6076e1d429c24edcbb2686bb39567"
     },
     "cav7_cit_correct.txt": {
         "global_cache": false,
@@ -173,17 +293,101 @@
         "version_string": "1.1.0",
         "hash": "3e4969967a16e367957bdd2df2404294"
     },
+    "cav7_cit_delete_draft_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "f21d968b37d11ea7f0967e2723d7ec5d"
+    },
+    "cav7_cit_delete_the_billet_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "5e43ea8085c5f1f4b64f5dca748a7cb0"
+    },
+    "cav7_cit_delete_the_field_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "21afc506a07d8d64604eb96a05a5d65b"
+    },
+    "cav7_cit_delete_the_signature_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "a6abbcd4be62fe3ab32dfb9e92f322cf"
+    },
+    "cav7_cit_draft.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "f03ab16cd58372c77ba45a3d9a5a1cb9"
+    },
+    "cav7_cit_draw_earlier.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "625b35daa887c6d1718564d39583e371"
+    },
+    "cav7_cit_draw_later.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "e761253b095bedce4fb2462c0334926f"
+    },
+    "cav7_cit_edit_billet.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "9bc72ebd3090c0069277ce4f870dc27f"
+    },
+    "cav7_cit_edit_signature.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "9a6bb28b3b9d8203778fe294000da418"
+    },
     "cav7_cit_every_milpac.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "b7ceba3b3e20f9acdb9b37c54719102e"
     },
+    "cav7_cit_field.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "6f16a5f8ff5d75ab84c018adacdfcbb7"
+    },
+    "cav7_cit_field_name.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "eff88d54854b0637031f4066736623bc"
+    },
+    "cav7_cit_field_name_placeholder.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "0596ea5866268f0de7f14c3fbc69234b"
+    },
     "cav7_cit_field_shrank.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "5f93f3cc20c2947f03b18f09154d801c"
+    },
+    "cav7_cit_field_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "f2b0db2659fd8b008d815d11971dae87"
+    },
+    "cav7_cit_fields.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "a4ca5edd20d0b5d502ebece575681f58"
     },
     "cav7_cit_fill_all_explain.txt": {
         "global_cache": false,
@@ -196,6 +400,24 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "f7c1eb876d7615707ea0fd479487900d"
+    },
+    "cav7_cit_font.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "194f5394ae2e9c74dc3c441b92862d1d"
+    },
+    "cav7_cit_font_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "5ce13576b69d0aa31e165816cb1b18a4"
+    },
+    "cav7_cit_frozen_note.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "f6eda5d554e19e8113e7c885158d9c7f"
     },
     "cav7_cit_generic.txt": {
         "global_cache": false,
@@ -227,6 +449,12 @@
         "version_string": "1.1.0",
         "hash": "608954a60b5892bee65af6978dd315e0"
     },
+    "cav7_cit_height.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "eec6c4bdbd339edf8cbea68becb85244"
+    },
     "cav7_cit_history.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -238,6 +466,60 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "a82be0f551b8708bc08eb33cd9ded0cf"
+    },
+    "cav7_cit_ink.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "2bf0074bb2c7b5812e901258f98f91d3"
+    },
+    "cav7_cit_ink_height.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "5c57c8efa14f5c0a6daf5332c40ef883"
+    },
+    "cav7_cit_ink_height_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "1c20a8ee6a2a3b93a2379bce9edf62a8"
+    },
+    "cav7_cit_ink_image.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "df451fcacb9fff86b164a13b53920cbc"
+    },
+    "cav7_cit_ink_image_hint.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "b836d4ec755c62a5b33bf2d8c9e095b5"
+    },
+    "cav7_cit_ink_keep_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "9e76bbdeb52e788b18505a4583928d9f"
+    },
+    "cav7_cit_input_key.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "1c5646489034a6d4c4576b120a25458a"
+    },
+    "cav7_cit_input_label.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "d5acdf1c53df83c1af970a40a2406a77"
+    },
+    "cav7_cit_inputs_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "618e5998842cfe12abc66709e1fc6776"
     },
     "cav7_cit_issue_a_citation.txt": {
         "global_cache": false,
@@ -269,11 +551,23 @@
         "version_string": "1.1.0",
         "hash": "05beb8cfadb44c60fa65cf23c2b93b84"
     },
+    "cav7_cit_justified.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "058cc077563d4b47b43ae642a6478159"
+    },
     "cav7_cit_keep_current_image.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "4cfc21a6e9506e516140ee4f7c9ca9e7"
+    },
+    "cav7_cit_kind.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "d626102cfc2416a570fc0dc582a9b771"
     },
     "cav7_cit_kinds_explain.txt": {
         "global_cache": false,
@@ -286,6 +580,42 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "992763c3260eacff8cdc4c8bba147554"
+    },
+    "cav7_cit_largest_size.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "13445cdced652f738a1aaba6c0112637"
+    },
+    "cav7_cit_left.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "945d5e233cf7d6240f6b783b36a374ff"
+    },
+    "cav7_cit_legibility_empty.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "572631d973a76143636e2904d0160d31"
+    },
+    "cav7_cit_legibility_list.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "c0413db5d81ed0e24040918f8d577f01"
+    },
+    "cav7_cit_legibility_note.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "6b055b6e8c9a02d17f2785b04f64cc0d"
+    },
+    "cav7_cit_line_height.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "153ad58f26c6f1cc1ef7d6851c4d9c91"
     },
     "cav7_cit_log_citation_text.txt": {
         "global_cache": false,
@@ -419,11 +749,35 @@
         "version_string": "1.1.0",
         "hash": "f4b74eadba6162819e43ae5caca20771"
     },
+    "cav7_cit_move_citations.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "bfcdeb2352b67db1772035ba2b5f9171"
+    },
+    "cav7_cit_move_citations_off_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "4202001223ae710fffcdda925a5d5b89"
+    },
     "cav7_cit_move_explain.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "1a0fa98a9353f5883b5667566c0df666"
+    },
+    "cav7_cit_move_many_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "c5fddb560eb3db8dcec9c6b48f8d31dc"
+    },
+    "cav7_cit_move_them_to.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "3df8e30bbf343ce96ca87fd7be5b77ba"
     },
     "cav7_cit_move_version.txt": {
         "global_cache": false,
@@ -431,11 +785,29 @@
         "version_string": "1.1.0",
         "hash": "28f23d93b5a4a3e5cbdd8878cd72b7de"
     },
+    "cav7_cit_move_version_short.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "f0b4f226229ee1a5c6bf0cad63255a9e"
+    },
     "cav7_cit_name_on_certificate.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "7c2323e5e2b91daa68805500172441b4"
+    },
+    "cav7_cit_no_art.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "773f6a556b6713fbbf87b8a6a40bc5dd"
+    },
+    "cav7_cit_no_billets.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "4933230008c4f306f2eef0b030ddeaf7"
     },
     "cav7_cit_no_citation.txt": {
         "global_cache": false,
@@ -449,6 +821,12 @@
         "version_string": "1.1.0",
         "hash": "a2f45f93c17fdd90774ed578fdfc113c"
     },
+    "cav7_cit_no_fields_yet.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "603d2fbb139b456b42913608f9adf8da"
+    },
     "cav7_cit_no_members_left.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -461,11 +839,29 @@
         "version_string": "1.1.0",
         "hash": "e4e8d440d6720d549bd00e00b2252889"
     },
+    "cav7_cit_no_plate_yet.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "fadc17e901abcfbcb60cca5caf0c51ed"
+    },
     "cav7_cit_no_retired_on_file.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "a16b4aee03969abc5a4424fbc8d865a2"
+    },
+    "cav7_cit_no_signatures.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "32d8b9ba4cfed1d2964f30d65cbca08a"
+    },
+    "cav7_cit_no_templates.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "99ecc2e44b5ef301c543b74e35ba8391"
     },
     "cav7_cit_no_version_to_move_to.txt": {
         "global_cache": false,
@@ -497,6 +893,12 @@
         "version_string": "1.1.0",
         "hash": "c329deadbb45a7e54e1227bb4c66e92d"
     },
+    "cav7_cit_not_used_yet.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "5fd0c97b8d12e870d0eccacfb6e66d37"
+    },
     "cav7_cit_nothing_changed.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -509,6 +911,12 @@
         "version_string": "1.1.0",
         "hash": "528c24238391c6407726a2a8e0210458"
     },
+    "cav7_cit_nothing_to_move.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "ded0f0118d560a1511416d75aa4e33db"
+    },
     "cav7_cit_on_rows.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -520,6 +928,12 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "f94615342aa085dd8d9bb228f661ee83"
+    },
+    "cav7_cit_one_citation.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "3b3668b011c18c29520a105177599b92"
     },
     "cav7_cit_open_certificate.txt": {
         "global_cache": false,
@@ -539,6 +953,60 @@
         "version_string": "1.1.0",
         "hash": "d57c24f3fe52d16e7169b912dd647f0d"
     },
+    "cav7_cit_pattern.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "57391192dfa1f247ad015a0fe2eca48e"
+    },
+    "cav7_cit_pattern_error_at.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "74cd6a977b57b3185f27af548cec6bb3"
+    },
+    "cav7_cit_pattern_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "023293c72c24016f7ecd65501df92c83"
+    },
+    "cav7_cit_pattern_hint.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "d80a4e09c7adc6ada053669d747b655c"
+    },
+    "cav7_cit_pay_grade.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "1c86d35d9bf1f400b7fc9d795c622353"
+    },
+    "cav7_cit_pay_grades.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "bec84fef1c36fb7b6a11bfc3c39c7a40"
+    },
+    "cav7_cit_pay_grades_note.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "a0f5a2d3beae902c46398e3ea76c278a"
+    },
+    "cav7_cit_per_citation.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "5e31d047385e2509b223007d6aca1ad8"
+    },
+    "cav7_cit_per_member.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "8518528cb814cd58e7255a1e991456d5"
+    },
     "cav7_cit_pick_the_signature.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -556,6 +1024,30 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "f39a0720a929097afa9db4505cdf9669"
+    },
+    "cav7_cit_plate.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "bc9a8055ff921d3d9c876ff6eb02fddb"
+    },
+    "cav7_cit_plate_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "a6b36c2ff691959750a8c6da8b1fb95d"
+    },
+    "cav7_cit_plate_is_x_by_y.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "84f1b1f2b4c8f5f5d15e579ea9b3ccda"
+    },
+    "cav7_cit_plate_upload_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "75a3fc6be4cabcf40d13e255b87d29ab"
     },
     "cav7_cit_plate_width_warning.txt": {
         "global_cache": false,
@@ -593,11 +1085,65 @@
         "version_string": "1.1.0",
         "hash": "fabe26b585b57f83338160c620691027"
     },
+    "cav7_cit_preview_no_plate.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "3bcc8d1a3c82d92a920b19a751a4b4cf"
+    },
+    "cav7_cit_preview_waiting.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "62cf9ffeff4de1f7f23fac7f2c7341a4"
+    },
+    "cav7_cit_preview_with_sample_data.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "d9e05b0b4f9560ddc51ac5aef330eab8"
+    },
+    "cav7_cit_printed_line_placeholder.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "bdb87f815d9db6a71ac3e4bd3e3e38a2"
+    },
+    "cav7_cit_printed_lines.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "cd560fc2df859941da258efed83131df"
+    },
+    "cav7_cit_printed_lines_hint.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "6f921f24ff5db04f2b12302a0c94d6b9"
+    },
     "cav7_cit_prints_as_x.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "476725dc987afa8ba895b873051507d2"
+    },
+    "cav7_cit_publish.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "110a4b01beabd53b661a47d4b44bd7a8"
+    },
+    "cav7_cit_publish_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "2692e27372e4ae4291cad6c77ff68a3f"
+    },
+    "cav7_cit_publish_version_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "496c8e10dd7426e2be3bfa42708b0db6"
     },
     "cav7_cit_published.txt": {
         "global_cache": false,
@@ -616,6 +1162,42 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "021da1b20f73dc252361a54d80497ef3"
+    },
+    "cav7_cit_rank_art.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "e51de3b58ab27932d54da0a92aad0685"
+    },
+    "cav7_cit_rank_art_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "018659f50cbd0e636676c829d0c6eb21"
+    },
+    "cav7_cit_rank_scope_grant.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "6baa07f5219322cc157ddfd3b17095bd"
+    },
+    "cav7_cit_rank_scope_member.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "60b9ec07730bfe4266357f0e6bda848d"
+    },
+    "cav7_cit_rank_scope_none.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "138433be67cae5d5abb93ad9e39cc2b4"
+    },
+    "cav7_cit_reading_size.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "d73e52665e9ac4ea30bfe9d51286e8f1"
     },
     "cav7_cit_reason_hint.txt": {
         "global_cache": false,
@@ -755,6 +1337,12 @@
         "version_string": "1.0.0",
         "hash": "b1c54fdd86a6d31998db20e38c66d6a0"
     },
+    "cav7_cit_refused_member_grant_needs_permission.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "a6bebd764163d528fed8a9348e023978"
+    },
     "cav7_cit_refused_name_required.txt": {
         "global_cache": false,
         "version_id": 1000070,
@@ -778,6 +1366,18 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "896e3ca96b4c1f511895d6961a528303"
+    },
+    "cav7_cit_refused_no_citations_chosen.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "ed0213858bd5ab8d219ca8ad02f3df93"
+    },
+    "cav7_cit_refused_no_file.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "5f66a57371fc0732a1be3d26897203fd"
     },
     "cav7_cit_refused_no_kind.txt": {
         "global_cache": false,
@@ -1031,6 +1631,30 @@
         "version_string": "1.1.0",
         "hash": "d6b1392028cad4c36e251e1d704ff115"
     },
+    "cav7_cit_regiment_note_short.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "44f163e580886f22c6705a9574924fb3"
+    },
+    "cav7_cit_reinstate.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "07b1cc3f1609931826abec8174e33b77"
+    },
+    "cav7_cit_reinstate_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "967536abd4da4e82b2ab876a44ec692c"
+    },
+    "cav7_cit_reinstate_version_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "10d59d984bb239f089651383bffa8758"
+    },
     "cav7_cit_remove_a_member.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -1049,17 +1673,65 @@
         "version_string": "1.1.0",
         "hash": "375396d6e5d566794f2191bf22a665d8"
     },
+    "cav7_cit_replace_plate.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "c0d026e32b1b47094f7be50fea1302fb"
+    },
+    "cav7_cit_required.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "ac67ede5a84eb5a1add7ff4440e9a485"
+    },
+    "cav7_cit_retire.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "c86031fb48946393ddd43155bc4b8192"
+    },
+    "cav7_cit_retire_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "87e9d303db1944f78b2107533b24d717"
+    },
+    "cav7_cit_retire_explain_one.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "e5e1a22e4d94467917279e0d40559953"
+    },
+    "cav7_cit_retire_version_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "4743703cbf35e42bb422e93da7be4b7c"
+    },
     "cav7_cit_retired.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "d109ac74df282488efd1dd7621a847d2"
     },
+    "cav7_cit_retired_still_renders.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "38a008512e51cb5cd9de61574b066866"
+    },
     "cav7_cit_revision.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "32c676ac5296556c0573a301ef5ab07b"
+    },
+    "cav7_cit_right.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "92b09c7c48c520c3c55e497875da437c"
     },
     "cav7_cit_row_award.txt": {
         "global_cache": false,
@@ -1073,11 +1745,29 @@
         "version_string": "1.1.0",
         "hash": "ae602edc1d9a100fb3c85e75cd576030"
     },
+    "cav7_cit_sample_values.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "d127bcd4e9e08ea7e6ef7f7ea8b53a3d"
+    },
     "cav7_cit_save_correction.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "bccbdf4525a9acde38690ed8d7c20f3e"
+    },
+    "cav7_cit_serves.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "2931a3ce5546cd2c472b78a0d80d3062"
+    },
+    "cav7_cit_serves_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "5906554e633375e5e59acbc0ff620acf"
     },
     "cav7_cit_service_records.txt": {
         "global_cache": false,
@@ -1085,11 +1775,35 @@
         "version_string": "1.1.0",
         "hash": "f7b33d6ab2f645c4833a3ecdf4b29824"
     },
+    "cav7_cit_set_in_capitals.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "cd4cee685e324a89537f5097d44247b5"
+    },
+    "cav7_cit_setting.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "51ac4bf63a0c6a9cefa7ba69b4154ef1"
+    },
     "cav7_cit_several_on_file.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "9cf8a6810e144effb50fe52185fad250"
+    },
+    "cav7_cit_shared.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "a6156ea9d66fef24e87e841fbabf7cca"
+    },
+    "cav7_cit_show_field_boxes.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "af785f89aedb9ab0372f4e241b502897"
     },
     "cav7_cit_show_retired.txt": {
         "global_cache": false,
@@ -1097,11 +1811,83 @@
         "version_string": "1.1.0",
         "hash": "5493970d1b6fa9a83e1c8d01f8463868"
     },
+    "cav7_cit_signature_active_again.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "31ade8f9811f155b665c771b9da5ee3f"
+    },
+    "cav7_cit_signature_billet_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "fd487fbf937e078654c1ea5bbcd3bb08"
+    },
+    "cav7_cit_signature_retired.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "0dc2e84c02c0c4fa8486749461761ebc"
+    },
+    "cav7_cit_signature_slot.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "c149993e4abee1e817ab027204f58d5c"
+    },
+    "cav7_cit_signature_slot_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "f052c082840540c0951f2828d8ccaebc"
+    },
     "cav7_cit_signatures.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "dc1c9ce0179181c4f64b0bd191f2f05f"
+    },
+    "cav7_cit_signing_billet.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "0ce5fe2fd0b23cd13bc1652c7adab707"
+    },
+    "cav7_cit_signing_billets.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "87ffa5ae4ad9650d8e2284f514cce254"
+    },
+    "cav7_cit_size_px.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "4c36ec3ac2cb9bda46e6dacc2974d282"
+    },
+    "cav7_cit_skipped.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "d9c8f187972e6320a34e9c40b4cba605"
+    },
+    "cav7_cit_start_new_draft.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "a4ef154da0cd90ed914b718883106b97"
+    },
+    "cav7_cit_state_published.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "8f888fedf6bd5ff7c93c6d76bb8dc21c"
+    },
+    "cav7_cit_state_retired.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "a5597e8979d5ae6e4c58a4bc14cefd05"
     },
     "cav7_cit_swap_explain.txt": {
         "global_cache": false,
@@ -1114,6 +1900,24 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "278c491bdd8a53618c149c4ac790da34"
+    },
+    "cav7_cit_template_inputs.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "1e46a4d4dbac6717cf4ca3492c332f8d"
+    },
+    "cav7_cit_template_slots.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "4fdf058cf214c8d1ab449fd85c898d3a"
+    },
+    "cav7_cit_template_title_explain.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "cbe625c50509ea40ab4883ead199664f"
     },
     "cav7_cit_templates_explain.txt": {
         "global_cache": false,
@@ -1175,11 +1979,71 @@
         "version_string": "1.1.0",
         "hash": "2ac59a94328dcff083dc5d9249a4f0a0"
     },
+    "cav7_cit_undrawn_no_art.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "f77ee31ecfb1c289ecf6675b8d00563b"
+    },
+    "cav7_cit_undrawn_no_signature.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "681804073e746d31041c6e3c00608570"
+    },
+    "cav7_cit_undrawn_nothing_to_print.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "cf694daabebb9ad2fdc5004f51761d2f"
+    },
+    "cav7_cit_up_to_x_px.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "9a6973dfd0fd69171849d1812df41824"
+    },
+    "cav7_cit_upload_plate.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "de57f592825f64b09a0656f61eebe2e7"
+    },
+    "cav7_cit_use_long_sample.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "760044fbf9ec4377b70b0defe8a935ee"
+    },
+    "cav7_cit_used_on.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "2001e753a5961f303aaa75b6ed9866db"
+    },
     "cav7_cit_username.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "f6039d44b29456b20f8f373155ae4973"
+    },
+    "cav7_cit_version.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "34b6cd75171affba6957e308dcbd92be"
+    },
+    "cav7_cit_version_cap_x.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "0f480598ec08542fe97ad926a0f8dab6"
+    },
+    "cav7_cit_version_frozen_note.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "5e468ad31b1a24ba4e96da9da19e76ec"
     },
     "cav7_cit_version_x.txt": {
         "global_cache": false,
@@ -1187,11 +2051,47 @@
         "version_string": "1.1.0",
         "hash": "13c43316a9c8aa4f314387bd5ed22332"
     },
+    "cav7_cit_version_x_published.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "279e456aaae7c854a373748a82087cd4"
+    },
+    "cav7_cit_version_x_retired.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "4110f8e9c371d8a93fdd08a1fe1d9c47"
+    },
+    "cav7_cit_versions.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "9e69db6d28a0ec32d28e2c9e327fd40a"
+    },
     "cav7_cit_what_changed.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "ad0b6652f18f25a574f9f4900521e06b"
+    },
+    "cav7_cit_what_it_sets.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "b004385a948c9460f4af8fef3d50f31b"
+    },
+    "cav7_cit_width.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "32954654ac8fe66a1d09be19001de2d4"
+    },
+    "cav7_cit_with_sample_data.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "5c10da1c3f2bc69d1667fa4990084352"
     },
     "cav7_cit_withdraw.txt": {
         "global_cache": false,
@@ -1211,11 +2111,35 @@
         "version_string": "1.1.0",
         "hash": "f62dedad685b570f499b61e94084dab2"
     },
+    "cav7_cit_wrap_onto_several_lines.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "5505ecc1cc8ee0eb6f4a95e207e706f6"
+    },
+    "cav7_cit_wraps.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "63be220ad57c2c777db495482fb9cab0"
+    },
     "cav7_cit_written.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "685710b38fa0c2510fc1079843dec6b9"
+    },
+    "cav7_cit_x_by_y_pixels.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "574b72301da2ed03f116e496f3a35519"
+    },
+    "cav7_cit_x_citations.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "f0ae90d57bf48fa970963af2a8767cc1"
     },
     "cav7_cit_x_for_everyone.txt": {
         "global_cache": false,
@@ -1223,11 +2147,47 @@
         "version_string": "1.1.0",
         "hash": "d8dfbec2be75184cee62fde58445fbd5"
     },
+    "cav7_cit_x_moved.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "c5a1dda64bf2313e478643380f842ea5"
+    },
+    "cav7_cit_x_px.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "e872edf7c192d2774168649e31317f48"
+    },
     "cav7_cit_x_retired.txt": {
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "f5cca5a12ccb4f228eefba49c2957d83"
+    },
+    "cav7_cit_x_version_y.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "e80f6cee722d0089169115730db358cb"
+    },
+    "cav7_cit_zoom_fit.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "01e49ee7364d951a3d1bdea7dd3a1b7b"
+    },
+    "cav7_cit_zoom_in.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "7b91156d64b76a5dda815937fce9119d"
+    },
+    "cav7_cit_zoom_out.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "52ebc26c2921d5b84fc670dff9891821"
     },
     "cron_entry.cav7CitationsSweep.txt": {
         "global_cache": false,
@@ -1252,6 +2212,18 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "42a7ed6e552af57d8cd77e64a0e99bbe"
+    },
+    "nav.cav7CitSignatures.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "dc1c9ce0179181c4f64b0bd191f2f05f"
+    },
+    "nav.cav7CitTemplates.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "84cd74a6d600342fa327196efe7856b4"
     },
     "option.cav7CitCutover.txt": {
         "global_cache": false,

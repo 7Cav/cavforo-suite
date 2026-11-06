@@ -49,7 +49,7 @@
 			<dl class="pairs pairs--columns pairs--fixedSmall">
 				<dt>{{ phrase('cav7_cit_template') }}</dt>
 				<dd>
-					{$grant.Version.Template.title}, {{ phrase('cav7_cit_version_x', {'number': $grant.Version.version_number}) }}
+					<xf:if is="$canOpenTemplate"><a href="{{ link('rosters/citation-templates', $grant.Version.Template) }}">{$grant.Version.Template.title}</a><xf:else />{$grant.Version.Template.title}</xf:if>, {{ phrase('cav7_cit_version_x', {'number': $grant.Version.version_number}) }}
 					<xf:if is="$grant.Version.state == 'published'">
 						<span class="label label--green">{{ phrase('cav7_cit_published') }}</span>
 					<xf:else />

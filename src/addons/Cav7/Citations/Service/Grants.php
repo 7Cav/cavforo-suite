@@ -230,8 +230,8 @@ class Grants extends AbstractService
 
     /**
      * Each grant moves as its own correction, sharing this service's width table. A grant with
-     * something missing or in the way is skipped and reported, and so is a regiment grant
-     * unless the actor manages them.
+     * something missing or in the way is skipped and reported, and so is a kind of grant the
+     * actor can't issue.
      *
      * @param list<int> $grantIds
      * @return array{moved: list<int>, skipped: array<int, list<string>>} `skipped` holds why, by grant id.
@@ -248,8 +248,10 @@ class Grants extends AbstractService
                 $skipped[$grantId] = [(string) \XF::phrase('cav7_cit_refused_no_such_grant')];
                 continue;
             }
-            if ($grant->is_regiment && !$actor->canIssue(true)) {
-                $skipped[$grantId] = [(string) \XF::phrase('cav7_cit_refused_regiment_needs_permission')];
+            if (!$actor->canIssue($grant->is_regiment)) {
+                $skipped[$grantId] = [(string) \XF::phrase(
+                    $grant->is_regiment ? 'cav7_cit_refused_regiment_needs_permission' : 'cav7_cit_refused_member_grant_needs_permission'
+                )];
                 continue;
             }
 

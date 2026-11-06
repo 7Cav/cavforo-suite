@@ -1,0 +1,1 @@
+Citations with a field set below its reading size. A citation leaves the list when a correction or move sets the field large enough.

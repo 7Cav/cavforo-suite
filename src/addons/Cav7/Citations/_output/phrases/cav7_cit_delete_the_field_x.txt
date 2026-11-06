@@ -1,0 +1,1 @@
+Delete the field <strong>{key}</strong>?

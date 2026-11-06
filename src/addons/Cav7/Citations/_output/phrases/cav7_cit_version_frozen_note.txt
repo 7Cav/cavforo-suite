@@ -1,0 +1,1 @@
+This version is {state}, so it's frozen. Its plate and fields can't change.

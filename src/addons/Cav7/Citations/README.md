@@ -11,7 +11,8 @@ The addon also generates citations. A grant holds one citation's text, date and
 signatures, and a template sets it on a plate. Attach a grant to a roster row and the
 row's Citation link goes to a render, a JPEG drawn from the stored typesetting on each
 request. S1 issues and corrects grants at `rosters/citations`, and a row form's citation
-picker attaches them. Templates and signatures have no pages, so only code can make one.
+picker attaches them. S1 HQ keeps templates at `rosters/citation-templates`, with the pay
+grade list and legibility list beside them, and signatures at `rosters/citation-signatures`.
 
 [GLOSSARY.md](GLOSSARY.md) and the suite-wide [GLOSSARY.md](../../../../GLOSSARY.md)
 define the terms. [docs/adr](docs/adr/) has the reasons behind the generator.

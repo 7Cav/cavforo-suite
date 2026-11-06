@@ -1,0 +1,1 @@
+Plate is {width} &times; {height}

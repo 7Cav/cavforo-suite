@@ -1,0 +1,35 @@
+<xf:title>{{ phrase('cav7_cit_pay_grades') }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citation-templates') }}">{{ phrase('cav7_cit_citation_templates') }}</xf:breadcrumb>
+<xf:css src="cav7_cit_pages.less" />
+
+<xf:form action="{{ link('rosters/citation-templates/save-pay-grades') }}" ajax="true" class="block">
+	<div class="block-container">
+		<div class="block-body block-row">
+			<div class="dataList">
+				<table class="dataList-table">
+					<tr class="dataList-row dataList-row--header dataList-row--noHover">
+						<th class="dataList-cell">{{ phrase('cav7_cit_rank') }}</th>
+						<th class="dataList-cell">{{ phrase('cav7_cit_pay_grade') }}</th>
+						<th class="dataList-cell">{{ phrase('cav7_cit_abbreviation') }}</th>
+					</tr>
+					<xf:foreach loop="$ranks" value="$rank">
+						<tr class="dataList-row">
+							<td class="dataList-cell">{$rank.title}</td>
+							<xf:if is="$canEdit">
+								<td class="dataList-cell"><xf:textbox name="grades[{$rank.rank_id}][pay_grade]" value="{$rank.pay_grade}" maxlength="10" class="input--small" aria-label="{{ phrase('cav7_cit_pay_grade')|for_attr }}" /></td>
+								<td class="dataList-cell"><xf:textbox name="grades[{$rank.rank_id}][abbreviation]" value="{$rank.abbreviation}" maxlength="10" class="input--small" aria-label="{{ phrase('cav7_cit_abbreviation')|for_attr }}" /></td>
+							<xf:else />
+								<td class="dataList-cell">{{ $rank.pay_grade ?: '-' }}</td>
+								<td class="dataList-cell">{{ $rank.abbreviation ?: '-' }}</td>
+							</xf:if>
+						</tr>
+					</xf:foreach>
+				</table>
+			</div>
+		</div>
+		<div class="block-footer">{{ phrase('cav7_cit_pay_grades_note') }}</div>
+		<xf:if is="$canEdit">
+			<xf:submitrow icon="save" />
+		</xf:if>
+	</div>
+</xf:form>

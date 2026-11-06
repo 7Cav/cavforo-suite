@@ -1,0 +1,11 @@
+{
+    "route_type": "public",
+    "route_prefix": "rosters",
+    "sub_name": "citation-templates",
+    "format": "citation-templates/:int<template_id>/",
+    "build_class": "",
+    "build_method": "",
+    "controller": "Cav7\\Citations\\Pub\\Controller\\Templates",
+    "context": "nfRosters",
+    "action_prefix": ""
+}

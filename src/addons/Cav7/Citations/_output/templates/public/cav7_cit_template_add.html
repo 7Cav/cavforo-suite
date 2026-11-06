@@ -1,0 +1,11 @@
+<xf:title>{{ phrase('cav7_cit_add_template') }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citation-templates') }}">{{ phrase('cav7_cit_citation_templates') }}</xf:breadcrumb>
+
+<xf:form action="{{ link('rosters/citation-templates/add') }}" ajax="true" class="block">
+	<div class="block-container">
+		<div class="block-body">
+			<xf:textboxrow name="title" maxlength="150" label="{{ phrase('title') }}" explain="{{ phrase('cav7_cit_template_title_explain') }}" />
+		</div>
+		<xf:submitrow icon="save" />
+	</div>
+</xf:form>

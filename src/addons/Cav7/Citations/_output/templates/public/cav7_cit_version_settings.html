@@ -1,0 +1,57 @@
+<xf:title>{{ phrase('cav7_cit_x_version_y', {'title': $version.Template.title, 'number': $version.version_number}) }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citation-versions', $version) }}">{{ phrase('cav7_cit_x_version_y', {'title': $version.Template.title, 'number': $version.version_number}) }}</xf:breadcrumb>
+<xf:css src="cav7_cit_pages.less" />
+
+<xf:form action="{{ link('rosters/citation-versions/settings', $version) }}" ajax="true" class="block">
+	<div class="block-container">
+		<div class="block-body">
+			<xf:radiorow name="rank_scope" value="{$version.rank_scope}" label="{{ phrase('cav7_cit_rank') }}">
+				<xf:option value="member">{{ phrase('cav7_cit_rank_scope_member') }}</xf:option>
+				<xf:option value="grant">{{ phrase('cav7_cit_rank_scope_grant') }}</xf:option>
+				<xf:option value="none">{{ phrase('cav7_cit_rank_scope_none') }}</xf:option>
+			</xf:radiorow>
+
+			<xf:formrow rowtype="input" label="{{ phrase('cav7_cit_template_inputs') }}" explain="{{ phrase('cav7_cit_inputs_explain') }}">
+				<ul class="listPlain inputGroup-container">
+					<xf:foreach loop="$inputs" key="$i" value="$input">
+						<li class="cav7InputRow">
+							<xf:textbox name="inputs[{$i}][key]" value="{$input.key}" placeholder="{{ phrase('cav7_cit_input_key')|for_attr }}" />
+							<xf:textbox name="inputs[{$i}][label]" value="{$input.label}" placeholder="{{ phrase('cav7_cit_input_label')|for_attr }}" />
+							<xf:select name="inputs[{$i}][scope]" value="{$input.scope}">
+								<xf:option value="grant">{{ phrase('cav7_cit_per_citation') }}</xf:option>
+								<xf:option value="member">{{ phrase('cav7_cit_per_member') }}</xf:option>
+							</xf:select>
+							<xf:checkbox>
+								<xf:option name="inputs[{$i}][required]" value="1" selected="$input.required" label="{{ phrase('required') }}" />
+							</xf:checkbox>
+						</li>
+					</xf:foreach>
+					<xf:set var="$next" value="{{ count($inputs) }}" />
+					<li class="cav7InputRow" data-xf-init="field-adder" data-increment-format="inputs[{counter}]">
+						<xf:textbox name="inputs[{$next}][key]" placeholder="{{ phrase('cav7_cit_input_key')|for_attr }}" />
+						<xf:textbox name="inputs[{$next}][label]" placeholder="{{ phrase('cav7_cit_input_label')|for_attr }}" />
+						<xf:select name="inputs[{$next}][scope]">
+							<xf:option value="grant">{{ phrase('cav7_cit_per_citation') }}</xf:option>
+							<xf:option value="member">{{ phrase('cav7_cit_per_member') }}</xf:option>
+						</xf:select>
+						<xf:checkbox>
+							<xf:option name="inputs[{$next}][required]" value="1" label="{{ phrase('required') }}" />
+						</xf:checkbox>
+					</li>
+				</ul>
+			</xf:formrow>
+
+			<xf:checkboxrow name="kinds[]" value="{$kinds}" label="{{ phrase('cav7_cit_awards') }}" listclass="listColumns cav7KindList" explain="{{ phrase('cav7_cit_serves_explain') }}">
+				<xf:foreach loop="$kindOptions.awards" key="$kindKey" value="$kindTitle">
+					<xf:option value="{$kindKey}">{$kindTitle}</xf:option>
+				</xf:foreach>
+			</xf:checkboxrow>
+			<xf:checkboxrow name="kinds[]" value="{$kinds}" label="{{ phrase('cav7_cit_service_records') }}" listclass="listColumns cav7KindList">
+				<xf:foreach loop="$kindOptions.records" key="$kindKey" value="$kindTitle">
+					<xf:option value="{$kindKey}">{$kindTitle}</xf:option>
+				</xf:foreach>
+			</xf:checkboxrow>
+		</div>
+		<xf:submitrow icon="save" />
+	</div>
+</xf:form>

@@ -1,0 +1,1 @@
+Values the clerk fills in. A pattern prints one as {input:key}. A key keeps its scope across versions.

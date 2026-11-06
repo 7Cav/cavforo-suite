@@ -1,0 +1,1 @@
+Clerks will be offered version {number} of <strong>{title}</strong> again if it is the newest published version.

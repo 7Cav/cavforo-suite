@@ -1,0 +1,47 @@
+<xf:title>{{ phrase('cav7_cit_rank_art_x', {'key': $key}) }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citation-templates', $version.Template) }}">{$version.Template.title}</xf:breadcrumb>
+<xf:breadcrumb href="{{ link('rosters/citation-versions', $version) }}">{{ phrase('cav7_cit_x_version_y', {'title': $version.Template.title, 'number': $version.version_number}) }}</xf:breadcrumb>
+<xf:css src="cav7_cit_pages.less" />
+
+<xf:form action="{{ link('rosters/citation-versions/save-rank-art', $version, {'key': $key}) }}" ajax="true" upload="true" class="block">
+	<div class="block-container">
+		<div class="block-body block-row">
+			<div class="dataList">
+				<table class="dataList-table">
+					<tr class="dataList-row dataList-row--header dataList-row--noHover">
+						<th class="dataList-cell">{{ phrase('cav7_cit_rank') }}</th>
+						<th class="dataList-cell">{{ phrase('cav7_cit_art') }}</th>
+						<xf:if is="$canEdit">
+							<th class="dataList-cell">{{ phrase('upload') }}</th>
+							<th class="dataList-cell">{{ phrase('remove') }}</th>
+						</xf:if>
+					</tr>
+					<xf:foreach loop="$ranks" value="$rank">
+						<xf:set var="$hash" value="{$hashes.{$rank.rank_id}}" />
+						<tr class="dataList-row">
+							<td class="dataList-cell">{$rank.title}</td>
+							<td class="dataList-cell">
+								<xf:if is="$hash">
+									<img class="cav7Thumb cav7Thumb--art" loading="lazy" alt="" src="{{ link('rosters/citation-versions/art', $version, {'field': $key, 'rank': $rank.rank_id, 'h': $hash}) }}" />
+								<xf:else />
+									<span class="u-muted">{{ phrase('cav7_cit_no_art') }}</span>
+								</xf:if>
+							</td>
+							<xf:if is="$canEdit">
+								<td class="dataList-cell"><input type="file" name="art_{$rank.rank_id}" accept=".png" aria-label="{$rank.title}" /></td>
+								<td class="dataList-cell">
+									<xf:if is="$hash">
+										<label class="iconic iconic--checkbox"><input type="checkbox" name="remove[]" value="{$rank.rank_id}" /><i aria-hidden="true"></i></label>
+									</xf:if>
+								</td>
+							</xf:if>
+						</tr>
+					</xf:foreach>
+				</table>
+			</div>
+		</div>
+		<xf:if is="$canEdit">
+			<xf:submitrow icon="save" />
+		</xf:if>
+	</div>
+</xf:form>

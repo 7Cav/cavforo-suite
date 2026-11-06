@@ -16,6 +16,14 @@ class Signature extends Repository
         );
     }
 
+    /** @return array<int, int> How many grants each signature is on, the ones that have any. */
+    public function uses(): array
+    {
+        return array_map('intval', $this->db()->fetchPairs(
+            'SELECT signature_id, COUNT(DISTINCT grant_id) FROM xf_cav7_citation_grant_signature GROUP BY signature_id'
+        ));
+    }
+
     /**
      * @param int|null $currentId The grant's current signature when correcting.
      */

@@ -313,6 +313,7 @@ class Grants extends AbstractController
             'members' => $members,
             'regimentUrl' => $grant->is_regiment ? $grant->renderUrl() : '',
             'log' => $this->history($grant, $members),
+            'canOpenTemplate' => $actor->canOpenTemplateManager(),
             'can' => [
                 'correct' => PageAccess::allows('correct', $actor, $grant->is_regiment) && !$grant->withdrawn_date,
                 'addMember' => PageAccess::allows('addmember', $actor, $grant->is_regiment),

@@ -49,6 +49,18 @@ class TemplateVersion extends Entity
         return Version::fromJson($this->field_definitions, $this->input_definitions, $this->rank_scope);
     }
 
+    /** @return list<array<string, mixed>> In draw order, the raw attributes the field forms edit. */
+    public function fieldDefinitions(): array
+    {
+        return json_decode($this->field_definitions, true, 8, JSON_THROW_ON_ERROR);
+    }
+
+    /** @return list<array{key: string, label: string, scope: string, required: bool}> */
+    public function inputRows(): array
+    {
+        return json_decode($this->input_definitions, true, 8, JSON_THROW_ON_ERROR);
+    }
+
     /**
      * A draft reads the shipped fonts. A published version reads what it pinned, so a
      * release can drop a font without moving it.

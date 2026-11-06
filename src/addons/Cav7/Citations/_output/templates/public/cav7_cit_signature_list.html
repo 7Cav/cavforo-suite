@@ -1,0 +1,115 @@
+<xf:title>{{ phrase('cav7_cit_signatures') }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citation-templates') }}">{{ phrase('cav7_cit_citation_templates') }}</xf:breadcrumb>
+<xf:css src="cav7_cit_pages.less" />
+
+<xf:if is="$canEdit">
+	<xf:pageaction>
+		<xf:button href="{{ link('rosters/citation-signatures/add') }}" class="button--cta" icon="add" overlay="true">{{ phrase('cav7_cit_add_signature') }}</xf:button>
+	</xf:pageaction>
+</xf:if>
+
+<div class="block">
+	<div class="block-container">
+		<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_signing_billets') }}</h3>
+		<div class="block-body block-row">
+			<xf:if is="$billets is not empty">
+				<div class="dataList">
+					<table class="dataList-table">
+						<tr class="dataList-row dataList-row--header dataList-row--noHover">
+							<th class="dataList-cell">{{ phrase('cav7_cit_billet') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_template_slots') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_active_signatures') }}</th>
+							<th class="dataList-cell">{{ phrase('display_order') }}</th>
+							<xf:if is="$canEdit"><th class="dataList-cell">&nbsp;</th></xf:if>
+						</tr>
+						<xf:foreach loop="$billets" value="$row">
+							<tr class="dataList-row">
+								<td class="dataList-cell">{$row.billet.title}</td>
+								<td class="dataList-cell">{$row.slots}</td>
+								<td class="dataList-cell">{$row.active}</td>
+								<td class="dataList-cell">{$row.billet.display_order}</td>
+								<xf:if is="$canEdit">
+									<td class="dataList-cell cav7Actions">
+										<xf:button href="{{ link('rosters/citation-signatures/edit-billet', null, {'billet_id': $row.billet.billet_id}) }}" icon="edit" class="button--small" overlay="true">{{ phrase('edit') }}</xf:button>
+										<xf:if is="$row.removable">
+											<xf:button href="{{ link('rosters/citation-signatures/delete-billet', null, {'billet_id': $row.billet.billet_id}) }}" icon="delete" class="button--small" overlay="true">{{ phrase('delete') }}</xf:button>
+										</xf:if>
+									</td>
+								</xf:if>
+							</tr>
+						</xf:foreach>
+					</table>
+				</div>
+			<xf:else />
+				{{ phrase('cav7_cit_no_billets') }}
+			</xf:if>
+		</div>
+		<div class="block-footer">
+			{{ phrase('cav7_cit_billet_explain') }}
+			<xf:if is="$canEdit"><a href="{{ link('rosters/citation-signatures/add-billet') }}" data-xf-click="overlay">{{ phrase('cav7_cit_add_billet') }}</a></xf:if>
+		</div>
+	</div>
+</div>
+
+<xf:form action="{{ link('rosters/citation-signatures') }}" class="block">
+	<div class="block-container">
+		<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_signatures') }}</h3>
+		<div class="block-body block-row">
+			<xf:if is="$signatures is not empty">
+				<div class="dataList">
+					<table class="dataList-table">
+						<tr class="dataList-row dataList-row--header dataList-row--noHover">
+							<th class="dataList-cell">{{ phrase('cav7_cit_printed_lines') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_billet') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_ink') }}</th>
+							<th class="dataList-cell">{{ phrase('status') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_used_on') }}</th>
+							<xf:if is="$canEdit"><th class="dataList-cell">&nbsp;</th></xf:if>
+						</tr>
+						<xf:foreach loop="$signatures" value="$row">
+							<tr class="dataList-row">
+								<td class="dataList-cell">
+									<xf:foreach loop="$row.lines" value="$line" i="$i">
+										<div><xf:if is="$i == 1"><strong>{$line}</strong><xf:else />{$line}</xf:if></div>
+									</xf:foreach>
+								</td>
+								<td class="dataList-cell">{$row.signature.Billet.title}</td>
+								<td class="dataList-cell"><img class="cav7Ink" loading="lazy" alt="" src="{{ link('rosters/citation-signatures/ink', $row.signature, {'h': $row.signature.ink_hash}) }}" /></td>
+								<td class="dataList-cell">
+									<xf:if is="$row.signature.state == 'active'">
+										<span class="label label--green">{{ phrase('cav7_cit_active') }}</span>
+									<xf:else />
+										<span class="label label--silver">{{ phrase('cav7_cit_retired') }}</span>
+									</xf:if>
+								</td>
+								<td class="dataList-cell">
+									<xf:if is="$row.uses">
+										{{ $row.uses == 1 ? phrase('cav7_cit_one_citation') : phrase('cav7_cit_x_citations', {'count': $row.uses}) }}
+										<div class="u-muted">{{ phrase('cav7_cit_frozen_note') }}</div>
+									<xf:else />
+										<span class="u-muted">{{ phrase('cav7_cit_not_used_yet') }}</span>
+									</xf:if>
+								</td>
+								<xf:if is="$canEdit">
+									<td class="dataList-cell cav7Actions">
+										<xf:if is="$row.signature.state == 'active'">
+											<button type="submit" class="button button--small" formaction="{{ link('rosters/citation-signatures/retire', $row.signature) }}">{{ phrase('cav7_cit_retire') }}</button>
+										<xf:else />
+											<button type="submit" class="button button--small" formaction="{{ link('rosters/citation-signatures/reinstate', $row.signature) }}">{{ phrase('cav7_cit_reinstate') }}</button>
+										</xf:if>
+										<xf:if is="!$row.uses">
+											<xf:button href="{{ link('rosters/citation-signatures/edit', $row.signature) }}" icon="edit" class="button--small" overlay="true">{{ phrase('edit') }}</xf:button>
+											<xf:button href="{{ link('rosters/citation-signatures/delete', $row.signature) }}" icon="delete" class="button--small" overlay="true">{{ phrase('delete') }}</xf:button>
+										</xf:if>
+									</td>
+								</xf:if>
+							</tr>
+						</xf:foreach>
+					</table>
+				</div>
+			<xf:else />
+				{{ phrase('cav7_cit_no_signatures') }}
+			</xf:if>
+		</div>
+	</div>
+</xf:form>
