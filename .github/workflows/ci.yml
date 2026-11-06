@@ -78,7 +78,7 @@ jobs:
           # in-memory SQLite database, so the queries are covered by what they mean
           # rather than by a fake that dispatches on their shape. Named explicitly
           # rather than left to the runner's default build.
-          extensions: pdo_sqlite
+          extensions: pdo_sqlite, imagick
           coverage: none
       - name: Run tests
         run: tools/run-tests.sh "$ADDON"

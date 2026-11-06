@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<phrases>
+  <phrase title="cron_entry.cav7CitationsSweep" version_id="1000070" version_string="1.0.0"><![CDATA[Citations: sweep]]></phrase>
+  <phrase title="option.cav7CitationReencodeEnabled" version_id="1000070" version_string="1.0.0"><![CDATA[Allow the re-encode]]></phrase>
+  <phrase title="option_explain.cav7CitationReencodeEnabled" version_id="1000070" version_string="1.0.0"><![CDATA[With this off, the re-encode command refuses to run. A revert of all runs turns it off, and turning it back on is a decision for leadership.]]></phrase>
+  <phrase title="option_group.cav7Citations" version_id="1000070" version_string="1.0.0"><![CDATA[Citations]]></phrase>
+  <phrase title="option_group_description.cav7Citations" version_id="1000070" version_string="1.0.0"><![CDATA[Settings for citation storage.]]></phrase>
+</phrases>
