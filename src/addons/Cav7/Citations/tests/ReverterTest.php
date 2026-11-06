@@ -83,6 +83,14 @@ $result = $stage->reverter()->apply(scope($stage, blob: (string) $encodedId), nu
 check('a changed source on the box is damage for its rows', $result['damage'] === 2 && $result['reverted'] === 0);
 check('and they stay encoded', $stage->refOf($award, 1) === $encodedId && $stage->refOf($award, 2) === $encodedId);
 
+// A blob row whose file is gone needs the file put back at its path, not a fetch for --from.
+[$stage, $first, $second, $run] = reencoded();
+$encodedId = $stage->refOf($award, 1);
+unlink($stage->disk->path(BlobFile::keyOf($first)));
+check('a plan doesn\'t ask to fetch it', $stage->reverter()->plan(scope($stage, blob: (string) $encodedId)) === []);
+$result = $stage->reverter()->apply(scope($stage, blob: (string) $encodedId), null);
+check('apply reports it as damage for its rows', $result['damage'] === 2 && $stage->refOf($award, 1) === $encodedId);
+
 // A purged source comes back from the archive under a new id.
 [$stage, $first, $second, $run] = reencoded();
 $encodedId = $stage->refOf($award, 1);

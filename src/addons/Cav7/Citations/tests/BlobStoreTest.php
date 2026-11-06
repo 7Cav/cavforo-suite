@@ -78,6 +78,23 @@ try {
 check('a write that fails throws', $failed);
 check('and leaves no row behind', (int) $blocked->db->fetchOne('SELECT COUNT(*) FROM ' . BlobStore::TABLE) === 0);
 
+// A delete that fails leaves no transaction open on a connection the job keeps using.
+$stage = new Stage();
+$blob = $stage->blob(png());
+$stage->db->query('DROP TABLE ' . BlobStore::DELETION_LOG);
+try {
+    $stage->blobs->delete($blob, 'zero_reference', 0, false);
+} catch (\Throwable) {
+}
+$open = false;
+try {
+    $stage->db->beginTransaction();
+    $stage->db->rollback();
+} catch (\PDOException) {
+    $open = true;
+}
+check('a delete that fails rolls back', !$open && $stage->blobs->byId((int) $blob['blob_id']) !== null);
+
 $stage2 = new Stage();
 $first = $stage2->blob(png(10, 10));
 $dir = dirname($stage2->disk->path(BlobFile::keyOf($first)));

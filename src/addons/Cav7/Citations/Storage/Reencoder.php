@@ -131,7 +131,9 @@ final class Reencoder
 
         $temp = tempnam(sys_get_temp_dir(), 'cav7cit');
         try {
-            file_put_contents($temp, $jpeg);
+            if (file_put_contents($temp, $jpeg) !== strlen($jpeg)) {
+                throw new BlobDamage('encoded output could not be written');
+            }
             $encoded = $this->blobs->findOrCreate($temp, 'encoded', $encoderFields);
         } catch (BlobDamage $e) {
             $this->damage->report($e->getMessage(), $key, '', $source['content_hash']);

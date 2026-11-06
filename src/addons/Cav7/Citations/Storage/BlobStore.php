@@ -74,17 +74,22 @@ final class BlobStore
         $key = BlobFile::keyOf($blob);
 
         $this->db->beginTransaction();
-        $this->logDeletion(
-            $reason,
-            $key,
-            (int) $blob['byte_size'],
-            $blob['content_hash'],
-            (int) $blob['blob_id'],
-            $lastRefCount,
-            $brakeLifted
-        );
-        $this->db->delete(self::TABLE, 'blob_id = ?', [$blob['blob_id']]);
-        $this->db->commit();
+        try {
+            $this->logDeletion(
+                $reason,
+                $key,
+                (int) $blob['byte_size'],
+                $blob['content_hash'],
+                (int) $blob['blob_id'],
+                $lastRefCount,
+                $brakeLifted
+            );
+            $this->db->delete(self::TABLE, 'blob_id = ?', [$blob['blob_id']]);
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            throw $e;
+        }
 
         $this->disk->delete($key);
     }

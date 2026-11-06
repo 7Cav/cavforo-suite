@@ -38,8 +38,7 @@ final class Reverter
                 continue;
             }
 
-            $blob = $this->blobs->byHash($hash);
-            if ($blob === null || $this->disk->stat(BlobFile::keyOf($blob)) === null) {
+            if ($this->blobs->byHash($hash) === null) {
                 $needed[$hash] = $entry['source_archive_key'];
             }
         }

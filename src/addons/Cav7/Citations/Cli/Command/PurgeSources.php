@@ -34,7 +34,10 @@ class PurgeSources extends AbstractCommand
 
         if ($dryRun && $out !== null && $list === null) {
             $candidates = $purger->candidateList();
-            file_put_contents($out, $candidates);
+            if (file_put_contents($out, $candidates) === false) {
+                $output->writeln(sprintf('<error>Could not write %s.</error>', $out));
+                return 2;
+            }
             $output->writeln(sprintf('%d replaced source(s) listed in %s.', substr_count($candidates, "\n"), $out));
             return 0;
         }

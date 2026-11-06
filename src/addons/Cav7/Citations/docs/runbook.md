@@ -134,7 +134,9 @@ its keys are legacy paths.
 
 - A row that moved on since the run is left alone, and so is a row on the encoded blob
   with no log entry.
-- A missing or mismatched source is damage, and that row stays encoded.
+- A missing or mismatched source is damage, and that row stays encoded. If its blob row
+  still exists, the plan won't list it. Fetch the key and put it back at its path, as for
+  `blob file missing`.
 - A source that comes back from the archive gets a new blob id and URL.
 - The revert deletes nothing. The next sweep deletes the zero-reference encoded blobs. If
   that trips the brake, run a dry run and then `--lift-brake`.
