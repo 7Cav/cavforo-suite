@@ -281,11 +281,13 @@ class Grants extends AbstractController
             $grants = $finder->limitByPage($page, self::PER_PAGE)->fetch();
         }
         $regiment = $actor->canOpenGrant(true) ? $repo->listed(true, $kind, $day, $relationId)->fetch() : [];
+        $shownIds = array_merge($grants === [] ? [] : $grants->keys(), $regiment === [] ? [] : $regiment->keys());
 
         return $this->view('Cav7\Citations:Grant\List', 'cav7_cit_grant_list', [
             'grants' => $grants,
             'regimentGrants' => $regiment,
             'names' => $repo->memberSummaries($grants === [] ? [] : $grants->keys()),
+            'corrections' => $repo->lastCorrections($shownIds),
             'filters' => $filters,
             'kinds' => $repo->issuedKinds(),
             'canIssue' => PageAccess::allows('issue', $actor, null),
