@@ -36,7 +36,7 @@
 					<td class="dataList-cell">{$grant.Version.Template.title}, v{$grant.Version.version_number}</td>
 					<td class="dataList-cell">{$grant.issue_username}</td>
 					<td class="dataList-cell">
-						<xf:if is="$corrections.{$grant.grant_id}">{{ phrase('cav7_cit_corrected_rev_x', {'revision': $corrections.{$grant.grant_id}}) }}<xf:else />-</xf:if>
+						<xf:if is="{$corrections.{$grant.grant_id}}">{{ phrase('cav7_cit_corrected_rev_x', {'revision': $corrections.{$grant.grant_id}}) }}<xf:else />-</xf:if>
 					</td>
 				</tr>
 			</xf:foreach>

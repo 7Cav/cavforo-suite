@@ -251,7 +251,7 @@
 	</xf:if>
 </div>
 ]]></template>
-  <template type="public" title="cav7_cit_grant_list" version_id="1010070" version_string="1.1.0"><![CDATA[<xf:title>{{ phrase('cav7_cit_citations') }}</xf:title>
+  <template type="public" title="cav7_cit_grant_list" version_id="1020070" version_string="1.2.0"><![CDATA[<xf:title>{{ phrase('cav7_cit_citations') }}</xf:title>
 <xf:css src="cav7_cit_pages.less" />
 
 <xf:if is="$canIssue">
@@ -289,7 +289,7 @@
 					<td class="dataList-cell">{$grant.Version.Template.title}, v{$grant.Version.version_number}</td>
 					<td class="dataList-cell">{$grant.issue_username}</td>
 					<td class="dataList-cell">
-						<xf:if is="$corrections.{$grant.grant_id}">{{ phrase('cav7_cit_corrected_rev_x', {'revision': $corrections.{$grant.grant_id}}) }}<xf:else />-</xf:if>
+						<xf:if is="{$corrections.{$grant.grant_id}}">{{ phrase('cav7_cit_corrected_rev_x', {'revision': $corrections.{$grant.grant_id}}) }}<xf:else />-</xf:if>
 					</td>
 				</tr>
 			</xf:foreach>
