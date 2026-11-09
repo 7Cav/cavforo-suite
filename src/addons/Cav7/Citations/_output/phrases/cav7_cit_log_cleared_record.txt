@@ -1,0 +1,1 @@
+Cleared the {title} record of {date}

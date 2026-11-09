@@ -728,7 +728,17 @@ foreach ([
         [['cav7_cit_log_member_rank', ['name' => '#9']]],
     ],
     'an addition names the snapshot' => [LogSummary::of('member_added', ['name' => 'Tobin'], $names), [['cav7_cit_log_member_added', ['name' => 'Tobin']]]],
-    'a removal too' => [LogSummary::of('member_removed', ['name' => 'Lorne'], $names), [['cav7_cit_log_member_removed', ['name' => 'Lorne']]]],
+    'a removal names the snapshot and every row it cleared' => [
+        LogSummary::of('member_removed', ['name' => 'Lorne', 'rows' => [
+            ['row_type' => 'award', 'record_id' => 7, 'relation_id' => 10, 'kind_title' => 'Bronze Star', 'row_date' => 1782691200],
+            ['row_type' => 'record', 'record_id' => 8, 'relation_id' => 10, 'kind_title' => 'Promotion', 'row_date' => 1782777600],
+        ]], $names),
+        [
+            ['cav7_cit_log_member_removed', ['name' => 'Lorne']],
+            ['cav7_cit_log_cleared_award', ['title' => 'Bronze Star', 'date' => '2026-06-29']],
+            ['cav7_cit_log_cleared_record', ['title' => 'Promotion', 'date' => '2026-06-30']],
+        ],
+    ],
 ] as $label => [$actual, $expected]) {
     check("history: $label", $actual === $expected, var_export($actual, true));
 }

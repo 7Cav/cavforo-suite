@@ -15,11 +15,28 @@ final class LogSummary
         return match ($event) {
             'corrected' => self::changes($detail['changes'] ?? [], $names),
             'member_added' => [['cav7_cit_log_member_added', ['name' => (string) ($detail['name'] ?? '')]]],
-            'member_removed' => [['cav7_cit_log_member_removed', ['name' => (string) ($detail['name'] ?? '')]]],
+            'member_removed' => [
+                ['cav7_cit_log_member_removed', ['name' => (string) ($detail['name'] ?? '')]],
+                ...self::cleared($detail['rows'] ?? []),
+            ],
             'retypeset' => [['cav7_cit_log_retypeset', []]],
             'withdrawn' => [['cav7_cit_log_withdrawn', []]],
             default => [['cav7_cit_log_puc_sync', []]],
         };
+    }
+
+    /**
+     * The rows a removal cleared, so S1 can reattach them after a mistaken one.
+     *
+     * @param list<array{row_type: string, kind_title: string, row_date: int}> $rows
+     * @return list<array{string, array<string, string>}>
+     */
+    private static function cleared(array $rows): array
+    {
+        return array_map(fn (array $row): array => ["cav7_cit_log_cleared_{$row['row_type']}", [
+            'title' => (string) $row['kind_title'],
+            'date' => gmdate('Y-m-d', (int) $row['row_date']),
+        ]], $rows);
     }
 
     /**

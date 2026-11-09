@@ -104,6 +104,8 @@
   <phrase title="cav7_cit_legibility_note" version_id="1020070" version_string="1.2.0"><![CDATA[Citations with a field set below its reading size. A citation leaves the list when a correction or move sets the field large enough.]]></phrase>
   <phrase title="cav7_cit_line_height" version_id="1020070" version_string="1.2.0"><![CDATA[Line height]]></phrase>
   <phrase title="cav7_cit_log_citation_text" version_id="1010070" version_string="1.1.0"><![CDATA[Citation text]]></phrase>
+  <phrase title="cav7_cit_log_cleared_award" version_id="1020070" version_string="1.2.0"><![CDATA[Cleared the {title} award of {date}]]></phrase>
+  <phrase title="cav7_cit_log_cleared_record" version_id="1020070" version_string="1.2.0"><![CDATA[Cleared the {title} record of {date}]]></phrase>
   <phrase title="cav7_cit_log_date" version_id="1010070" version_string="1.1.0"><![CDATA[Date]]></phrase>
   <phrase title="cav7_cit_log_input" version_id="1010070" version_string="1.1.0"><![CDATA[Template inputs]]></phrase>
   <phrase title="cav7_cit_log_issued" version_id="1010070" version_string="1.1.0"><![CDATA[Issued]]></phrase>
