@@ -546,7 +546,7 @@ $none = $actor();
 foreach ([
     'holding nothing opens nothing' => [
         !$none->canOpenGrantList() && !$none->canOpenGrant(false) && !$none->canOpenGrant(true)
-        && !$none->canOpenTemplateManager() && !$none->canPreviewTemplate(),
+        && !$none->canOpenTemplateManager() && !$none->canReadTemplates(),
     ],
     'the list opens for view, issue, remove or regiment' => [
         $actor(Actor::VIEW)->canOpenGrantList() && $actor(Actor::ISSUE)->canOpenGrantList()
@@ -577,9 +577,9 @@ foreach ([
         $actor(Actor::EDIT_DRAFTS)->canEditDrafts() && !$actor(Actor::EDIT_DRAFTS)->canPublish()
         && $actor(Actor::PUBLISH)->canPublish() && !$actor(Actor::PUBLISH)->canEditDrafts(),
     ],
-    'a template preview takes view or either template permission' => [
-        $actor(Actor::VIEW)->canPreviewTemplate() && $actor(Actor::EDIT_DRAFTS)->canPreviewTemplate()
-        && $actor(Actor::PUBLISH)->canPreviewTemplate() && !$actor(Actor::ISSUE)->canPreviewTemplate(),
+    'reading a template\'s design takes view or either template permission' => [
+        $actor(Actor::VIEW)->canReadTemplates() && $actor(Actor::EDIT_DRAFTS)->canReadTemplates()
+        && $actor(Actor::PUBLISH)->canReadTemplates() && !$actor(Actor::ISSUE)->canReadTemplates(),
     ],
 ] as $label => [$ok]) {
     check($label, $ok);

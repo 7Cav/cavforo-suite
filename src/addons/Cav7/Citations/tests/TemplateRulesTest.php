@@ -260,17 +260,18 @@ $publish = $held(Actor::PUBLISH);
 
 $opens = [$view, $issue, $edit, $publish];
 $opensNot = [$none, $remove, $regiment];
-$previews = [$view, $edit, $publish];
-$previewsNot = [$none, $issue, $remove, $regiment];
+$reads = [$view, $edit, $publish];
+$readsNot = [$none, $issue, $remove, $regiment];
 $edits = [$edit];
 $editsNot = [$none, $view, $issue, $remove, $regiment, $publish];
 $publishes = [$publish];
 $publishesNot = [$none, $view, $issue, $remove, $regiment, $edit];
 
 foreach ([
-    [['templates/index', 'templates/paygrades', 'templates/legibility', 'versions/index', 'versions/plate', 'versions/art',
-        'versions/field', 'versions/rankart', 'signatures/index', 'signatures/ink'], $opens, $opensNot],
-    [['versions/preview'], $previews, $previewsNot],
+    // Issue reaches bulk move through the template pages, and moves one at a time from the legibility list.
+    [['templates/index', 'templates/legibility', 'versions/plate'], $opens, $opensNot],
+    [['templates/paygrades', 'versions/index', 'versions/art', 'versions/field', 'versions/rankart', 'signatures/index',
+        'signatures/ink', 'versions/preview'], $reads, $readsNot],
     [['templates/add', 'templates/newdraft', 'versions/uploadplate', 'versions/settings', 'versions/savefield',
         'versions/removefield', 'versions/movefield', 'versions/saverankart', 'versions/delete'], $edits, $editsNot],
     [['templates/savepaygrades', 'versions/publish', 'versions/retire', 'signatures/add', 'signatures/edit',

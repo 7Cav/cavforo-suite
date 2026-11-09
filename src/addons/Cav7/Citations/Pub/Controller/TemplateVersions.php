@@ -427,7 +427,7 @@ class TemplateVersions extends AbstractManager
     /** @return array<string, mixed> */
     private function panel(TemplateVersion $version): array
     {
-        return ['can' => $this->actor()->canPreviewTemplate()] + $this->plate()->panel($version);
+        return ['can' => $this->actor()->canReadTemplates()] + $this->plate()->panel($version);
     }
 
     /** @throws \XF\Mvc\Reply\Exception A key that isn't one of this version's rank art fields. */

@@ -52,7 +52,7 @@
     "public/cav7_cit_legibility.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "bc3e211635182eaee30ee71eccb0cb69"
+        "hash": "eebafe762a3bb825fc582ff93152adb9"
     },
     "public/cav7_cit_manager_confirm.html": {
         "version_id": 1020070,
@@ -97,12 +97,12 @@
     "public/cav7_cit_template_list.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "bb63ae033870cd135c020023f7794cec"
+        "hash": "9b05fb105f6bed110fdea8a7bb3f59e0"
     },
     "public/cav7_cit_template_view.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "4528242099eca95c5ca171734e5e11ab"
+        "hash": "2598d0a751bd0515ba7e39741a1c21ef"
     },
     "public/cav7_cit_version_field.html": {
         "version_id": 1020070,

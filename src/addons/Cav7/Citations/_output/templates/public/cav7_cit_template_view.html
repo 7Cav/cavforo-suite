@@ -33,7 +33,7 @@
 					<xf:foreach loop="$template.Versions" value="$version">
 						<xf:set var="$pinned" value="{{ $pins.{$version.template_version_id} ?: 0 }}" />
 						<tr class="dataList-row">
-							<td class="dataList-cell"><a href="{{ link('rosters/citation-versions', $version) }}">{{ phrase('cav7_cit_version_cap_x', {'number': $version.version_number}) }}</a></td>
+							<td class="dataList-cell"><xf:if is="$can.read"><a href="{{ link('rosters/citation-versions', $version) }}">{{ phrase('cav7_cit_version_cap_x', {'number': $version.version_number}) }}</a><xf:else />{{ phrase('cav7_cit_version_cap_x', {'number': $version.version_number}) }}</xf:if></td>
 							<td class="dataList-cell">
 								<xf:if is="$version.plate_format">
 									<img class="cav7Thumb" loading="lazy" alt="" src="{{ link('rosters/citation-versions/plate', $version, {'h': $version.plate_hash}) }}" />
