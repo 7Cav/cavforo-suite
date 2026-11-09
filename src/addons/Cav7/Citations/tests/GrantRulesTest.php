@@ -566,10 +566,10 @@ foreach ([
         $actor(Actor::VIEW)->canOpenGrant(true) && $actor(Actor::REGIMENT)->canOpenGrant(true)
         && !$actor(Actor::ISSUE, Actor::REMOVE_MEMBERS)->canOpenGrant(true),
     ],
-    'the template manager opens for view, drafts, publish or issue' => [
+    'the template manager opens for view, drafts, publish, issue or regiment' => [
         $actor(Actor::VIEW)->canOpenTemplateManager() && $actor(Actor::EDIT_DRAFTS)->canOpenTemplateManager()
         && $actor(Actor::PUBLISH)->canOpenTemplateManager() && $actor(Actor::ISSUE)->canOpenTemplateManager()
-        && !$actor(Actor::REGIMENT, Actor::REMOVE_MEMBERS)->canOpenTemplateManager(),
+        && $actor(Actor::REGIMENT)->canOpenTemplateManager() && !$actor(Actor::REMOVE_MEMBERS)->canOpenTemplateManager(),
     ],
     'issue permission doesn\'t reach a regiment grant, and the regiment one doesn\'t reach members' => [
         $actor(Actor::ISSUE)->canIssue(false) && !$actor(Actor::ISSUE)->canIssue(true)

@@ -41,7 +41,7 @@ final class Actor
     /** The template list and pages and the legibility list, where moving citations starts. */
     public function canOpenTemplateManager(): bool
     {
-        return $this->holds(self::VIEW, self::EDIT_DRAFTS, self::PUBLISH, self::ISSUE);
+        return $this->holds(self::VIEW, self::EDIT_DRAFTS, self::PUBLISH, self::ISSUE, self::REGIMENT);
     }
 
     /**

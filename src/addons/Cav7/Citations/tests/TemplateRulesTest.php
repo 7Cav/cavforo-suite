@@ -258,8 +258,8 @@ $regiment = $held(Actor::REGIMENT);
 $edit = $held(Actor::EDIT_DRAFTS);
 $publish = $held(Actor::PUBLISH);
 
-$opens = [$view, $issue, $edit, $publish];
-$opensNot = [$none, $remove, $regiment];
+$opens = [$view, $issue, $regiment, $edit, $publish];
+$opensNot = [$none, $remove];
 $reads = [$view, $edit, $publish];
 $readsNot = [$none, $issue, $remove, $regiment];
 $edits = [$edit];
@@ -268,7 +268,7 @@ $publishes = [$publish];
 $publishesNot = [$none, $view, $issue, $remove, $regiment, $edit];
 
 foreach ([
-    // Issue reaches bulk move through the template pages, and moves one at a time from the legibility list.
+    // Issue and regiment reach bulk move through the template pages, and move one at a time from the legibility list.
     [['templates/index', 'templates/legibility', 'versions/plate'], $opens, $opensNot],
     [['templates/paygrades', 'versions/index', 'versions/art', 'versions/field', 'versions/rankart', 'signatures/index',
         'signatures/ink', 'versions/preview'], $reads, $readsNot],
