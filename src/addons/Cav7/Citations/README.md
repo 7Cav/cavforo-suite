@@ -64,7 +64,7 @@ Everything runs from `cmd.php`, as the same user PHP-FPM runs as. The
 | `cav7-citations:reencode` | Replaces eligible source blobs with encoded blobs, after an archive sync. |
 | `cav7-citations:revert` | Puts source blobs back, with `plan` and then `apply`. |
 | `cav7-citations:purge-sources` | Deletes replaced sources from a list checked against the archive. |
-| `cav7-citations:retypeset` | Remakes the typesetting of chosen grants with the current renderer, and moves each one's revision. |
+| `cav7-citations:retypeset` | Remakes the typesetting of chosen grants with the current renderer. A grant whose typesetting changes moves its revision and logs it, and one with no change keeps its revision and logs nothing. |
 
 The cron entry **Citations: sweep** runs daily at 03:10 and installs inactive. Enable
 it under **Tools > Cron entries** after the first CLI sweep.
@@ -111,10 +111,10 @@ A render's URL is `citations/{grant_member_id}/{token}/{revision}/{filename}.jpg
 Anyone with the URL can read it, banned visitors and a closed board included.
 
 No render is stored. Cloudflare holds each one for 8 days, and that cache is what makes a
-draw on every request affordable. A correction or a retypeset moves the revision, and the
-old URL redirects to the new one. Removing a member or withdrawing a regiment grant 404s
-at the origin at once, but Cloudflare can serve its copy until it expires, and nothing here
-purges it.
+draw on every request affordable. A correction, or a retypeset that changes a typesetting,
+moves the revision, and the old URL redirects to the new one. Removing a member or
+withdrawing a regiment grant 404s at the origin at once, but Cloudflare can serve its copy
+until it expires, and nothing here purges it.
 
 ## License
 
