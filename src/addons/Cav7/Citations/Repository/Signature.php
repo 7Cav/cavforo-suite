@@ -8,12 +8,13 @@ use XF\Mvc\Entity\Repository;
 
 class Signature extends Repository
 {
+    /** Read fresh rather than off the entity, so a grant pinning it since the load still counts. */
     public function isFrozen(int $signatureId): bool
     {
-        return (bool) $this->db()->fetchOne(
-            'SELECT 1 FROM xf_cav7_citation_grant_signature WHERE signature_id = ? LIMIT 1',
+        return (int) $this->db()->fetchOne(
+            'SELECT first_used_date FROM xf_cav7_citation_signature WHERE signature_id = ?',
             $signatureId
-        );
+        ) > 0;
     }
 
     /** @return array<int, int> How many grants each signature is on, the ones that have any. */

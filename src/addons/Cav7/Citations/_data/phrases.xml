@@ -256,7 +256,7 @@
   <phrase title="cav7_cit_refused_regiment_duplicate" version_id="1000070" version_string="1.0.0"><![CDATA[A live regiment grant already holds this award and date.]]></phrase>
   <phrase title="cav7_cit_refused_regiment_needs_permission" version_id="1000070" version_string="1.0.0"><![CDATA[This award is a regiment grant, and issuing or moving one needs Manage regiment grants.]]></phrase>
   <phrase title="cav7_cit_refused_regiment_takes_no_members" version_id="1000070" version_string="1.0.0"><![CDATA[A regiment grant takes no members.]]></phrase>
-  <phrase title="cav7_cit_refused_signature_frozen" version_id="1010070" version_string="1.1.0"><![CDATA[A grant uses this signature, so it can't be edited or deleted. It can still be retired.]]></phrase>
+  <phrase title="cav7_cit_refused_signature_frozen" version_id="1010070" version_string="1.1.0"><![CDATA[A grant has used this signature, so it can't be edited or deleted. It can still be retired.]]></phrase>
   <phrase title="cav7_cit_refused_signature_wrong_billet" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: that signature belongs to another billet.]]></phrase>
   <phrase title="cav7_cit_refused_slot_empty" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: choose a signature.]]></phrase>
   <phrase title="cav7_cit_refused_template_undeletable" version_id="1010070" version_string="1.1.0"><![CDATA[A template with a published or retired version can't be deleted.]]></phrase>

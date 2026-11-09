@@ -87,6 +87,7 @@ final class TemplateSchema
             $table->addColumn('state', 'enum')->values(['active', 'retired'])->setDefault('active');
             $table->addColumn('create_user_id', 'int');
             $table->addColumn('create_date', 'int');
+            $table->addColumn('first_used_date', 'int')->setDefault(0);
             $table->addKey(['billet_id', 'state'], 'billet_state');
         });
 

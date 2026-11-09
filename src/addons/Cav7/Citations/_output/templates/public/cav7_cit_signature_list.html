@@ -85,6 +85,8 @@
 								<td class="dataList-cell">
 									<xf:if is="$row.uses">
 										{{ $row.uses == 1 ? phrase('cav7_cit_one_citation') : phrase('cav7_cit_x_citations', {'count': $row.uses}) }}
+									</xf:if>
+									<xf:if is="$row.signature.first_used_date">
 										<div class="u-muted">{{ phrase('cav7_cit_frozen_note') }}</div>
 									<xf:else />
 										<span class="u-muted">{{ phrase('cav7_cit_not_used_yet') }}</span>
@@ -97,7 +99,7 @@
 										<xf:else />
 											<button type="submit" class="button button--small" formaction="{{ link('rosters/citation-signatures/reinstate', $row.signature) }}">{{ phrase('cav7_cit_reinstate') }}</button>
 										</xf:if>
-										<xf:if is="!$row.uses">
+										<xf:if is="!$row.signature.first_used_date">
 											<xf:button href="{{ link('rosters/citation-signatures/edit', $row.signature) }}" icon="edit" class="button--small" overlay="true">{{ phrase('edit') }}</xf:button>
 											<xf:button href="{{ link('rosters/citation-signatures/delete', $row.signature) }}" icon="delete" class="button--small" overlay="true">{{ phrase('delete') }}</xf:button>
 										</xf:if>

@@ -83,7 +83,7 @@ class Signatures extends AbstractManager
         $signature = $this->signature($params);
 
         if (!$this->isPost()) {
-            if (isset($this->repo()->uses()[$signature->signature_id])) {
+            if ($this->repo()->isFrozen($signature->signature_id)) {
                 return $this->error(\XF::phrase('cav7_cit_refused_signature_frozen'));
             }
             return $this->form($signature);

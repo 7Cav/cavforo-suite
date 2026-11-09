@@ -197,7 +197,8 @@ A field on a template where a signature is set. Each one takes one signing bille
 
 **signature**:
 One officer signing as one signing billet, with the printed lines S1 typed for it and an
-ink-only image. Active or retired, and frozen once a grant uses it.
+ink-only image. Active or retired, and frozen once any grant has used it, even after that
+grant is corrected to another signature.
 _Avoid_: signature asset
 
 ### Grants

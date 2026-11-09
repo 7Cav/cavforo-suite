@@ -465,10 +465,22 @@ class Grants extends AbstractService
             && $this->repo()->liveRegimentExists($grant->kind_id, $day, $grant->grant_id);
     }
 
-    /** @param array<string, int> $signatures By slot key. */
+    /**
+     * A correction re-pins, so the pins alone can't tell whether a signature was ever used.
+     * The first-use mark is what freezes a signature, and nothing clears it.
+     *
+     * @param array<string, int> $signatures By slot key.
+     */
     private function pin(Grant $grant, array $signatures): void
     {
         $this->db()->delete('xf_cav7_citation_grant_signature', 'grant_id = ?', $grant->grant_id);
+        if ($signatures !== []) {
+            $this->db()->query(
+                'UPDATE xf_cav7_citation_signature SET first_used_date = ?
+                WHERE first_used_date = 0 AND signature_id IN (' . $this->db()->quote(array_values($signatures)) . ')',
+                \XF::$time
+            );
+        }
 
         foreach ($signatures as $slot => $signatureId) {
             $pin = $this->em()->create('Cav7\Citations:GrantSignature');
