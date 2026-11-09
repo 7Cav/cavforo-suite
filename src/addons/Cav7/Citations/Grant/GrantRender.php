@@ -7,7 +7,10 @@ use Cav7\Citations\Render\DrawResult;
 use Cav7\Citations\Render\ImagickMetrics;
 use Cav7\Citations\Render\LibraryVersions;
 use Cav7\Citations\Render\PinnedSignature;
+use Cav7\Citations\Render\PreviewBox;
 use Cav7\Citations\Render\RenderFailed;
+use Cav7\Citations\Render\SignatureSlot;
+use Cav7\Citations\Render\TextField;
 use Cav7\Citations\Template\FileStore;
 use Cav7\Citations\Template\OverrunLog;
 use Cav7\Citations\Template\TypesettingRows;
@@ -83,7 +86,22 @@ final class GrantRender
             $values->printed($design, $member, $signatures, $version->rankArtFor($values->rankIdFor($design, $member) ?? 0)),
         ));
 
-        return new GrantPreview($this->render->draw($version, $rows)->jpeg, PreviewFit::of($design, $rows, $version->plate_width));
+        $empty = PreviewFit::placeholders($design, $rows);
+        $billets = \XF::em()->findByIds('Cav7\Citations:SigningBillet', array_map(
+            fn (SignatureSlot $slot): int => $slot->billet_id,
+            array_filter($empty, fn (object $field): bool => $field instanceof SignatureSlot),
+        ));
+        $boxes = array_map(fn (TextField|SignatureSlot $field): PreviewBox => new PreviewBox(
+            $field->x,
+            $field->y,
+            $field->w,
+            $field->h,
+            (string) ($field instanceof SignatureSlot
+                ? \XF::phrase('cav7_cit_signature_slot_x', ['billet' => $billets[$field->billet_id]->title ?? ''])
+                : \XF::phrase('cav7_cit_citation_text')),
+        ), $empty);
+
+        return new GrantPreview($this->render->draw($version, $rows, $boxes)->jpeg, PreviewFit::of($design, $rows, $version->plate_width));
     }
 
     /** @param array<int, int> $memberIds Grant member id by the key in the typesetting, when those differ. */

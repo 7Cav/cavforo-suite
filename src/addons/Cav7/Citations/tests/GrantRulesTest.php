@@ -711,6 +711,11 @@ check('fit: a warning says which is the text and its threshold', $fit->below[0][
 check('fit: the text size is reported in points on an 8.5 inch plate', $fit->text === ['size' => 8.52, 'largest' => false]);
 check('fit: at its cap it says so', PreviewFit::of($design, PreviewFit::rows($design, ['body' => new SetField('body', 30.0, false, [])]), 1275)->text['largest']);
 check('fit: no text set reports none', PreviewFit::of($design, PreviewFit::rows($design, []), 1275)->text === null);
+check('fit: an empty signature slot and empty citation text get placeholders', $keys(PreviewFit::placeholders($design, PreviewFit::rows($design, []))) === ['body', 'sig_co']);
+check('fit: a filled one gets none', $keys(PreviewFit::placeholders($design, PreviewFit::rows($design, [
+    'body' => new SetField('body', 30.0, false, [new Line('For valour.', 0.0, 0.0, 50.0, 0.0)]),
+    'sig_co' => new SetField('sig_co', 19.0, false, [], ink: new PlacedImage('h', 0, 0, 10, 10)),
+]))) === []);
 
 // The history's "what changed".
 $names = [14 => 'Quenby.T'];

@@ -25,8 +25,8 @@ final class PreviewFit
     }
 
     /**
-     * A slot with no signature yet draws blank, and so does anything printing a date not yet
-     * whole. The issue itself refuses both, so only a preview ever gets here.
+     * A slot with no signature yet sets nothing, and neither does anything printing a date not
+     * yet whole. The issue itself refuses both, so only a preview ever gets here.
      *
      * @param array<string, mixed> $signatures By slot key.
      * @return list<TextField|SignatureSlot|RankArtField>
@@ -55,6 +55,22 @@ final class PreviewFit
                 ?? new SetField($field->key, 0.0, false, $field instanceof RankArtField ? null : []);
         }
         return $rows;
+    }
+
+    /**
+     * The empty signature slots and citation text a preview outlines, as the prototype does.
+     *
+     * @param array<string, SetField> $rows By field key, every field of the version.
+     * @return list<TextField|SignatureSlot>
+     */
+    public static function placeholders(Version $version, array $rows): array
+    {
+        return array_values(array_filter($version->fields, fn (object $field): bool => match (true) {
+            $field instanceof SignatureSlot => $rows[$field->key]->ink === null,
+            $field instanceof TextField => $rows[$field->key]->lines === []
+                && in_array('citation_text', FieldDependencies::of($field, $version)->uses, true),
+            default => false,
+        }));
     }
 
     /** @param array<string, SetField> $rows By field key. */
