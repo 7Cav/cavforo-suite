@@ -5,7 +5,7 @@
 	<xf:set var="$keeps" value="{{ $record.citation_date && !$record.citation_grant_member_id }}" />
 	<xf:set var="$name" value="{$rosterUser.User.username}" />
 	<xf:formrow label="{{ phrase('cav7_cit_citation') }}" hint="{{ phrase('cav7_cit_issued_to_x', {'name': $name}) }}">
-		<div data-xf-init="cav7-citation-picker">
+		<div data-xf-init="cav7-citation-picker" class="{{ ($record.citation_grant_member_id || $record.citation_regiment_grant_id) ? 'cav7Picker--linked' : '' }}">
 			<xf:if is="count($entries) > 3">
 				<xf:textbox class="input--small cav7PickerFilter js-pickerFilter" placeholder="{{ phrase('cav7_cit_filter_placeholder')|for_attr }}" />
 			</xf:if>

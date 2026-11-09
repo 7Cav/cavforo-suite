@@ -63,11 +63,19 @@ namespace Cav7\Citations\Service {
         /** @var list<array{RowKind, int, int}> */
         public array $attached = [];
 
+        /** The grant member the row holds before the save. */
+        public ?int $held = null;
+
         public function saveRefusal(RowKind $kind, int $recordId, int $urlMilpac, int $recordTypeId, bool $hasFile, int $pick, bool $cutover): ?string
         {
             $this->checked[] = [$kind, $recordId, $urlMilpac, $recordTypeId, $hasFile, $pick, $cutover];
 
             return $this->refusal;
+        }
+
+        public function heldPick(RowKind $kind, int $recordId): ?int
+        {
+            return $this->held;
         }
 
         public function attach(RowKind $kind, int $recordId, int $grantMemberId): void
@@ -302,6 +310,9 @@ namespace Cav7\Citations\Tests {
 
     $both = saved(['record_id' => 40, 'citation_pick' => '5', 'delete_image' => 1]);
     check('a pick and the delete box end on the pick', $both->deleteImageAtSave === true && $both->links->attached === [[RowKind::Award, 40, 5]]);
+
+    $own = saved(['record_id' => 40, 'citation_pick' => '5', 'delete_image' => 1], fn (Roster $r) => $r->links->held = 5);
+    check('the delete box with the row\'s own pick ends on no citation', $own->deleteImageAtSave === true && $own->links->attached === []);
 
     $file = saved(['record_id' => 40], fn (Roster $r) => $r->file = true);
     check('a file is checked with no pick', $file->links->checked[0][4] === true && $file->links->checked[0][5] === 0);

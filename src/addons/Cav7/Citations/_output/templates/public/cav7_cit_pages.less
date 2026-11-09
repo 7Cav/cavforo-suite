@@ -163,6 +163,12 @@
 	margin-bottom: @xf-paddingLarge;
 }
 
+// No citation is how a linked row drops its citation, so the vendor's delete box goes.
+form:has(.cav7Picker--linked) label.iconic:has(> input[name="delete_image"])
+{
+	display: none;
+}
+
 .overlay:has(.cav7FieldEditor)
 {
 	max-width: 1100px;

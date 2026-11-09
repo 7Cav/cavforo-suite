@@ -106,6 +106,11 @@ class Roster extends XFCP_Roster
             $this->request->set('delete_image', 1);
         }
 
+        // The radio defaults to the row's own pick, so the delete box beside it means No citation.
+        if ($pick !== 0 && $this->filter('delete_image', 'bool') && $pick === $links->heldPick($kind, $recordId)) {
+            $pick = 0;
+        }
+
         $reply = $save();
         if ($pick !== 0 && $reply instanceof Redirect) {
             $links->attach($kind, $rosterUser->newRow?->record_id ?? $recordId, $pick);

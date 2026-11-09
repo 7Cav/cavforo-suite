@@ -91,6 +91,12 @@ class GrantLinks extends AbstractService implements RowClearer
         });
     }
 
+    /** The grant member a row holds, null for a new, missing or unlinked row. */
+    public function heldPick(RowKind $kind, int $recordId): ?int
+    {
+        return $recordId !== 0 ? $this->row($kind, $recordId)?->citation_grant_member_id : null;
+    }
+
     /** @throws PrintableException */
     public function remove(RowKind $kind, int $recordId): void
     {
