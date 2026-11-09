@@ -74,10 +74,11 @@ final class PreviewFit
     }
 
     /** @param array<string, SetField> $rows By field key. */
-    public static function of(Version $version, array $rows, int $plateWidth): self
+    public static function of(Version $version, array $rows, int $plateWidth, int $plateHeight): self
     {
-        // The plate prints 8.5 inches wide.
-        $pt = fn (float $px): float => $plateWidth > 0 ? $px * 72 * 8.5 / $plateWidth : 0.0;
+        // The plate's short side prints 8.5 inches, whichever way up it is.
+        $short = min($plateWidth, $plateHeight);
+        $pt = fn (float $px): float => $short > 0 ? $px * 72 * 8.5 / $short : 0.0;
 
         $below = [];
         $text = null;

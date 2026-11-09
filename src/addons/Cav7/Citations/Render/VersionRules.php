@@ -32,7 +32,8 @@ final class VersionRules
      * Plate size 0 means no plate. Duplicate keys never reach here, since a draft can't save them.
      *
      * @param list<string> $kinds As `award:<id>` or `record_type:<id>`.
-     * @param bool $regiment The version serves a regiment-grant award. A PUC plate carries no slot.
+     * @param list<string> $regimentKinds The regiment-grant awards, as kinds. A PUC plate carries no slot,
+     *     but a version that also serves a member award still needs one.
      * @param list<int> $billetIds Every signing billet that exists.
      * @param array<string, string> $earlierScopes Input key => scope on the template's earlier versions.
      * @return list<array{field: string, rule: string}>
@@ -42,7 +43,7 @@ final class VersionRules
         int $plateWidth,
         int $plateHeight,
         array $kinds,
-        bool $regiment,
+        array $regimentKinds,
         array $billetIds,
         array $earlierScopes,
     ): array {
@@ -57,7 +58,7 @@ final class VersionRules
             $problems[] = ['field' => '', 'rule' => self::KIND_OUTSIDE_GENERATOR];
         }
 
-        if (!$regiment && array_filter($version->fields, fn (object $field): bool => $field instanceof SignatureSlot) === []) {
+        if (array_diff($kinds, $regimentKinds) !== [] && array_filter($version->fields, fn (object $field): bool => $field instanceof SignatureSlot) === []) {
             $problems[] = ['field' => '', 'rule' => self::NO_SIGNATURE_SLOT];
         }
 

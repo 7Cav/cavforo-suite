@@ -101,7 +101,7 @@ final class GrantRender
                 : \XF::phrase('cav7_cit_citation_text')),
         ), $empty);
 
-        return new GrantPreview($this->render->draw($version, $rows, $boxes)->jpeg, PreviewFit::of($design, $rows, $version->plate_width));
+        return new GrantPreview($this->render->draw($version, $rows, $boxes)->jpeg, PreviewFit::of($design, $rows, $version->plate_width, $version->plate_height));
     }
 
     /** @param array<int, int> $memberIds Grant member id by the key in the typesetting, when those differ. */

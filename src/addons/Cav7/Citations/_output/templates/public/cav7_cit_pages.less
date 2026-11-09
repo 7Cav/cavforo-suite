@@ -163,8 +163,9 @@
 	margin-bottom: @xf-paddingLarge;
 }
 
-// No citation is how a linked row drops its citation, so the vendor's delete box goes.
-form:has(.cav7Picker--linked) label.iconic:has(> input[name="delete_image"])
+// No citation is how a linked row drops its citation, so the vendor's delete box goes. A record
+// refiled as Disciplinary hides the picker, and the delete box comes back as its way out.
+form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic:has(> input[name="delete_image"])
 {
 	display: none;
 }

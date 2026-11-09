@@ -30,7 +30,7 @@ class Publication extends AbstractService
             $draft->plate_width,
             $draft->plate_height,
             $draft->kinds(),
-            array_intersect($draft->kinds(), $regimentKinds) !== [],
+            $regimentKinds,
             $billetIds,
             $this->earlierScopes($draft),
         );

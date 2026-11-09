@@ -22,11 +22,21 @@ final class ImagickDrawer
             // A greyscale plate would otherwise grey out colour art composited onto it.
             $image->transformImageColorspace(\Imagick::COLORSPACE_SRGB);
 
-            if ($plan->lines !== []) {
-                $image->drawImage(self::textDraw($plan));
+            // Runs of lines share one draw, flushed before each image so field order holds.
+            $text = null;
+            foreach ($plan->steps as $step) {
+                if ($step instanceof PlannedLine) {
+                    self::annotate($text ??= self::textDraw(), $step);
+                    continue;
+                }
+                if ($text !== null) {
+                    $image->drawImage($text);
+                    $text = null;
+                }
+                self::composite($image, $step);
             }
-            foreach ($plan->images as $planned) {
-                self::composite($image, $planned);
+            if ($text !== null) {
+                $image->drawImage($text);
             }
             if ($plan->previewBoxes !== []) {
                 $image->drawImage(self::previewDraw($image, $plan->previewBoxes));
@@ -38,21 +48,22 @@ final class ImagickDrawer
         }
     }
 
-    private static function textDraw(DrawPlan $plan): \ImagickDraw
+    private static function textDraw(): \ImagickDraw
     {
         $draw = new \ImagickDraw();
         $draw->setTextAntialias(true);
         $draw->setTextEncoding('UTF-8');
-
-        foreach ($plan->lines as $planned) {
-            $line = $planned->line;
-            $draw->setFont($planned->fontPath);
-            $draw->setFontSize($planned->size);
-            $draw->setFillColor($planned->colour);
-            $draw->setTextInterwordSpacing($line->iw);
-            $draw->annotation($line->x, $line->y, $line->t);
-        }
         return $draw;
+    }
+
+    private static function annotate(\ImagickDraw $draw, PlannedLine $planned): void
+    {
+        $line = $planned->line;
+        $draw->setFont($planned->fontPath);
+        $draw->setFontSize($planned->size);
+        $draw->setFillColor($planned->colour);
+        $draw->setTextInterwordSpacing($line->iw);
+        $draw->annotation($line->x, $line->y, $line->t);
     }
 
     /** @param list<PreviewBox> $boxes */
