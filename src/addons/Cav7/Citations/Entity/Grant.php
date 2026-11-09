@@ -21,7 +21,7 @@ use XF\Mvc\Entity\Structure;
  * @property string $kind_title copied at issue, so a rename or delete never reaches it
  * @property int $template_version_id
  * @property int $grant_date midnight UTC of the grant's day
- * @property string|null $citation_text null on a generic citation
+ * @property string|null $citation_text null when its version takes no citation text
  * @property array<string, string> $input_values grant-scoped inputs by key
  * @property int $revision
  * @property string|null $url_token regiment grants only

@@ -308,7 +308,7 @@ class Grants extends AbstractController
             'grantInputs' => $this->printedInputs($design, 'grant', $grant->input_values),
             'memberInputs' => $form['memberInputs'],
             'memberRank' => $design->rank_scope === 'member',
-            'generic' => $grant->citation_text === null,
+            'generic' => FieldDependencies::generic($design),
             'genericText' => $form['genericText'],
             'members' => $members,
             'regimentUrl' => $grant->is_regiment ? $grant->renderUrl() : '',

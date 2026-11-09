@@ -226,6 +226,12 @@ check(
 );
 $regiment = version([textDefinition(['pattern' => 'THE REGIMENT']), signatureDefinition()], [], 'none');
 check('a version fit for a regiment grant has no member fields', FieldDependencies::memberFields($regiment) === []);
+check(
+    'generic is a version with no citation text and nothing per member, so a named class certificate is not',
+    FieldDependencies::generic($regiment) && FieldDependencies::generic(version([]))
+        && !FieldDependencies::generic($bsm)
+        && !FieldDependencies::generic(version([textDefinition(['pattern' => 'PRIVATE {name}']), signatureDefinition()], [], 'none'))
+);
 
 // G-33, G-34.
 foreach ([
