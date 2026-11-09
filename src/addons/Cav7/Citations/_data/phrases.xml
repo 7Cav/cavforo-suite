@@ -266,7 +266,6 @@
   <phrase title="cav7_cit_refused_undecodable_image" version_id="1010070" version_string="1.1.0"><![CDATA[That image can't be decoded.]]></phrase>
   <phrase title="cav7_cit_refused_version_frozen" version_id="1010070" version_string="1.1.0"><![CDATA[Published and retired versions can't be edited.]]></phrase>
   <phrase title="cav7_cit_refused_version_needs_member" version_id="1000070" version_string="1.0.0"><![CDATA[That template version prints something about a member, so a regiment grant can't use it.]]></phrase>
-  <phrase title="cav7_cit_refused_version_not_current" version_id="1000070" version_string="1.0.0"><![CDATA[The template has a newer version than the one this form showed. Check the form and submit again.]]></phrase>
   <phrase title="cav7_cit_refused_version_not_published" version_id="1000070" version_string="1.0.0"><![CDATA[That template version isn't published.]]></phrase>
   <phrase title="cav7_cit_refused_version_undeletable" version_id="1010070" version_string="1.1.0"><![CDATA[Only a draft can be deleted.]]></phrase>
   <phrase title="cav7_cit_refused_wrong_template" version_id="1000070" version_string="1.0.0"><![CDATA[A grant moves only between versions of its own template.]]></phrase>

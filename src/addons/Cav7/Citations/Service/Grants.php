@@ -63,7 +63,6 @@ class Grants extends AbstractService
             $design,
             $version->state,
             $version->kinds(),
-            $this->em()->getRepository('Cav7\Citations:Template')->currentVersion($version->template_id)?->template_version_id,
             $kindTitle,
             $regiment && $day !== null && $this->repo()->liveRegimentExists($request->kindId, $day),
             $actor,

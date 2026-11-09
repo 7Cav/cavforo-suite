@@ -18,7 +18,6 @@ final class GrantRules
     public const REGIMENT_NEEDS_PERMISSION = 'regiment_needs_permission';
     public const NO_SUCH_KIND = 'no_such_kind';
     public const VERSION_NOT_PUBLISHED = 'version_not_published';
-    public const VERSION_NOT_CURRENT = 'version_not_current';
     public const KIND_NOT_SERVED = 'kind_not_served';
     public const NO_MEMBERS = 'no_members';
     public const DUPLICATE_MEMBER = 'duplicate_member';
@@ -98,7 +97,6 @@ final class GrantRules
     /**
      * @param string $versionState The state of the version the form showed.
      * @param list<string> $kinds Kinds the version serves, as `award:<id>` or `record_type:<id>`.
-     * @param int|null $currentVersionId The template's current version, which a submit pins.
      * @param string|null $kindTitle Null when the award or record type doesn't exist.
      * @param bool $liveDuplicate A live regiment grant already holds this award and date.
      * @param array<int, int> $billets Billet id by signature id.
@@ -111,7 +109,6 @@ final class GrantRules
         Version $version,
         string $versionState,
         array $kinds,
-        ?int $currentVersionId,
         ?string $kindTitle,
         bool $liveDuplicate,
         Actor $actor,
@@ -129,8 +126,6 @@ final class GrantRules
         }
         if ($versionState !== VersionLifecycle::PUBLISHED) {
             $problems[] = self::problem(self::VERSION_NOT_PUBLISHED);
-        } elseif ($request->templateVersionId !== $currentVersionId) {
-            $problems[] = self::problem(self::VERSION_NOT_CURRENT);
         }
         if (!in_array("{$request->kindType}:{$request->kindId}", $kinds, true)) {
             $problems[] = self::problem(self::KIND_NOT_SERVED);

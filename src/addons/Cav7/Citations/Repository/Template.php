@@ -11,7 +11,8 @@ use XF\Mvc\Entity\Repository;
 class Template extends Repository
 {
     /**
-     * What a grant form lists for a kind, each with its Template for the title.
+     * What a grant form lists for a kind, each with its Template for the title, by template
+     * and newest first.
      *
      * @param 'award'|'record_type' $kindType
      * @param bool $regiment True for a regiment-grant award: only versions that need no member.
@@ -27,6 +28,8 @@ class Template extends Repository
         $versions = $this->finder('Cav7\Citations:TemplateVersion')
             ->where('template_version_id', $ids)
             ->with('Template')
+            ->order('Template.title')
+            ->order('version_number', 'DESC')
             ->fetch()
             ->toArray();
 
@@ -37,13 +40,13 @@ class Template extends Repository
     }
 
     /**
-     * Every kind a current version serves, which is what the grant form can list.
+     * Every kind a published version serves, which is what the grant form can list.
      *
      * @return list<string> As `award:<id>` or `record_type:<id>`.
      */
     public function offeredKinds(): array
     {
-        $kinds = array_merge([], ...array_column(TemplateChoices::current($this->versionFacts()), 'kinds'));
+        $kinds = array_merge([], ...array_column($this->versionFacts(), 'kinds'));
 
         return array_values(array_unique($kinds));
     }
@@ -67,7 +70,7 @@ class Template extends Repository
         return array_filter($versions, fn (TemplateVersion $version): bool => in_array($kind, $version->kinds(), true));
     }
 
-    /** The version a submit pins, and what a form must still match when it comes back. */
+    /** The template's newest published version. */
     public function currentVersion(int $templateId): ?TemplateVersion
     {
         $current = TemplateChoices::current($this->versionFacts())[$templateId] ?? null;

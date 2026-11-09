@@ -117,13 +117,12 @@ $other = versionFacts(21, 2, 1, $published, ['award:5']);
 $retiredOnly = versionFacts(31, 3, 1, $retired, ['award:5']);
 
 foreach ([
-    'the newest published version is the one offered' => [[$v1, $v2], 'award:5', [12]],
-    'version order in the list doesn\'t matter' => [[$v2, $v1], 'award:5', [12]],
-    'an older published version is not offered, even for a kind only it serves' => [[$v1, $v2], 'award:6', []],
+    'every published version is offered' => [[$v1, $v2], 'award:5', [11, 12]],
+    'an older published version is offered for a kind only it serves' => [[$v1, $v2], 'award:6', [11]],
     'a draft is never offered' => [[$v2, $v3Draft], 'award:7', []],
     'several templates can serve one kind' => [[$v2, $other], 'award:5', [12, 21]],
     'one version can serve several kinds' => [[$v1], 'award:6', [11]],
-    'retiring the newest makes the next published current' => [[$v1, ['state' => $retired] + $v2], 'award:6', [11]],
+    'retiring a version stops its offer' => [[$v1, ['state' => $retired] + $v2], 'award:5', [11]],
     'a template with only a retired version offers nothing' => [[$retiredOnly], 'award:5', []],
     'a kind with no published template has nothing to list' => [[$v2], 'record_type:5', []],
 ] as $label => [$versions, $kind, $expected]) {
