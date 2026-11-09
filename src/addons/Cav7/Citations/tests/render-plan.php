@@ -25,6 +25,7 @@ use Cav7\Citations\Render\LibraryVersions;
 use Cav7\Citations\Render\Line;
 use Cav7\Citations\Render\OverrunCheck;
 use Cav7\Citations\Render\PlacedImage;
+use Cav7\Citations\Render\PlannedLine;
 use Cav7\Citations\Render\Plate;
 use Cav7\Citations\Render\RenderFailed;
 use Cav7\Citations\Render\SetField;
@@ -96,20 +97,25 @@ $plan = fn (array $rows, array $fonts = ['serif' => '/f/serif.ttf', 'bold' => '/
 );
 
 $built = $plan($rows);
+$lines = array_values(array_filter($built->steps, fn (object $step): bool => $step instanceof PlannedLine));
 check(
     'lines take their font, size and colour from the field and row',
-    array_map(fn ($p): array => [$p->fieldKey, $p->fontPath, $p->size, $p->colour], $built->lines) === [
+    array_map(fn ($p): array => [$p->fieldKey, $p->fontPath, $p->size, $p->colour], $lines) === [
         ['body', '/f/serif.ttf', 24.5, '#111111'],
         ['body', '/f/serif.ttf', 24.5, '#111111'],
         ['sig', '/f/bold.ttf', 18.0, '#222222'],
     ]
 );
-check('lines keep their stored position', $built->lines[1]->line == new Line('two', 100.0, 170.0, 299.0, 3.5));
-check('images follow field order, not row order', array_map(fn ($p): string => $p->path, $built->images) === ['/files/inkhash.png', '/files/arthash.png']);
-check('a rank with no art plans no image', count($built->images) === 2);
+check('lines keep their stored position', $lines[1]->line == new Line('two', 100.0, 170.0, 299.0, 3.5));
+// The prototype draws a slot's ink before its name lines. A rank with no art plans no image.
+check(
+    'text and images draw in field order, not row order',
+    array_map(fn (object $step): string => $step instanceof PlannedLine ? $step->line->t : $step->path, $built->steps)
+        === ['one', 'two', '/files/inkhash.png', 'Silas', '/files/arthash.png']
+);
 check('a version with no fields is a plate alone', (function (): bool {
     $plan = DrawPlan::build(new Version([], [], 'none'), [], new Plate('/p.jpg', 'jpeg'), [], fn (string $h): string => $h);
-    return $plan->lines === [] && $plan->images === [] && $plan->plate->format === 'jpeg';
+    return $plan->steps === [] && $plan->plate->format === 'jpeg';
 })());
 
 foreach ([
