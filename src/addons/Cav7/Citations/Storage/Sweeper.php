@@ -178,16 +178,17 @@ final class Sweeper
 
     // A take-in moved this aside and died. A new upload clears the reference, so with none
     // the row has taken nothing in since and the file goes back. Otherwise only a referenced
-    // blob with the same bytes lets it be deleted, so no pass can drop the last copy.
+    // blob whose file holds the same bytes lets it be deleted, so no pass can drop the last copy.
     private function recoverAside(SweepProgress $p, RowKind $kind, int $shard, string $name, int $recordId, array $entry, string $aside): void
     {
         $key = "{$kind->legacyTree()}/$shard/$name";
         $blobId = $this->rows->facts($kind, $recordId)['citation_blob_id'] ?? null;
+        $blob = $blobId !== null ? $this->blobs->byId($blobId) : null;
         $hash = $this->disk->hash($aside);
 
         if ($blobId === null && $this->disk->moveIfFree($aside, $key)) {
             $this->visitForTakeIn($p, $kind, $shard, $name, $entry);
-        } elseif ($blobId !== null && $hash !== null && ($this->blobs->byId($blobId)['content_hash'] ?? null) === $hash) {
+        } elseif ($blob !== null && $hash !== null && $blob['content_hash'] === $hash && $this->disk->hash(BlobFile::keyOf($blob)) === $hash) {
             if (!$this->disk->delete($aside)) {
                 $this->damage->report('legacy file could not be deleted', $aside, "{$kind->value}:$recordId");
             }

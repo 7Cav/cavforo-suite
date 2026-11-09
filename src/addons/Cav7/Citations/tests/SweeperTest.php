@@ -154,6 +154,22 @@ check(
     'one older than the blob its row points at is kept and reported',
     $stage->exists($aside($stale)) && !$stage->exists($stale) && damageMentions($stage, 'legacy file kept aside') && $run->damage === 1
 );
+foreach ([
+    'missing' => fn (string $path) => unlink($path),
+    'damaged' => fn (string $path) => file_put_contents($path, png(21, 21)),
+] as $what => $harm) {
+    $stage = new Stage();
+    $blob = $stage->blob(png(17, 17));
+    $stage->row($award, 1, 500, (int) $blob['blob_id']);
+    $key = $stage->legacyFile($award, 1, png(17, 17));
+    rename($stage->disk->path($key), $stage->disk->path($aside($key)));
+    $harm($stage->disk->path(BlobFile::keyOf($blob)));
+    $stage->sweep();
+    check(
+        "one whose blob file is $what is kept and reported",
+        $stage->exists($aside($key)) && damageMentions($stage, 'legacy file kept aside')
+    );
+}
 
 // Damage: each stays where it is.
 $stage = new Stage();
