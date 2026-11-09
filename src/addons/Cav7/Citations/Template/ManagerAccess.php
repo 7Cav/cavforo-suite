@@ -30,7 +30,7 @@ final class ManagerAccess
             'versions/movefield', 'versions/saverankart', 'versions/delete' => $actor->canEditDrafts(),
 
             'templates/savepaygrades',
-            'versions/publish', 'versions/retire', 'versions/reinstate',
+            'versions/publish', 'versions/retire',
             'signatures/add', 'signatures/edit', 'signatures/delete', 'signatures/retire', 'signatures/reinstate',
             'signatures/addbillet', 'signatures/editbillet', 'signatures/deletebillet' => $actor->canPublish(),
 

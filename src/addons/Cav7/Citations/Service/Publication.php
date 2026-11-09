@@ -67,15 +67,6 @@ class Publication extends AbstractService
         $version->save();
     }
 
-    /** @throws PrintableException */
-    public function unretire(TemplateVersion $version): void
-    {
-        self::assertState($version, VersionLifecycle::RETIRED);
-
-        $version->bulkSet(['state' => VersionLifecycle::PUBLISHED, 'retire_date' => 0]);
-        $version->save();
-    }
-
     /** A draft may become published, but only through publish(), which checks it and pins its fonts. */
     private static function assertState(TemplateVersion $version, string $state): void
     {

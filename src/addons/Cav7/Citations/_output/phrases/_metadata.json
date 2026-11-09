@@ -1655,18 +1655,6 @@
         "version_string": "1.2.0",
         "hash": "07b1cc3f1609931826abec8174e33b77"
     },
-    "cav7_cit_reinstate_explain.txt": {
-        "global_cache": false,
-        "version_id": 1020070,
-        "version_string": "1.2.0",
-        "hash": "967536abd4da4e82b2ab876a44ec692c"
-    },
-    "cav7_cit_reinstate_version_x.txt": {
-        "global_cache": false,
-        "version_id": 1020070,
-        "version_string": "1.2.0",
-        "hash": "10d59d984bb239f089651383bffa8758"
-    },
     "cav7_cit_remove_a_member.txt": {
         "global_cache": false,
         "version_id": 1010070,

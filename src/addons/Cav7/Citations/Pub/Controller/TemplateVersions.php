@@ -347,27 +347,6 @@ class TemplateVersions extends AbstractManager
         );
     }
 
-    public function actionReinstate(ParameterBag $params): AbstractReply
-    {
-        $version = $this->version($params);
-
-        if ($this->isPost()) {
-            $this->publication()->unretire($version);
-
-            return $this->redirect(
-                $this->buildLink('rosters/citation-templates', $version->Template),
-                \XF::phrase('cav7_cit_version_x_published', ['number' => $version->version_number])
-            );
-        }
-
-        return $this->confirm(
-            \XF::phrase('cav7_cit_reinstate_version_x', ['number' => $version->version_number]),
-            \XF::phrase('cav7_cit_reinstate_explain', ['number' => $version->version_number, 'title' => $version->Template->title]),
-            $this->buildLink('rosters/citation-versions/reinstate', $version),
-            \XF::phrase('cav7_cit_reinstate')
-        );
-    }
-
     public function actionMoveCitations(ParameterBag $params): AbstractReply
     {
         $version = $this->version($params);

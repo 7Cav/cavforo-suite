@@ -276,8 +276,6 @@
   <phrase title="cav7_cit_regiment_note" version_id="1010070" version_string="1.1.0"><![CDATA[This citation goes to the whole regiment. Every milpac carries a row for it, kept by the PUC sync.]]></phrase>
   <phrase title="cav7_cit_regiment_note_short" version_id="1020070" version_string="1.2.0"><![CDATA[(regiment)]]></phrase>
   <phrase title="cav7_cit_reinstate" version_id="1020070" version_string="1.2.0"><![CDATA[Reinstate]]></phrase>
-  <phrase title="cav7_cit_reinstate_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Clerks will be offered version {number} of <strong>{title}</strong> again if it is the newest published version.]]></phrase>
-  <phrase title="cav7_cit_reinstate_version_x" version_id="1020070" version_string="1.2.0"><![CDATA[Reinstate version {number}?]]></phrase>
   <phrase title="cav7_cit_remove_a_member" version_id="1010070" version_string="1.1.0"><![CDATA[Remove a member]]></phrase>
   <phrase title="cav7_cit_remove_explain" version_id="1010070" version_string="1.1.0"><![CDATA[The citation comes off every row listed, and the member can only come back as a new citation.]]></phrase>
   <phrase title="cav7_cit_remove_member" version_id="1010070" version_string="1.1.0"><![CDATA[Remove member]]></phrase>

@@ -67,7 +67,7 @@ foreach ([
     'publish writes its whole set in one save' => [$draft, $published, ['state', 'font_hashes', 'publish_user_id', 'publish_date'], null],
     'a draft can\'t be retired' => [$draft, $retired, ['state', 'retire_date'], VersionLifecycle::BAD_TRANSITION],
     'retire touches state and date' => [$published, $retired, ['state', 'retire_date'], null],
-    'a retired version goes back' => [$retired, $published, ['state', 'retire_date'], null],
+    'a retired version stays retired' => [$retired, $published, ['state', 'retire_date'], VersionLifecycle::BAD_TRANSITION],
     'a published version can\'t go back to draft' => [$published, $draft, ['state'], VersionLifecycle::BAD_TRANSITION],
     'a retired version can\'t go back to draft' => [$retired, $draft, ['state'], VersionLifecycle::BAD_TRANSITION],
     'a published plate is frozen' => [$published, $published, ['plate_hash'], VersionLifecycle::VERSION_FROZEN],
@@ -274,11 +274,11 @@ foreach ([
     [['versions/preview'], $previews, $previewsNot],
     [['templates/add', 'templates/newdraft', 'versions/uploadplate', 'versions/settings', 'versions/savefield',
         'versions/removefield', 'versions/movefield', 'versions/saverankart', 'versions/delete'], $edits, $editsNot],
-    [['templates/savepaygrades', 'versions/publish', 'versions/retire', 'versions/reinstate', 'signatures/add', 'signatures/edit',
+    [['templates/savepaygrades', 'versions/publish', 'versions/retire', 'signatures/add', 'signatures/edit',
         'signatures/delete', 'signatures/retire', 'signatures/reinstate', 'signatures/addbillet', 'signatures/editbillet',
         'signatures/deletebillet'], $publishes, $publishesNot],
     [['versions/movecitations'], [$issue, $regiment], [$none, $view, $remove, $edit, $publish]],
-    [['templates/anythingelse', 'versions/anythingelse', 'signatures/anythingelse', 'signatures/publish', 'versions/add'], [], [$view, $issue, $remove, $regiment, $edit, $publish]],
+    [['templates/anythingelse', 'versions/anythingelse', 'signatures/anythingelse', 'signatures/publish', 'versions/add', 'versions/reinstate'], [], [$view, $issue, $remove, $regiment, $edit, $publish]],
 ] as [$actions, $allowed, $refused]) {
     foreach ($actions as $action) {
         [$page, $name] = explode('/', $action);

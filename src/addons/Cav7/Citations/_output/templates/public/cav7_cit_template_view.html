@@ -59,12 +59,8 @@
 									<xf:if is="$can.move AND $pinned AND $published > ($version.state == 'published' ? 1 : 0)">
 										<xf:button href="{{ link('rosters/citation-versions/move-citations', $version) }}" class="button--small">{{ phrase('cav7_cit_move_citations') }}</xf:button>
 									</xf:if>
-									<xf:if is="$can.publish">
-										<xf:if is="$version.state == 'published'">
-											<xf:button href="{{ link('rosters/citation-versions/retire', $version) }}" class="button--small" overlay="true">{{ phrase('cav7_cit_retire') }}</xf:button>
-										<xf:else />
-											<xf:button href="{{ link('rosters/citation-versions/reinstate', $version) }}" class="button--small" overlay="true">{{ phrase('cav7_cit_reinstate') }}</xf:button>
-										</xf:if>
+									<xf:if is="$can.publish AND $version.state == 'published'">
+										<xf:button href="{{ link('rosters/citation-versions/retire', $version) }}" class="button--small" overlay="true">{{ phrase('cav7_cit_retire') }}</xf:button>
 									</xf:if>
 								</xf:if>
 							</td>
