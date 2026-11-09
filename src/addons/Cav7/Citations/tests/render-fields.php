@@ -285,12 +285,22 @@ foreach ([
         [['recipient', VersionRules::NO_CATALOG_FONT], ['recipient', VersionRules::DOES_NOT_PARSE]],
     ],
 ] as $label => [$definitions, $scope, $earlier, $expected]) {
-    $problems = VersionRules::publishProblems(version($definitions, $inputs, $scope), 1275, 1650, 1, [1], $earlier);
+    $problems = VersionRules::publishProblems(version($definitions, $inputs, $scope), 1275, 1650, ['award:5'], [1], $earlier);
     $got = array_map(fn (array $problem): array => [$problem['field'], $problem['rule']], $problems);
     check("publish: $label", $got === $expected, json_encode($problems));
 }
 
-$bare = VersionRules::publishProblems(version([textDefinition(['x' => 5000])], [], 'member'), 0, 0, 0, [], []);
+foreach ([
+    'awards, Promotion and Graduation records are the generator\'s' => [
+        ['award:5', 'record_type:' . VersionRules::PROMOTION, 'record_type:' . VersionRules::GRADUATION], [],
+    ],
+    'any other record type is outside it' => [['award:5', 'record_type:4'], [VersionRules::KIND_OUTSIDE_GENERATOR]],
+] as $label => [$kinds, $expected]) {
+    $problems = VersionRules::publishProblems(version([signatureDefinition()], [], 'none'), 1275, 1650, $kinds, [1], []);
+    check("publish: $label", array_column($problems, 'rule') === $expected, json_encode($problems));
+}
+
+$bare = VersionRules::publishProblems(version([textDefinition(['x' => 5000])], [], 'member'), 0, 0, [], [], []);
 check(
     'no plate and no kind are the version\'s own, and no plate means no box is measured',
     $bare === [['field' => '', 'rule' => VersionRules::NO_PLATE], ['field' => '', 'rule' => VersionRules::NO_KIND]],
@@ -298,7 +308,7 @@ check(
 );
 check(
     'every refusal shows at once',
-    count(VersionRules::publishProblems(version([artDefinition(), signatureDefinition(['font' => 'x', 'billet_id' => 9])], [], 'none'), 0, 0, 0, [1], [])) === 5
+    count(VersionRules::publishProblems(version([artDefinition(), signatureDefinition(['font' => 'x', 'billet_id' => 9])], [], 'none'), 0, 0, [], [1], [])) === 5
 );
 
 exit($failures === 0 ? 0 : 1);

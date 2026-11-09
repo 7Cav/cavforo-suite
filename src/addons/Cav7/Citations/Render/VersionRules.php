@@ -7,6 +7,7 @@ final class VersionRules
 {
     public const NO_PLATE = 'no_plate';
     public const NO_KIND = 'no_kind';
+    public const KIND_OUTSIDE_GENERATOR = 'kind_outside_generator';
     public const BOX_OFF_PLATE = 'box_off_plate';
     public const NO_BILLET = 'no_billet';
     public const NO_CATALOG_FONT = 'no_catalog_font';
@@ -18,12 +19,18 @@ final class VersionRules
     public const RANK_WITHOUT_SCOPE = 'rank_without_scope';
     public const NARROW_FONT_VALUE = 'narrow_font_value';
 
+    // The record types the generator covers, by id on this install. Any other type, and any
+    // added later, stays out until someone adds it here on purpose. Every award is in.
+    public const PROMOTION = 1;
+    public const GRADUATION = 9;
+
     private const RANK_NAMES = ['rank', 'pay_grade', 'rank_abbr'];
     private const DATE_NAMES = ['day', 'day_ordinal', 'month', 'year'];
 
     /**
      * Plate size 0 means no plate. Duplicate keys never reach here, since a draft can't save them.
      *
+     * @param list<string> $kinds As `award:<id>` or `record_type:<id>`.
      * @param list<int> $billetIds Every signing billet that exists.
      * @param array<string, string> $earlierScopes Input key => scope on the template's earlier versions.
      * @return list<array{field: string, rule: string}>
@@ -32,7 +39,7 @@ final class VersionRules
         Version $version,
         int $plateWidth,
         int $plateHeight,
-        int $kinds,
+        array $kinds,
         array $billetIds,
         array $earlierScopes,
     ): array {
@@ -40,8 +47,11 @@ final class VersionRules
         if ($plateWidth === 0) {
             $problems[] = ['field' => '', 'rule' => self::NO_PLATE];
         }
-        if ($kinds === 0) {
+        if ($kinds === []) {
             $problems[] = ['field' => '', 'rule' => self::NO_KIND];
+        }
+        if (array_filter($kinds, fn (string $kind): bool => !self::generated($kind)) !== []) {
+            $problems[] = ['field' => '', 'rule' => self::KIND_OUTSIDE_GENERATOR];
         }
 
         foreach ($version->fields as $field) {
@@ -57,6 +67,13 @@ final class VersionRules
         }
 
         return array_merge($problems, self::patternProblems($version));
+    }
+
+    /** Whether a kind is one the generator covers: any award, or a Promotion or Graduation record. */
+    public static function generated(string $kind): bool
+    {
+        return str_starts_with($kind, 'award:')
+            || in_array($kind, ['record_type:' . self::PROMOTION, 'record_type:' . self::GRADUATION], true);
     }
 
     /**

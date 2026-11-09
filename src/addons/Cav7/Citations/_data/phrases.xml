@@ -223,6 +223,7 @@
   <phrase title="cav7_cit_refused_input_required" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: this value is required.]]></phrase>
   <phrase title="cav7_cit_refused_input_scope_changed" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: an earlier version gave this input another scope. A key means one thing across versions.]]></phrase>
   <phrase title="cav7_cit_refused_kind_not_served" version_id="1000070" version_string="1.0.0"><![CDATA[That template version doesn't serve this award or record type.]]></phrase>
+  <phrase title="cav7_cit_refused_kind_outside_generator" version_id="1020070" version_string="1.2.0"><![CDATA[A template can serve awards, Promotion records and Graduation records, and no other record type.]]></phrase>
   <phrase title="cav7_cit_refused_member_grant_needs_permission" version_id="1020070" version_string="1.2.0"><![CDATA[Moving a member citation needs Issue and correct grants to members.]]></phrase>
   <phrase title="cav7_cit_refused_name_required" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: this template prints a name, so enter one.]]></phrase>
   <phrase title="cav7_cit_refused_narrow_font_value" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: this font lacks common accented letters, so it can only set dates and literal text.]]></phrase>

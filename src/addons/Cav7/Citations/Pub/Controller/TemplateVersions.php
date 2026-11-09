@@ -9,6 +9,7 @@ use Cav7\Citations\Render\FontCatalog;
 use Cav7\Citations\Render\PatternParser;
 use Cav7\Citations\Render\RankArtField;
 use Cav7\Citations\Render\RenderFailed;
+use Cav7\Citations\Render\VersionRules;
 use Cav7\Citations\Repository\Template as TemplateRepository;
 use Cav7\Citations\Service\Drafts;
 use Cav7\Citations\Service\Grants as GrantService;
@@ -100,6 +101,9 @@ class TemplateVersions extends AbstractManager
         }
 
         $posted = $this->filter(['rank_scope' => 'str', 'kinds' => 'array-str', 'inputs' => 'array']);
+        if (array_filter($posted['kinds'], fn (string $kind): bool => !VersionRules::generated($kind)) !== []) {
+            throw new PrintableException(\XF::phrase('cav7_cit_refused_kind_outside_generator'));
+        }
         $known = array_merge(...array_values($this->repo()->kindOptions()));
         $kinds = array_map(GrantForm::kind(...), array_keys(array_intersect_key($known, array_flip($posted['kinds']))));
 

@@ -1337,6 +1337,12 @@
         "version_string": "1.0.0",
         "hash": "b1c54fdd86a6d31998db20e38c66d6a0"
     },
+    "cav7_cit_refused_kind_outside_generator.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "8af90d3cbb0997f198347b2036dc28f7"
+    },
     "cav7_cit_refused_member_grant_needs_permission.txt": {
         "global_cache": false,
         "version_id": 1020070,

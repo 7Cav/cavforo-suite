@@ -3,6 +3,7 @@
 namespace Cav7\Citations\Repository;
 
 use Cav7\Citations\Entity\TemplateVersion;
+use Cav7\Citations\Render\VersionRules;
 use Cav7\Citations\Template\TemplateChoices;
 use Cav7\Citations\Template\VersionLifecycle;
 use XF\Mvc\Entity\Repository;
@@ -91,8 +92,8 @@ class Template extends Repository
     }
 
     /**
-     * Every NF/Rosters award and record type, whether or not a template serves it. Assumes the
-     * vendor keeps their titles in `title`, as NF\Rosters:Award and :RecordType.
+     * Every NF/Rosters award and record type the generator covers, whether or not a template
+     * serves it. Assumes the vendor keeps their titles in `title`, as NF\Rosters:Award and :RecordType.
      *
      * @return array{awards: array<string, string>, records: array<string, string>} Titles by kind.
      */
@@ -101,7 +102,9 @@ class Template extends Repository
         $titles = function (string $entity, string $type): array {
             $titles = [];
             foreach ($this->finder($entity)->order('title')->fetch() as $id => $kind) {
-                $titles["$type:$id"] = $kind->title;
+                if (VersionRules::generated("$type:$id")) {
+                    $titles["$type:$id"] = $kind->title;
+                }
             }
             return $titles;
         };

@@ -23,7 +23,7 @@ class Publication extends AbstractService
             $draft->renderVersion(),
             $draft->plate_width,
             $draft->plate_height,
-            $draft->Kinds->count(),
+            $draft->kinds(),
             $billetIds,
             $this->earlierScopes($draft),
         );
