@@ -16,6 +16,7 @@ use XF\Db\AbstractAdapter;
 final class Sweeper
 {
     private const ROW_PAGE = 1000;
+    private const ASIDE = '.taken-';
 
     /**
      * @param \Closure(string): void $say
@@ -145,6 +146,16 @@ final class Sweeper
         if ($name === 'index.html') {
             return;
         }
+        $taken = preg_match('/^(.+)' . preg_quote(self::ASIDE) . '[0-9a-f]{8}$/', $name, $match)
+            ? SweepRules::legacyRecordId($match[1], $shard)
+            : null;
+        if ($taken !== null && !$entry['dir']) {
+            // A dry run holds no lock, so the file may belong to a take-in still running.
+            if (!$p->dryRun) {
+                $this->recoverAside($p, $kind, $shard, $match[1], $taken, $entry, $key);
+            }
+            return;
+        }
         if ($entry['dir'] || SweepRules::legacyRecordId($name, $shard) === null) {
             $this->damage->report('unexpected entry', $key);
             return;
@@ -162,6 +173,26 @@ final class Sweeper
             $p->dryRun
                 ? $this->previewTakeIn($p, $key, $kind, $recordId)
                 : $this->takeIn($p, $key, $kind, $recordId, $file['row']['citation_date']);
+        }
+    }
+
+    // A take-in moved this aside and died. A new upload clears the reference, so with none
+    // the row has taken nothing in since and the file goes back. Otherwise only a referenced
+    // blob with the same bytes lets it be deleted, so no pass can drop the last copy.
+    private function recoverAside(SweepProgress $p, RowKind $kind, int $shard, string $name, int $recordId, array $entry, string $aside): void
+    {
+        $key = "{$kind->legacyTree()}/$shard/$name";
+        $blobId = $this->rows->facts($kind, $recordId)['citation_blob_id'] ?? null;
+        $hash = $this->disk->hash($aside);
+
+        if ($blobId === null && $this->disk->moveIfFree($aside, $key)) {
+            $this->visitForTakeIn($p, $kind, $shard, $name, $entry);
+        } elseif ($blobId !== null && $hash !== null && ($this->blobs->byId($blobId)['content_hash'] ?? null) === $hash) {
+            if (!$this->disk->delete($aside)) {
+                $this->damage->report('legacy file could not be deleted', $aside, "{$kind->value}:$recordId");
+            }
+        } else {
+            $this->damage->report('legacy file kept aside', $aside, "{$kind->value}:$recordId", $hash);
         }
     }
 
@@ -200,23 +231,31 @@ final class Sweeper
         }
 
         $this->db->beginTransaction();
-        $row = $this->rows->facts($kind, $recordId, true);
         $aside = null;
-        if ($row !== null && $row['citation_date'] === $seenDate && !$row['grant_linked']) {
-            // The vendor rewrites this path in place, so only a file moved off it is safe to delete.
-            $aside = "$key.taken-" . bin2hex(random_bytes(4));
-            $aside = $this->disk->move($key, $aside) ? $aside : null;
-        }
+        try {
+            $row = $this->rows->facts($kind, $recordId, true);
+            if ($row !== null && $row['citation_date'] === $seenDate && !$row['grant_linked']) {
+                // The vendor rewrites this path in place, so only a file moved off it is safe to delete.
+                $aside = $key . self::ASIDE . bin2hex(random_bytes(4));
+                $aside = $this->disk->move($key, $aside) ? $aside : null;
+            }
 
-        // The mtime catches a re-upload of the same bytes, the hash anything else.
-        $unchanged = $aside !== null
-            && $this->disk->stat($aside) === $seenFile
-            && $this->disk->hash($aside) === $blob['content_hash'];
+            // The mtime catches a re-upload of the same bytes, the hash anything else.
+            $unchanged = $aside !== null
+                && $this->disk->stat($aside) === $seenFile
+                && $this->disk->hash($aside) === $blob['content_hash'];
 
-        if ($unchanged) {
-            $this->rows->point($kind, $recordId, (int) $blob['blob_id']);
+            if ($unchanged) {
+                $this->rows->point($kind, $recordId, (int) $blob['blob_id']);
+            }
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            if ($aside !== null && !$this->disk->moveIfFree($aside, $key)) {
+                $this->damage->report('legacy file kept aside', $aside, "{$kind->value}:$recordId");
+            }
+            throw $e;
         }
-        $this->db->commit();
 
         if ($unchanged) {
             $p->tookIn++;

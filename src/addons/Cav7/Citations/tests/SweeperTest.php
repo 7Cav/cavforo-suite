@@ -114,6 +114,47 @@ check('and the row isn\'t pointed at the old bytes', $stage->refOf($award, 1) ==
 }, 'afterCommit');
 check('a re-upload after the commit is not deleted', $stage->exists($key) && file_get_contents($stage->disk->path($key)) === png(70, 70));
 
+// A failure between the move aside and the commit.
+$stage = new Stage();
+$stage->row($award, 1, 500);
+$key = $stage->legacyFile($award, 1, png());
+$stage->db->query("CREATE TRIGGER refuse BEFORE UPDATE OF citation_blob_id ON {$award->table()} BEGIN SELECT RAISE(ABORT, 'refused'); END");
+try {
+    $stage->sweep();
+    $threw = false;
+} catch (\RuntimeException) {
+    $threw = true;
+}
+check('a failure before the commit puts the legacy file back and rethrows', $threw && $stage->exists($key) && $stage->refOf($award, 1) === null);
+$stage->db->query('DROP TRIGGER refuse');
+$stage->sweep();
+check('and the next run takes it in', $stage->refOf($award, 1) !== null && !$stage->exists($key));
+
+// A process killed between the move aside and the commit, or just after the commit.
+$aside = fn (string $key) => "$key.taken-0badf00d";
+$stage = new Stage();
+$stage->row($award, 1, 500);
+$killedBefore = $stage->legacyFile($award, 1, png());
+$made = $stage->blob(png());
+rename($stage->disk->path($killedBefore), $stage->disk->path($aside($killedBefore)));
+$stage->row($award, 2, 500);
+$killedAfter = $stage->legacyFile($award, 2, png(17, 17));
+$stage->db->update($award->table(), ['citation_blob_id' => $stage->blob(png(17, 17))['blob_id']], 'record_id = 2');
+rename($stage->disk->path($killedAfter), $stage->disk->path($aside($killedAfter)));
+$stage->row($award, 3, 500, (int) $stage->blob(png(19, 19))['blob_id']);
+$stale = $stage->legacyFile($award, 3, png(18, 18));
+rename($stage->disk->path($stale), $stage->disk->path($aside($stale)));
+$run = $stage->sweep();
+check(
+    'a file left aside before the commit is taken in onto the blob made for it',
+    $stage->refOf($award, 1) === (int) $made['blob_id'] && !$stage->exists($aside($killedBefore)) && !$stage->exists($killedBefore)
+);
+check('one left after the commit is deleted', !$stage->exists($aside($killedAfter)) && $stage->refOf($award, 2) !== null);
+check(
+    'one older than the blob its row points at is kept and reported',
+    $stage->exists($aside($stale)) && !$stage->exists($stale) && damageMentions($stage, 'legacy file kept aside') && $run->damage === 1
+);
+
 // Damage: each stays where it is.
 $stage = new Stage();
 $stage->row($award, 1, 0);
