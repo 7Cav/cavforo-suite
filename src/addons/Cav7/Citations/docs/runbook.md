@@ -172,6 +172,7 @@ lower-case hex. Code never repairs damage.
 | `row has a citation but no blob, grant link or legacy file` | Re-upload, or restore the file. |
 | `reference to a blob with no row` | Restore the database, or re-upload. |
 | `reference on a row with no citation` | A restore put the two out of step. Decide which is right and fix the row by hand. |
+| `legacy file kept aside` | The file changed while the sweep held it aside, and a newer upload took its path. The row serves the newer file. Check the kept one, then delete it by hand. Until then each run reports it as an `unexpected entry`. |
 | `unexpected entry` | Something other than the vendor wrote there. Look at it and remove it by hand. |
 | `blob file missing`, `blob file size differs`, `blob file hash mismatch` | Fetch the key from the archive and put it back at that path. The path is the archive key. |
 | `blob tree file with no blob row` | Never deleted automatically, because it may be the only copy. Check it against the archive, then remove it by hand. |

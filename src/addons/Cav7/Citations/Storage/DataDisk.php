@@ -95,6 +95,24 @@ final class DataDisk
         return @unlink($this->path($key));
     }
 
+    public function move(string $from, string $to): bool
+    {
+        return @rename($this->path($from), $this->path($to));
+    }
+
+    /**
+     * Like move(), but refuses to replace anything at $to. A hard link can't overwrite.
+     */
+    public function moveIfFree(string $from, string $to): bool
+    {
+        if (!@link($this->path($from), $this->path($to))) {
+            return false;
+        }
+        @unlink($this->path($from));
+
+        return true;
+    }
+
     // Each new directory gets XF's blank index.html, so a server with listings on
     // can't hand out the url tokens.
     private function ensureDirectory(string $dir): void

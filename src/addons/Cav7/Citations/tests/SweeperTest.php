@@ -85,13 +85,13 @@ $run = $stage->sweep();
 check('a file under an hour old is left, row or no row', $stage->exists($fresh) && $stage->exists($freshOrphan));
 check('and a young file behind a row is not damage', $run->damage === 0);
 
-// An upload landing between the copy and the row lock. findOrCreate's own transaction
-// comes first, so the race is staged on the second.
-$race = function (\Closure $upload) use ($award): array {
+// An upload landing around the row lock. findOrCreate's own transaction comes first, so
+// the race is staged on the second.
+$race = function (\Closure $upload, string $when = 'beforeBegin') use ($award): array {
     $stage = new Stage();
     $stage->row($award, 1, 500);
     $key = $stage->legacyFile($award, 1, png());
-    $stage->db->beforeBegin = [null, fn () => $upload($stage, $key)];
+    $stage->db->$when = [null, fn () => $upload($stage, $key)];
     $stage->sweep();
 
     return [$stage, $key];
@@ -107,6 +107,12 @@ check('a changed citation_date leaves the file for the next run', $stage->exists
 });
 check('a changed file is left for the next run', $stage->exists($key) && file_get_contents($stage->disk->path($key)) === png(70, 70));
 check('and the row isn\'t pointed at the old bytes', $stage->refOf($award, 1) === null);
+
+// The vendor writes the file before it stamps citation_date, whose save clears the reference.
+[$stage, $key] = $race(function (Stage $stage, string $key): void {
+    file_put_contents($stage->disk->path($key), png(70, 70));
+}, 'afterCommit');
+check('a re-upload after the commit is not deleted', $stage->exists($key) && file_get_contents($stage->disk->path($key)) === png(70, 70));
 
 // Damage: each stays where it is.
 $stage = new Stage();

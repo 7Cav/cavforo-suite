@@ -201,10 +201,17 @@ final class Sweeper
 
         $this->db->beginTransaction();
         $row = $this->rows->facts($kind, $recordId, true);
-        $unchanged = $row !== null
-            && $row['citation_date'] === $seenDate
-            && !$row['grant_linked']
-            && $this->disk->stat($key) === $seenFile;
+        $aside = null;
+        if ($row !== null && $row['citation_date'] === $seenDate && !$row['grant_linked']) {
+            // The vendor rewrites this path in place, so only a file moved off it is safe to delete.
+            $aside = "$key.taken-" . bin2hex(random_bytes(4));
+            $aside = $this->disk->move($key, $aside) ? $aside : null;
+        }
+
+        // The mtime catches a re-upload of the same bytes, the hash anything else.
+        $unchanged = $aside !== null
+            && $this->disk->stat($aside) === $seenFile
+            && $this->disk->hash($aside) === $blob['content_hash'];
 
         if ($unchanged) {
             $this->rows->point($kind, $recordId, (int) $blob['blob_id']);
@@ -213,9 +220,11 @@ final class Sweeper
 
         if ($unchanged) {
             $p->tookIn++;
-            if (!$this->disk->delete($key)) {
-                $this->damage->report('legacy file could not be deleted', $key, "{$kind->value}:$recordId");
+            if (!$this->disk->delete($aside)) {
+                $this->damage->report('legacy file could not be deleted', $aside, "{$kind->value}:$recordId");
             }
+        } elseif ($aside !== null && !$this->disk->moveIfFree($aside, $key)) {
+            $this->damage->report('legacy file kept aside', $aside, "{$kind->value}:$recordId");
         }
     }
 
