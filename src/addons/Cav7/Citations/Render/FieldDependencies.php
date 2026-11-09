@@ -80,6 +80,12 @@ final class FieldDependencies
         return self::remadeBy($version, [$value]) !== [];
     }
 
+    /** Every recipient gets the same certificate: nothing on it is written for them or set per member. */
+    public static function generic(Version $version): bool
+    {
+        return !self::used($version, 'citation_text') && self::memberFields($version) === [];
+    }
+
     /** @return list<TextField|SignatureSlot|RankArtField> */
     public static function memberFields(Version $version): array
     {

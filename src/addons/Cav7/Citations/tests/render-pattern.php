@@ -117,7 +117,7 @@ foreach ([
     'other C0 controls and DEL go' => ["a\x01b\x1Fc\x7Fd", 'abcd'],
     'a tab becomes a space' => ["a\tb", 'a b'],
     'runs of spaces collapse' => ['a  b   c', 'a b c'],
-    'lines are trimmed and empty ones dropped' => ["  a  \n\n   \n b ", "a\nb"],
+    'lines are trimmed, blank lines between paragraphs kept' => ["\n  a  \n\n   \n b \n", "a\n\n\nb"],
     'a control between spaces leaves one space' => ["a \x01 b", 'a b'],
     'U+00A0 survives' => ["a\u{A0}b", "a\u{A0}b"],
     'a percent and a quote are untouched' => ['100% of "targets"', '100% of "targets"'],

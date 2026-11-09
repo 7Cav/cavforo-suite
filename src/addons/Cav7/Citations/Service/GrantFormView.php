@@ -184,7 +184,7 @@ class GrantFormView extends AbstractService
             'version_number' => $version->version_number,
             'landscape' => $version->plate_width > $version->plate_height,
             'published' => gmdate('Y-m-d', $version->publish_date),
-            'generic' => !FieldDependencies::used($version->renderVersion(), 'citation_text'),
+            'generic' => FieldDependencies::generic($version->renderVersion()),
         ];
     }
 

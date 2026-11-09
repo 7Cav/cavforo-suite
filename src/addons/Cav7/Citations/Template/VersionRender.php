@@ -7,6 +7,7 @@ use Cav7\Citations\Render\DrawPlan;
 use Cav7\Citations\Render\DrawResult;
 use Cav7\Citations\Render\ImagickDrawer;
 use Cav7\Citations\Render\ImagickMetrics;
+use Cav7\Citations\Render\PreviewBox;
 use Cav7\Citations\Render\RankArtField;
 use Cav7\Citations\Render\RenderFailed;
 use Cav7\Citations\Render\SetField;
@@ -38,9 +39,10 @@ final class VersionRender
 
     /**
      * @param array<string, SetField> $rows By field key, a member's rows and the shared rows together.
+     * @param list<PreviewBox> $previewBoxes Only ever from a preview.
      * @throws RenderFailed
      */
-    public function draw(TemplateVersion $version, array $rows): DrawResult
+    public function draw(TemplateVersion $version, array $rows, array $previewBoxes = []): DrawResult
     {
         $plan = DrawPlan::build(
             $version->renderVersion(),
@@ -48,6 +50,7 @@ final class VersionRender
             $version->plate($this->files),
             $version->fontPaths($this->files),
             fn (string $hash): string => $this->files->path($hash, 'png'),
+            $previewBoxes,
         );
 
         return (new ImagickDrawer($this->metrics))->draw($plan);

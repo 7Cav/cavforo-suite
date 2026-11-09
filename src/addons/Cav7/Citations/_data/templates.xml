@@ -970,6 +970,12 @@
 	margin-bottom: @xf-paddingLarge;
 }
 
+// No citation is how a linked row drops its citation, so the vendor's delete box goes.
+form:has(.cav7Picker--linked) label.iconic:has(> input[name="delete_image"])
+{
+	display: none;
+}
+
 .overlay:has(.cav7FieldEditor)
 {
 	max-width: 1100px;
@@ -1271,7 +1277,7 @@
 	<xf:set var="$keeps" value="{{ $record.citation_date && !$record.citation_grant_member_id }}" />
 	<xf:set var="$name" value="{$rosterUser.User.username}" />
 	<xf:formrow label="{{ phrase('cav7_cit_citation') }}" hint="{{ phrase('cav7_cit_issued_to_x', {'name': $name}) }}">
-		<div data-xf-init="cav7-citation-picker">
+		<div data-xf-init="cav7-citation-picker" class="{{ ($record.citation_grant_member_id || $record.citation_regiment_grant_id) ? 'cav7Picker--linked' : '' }}">
 			<xf:if is="count($entries) > 3">
 				<xf:textbox class="input--small cav7PickerFilter js-pickerFilter" placeholder="{{ phrase('cav7_cit_filter_placeholder')|for_attr }}" />
 			</xf:if>

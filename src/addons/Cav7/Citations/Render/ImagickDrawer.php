@@ -28,6 +28,9 @@ final class ImagickDrawer
             foreach ($plan->images as $planned) {
                 self::composite($image, $planned);
             }
+            if ($plan->previewBoxes !== []) {
+                $image->drawImage(self::previewDraw($image, $plan->previewBoxes));
+            }
 
             return new DrawResult(JpegEncoder::encode($image), OverrunCheck::worst($plan, $this->metrics));
         } catch (\ImagickException | \ImagickDrawException $e) {
@@ -48,6 +51,38 @@ final class ImagickDrawer
             $draw->setFillColor($planned->colour);
             $draw->setTextInterwordSpacing($line->iw);
             $draw->annotation($line->x, $line->y, $line->t);
+        }
+        return $draw;
+    }
+
+    /** @param list<PreviewBox> $boxes */
+    private static function previewDraw(\Imagick $image, array $boxes): \ImagickDraw
+    {
+        $draw = new \ImagickDraw();
+        $draw->setTextAntialias(true);
+        $draw->setTextEncoding('UTF-8');
+        $draw->setFont(FontCatalog::paths()['tinos-regular']);
+        $draw->setTextAlignment(\Imagick::ALIGN_CENTER);
+
+        foreach ($boxes as $box) {
+            $draw->setFillOpacity(0);
+            $draw->setStrokeColor('rgba(70,90,140,0.75)');
+            $draw->setStrokeWidth(max(1.5, $box->w / 250));
+            $draw->setStrokeDashArray([10, 7]);
+            $draw->rectangle($box->x, $box->y, $box->x + $box->w, $box->y + $box->h);
+
+            $draw->setStrokeOpacity(0);
+            $draw->setFillOpacity(1);
+            $draw->setFillColor('rgba(70,90,140,0.9)');
+            $size = max(12, min(26, $box->h * 0.22));
+            $draw->setFontSize($size);
+            $width = $image->queryFontMetrics($draw, $box->label)['textWidth'];
+            if ($width > $box->w * 0.9) {
+                $size *= $box->w * 0.9 / $width;
+                $draw->setFontSize($size);
+            }
+            $draw->annotation($box->x + $box->w / 2, $box->y + $box->h / 2 + $size * 0.35, $box->label);
+            $draw->setStrokeOpacity(1);
         }
         return $draw;
     }

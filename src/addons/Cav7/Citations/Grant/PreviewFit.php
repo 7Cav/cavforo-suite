@@ -13,6 +13,8 @@ use Cav7\Citations\Render\Version;
 final class PreviewFit
 {
     /**
+     * Sizes are in points, as the clerk reads them. The threshold check runs in pixels.
+     *
      * @param list<array{key: string, size: float, legible: float, text: bool}> $below Every field under its threshold.
      * @param array{size: float, largest: bool}|null $text The citation text's size, once any is set.
      */
@@ -23,8 +25,8 @@ final class PreviewFit
     }
 
     /**
-     * A slot with no signature yet draws blank, and so does anything printing a date not yet
-     * whole. The issue itself refuses both, so only a preview ever gets here.
+     * A slot with no signature yet sets nothing, and neither does anything printing a date not
+     * yet whole. The issue itself refuses both, so only a preview ever gets here.
      *
      * @param array<string, mixed> $signatures By slot key.
      * @return list<TextField|SignatureSlot|RankArtField>
@@ -55,9 +57,28 @@ final class PreviewFit
         return $rows;
     }
 
-    /** @param array<string, SetField> $rows By field key. */
-    public static function of(Version $version, array $rows): self
+    /**
+     * The empty signature slots and citation text a preview outlines, as the prototype does.
+     *
+     * @param array<string, SetField> $rows By field key, every field of the version.
+     * @return list<TextField|SignatureSlot>
+     */
+    public static function placeholders(Version $version, array $rows): array
     {
+        return array_values(array_filter($version->fields, fn (object $field): bool => match (true) {
+            $field instanceof SignatureSlot => $rows[$field->key]->ink === null,
+            $field instanceof TextField => $rows[$field->key]->lines === []
+                && in_array('citation_text', FieldDependencies::of($field, $version)->uses, true),
+            default => false,
+        }));
+    }
+
+    /** @param array<string, SetField> $rows By field key. */
+    public static function of(Version $version, array $rows, int $plateWidth): self
+    {
+        // The plate prints 8.5 inches wide.
+        $pt = fn (float $px): float => $plateWidth > 0 ? $px * 72 * 8.5 / $plateWidth : 0.0;
+
         $below = [];
         $text = null;
 
@@ -69,10 +90,10 @@ final class PreviewFit
             $isText = in_array('citation_text', FieldDependencies::of($field, $version)->uses, true);
 
             if ($isText && $row->size > 0) {
-                $text = ['size' => $row->size, 'largest' => $row->size >= $field->size];
+                $text = ['size' => $pt($row->size), 'largest' => $row->size >= $field->size];
             }
             if ($row->belowLegibility) {
-                $below[] = ['key' => $field->key, 'size' => $row->size, 'legible' => (float) $field->legible_size, 'text' => $isText];
+                $below[] = ['key' => $field->key, 'size' => $pt($row->size), 'legible' => $pt((float) $field->legible_size), 'text' => $isText];
             }
         }
 
