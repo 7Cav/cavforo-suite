@@ -64,7 +64,7 @@ Everything runs from `cmd.php`, as the same user PHP-FPM runs as. The
 | `cav7-citations:reencode` | Replaces eligible source blobs with encoded blobs, after an archive sync. |
 | `cav7-citations:revert` | Puts source blobs back, with `plan` and then `apply`. |
 | `cav7-citations:purge-sources` | Deletes replaced sources from a list checked against the archive. |
-| `cav7-citations:retypeset` | Remakes the typesetting of chosen grants with the current renderer. A grant whose typesetting changes moves its revision and logs it, and one with no change keeps its revision and logs nothing. |
+| `cav7-citations:retypeset` | Remakes the typesetting of chosen grants with the current renderer. A grant whose typesetting changes moves its revision and logs it, and one with no change is left as it was, stamps included. |
 
 The cron entry **Citations: sweep** runs daily at 03:10 and installs inactive. Enable
 it under **Tools > Cron entries** after the first CLI sweep.

@@ -19,6 +19,7 @@
 
 		timer: null,
 		latest: 0,
+		reshapes: 0,
 
 		init ()
 		{
@@ -64,18 +65,33 @@
 			const data = XF.getDefaultFormData(this.target)
 			data.set('form_action', action)
 
+			// The reply replaces the whole body, so anything typed meanwhile would be lost.
+			const body = this.target.querySelector('.js-grantFormBody')
+			const sent = ++this.reshapes
+			let replacing = false
+			body.inert = true
+			body.setAttribute('aria-busy', 'true')
+
 			XF.ajax('post', this.options.formUrl, data, response =>
 			{
-				if (!response.html)
+				if (sent !== this.reshapes || !response.html)
 				{
 					return
 				}
 
+				replacing = true
 				XF.setupHtmlInsert(response.html, html =>
 				{
-					this.target.querySelector('.js-grantFormBody').replaceWith(html)
+					body.replaceWith(html)
 					this.refreshPreview()
 				})
+			}).then(() =>
+			{
+				if (!replacing)
+				{
+					body.inert = false
+					body.removeAttribute('aria-busy')
+				}
 			})
 		},
 

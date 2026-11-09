@@ -34,6 +34,7 @@ class Setup extends AbstractSetup
     public function installStep3(): void
     {
         GrantSchema::install($this->schemaManager());
+        TemplateSchema::backfillFirstUse($this->db());
     }
 
     public function upgrade1010070Step1(): void
@@ -44,6 +45,12 @@ class Setup extends AbstractSetup
     public function upgrade1010070Step2(): void
     {
         GrantSchema::install($this->schemaManager());
+    }
+
+    public function upgrade1020070Step1(): void
+    {
+        TemplateSchema::install($this->schemaManager());
+        TemplateSchema::backfillFirstUse($this->db());
     }
 
     private function installTemplates(): void
