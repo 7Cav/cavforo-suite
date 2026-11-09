@@ -98,7 +98,6 @@ class Grant extends Entity
         return RenderFilename::forRegiment(
             $this->kind_title,
             $this->grant_date,
-            $this->grant_id,
             fn (string $value): string => $router->prepareStringForUrl($value, true),
         );
     }
