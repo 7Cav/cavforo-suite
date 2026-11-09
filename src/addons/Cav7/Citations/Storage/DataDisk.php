@@ -2,6 +2,9 @@
 
 namespace Cav7\Citations\Storage;
 
+use XF\App;
+use XF\Util\File;
+
 /**
  * The data/ directory as local files. Keys are paths relative to it.
  *
@@ -13,6 +16,11 @@ final class DataDisk
 {
     public function __construct(private string $root)
     {
+    }
+
+    public static function forApp(App $app): self
+    {
+        return new self(File::canonicalizePath($app->config('externalDataPath')));
     }
 
     public function path(string $key): string

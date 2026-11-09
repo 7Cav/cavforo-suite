@@ -214,9 +214,9 @@ done
 
 A directory newer than the database is harmless. The extra files sit unused.
 
-**Filesystem restored, legacy files back.** The next sweep takes each one in as a source
-blob, byte for byte, and re-points its row, because a legacy file beats an existing
-reference. The encoded blobs lose those references. No revert is needed, and the sweep
+**Filesystem restored, legacy files back.** A legacy file beats an existing reference, so
+each row serves its restored file at once. The next sweep takes each one in as a source
+blob, byte for byte, and re-points its row. The encoded blobs lose those references. No revert is needed, and the sweep
 keeps running. A restored file for a row with a grant link is an orphan, and the sweep
 deletes it.
 

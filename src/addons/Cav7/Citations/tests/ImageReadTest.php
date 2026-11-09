@@ -13,6 +13,33 @@
  *   php tests/ImageReadTest.php
  */
 
+namespace XF {
+    class App
+    {
+        public static string $dataPath = '';
+
+        public function config(string $key): mixed
+        {
+            return $key === 'externalDataPath' ? self::$dataPath : null;
+        }
+
+        public function applyExternalDataUrl(string $path, bool $canonical): string
+        {
+            return ($canonical ? 'https://board.test/data/' : 'data/') . $path;
+        }
+    }
+}
+
+namespace XF\Util {
+    class File
+    {
+        public static function canonicalizePath(string $path): string
+        {
+            return $path;
+        }
+    }
+}
+
 namespace XF\Mvc\Entity {
     class Structure
     {
@@ -50,14 +77,9 @@ namespace XF\Mvc\Entity {
             return array_key_exists($name, $this->changed);
         }
 
-        public function app(): object
+        public function app(): \XF\App
         {
-            return new class {
-                public function applyExternalDataUrl(string $path, bool $canonical): string
-                {
-                    return ($canonical ? 'https://board.test/data/' : 'data/') . $path;
-                }
-            };
+            return new \XF\App();
         }
 
         protected function _preSave()
@@ -84,6 +106,8 @@ namespace Cav7\Citations\NF\Rosters\Entity {
 namespace Cav7\Citations\Tests {
 
     require __DIR__ . '/../Storage/BlobFile.php';
+    require __DIR__ . '/../Storage/DataDisk.php';
+    require __DIR__ . '/../Storage/RowKind.php';
     require __DIR__ . '/../Storage/ImageSource.php';
     require __DIR__ . '/../Entity/Blob.php';
     require __DIR__ . '/../Entity/CitationRow.php';
@@ -94,6 +118,10 @@ namespace Cav7\Citations\Tests {
     use Cav7\Citations\Storage\ImageSource;
 
     $failures = 0;
+
+    \XF\App::$dataPath = sys_get_temp_dir() . '/cav7cit-read-' . bin2hex(random_bytes(4));
+    mkdir(\XF\App::$dataPath . '/roster_award_citations/0', 0777, true);
+    register_shutdown_function(fn () => exec('rm -rf ' . escapeshellarg(\XF\App::$dataPath)));
 
     function check(string $label, bool $ok): void
     {
@@ -148,13 +176,16 @@ namespace Cav7\Citations\Tests {
         return $row;
     }
 
+    $file = fn () => true;
+    $noFile = fn () => false;
     foreach ([
-        ['a grant link outranks everything', [true, 500, 3], ImageSource::Grant],
-        ['even with a zero date', [true, 0, null], ImageSource::Grant],
-        ['a zero date means no image', [false, 0, null], ImageSource::None],
-        ['even with a stale reference', [false, 0, 3], ImageSource::None],
-        ['a reference serves the blob', [false, 500, 3], ImageSource::Blob],
-        ['no reference falls back to legacy', [false, 500, null], ImageSource::Legacy],
+        ['a grant link outranks everything', [true, 500, 3, $file], ImageSource::Grant],
+        ['even with a zero date', [true, 0, null, $file], ImageSource::Grant],
+        ['a zero date means no image', [false, 0, null, $file], ImageSource::None],
+        ['even with a stale reference', [false, 0, 3, $file], ImageSource::None],
+        ['a legacy file outranks the blob', [false, 500, 3, $file], ImageSource::Legacy],
+        ['a reference with no legacy file serves the blob', [false, 500, 3, $noFile], ImageSource::Blob],
+        ['no reference falls back to legacy', [false, 500, null, $noFile], ImageSource::Legacy],
     ] as [$label, $facts, $expected]) {
         check("source: $label", ImageSource::for(...$facts) === $expected);
     }
@@ -170,6 +201,9 @@ namespace Cav7\Citations\Tests {
     check('no reference reads the vendor\'s legacy URL', row(500, null)->getImageUrl() === 'legacy/7.jpg?500');
     check('a zero date reads nothing', row(0, 3)->getImageUrl() === null);
     check('a reference to a missing blob row falls back to legacy', row(500, 3, false)->getImageUrl() === 'legacy/7.jpg?500');
+    touch(\XF\App::$dataPath . '/roster_award_citations/0/7.jpg');
+    check('a restored legacy file outranks the blob', row(500, 3)->getImageUrl() === 'legacy/7.jpg?500');
+    unlink(\XF\App::$dataPath . '/roster_award_citations/0/7.jpg');
 
     check('a row with neither link has none', row(500, 3)->hasGrantLink() === false);
     check('a member link outranks the blob', linked(9, null, target('citations/9.jpg'))->getImageUrl() === 'citations/9.jpg');
