@@ -148,6 +148,9 @@ class Grants extends AbstractController
     public function actionCorrect(ParameterBag $params): AbstractReply
     {
         $grant = $this->grant($params);
+        if ($grant->withdrawn_date) {
+            return $this->error(\XF::phrase('cav7_cit_refused_already_withdrawn'));
+        }
 
         if (!$this->isPost()) {
             return $this->formPage(
@@ -174,6 +177,9 @@ class Grants extends AbstractController
     public function actionMove(ParameterBag $params): AbstractReply
     {
         $grant = $this->grant($params);
+        if ($grant->withdrawn_date) {
+            return $this->error(\XF::phrase('cav7_cit_refused_already_withdrawn'));
+        }
         $targets = $this->moveTargets($grant);
         if ($targets === []) {
             return $this->error(\XF::phrase('cav7_cit_no_version_to_move_to'));
