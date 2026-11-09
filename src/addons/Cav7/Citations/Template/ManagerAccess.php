@@ -19,18 +19,18 @@ final class ManagerAccess
     public static function allows(string $page, string $action, Actor $actor): bool
     {
         return match ("$page/$action") {
-            'templates/index', 'templates/paygrades', 'templates/legibility',
-            'versions/index', 'versions/plate', 'versions/art', 'versions/field', 'versions/rankart',
-            'signatures/index', 'signatures/ink' => $actor->canOpenTemplateManager(),
+            'templates/index', 'templates/legibility', 'versions/plate' => $actor->canOpenTemplateManager(),
 
-            'versions/preview' => $actor->canPreviewTemplate(),
+            'templates/paygrades',
+            'versions/index', 'versions/art', 'versions/field', 'versions/rankart', 'versions/preview',
+            'signatures/index', 'signatures/ink' => $actor->canReadTemplates(),
 
             'templates/add', 'templates/newdraft',
             'versions/uploadplate', 'versions/settings', 'versions/savefield', 'versions/removefield',
             'versions/movefield', 'versions/saverankart', 'versions/delete' => $actor->canEditDrafts(),
 
             'templates/savepaygrades',
-            'versions/publish', 'versions/retire', 'versions/reinstate',
+            'versions/publish', 'versions/retire',
             'signatures/add', 'signatures/edit', 'signatures/delete', 'signatures/retire', 'signatures/reinstate',
             'signatures/addbillet', 'signatures/editbillet', 'signatures/deletebillet' => $actor->canPublish(),
 

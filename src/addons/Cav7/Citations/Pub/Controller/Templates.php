@@ -93,6 +93,7 @@ class Templates extends AbstractManager
                 fn (array $entry): array => $entry + ['can_move' => $actor->canIssue((bool) $entry['is_regiment'])],
                 PlateFit::withThresholds($entries, $designs)
             ),
+            'canRead' => $actor->canReadTemplates(),
         ]);
     }
 
@@ -128,6 +129,7 @@ class Templates extends AbstractManager
             'kind' => $kind,
             'kinds' => array_intersect_key($titles, array_flip($repo->offeredKinds())),
             'canAdd' => $this->actor()->canEditDrafts(),
+            'canRead' => $this->actor()->canReadTemplates(),
         ]);
     }
 
@@ -154,6 +156,7 @@ class Templates extends AbstractManager
             'pins' => $repo->versionPins(),
             'published' => $published,
             'can' => [
+                'read' => $actor->canReadTemplates(),
                 'edit' => $actor->canEditDrafts(),
                 'publish' => $actor->canPublish(),
                 'move' => $actor->canIssue(false) || $actor->canIssue(true),

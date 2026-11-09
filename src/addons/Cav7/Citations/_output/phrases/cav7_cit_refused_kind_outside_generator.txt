@@ -1,0 +1,1 @@
+A template can serve awards, Promotion records and Graduation records, and no other record type.

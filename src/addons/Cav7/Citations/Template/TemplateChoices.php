@@ -10,8 +10,7 @@ use Cav7\Citations\Render\Version;
 final class TemplateChoices
 {
     /**
-     * The newest published version of each template. An older published version is
-     * never current, so retiring the newest falls back with no new draft.
+     * The newest published version of each template, which the manager shows and a form starts on.
      *
      * @param list<array{template_version_id: int, template_id: int, version_number: int, state: string, kinds: list<string>}> $versions
      * @return array<int, array{template_version_id: int, template_id: int, version_number: int, state: string, kinds: list<string>}> By template id.
@@ -30,14 +29,16 @@ final class TemplateChoices
     }
 
     /**
+     * Every published version serving the kind. Retiring a version is what stops its offer.
+     *
      * @param list<array{template_version_id: int, template_id: int, version_number: int, state: string, kinds: list<string>}> $versions
-     * @return list<int> Template version ids, one per template at most.
+     * @return list<int> Template version ids, in the order given.
      */
     public static function offered(array $versions, string $kind): array
     {
         $offered = [];
-        foreach (self::current($versions) as $version) {
-            if (in_array($kind, $version['kinds'], true)) {
+        foreach ($versions as $version) {
+            if ($version['state'] === VersionLifecycle::PUBLISHED && in_array($kind, $version['kinds'], true)) {
                 $offered[] = $version['template_version_id'];
             }
         }

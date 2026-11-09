@@ -650,7 +650,7 @@
 							<tr class="dataList-row">
 								<td class="dataList-cell"><a href="{{ link('rosters/citations', {'grant_id': $entry.grant_id}) }}">{$entry.kind_title}, {{ date($entry.grant_date, 'Y-m-d') }}</a></td>
 								<td class="dataList-cell">{{ $entry.member_name ?: phrase('cav7_cit_shared') }}</td>
-								<td class="dataList-cell"><a href="{{ link('rosters/citation-versions', {'template_version_id': $entry.template_version_id}) }}">{$entry.template_title}, v{$entry.version_number}</a></td>
+								<td class="dataList-cell"><xf:if is="$canRead"><a href="{{ link('rosters/citation-versions', {'template_version_id': $entry.template_version_id}) }}">{$entry.template_title}, v{$entry.version_number}</a><xf:else />{$entry.template_title}, v{$entry.version_number}</xf:if></td>
 								<td class="dataList-cell">{$entry.field_key}</td>
 								<td class="dataList-cell">{{ number($entry.size, 2) }}</td>
 								<td class="dataList-cell">{{ number($entry.legible, 2) }}</td>
@@ -1465,8 +1465,10 @@
 
 <xf:pageaction>
 	<div class="buttonGroup">
-		<xf:button href="{{ link('rosters/citation-signatures') }}">{{ phrase('cav7_cit_signatures') }}</xf:button>
-		<xf:button href="{{ link('rosters/citation-templates/pay-grades') }}">{{ phrase('cav7_cit_pay_grades') }}</xf:button>
+		<xf:if is="$canRead">
+			<xf:button href="{{ link('rosters/citation-signatures') }}">{{ phrase('cav7_cit_signatures') }}</xf:button>
+			<xf:button href="{{ link('rosters/citation-templates/pay-grades') }}">{{ phrase('cav7_cit_pay_grades') }}</xf:button>
+		</xf:if>
 		<xf:button href="{{ link('rosters/citation-templates/legibility') }}">{{ phrase('cav7_cit_legibility_list') }}</xf:button>
 	</div>
 	<xf:if is="$canAdd">
@@ -1562,7 +1564,7 @@
 					<xf:foreach loop="$template.Versions" value="$version">
 						<xf:set var="$pinned" value="{{ $pins.{$version.template_version_id} ?: 0 }}" />
 						<tr class="dataList-row">
-							<td class="dataList-cell"><a href="{{ link('rosters/citation-versions', $version) }}">{{ phrase('cav7_cit_version_cap_x', {'number': $version.version_number}) }}</a></td>
+							<td class="dataList-cell"><xf:if is="$can.read"><a href="{{ link('rosters/citation-versions', $version) }}">{{ phrase('cav7_cit_version_cap_x', {'number': $version.version_number}) }}</a><xf:else />{{ phrase('cav7_cit_version_cap_x', {'number': $version.version_number}) }}</xf:if></td>
 							<td class="dataList-cell">
 								<xf:if is="$version.plate_format">
 									<img class="cav7Thumb" loading="lazy" alt="" src="{{ link('rosters/citation-versions/plate', $version, {'h': $version.plate_hash}) }}" />
@@ -1588,12 +1590,8 @@
 									<xf:if is="$can.move AND $pinned AND $published > ($version.state == 'published' ? 1 : 0)">
 										<xf:button href="{{ link('rosters/citation-versions/move-citations', $version) }}" class="button--small">{{ phrase('cav7_cit_move_citations') }}</xf:button>
 									</xf:if>
-									<xf:if is="$can.publish">
-										<xf:if is="$version.state == 'published'">
-											<xf:button href="{{ link('rosters/citation-versions/retire', $version) }}" class="button--small" overlay="true">{{ phrase('cav7_cit_retire') }}</xf:button>
-										<xf:else />
-											<xf:button href="{{ link('rosters/citation-versions/reinstate', $version) }}" class="button--small" overlay="true">{{ phrase('cav7_cit_reinstate') }}</xf:button>
-										</xf:if>
+									<xf:if is="$can.publish AND $version.state == 'published'">
+										<xf:button href="{{ link('rosters/citation-versions/retire', $version) }}" class="button--small" overlay="true">{{ phrase('cav7_cit_retire') }}</xf:button>
 									</xf:if>
 								</xf:if>
 							</td>

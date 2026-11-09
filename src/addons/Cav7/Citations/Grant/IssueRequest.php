@@ -7,7 +7,7 @@ final class IssueRequest
 {
     /**
      * @param 'award'|'record_type' $kindType
-     * @param int $templateVersionId The version the form showed. A submit pins only that, if it's still current.
+     * @param int $templateVersionId The version the clerk chose. A submit pins only that, if it's still published.
      * @param GrantValues $values Members as a list.
      * @param list<int> $regimentAwardIds
      */

@@ -19,7 +19,7 @@ final class VersionLifecycle
     private const TRANSITIONS = [
         self::DRAFT => [self::PUBLISHED],
         self::PUBLISHED => [self::RETIRED],
-        self::RETIRED => [self::PUBLISHED],
+        self::RETIRED => [],
     ];
 
     private const UNFROZEN_COLUMNS = ['state', 'retire_date'];

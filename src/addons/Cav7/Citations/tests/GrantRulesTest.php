@@ -175,14 +175,14 @@ foreach ([
 // Issuing, one mutation per row of a request that otherwise passes.
 $issue = function (array $with = []) use ($written, $regimentVersion, $generic, $values, $clerk, $manager, $billets, $rank): array {
     $with += [
-        'version' => $written, 'kind' => ['award', 12], 'shown' => 40, 'current' => 40, 'state' => 'published',
+        'version' => $written, 'kind' => ['award', 12], 'shown' => 40, 'state' => 'published',
         'kinds' => ['award:12', 'award:61'], 'title' => 'Bronze', 'duplicate' => false, 'actor' => $clerk,
         'values' => $values(), 'art' => ['insignia' => [7]], 'milpacs' => [1],
     ];
     $request = new IssueRequest($with['kind'][0], $with['kind'][1], $with['shown'], $with['values'], [61]);
 
     return rules(GrantRules::issueProblems(
-        $request, $with['values'], $with['version'], $with['state'], $with['kinds'], $with['current'],
+        $request, $with['values'], $with['version'], $with['state'], $with['kinds'],
         $with['title'], $with['duplicate'], $with['actor'], $billets, $with['art'], $with['milpacs'],
     ));
 };
@@ -202,7 +202,6 @@ foreach ([
     'I-5 a retired version' => [['state' => 'retired'], ['version_not_published']],
     'I-5 a kind the version doesn\'t serve' => [['kinds' => ['award:99']], ['kind_not_served']],
     'I-5 a record type under an award\'s id' => [['kind' => ['record_type', 12]], ['kind_not_served']],
-    'G-19 a form showing an old version comes back' => [['shown' => 39], ['version_not_current']],
     'an award that no longer exists' => [['title' => null], ['no_such_kind']],
     'I-6 a bad date' => [['values' => $values(['date' => '2026-13-40'])], ['bad_date']],
     'I-8 a written version with no text' => [['values' => $values(['citationText' => null])], ['citation_text_required']],
@@ -220,8 +219,8 @@ foreach ([
         ['no_such_rank 1'],
     ],
     'every refusal at once' => [
-        ['values' => $values(['citationText' => '', 'signatures' => [], 'inputs' => []]), 'shown' => 39],
-        ['citation_text_required', 'input_required unit', 'slot_empty sig', 'version_not_current'],
+        ['values' => $values(['citationText' => '', 'signatures' => [], 'inputs' => []])],
+        ['citation_text_required', 'input_required unit', 'slot_empty sig'],
     ],
 ] as $label => [$with, $expected]) {
     $got = $issue($with);
@@ -552,7 +551,7 @@ $none = $actor();
 foreach ([
     'holding nothing opens nothing' => [
         !$none->canOpenGrantList() && !$none->canOpenGrant(false) && !$none->canOpenGrant(true)
-        && !$none->canOpenTemplateManager() && !$none->canPreviewTemplate(),
+        && !$none->canOpenTemplateManager() && !$none->canReadTemplates(),
     ],
     'the list opens for view, issue, remove or regiment' => [
         $actor(Actor::VIEW)->canOpenGrantList() && $actor(Actor::ISSUE)->canOpenGrantList()
@@ -583,9 +582,9 @@ foreach ([
         $actor(Actor::EDIT_DRAFTS)->canEditDrafts() && !$actor(Actor::EDIT_DRAFTS)->canPublish()
         && $actor(Actor::PUBLISH)->canPublish() && !$actor(Actor::PUBLISH)->canEditDrafts(),
     ],
-    'a template preview takes view or either template permission' => [
-        $actor(Actor::VIEW)->canPreviewTemplate() && $actor(Actor::EDIT_DRAFTS)->canPreviewTemplate()
-        && $actor(Actor::PUBLISH)->canPreviewTemplate() && !$actor(Actor::ISSUE)->canPreviewTemplate(),
+    'reading a template\'s design takes view or either template permission' => [
+        $actor(Actor::VIEW)->canReadTemplates() && $actor(Actor::EDIT_DRAFTS)->canReadTemplates()
+        && $actor(Actor::PUBLISH)->canReadTemplates() && !$actor(Actor::ISSUE)->canReadTemplates(),
     ],
 ] as $label => [$ok]) {
     check($label, $ok);
