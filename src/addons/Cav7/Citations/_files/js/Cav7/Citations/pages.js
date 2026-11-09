@@ -87,7 +87,8 @@
 				})
 			}).then(() =>
 			{
-				if (!replacing)
+				// A superseded reply shares the body with the reshape still in flight.
+				if (!replacing && sent === this.reshapes)
 				{
 					body.inert = false
 					body.removeAttribute('aria-busy')
