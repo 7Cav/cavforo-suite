@@ -318,7 +318,7 @@ class Grants extends AbstractController
                 'correct' => PageAccess::allows('correct', $actor, $grant->is_regiment) && !$grant->withdrawn_date,
                 'addMember' => PageAccess::allows('addmember', $actor, $grant->is_regiment),
                 'removeMember' => $grant->Members->count() > 0 && PageAccess::allows('removemember', $actor, $grant->is_regiment),
-                'move' => PageAccess::allows('move', $actor, $grant->is_regiment) && $this->moveTargets($grant) !== [],
+                'move' => !$grant->withdrawn_date && PageAccess::allows('move', $actor, $grant->is_regiment) && $this->moveTargets($grant) !== [],
                 'withdraw' => !$grant->withdrawn_date && PageAccess::allows('withdraw', $actor, $grant->is_regiment),
             ],
         ]);

@@ -369,8 +369,8 @@ $kept = $two()->changed(new GrantChanges(citationText: 'x', members: [401 => new
 check('restating a member\'s rank keeps the held snapshot', $kept->members[401]->rank === $rank && $kept->pendingRanks() === []);
 
 // Corrections that refuse.
-$reasoned = fn (GrantChanges $changes, string $reason = 'Typo'): array
-    => rules(GrantRules::correctionProblems($written, $two()->changed($changes, $written)->snapshotted([]), $changes, $reason, false, $billets, []));
+$reasoned = fn (GrantChanges $changes, string $reason = 'Typo', int $withdrawn = 0): array
+    => rules(GrantRules::correctionProblems($written, $two()->changed($changes, $written)->snapshotted([]), $changes, $reason, $withdrawn, false, $billets, []));
 
 foreach ([
     'a whole correction passes' => [new GrantChanges(citationText: 'For gallantry.'), 'Typo', []],
@@ -386,12 +386,14 @@ foreach ([
     $got = $reasoned($changes, $reason);
     check($label, $got === $expected, json_encode($got));
 }
+check('a withdrawn grant can\'t be corrected', $reasoned(new GrantChanges(citationText: 'For gallantry.'), 'Typo', 1000) === ['already_withdrawn']);
 
 check('I-17 a date landing on a live regiment grant refuses', rules(GrantRules::correctionProblems(
     $regimentVersion,
     $regimentValues,
     new GrantChanges(date: '2026-07-01'),
     'Wrong day',
+    0,
     true,
     $billets,
     ['insignia' => [7]],
@@ -434,9 +436,10 @@ foreach ([
     'C-9 it must serve the grant\'s kind' => ['Moved', false, 'award:12', 2, 'published', ['award:13'], $written, ['kind_not_served']],
     'I-16 a regiment grant needs a version with no member' => ['Moved', true, 'award:61', 2, 'published', ['award:61'], $written, ['version_needs_member']],
 ] as $label => [$reason, $isRegiment, $kind, $templateId, $state, $kinds, $target, $expected]) {
-    $got = rules(GrantRules::moveProblems($reason, $isRegiment, $kind, 2, $templateId, $state, $kinds, $target));
+    $got = rules(GrantRules::moveProblems($reason, 0, $isRegiment, $kind, 2, $templateId, $state, $kinds, $target));
     check($label, $got === $expected, json_encode($got));
 }
+check('a withdrawn grant can\'t be moved', rules(GrantRules::moveProblems('Moved', 1000, true, 'award:61', 2, 2, 'published', ['award:61'], $regimentVersion)) === ['already_withdrawn']);
 
 // What the typesetter gets for each scope.
 $ink = new PinnedSignature(['Col'], new ImageFile('hash', 10, 10));

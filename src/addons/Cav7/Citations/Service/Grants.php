@@ -161,6 +161,7 @@ class Grants extends AbstractService
             $new,
             $changes,
             $reason,
+            $grant->withdrawn_date,
             $this->dateMeetsLiveRegiment($grant, $old, $new),
             $this->repo()->billets(array_values($new->signatures)),
             $version->artRanks(),
@@ -189,6 +190,7 @@ class Grants extends AbstractService
 
         self::refuse(GrantRules::moveProblems(
             $reason,
+            $grant->withdrawn_date,
             $grant->is_regiment,
             "{$grant->kind_type}:{$grant->kind_id}",
             $grant->Version->template_id,

@@ -222,11 +222,15 @@ final class GrantRules
         GrantValues $new,
         GrantChanges $changes,
         string $reason,
+        int $withdrawnDate,
         bool $liveDuplicate,
         array $billets,
         array $artRanks,
     ): array {
         $problems = self::reasonProblems($reason);
+        if ($withdrawnDate > 0) {
+            $problems[] = self::problem(self::ALREADY_WITHDRAWN);
+        }
         foreach (array_diff_key($changes->members, $new->members) as $id => $change) {
             $problems[] = self::problem(self::NO_SUCH_MEMBER, (string) $id);
         }
@@ -245,6 +249,7 @@ final class GrantRules
      */
     public static function moveProblems(
         string $reason,
+        int $withdrawnDate,
         bool $regiment,
         string $kind,
         int $templateId,
@@ -254,6 +259,9 @@ final class GrantRules
         ?Version $target,
     ): array {
         $problems = self::reasonProblems($reason);
+        if ($withdrawnDate > 0) {
+            $problems[] = self::problem(self::ALREADY_WITHDRAWN);
+        }
 
         if ($targetState !== VersionLifecycle::PUBLISHED || $target === null) {
             $problems[] = self::problem(self::VERSION_NOT_PUBLISHED);
