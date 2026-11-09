@@ -1,1 +1,1 @@
-A grant uses this signature, so it can't be edited or deleted. It can still be retired.
+A grant has used this signature, so it can't be edited or deleted. It can still be retired.

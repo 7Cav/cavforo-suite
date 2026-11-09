@@ -177,13 +177,13 @@ $issue = function (array $with = []) use ($written, $regimentVersion, $generic, 
     $with += [
         'version' => $written, 'kind' => ['award', 12], 'shown' => 40, 'current' => 40, 'state' => 'published',
         'kinds' => ['award:12', 'award:61'], 'title' => 'Bronze', 'duplicate' => false, 'actor' => $clerk,
-        'values' => $values(), 'art' => ['insignia' => [7]],
+        'values' => $values(), 'art' => ['insignia' => [7]], 'milpacs' => [1],
     ];
     $request = new IssueRequest($with['kind'][0], $with['kind'][1], $with['shown'], $with['values'], [61]);
 
     return rules(GrantRules::issueProblems(
         $request, $with['values'], $with['version'], $with['state'], $with['kinds'], $with['current'],
-        $with['title'], $with['duplicate'], $with['actor'], $billets, $with['art'],
+        $with['title'], $with['duplicate'], $with['actor'], $billets, $with['art'], $with['milpacs'],
     ));
 };
 
@@ -193,6 +193,7 @@ foreach ([
     'a whole member grant passes' => [[], []],
     'I-3 a member grant needs a milpac' => [['values' => $values(['members' => []])], ['no_members']],
     'I-3 the same milpac twice' => [['values' => $values(['members' => [$member(1), $member(1)]])], ['duplicate_member 1']],
+    'a relation id with no milpac' => [['values' => $values(['members' => [$member(1), $member(2)]])], ['no_such_milpac 2']],
     'I-4 a clerk can\'t issue a listed award' => [
         ['kind' => ['award', 61], 'version' => $regimentVersion, 'values' => $regimentValues],
         ['regiment_needs_permission'],
@@ -273,8 +274,9 @@ foreach ([
     'M-1 a regiment grant doesn\'t' => [true, [], $member(1), ['not_a_member_grant']],
     'M-4 a milpac already on it' => [false, [1, 2], $member(1), ['duplicate_member 1']],
     'M-5 a required member input' => [false, [], $member(1, []), ['input_required 1: role']],
+    'a relation id with no milpac' => [false, [], $member(3), ['no_such_milpac 3']],
 ] as $label => [$isRegiment, $held, $adding, $expected]) {
-    $got = rules(GrantRules::addProblems($isRegiment, $held, $written, $adding));
+    $got = rules(GrantRules::addProblems($isRegiment, $held, $written, $adding, [1]));
     check($label, $got === $expected, json_encode($got));
 }
 
@@ -369,8 +371,8 @@ $kept = $two()->changed(new GrantChanges(citationText: 'x', members: [401 => new
 check('restating a member\'s rank keeps the held snapshot', $kept->members[401]->rank === $rank && $kept->pendingRanks() === []);
 
 // Corrections that refuse.
-$reasoned = fn (GrantChanges $changes, string $reason = 'Typo'): array
-    => rules(GrantRules::correctionProblems($written, $two()->changed($changes, $written)->snapshotted([]), $changes, $reason, false, $billets, []));
+$reasoned = fn (GrantChanges $changes, string $reason = 'Typo', int $withdrawn = 0): array
+    => rules(GrantRules::correctionProblems($written, $two()->changed($changes, $written)->snapshotted([]), $changes, $reason, $withdrawn, false, $billets, []));
 
 foreach ([
     'a whole correction passes' => [new GrantChanges(citationText: 'For gallantry.'), 'Typo', []],
@@ -386,12 +388,14 @@ foreach ([
     $got = $reasoned($changes, $reason);
     check($label, $got === $expected, json_encode($got));
 }
+check('a withdrawn grant can\'t be corrected', $reasoned(new GrantChanges(citationText: 'For gallantry.'), 'Typo', 1000) === ['already_withdrawn']);
 
 check('I-17 a date landing on a live regiment grant refuses', rules(GrantRules::correctionProblems(
     $regimentVersion,
     $regimentValues,
     new GrantChanges(date: '2026-07-01'),
     'Wrong day',
+    0,
     true,
     $billets,
     ['insignia' => [7]],
@@ -434,9 +438,10 @@ foreach ([
     'C-9 it must serve the grant\'s kind' => ['Moved', false, 'award:12', 2, 'published', ['award:13'], $written, ['kind_not_served']],
     'I-16 a regiment grant needs a version with no member' => ['Moved', true, 'award:61', 2, 'published', ['award:61'], $written, ['version_needs_member']],
 ] as $label => [$reason, $isRegiment, $kind, $templateId, $state, $kinds, $target, $expected]) {
-    $got = rules(GrantRules::moveProblems($reason, $isRegiment, $kind, 2, $templateId, $state, $kinds, $target));
+    $got = rules(GrantRules::moveProblems($reason, 0, $isRegiment, $kind, 2, $templateId, $state, $kinds, $target));
     check($label, $got === $expected, json_encode($got));
 }
+check('a withdrawn grant can\'t be moved', rules(GrantRules::moveProblems('Moved', 1000, true, 'award:61', 2, 2, 'published', ['award:61'], $regimentVersion)) === ['already_withdrawn']);
 
 // What the typesetter gets for each scope.
 $ink = new PinnedSignature(['Col'], new ImageFile('hash', 10, 10));
@@ -728,7 +733,17 @@ foreach ([
         [['cav7_cit_log_member_rank', ['name' => '#9']]],
     ],
     'an addition names the snapshot' => [LogSummary::of('member_added', ['name' => 'Tobin'], $names), [['cav7_cit_log_member_added', ['name' => 'Tobin']]]],
-    'a removal too' => [LogSummary::of('member_removed', ['name' => 'Lorne'], $names), [['cav7_cit_log_member_removed', ['name' => 'Lorne']]]],
+    'a removal names the snapshot and every row it cleared' => [
+        LogSummary::of('member_removed', ['name' => 'Lorne', 'rows' => [
+            ['row_type' => 'award', 'record_id' => 7, 'relation_id' => 10, 'kind_title' => 'Bronze Star', 'row_date' => 1782691200],
+            ['row_type' => 'record', 'record_id' => 8, 'relation_id' => 10, 'kind_title' => 'Promotion', 'row_date' => 1782777600],
+        ]], $names),
+        [
+            ['cav7_cit_log_member_removed', ['name' => 'Lorne']],
+            ['cav7_cit_log_cleared_award', ['title' => 'Bronze Star', 'date' => '2026-06-29']],
+            ['cav7_cit_log_cleared_record', ['title' => 'Promotion', 'date' => '2026-06-30']],
+        ],
+    ],
 ] as $label => [$actual, $expected]) {
     check("history: $label", $actual === $expected, var_export($actual, true));
 }

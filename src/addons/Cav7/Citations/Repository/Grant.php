@@ -2,6 +2,7 @@
 
 namespace Cav7\Citations\Repository;
 
+use Cav7\Citations\Entity\GrantLog;
 use Cav7\Citations\Entity\Signature;
 use Cav7\Citations\Grant\Actor;
 use Cav7\Citations\Grant\GrantValues;
@@ -165,6 +166,40 @@ class Grant extends Repository
 
             return count($all) > self::LISTED_MEMBERS ? $shown . ', +' . (count($all) - self::LISTED_MEMBERS) : $shown;
         }, $names);
+    }
+
+    /**
+     * A post names members by relation id, so a crafted one can name a milpac that isn't there.
+     *
+     * @param list<int> $relationIds
+     * @return list<int> The ones with a milpac.
+     */
+    public function milpacs(array $relationIds): array
+    {
+        return $relationIds === [] ? [] : array_map('intval', $this->db()->fetchAllColumn(
+            'SELECT relation_id FROM xf_nf_rosters_user WHERE relation_id IN (' . $this->db()->quote($relationIds) . ')'
+        ));
+    }
+
+    /**
+     * The list's corrections column. A retypeset moves the revision too, so the revision alone
+     * can't say whether a grant was corrected.
+     *
+     * @param list<int> $grantIds
+     * @return array<int, int> The revision the latest correction made, by grant, for the ones corrected.
+     */
+    public function lastCorrections(array $grantIds): array
+    {
+        if ($grantIds === []) {
+            return [];
+        }
+
+        return array_map('intval', $this->db()->fetchPairs(
+            'SELECT grant_id, MAX(revision_after) FROM xf_cav7_citation_grant_log
+            WHERE event = ? AND grant_id IN (' . $this->db()->quote($grantIds) . ')
+            GROUP BY grant_id',
+            GrantLog::CORRECTED
+        ));
     }
 
     /**

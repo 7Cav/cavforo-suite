@@ -372,6 +372,7 @@ class TemplateVersions extends AbstractManager
         $grants = array_filter(
             $this->finder('Cav7\Citations:Grant')
                 ->where('template_version_id', $version->template_version_id)
+                ->where('withdrawn_date', 0)
                 ->order('grant_date', 'DESC')
                 ->fetch()
                 ->toArray(),

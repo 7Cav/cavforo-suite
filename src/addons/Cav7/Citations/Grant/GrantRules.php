@@ -22,6 +22,7 @@ final class GrantRules
     public const KIND_NOT_SERVED = 'kind_not_served';
     public const NO_MEMBERS = 'no_members';
     public const DUPLICATE_MEMBER = 'duplicate_member';
+    public const NO_SUCH_MILPAC = 'no_such_milpac';
     public const REGIMENT_TAKES_NO_MEMBERS = 'regiment_takes_no_members';
     public const VERSION_NEEDS_MEMBER = 'version_needs_member';
     public const REGIMENT_DUPLICATE = 'regiment_duplicate';
@@ -103,6 +104,7 @@ final class GrantRules
      * @param bool $liveDuplicate A live regiment grant already holds this award and date.
      * @param array<int, int> $billets Billet id by signature id.
      * @param array<string, list<int>> $artRanks Rank ids with art, by field key.
+     * @param list<int> $milpacs The members' relation ids that have a milpac.
      * @return list<array{field: string, rule: string}>
      */
     public static function issueProblems(
@@ -117,6 +119,7 @@ final class GrantRules
         Actor $actor,
         array $billets,
         array $artRanks,
+        array $milpacs,
     ): array {
         $regiment = self::isRegiment($request->kindType, $request->kindId, $request->regimentAwardIds);
         $problems = [];
@@ -138,7 +141,7 @@ final class GrantRules
 
         return array_merge(
             $problems,
-            $regiment ? self::regimentProblems($values, $version, $liveDuplicate) : self::memberListProblems($values),
+            $regiment ? self::regimentProblems($values, $version, $liveDuplicate) : self::memberListProblems($values, $milpacs),
             self::valueProblems($version, $values, $billets, $artRanks),
         );
     }
@@ -222,11 +225,15 @@ final class GrantRules
         GrantValues $new,
         GrantChanges $changes,
         string $reason,
+        int $withdrawnDate,
         bool $liveDuplicate,
         array $billets,
         array $artRanks,
     ): array {
         $problems = self::reasonProblems($reason);
+        if ($withdrawnDate > 0) {
+            $problems[] = self::problem(self::ALREADY_WITHDRAWN);
+        }
         foreach (array_diff_key($changes->members, $new->members) as $id => $change) {
             $problems[] = self::problem(self::NO_SUCH_MEMBER, (string) $id);
         }
@@ -245,6 +252,7 @@ final class GrantRules
      */
     public static function moveProblems(
         string $reason,
+        int $withdrawnDate,
         bool $regiment,
         string $kind,
         int $templateId,
@@ -254,6 +262,9 @@ final class GrantRules
         ?Version $target,
     ): array {
         $problems = self::reasonProblems($reason);
+        if ($withdrawnDate > 0) {
+            $problems[] = self::problem(self::ALREADY_WITHDRAWN);
+        }
 
         if ($targetState !== VersionLifecycle::PUBLISHED || $target === null) {
             $problems[] = self::problem(self::VERSION_NOT_PUBLISHED);
@@ -273,15 +284,19 @@ final class GrantRules
 
     /**
      * @param list<int> $relationIds Milpacs already on the grant.
+     * @param list<int> $milpacs The added member's relation id if it has a milpac, otherwise empty.
      * @return list<array{field: string, rule: string}>
      */
-    public static function addProblems(bool $regiment, array $relationIds, Version $version, MemberValues $member): array
+    public static function addProblems(bool $regiment, array $relationIds, Version $version, MemberValues $member, array $milpacs): array
     {
         if ($regiment) {
             return [self::problem(self::NOT_A_MEMBER_GRANT)];
         }
         if (in_array($member->relationId, $relationIds, true)) {
             return [self::problem(self::DUPLICATE_MEMBER, (string) $member->relationId)];
+        }
+        if (!in_array($member->relationId, $milpacs, true)) {
+            return [self::problem(self::NO_SUCH_MILPAC, (string) $member->relationId)];
         }
         return self::memberProblems($version, $member);
     }
@@ -320,8 +335,11 @@ final class GrantRules
         return $problems;
     }
 
-    /** @return list<array{field: string, rule: string}> */
-    private static function memberListProblems(GrantValues $values): array
+    /**
+     * @param list<int> $milpacs
+     * @return list<array{field: string, rule: string}>
+     */
+    private static function memberListProblems(GrantValues $values, array $milpacs): array
     {
         if ($values->members === []) {
             return [self::problem(self::NO_MEMBERS)];
@@ -332,6 +350,8 @@ final class GrantRules
         foreach ($values->members as $member) {
             if (isset($seen[$member->relationId])) {
                 $problems[] = self::problem(self::DUPLICATE_MEMBER, (string) $member->relationId);
+            } elseif (!in_array($member->relationId, $milpacs, true)) {
+                $problems[] = self::problem(self::NO_SUCH_MILPAC, (string) $member->relationId);
             }
             $seen[$member->relationId] = true;
         }

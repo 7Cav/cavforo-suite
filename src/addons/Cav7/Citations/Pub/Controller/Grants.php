@@ -281,11 +281,13 @@ class Grants extends AbstractController
             $grants = $finder->limitByPage($page, self::PER_PAGE)->fetch();
         }
         $regiment = $actor->canOpenGrant(true) ? $repo->listed(true, $kind, $day, $relationId)->fetch() : [];
+        $shownIds = array_merge($grants === [] ? [] : $grants->keys(), $regiment === [] ? [] : $regiment->keys());
 
         return $this->view('Cav7\Citations:Grant\List', 'cav7_cit_grant_list', [
             'grants' => $grants,
             'regimentGrants' => $regiment,
             'names' => $repo->memberSummaries($grants === [] ? [] : $grants->keys()),
+            'corrections' => $repo->lastCorrections($shownIds),
             'filters' => $filters,
             'kinds' => $repo->issuedKinds(),
             'canIssue' => PageAccess::allows('issue', $actor, null),
@@ -318,7 +320,7 @@ class Grants extends AbstractController
                 'correct' => PageAccess::allows('correct', $actor, $grant->is_regiment) && !$grant->withdrawn_date,
                 'addMember' => PageAccess::allows('addmember', $actor, $grant->is_regiment),
                 'removeMember' => $grant->Members->count() > 0 && PageAccess::allows('removemember', $actor, $grant->is_regiment),
-                'move' => PageAccess::allows('move', $actor, $grant->is_regiment) && $this->moveTargets($grant) !== [],
+                'move' => !$grant->withdrawn_date && PageAccess::allows('move', $actor, $grant->is_regiment) && $this->moveTargets($grant) !== [],
                 'withdraw' => !$grant->withdrawn_date && PageAccess::allows('withdraw', $actor, $grant->is_regiment),
             ],
         ]);
