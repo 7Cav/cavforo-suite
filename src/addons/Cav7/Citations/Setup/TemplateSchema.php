@@ -5,6 +5,7 @@ namespace Cav7\Citations\Setup;
 use Cav7\Citations\Template\PayGradeSeed;
 use Cav7\Citations\Template\TypesettingRows;
 use XF\Db\AbstractAdapter;
+use XF\Db\Schema\Alter;
 use XF\Db\Schema\Create;
 use XF\Db\SchemaManager;
 
@@ -91,6 +92,12 @@ final class TemplateSchema
             $table->addKey(['billet_id', 'state'], 'billet_state');
         });
 
+        if (!$schema->columnExists('xf_cav7_citation_signature', 'first_used_date')) {
+            $schema->alterTable('xf_cav7_citation_signature', function (Alter $table) {
+                $table->addColumn('first_used_date', 'int')->setDefault(0);
+            });
+        }
+
         $schema->createTable('xf_cav7_citation_pay_grade', function (Create $table) {
             $table->checkExists(true);
             $table->addColumn('rank_id', 'int');
@@ -124,6 +131,21 @@ final class TemplateSchema
             $table->addColumn('log_date', 'int');
             $table->addPrimaryKey(['template_version_id', 'imagemagick_version', 'freetype_version']);
         });
+    }
+
+    /** Dates each pinned signature's first use from its earliest grant, for pins older than the column. */
+    public static function backfillFirstUse(AbstractAdapter $db): void
+    {
+        $db->query(
+            'UPDATE xf_cav7_citation_signature SET first_used_date = COALESCE((
+                SELECT MIN(g.issue_date)
+                FROM xf_cav7_citation_grant_signature AS p
+                INNER JOIN xf_cav7_citation_grant AS g ON g.grant_id = p.grant_id
+                WHERE p.signature_id = xf_cav7_citation_signature.signature_id
+            ), create_date)
+            WHERE first_used_date = 0
+                AND signature_id IN (SELECT signature_id FROM xf_cav7_citation_grant_signature)'
+        );
     }
 
     /** INSERT IGNORE, so a reinstall leaves what S1 has edited. */
