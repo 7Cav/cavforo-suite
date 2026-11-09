@@ -10,7 +10,8 @@ use XF\Db\AbstractAdapter;
  * zero-reference blobs.
  *
  * Orphans are counted and then deleted by walking the legacy tree again, judging each
- * file by its row at that moment. Nothing carries a list of files between steps.
+ * file by its row at that moment. Nothing carries a list of files between steps. The job
+ * drops the lock between them, so the delete pass stops at the count the brake judged.
  */
 final class Sweeper
 {
@@ -266,6 +267,10 @@ final class Sweeper
 
     private function visitForDelete(SweepProgress $p, RowKind $kind, int $shard, string $name, array $entry): void
     {
+        if ($p->orphansDeleted >= $p->orphans) {
+            return;
+        }
+
         $orphan = $this->orphanReason($kind, $shard, $name, $entry);
         $key = "{$kind->legacyTree()}/$shard/$name";
         $hash = $orphan !== null ? $this->disk->hash($key) : null;

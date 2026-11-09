@@ -332,18 +332,26 @@ $counts = fn (Stage $board) => [
 check('a stepped run ends where a whole run ends', $counts($stepped) === $counts($whole));
 check('and finishes the work', $progress->tookIn === 4 && $progress->orphansDeleted === 1 && $progress->zeroDeleted === 1);
 
-// The job drops the lock between steps, so a revert can free blobs after the brake's count.
+// The job drops the lock between steps, so files can turn orphan and a revert can free
+// blobs after the brake's count.
 $stage = new Stage();
+$stage->legacyFile($record, 2500, png());
 $progress = new SweepProgress();
 while (!$progress->done()) {
-    $counting = $progress->phase === SweepProgress::ZERO_COUNT;
+    $phase = $progress->phase;
     $stage->sweeper()->advance($progress);
-    if ($counting) {
+    if ($phase === SweepProgress::ORPHAN_COUNT && $progress->phase !== $phase) {
+        for ($id = 1; $id <= 51; $id++) {
+            $stage->legacyFile($award, $id, png(1, 1, sprintf('#%06x', $id)));
+        }
+    }
+    if ($phase === SweepProgress::ZERO_COUNT) {
         for ($i = 1; $i <= 51; $i++) {
             $stage->blob(png(1, 1, sprintf('#%06x', $i)));
         }
     }
 }
+check('the delete pass never deletes more orphans than it counted', $progress->orphans === 1 && $progress->orphansDeleted === 1);
 check('blobs freed after the count wait for the next run', $progress->zeroDeleted === 0 && blobCount($stage) === 51);
 
 finish();
