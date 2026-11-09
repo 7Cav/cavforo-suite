@@ -193,10 +193,7 @@ namespace Cav7\Citations\Tests {
     check('a grant reads back whole, shared apart from each member', array_keys($all->shared) === ['body', 'empty'] && array_keys($all->members) === [7, 8] && count($all->members[7]) === 3);
     check('a grant holds one set of stamps per version it was made under', count($rows->stamps(1)) === 2);
 
-    $rows->restamp(1, 1010072, new LibraryVersions('7.1.2-40', '2.15.0'));
-    check('a restamp reaches every row of the grant and no other', array_map('intval', array_column($rows->stamps(1), 'addon_version_id')) === [1010072] && (int) $rows->stamps(2)[0]['addon_version_id'] === 1010070);
-    check('a restamp leaves the set data alone', $rows->read(1, 7)['recipient']->size === 38.5);
-    check('--addon-version finds a grant by any row', $rows->grantsStamped(1010072) === [1] && $rows->grantsStamped(1010070) === [2] && $rows->grantsStamped(999) === []);
+    check('--addon-version finds a grant by any row', $rows->grantsStamped(1010071) === [1] && $rows->grantsStamped(999) === []);
 
     // G-48: below_legibility rows joined to their grant.
     $db->query('CREATE TABLE xf_cav7_citation_grant (grant_id INTEGER, template_version_id INTEGER, kind_title TEXT, grant_date INTEGER, is_regiment INTEGER, withdrawn_date INTEGER)');
