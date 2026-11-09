@@ -703,14 +703,14 @@ $rows = PreviewFit::rows($design, [
     'body' => new SetField('body', 17.75, true, []),
     'name_line' => new SetField('name_line', 20.0, true, []),
 ]);
-$fit = PreviewFit::of($design, $rows);
+$fit = PreviewFit::of($design, $rows, 1275);
 check('fit: a field left out still has a row to draw', array_keys($rows) === ['body', 'date_line', 'name_line', 'sig_co', 'art']);
 check('fit: rank art stays art', $rows['art']->lines === null && $rows['sig_co']->lines === []);
 check('fit: every flagged field warns', array_column($fit->below, 'key') === ['body', 'name_line']);
-check('fit: a warning says which is the text and its threshold', $fit->below[0]['text'] && !$fit->below[1]['text'] && $fit->below[0]['legible'] === 23.0);
-check('fit: the text size is reported', $fit->text === ['size' => 17.75, 'largest' => false]);
-check('fit: at its cap it says so', PreviewFit::of($design, PreviewFit::rows($design, ['body' => new SetField('body', 30.0, false, [])]))->text['largest']);
-check('fit: no text set reports none', PreviewFit::of($design, PreviewFit::rows($design, []))->text === null);
+check('fit: a warning says which is the text and its threshold', $fit->below[0]['text'] && !$fit->below[1]['text'] && $fit->below[0]['legible'] === 11.04);
+check('fit: the text size is reported in points on an 8.5 inch plate', $fit->text === ['size' => 8.52, 'largest' => false]);
+check('fit: at its cap it says so', PreviewFit::of($design, PreviewFit::rows($design, ['body' => new SetField('body', 30.0, false, [])]), 1275)->text['largest']);
+check('fit: no text set reports none', PreviewFit::of($design, PreviewFit::rows($design, []), 1275)->text === null);
 
 // The history's "what changed".
 $names = [14 => 'Quenby.T'];

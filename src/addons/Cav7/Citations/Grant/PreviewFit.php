@@ -13,6 +13,8 @@ use Cav7\Citations\Render\Version;
 final class PreviewFit
 {
     /**
+     * Sizes are in points, as the clerk reads them. The threshold check runs in pixels.
+     *
      * @param list<array{key: string, size: float, legible: float, text: bool}> $below Every field under its threshold.
      * @param array{size: float, largest: bool}|null $text The citation text's size, once any is set.
      */
@@ -56,8 +58,11 @@ final class PreviewFit
     }
 
     /** @param array<string, SetField> $rows By field key. */
-    public static function of(Version $version, array $rows): self
+    public static function of(Version $version, array $rows, int $plateWidth): self
     {
+        // The plate prints 8.5 inches wide.
+        $pt = fn (float $px): float => $plateWidth > 0 ? $px * 72 * 8.5 / $plateWidth : 0.0;
+
         $below = [];
         $text = null;
 
@@ -69,10 +74,10 @@ final class PreviewFit
             $isText = in_array('citation_text', FieldDependencies::of($field, $version)->uses, true);
 
             if ($isText && $row->size > 0) {
-                $text = ['size' => $row->size, 'largest' => $row->size >= $field->size];
+                $text = ['size' => $pt($row->size), 'largest' => $row->size >= $field->size];
             }
             if ($row->belowLegibility) {
-                $below[] = ['key' => $field->key, 'size' => $row->size, 'legible' => (float) $field->legible_size, 'text' => $isText];
+                $below[] = ['key' => $field->key, 'size' => $pt($row->size), 'legible' => $pt((float) $field->legible_size), 'text' => $isText];
             }
         }
 

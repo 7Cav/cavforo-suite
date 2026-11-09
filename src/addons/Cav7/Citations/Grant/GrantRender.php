@@ -83,7 +83,7 @@ final class GrantRender
             $values->printed($design, $member, $signatures, $version->rankArtFor($values->rankIdFor($design, $member) ?? 0)),
         ));
 
-        return new GrantPreview($this->render->draw($version, $rows)->jpeg, PreviewFit::of($design, $rows));
+        return new GrantPreview($this->render->draw($version, $rows)->jpeg, PreviewFit::of($design, $rows, $version->plate_width));
     }
 
     /** @param array<int, int> $memberIds Grant member id by the key in the typesetting, when those differ. */
