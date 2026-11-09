@@ -177,13 +177,13 @@ $issue = function (array $with = []) use ($written, $regimentVersion, $generic, 
     $with += [
         'version' => $written, 'kind' => ['award', 12], 'shown' => 40, 'current' => 40, 'state' => 'published',
         'kinds' => ['award:12', 'award:61'], 'title' => 'Bronze', 'duplicate' => false, 'actor' => $clerk,
-        'values' => $values(), 'art' => ['insignia' => [7]],
+        'values' => $values(), 'art' => ['insignia' => [7]], 'milpacs' => [1],
     ];
     $request = new IssueRequest($with['kind'][0], $with['kind'][1], $with['shown'], $with['values'], [61]);
 
     return rules(GrantRules::issueProblems(
         $request, $with['values'], $with['version'], $with['state'], $with['kinds'], $with['current'],
-        $with['title'], $with['duplicate'], $with['actor'], $billets, $with['art'],
+        $with['title'], $with['duplicate'], $with['actor'], $billets, $with['art'], $with['milpacs'],
     ));
 };
 
@@ -193,6 +193,7 @@ foreach ([
     'a whole member grant passes' => [[], []],
     'I-3 a member grant needs a milpac' => [['values' => $values(['members' => []])], ['no_members']],
     'I-3 the same milpac twice' => [['values' => $values(['members' => [$member(1), $member(1)]])], ['duplicate_member 1']],
+    'a relation id with no milpac' => [['values' => $values(['members' => [$member(1), $member(2)]])], ['no_such_milpac 2']],
     'I-4 a clerk can\'t issue a listed award' => [
         ['kind' => ['award', 61], 'version' => $regimentVersion, 'values' => $regimentValues],
         ['regiment_needs_permission'],
@@ -273,8 +274,9 @@ foreach ([
     'M-1 a regiment grant doesn\'t' => [true, [], $member(1), ['not_a_member_grant']],
     'M-4 a milpac already on it' => [false, [1, 2], $member(1), ['duplicate_member 1']],
     'M-5 a required member input' => [false, [], $member(1, []), ['input_required 1: role']],
+    'a relation id with no milpac' => [false, [], $member(3), ['no_such_milpac 3']],
 ] as $label => [$isRegiment, $held, $adding, $expected]) {
-    $got = rules(GrantRules::addProblems($isRegiment, $held, $written, $adding));
+    $got = rules(GrantRules::addProblems($isRegiment, $held, $written, $adding, [1]));
     check($label, $got === $expected, json_encode($got));
 }
 

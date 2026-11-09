@@ -1433,6 +1433,12 @@
         "version_string": "1.0.0",
         "hash": "9731f2f2c99e32568144b010e0da16c1"
     },
+    "cav7_cit_refused_no_such_milpac.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "c9523467e9b93fc3168889f8ca89a5a8"
+    },
     "cav7_cit_refused_no_such_pick.txt": {
         "global_cache": false,
         "version_id": 1010070,

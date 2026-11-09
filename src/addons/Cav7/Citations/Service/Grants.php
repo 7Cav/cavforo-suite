@@ -69,6 +69,7 @@ class Grants extends AbstractService
             $actor,
             $this->repo()->billets(array_values($values->signatures)),
             $version->artRanks(),
+            $this->repo()->milpacs(array_map(fn (MemberValues $member): int => $member->relationId, array_values($values->members))),
         ));
 
         $typesetting = $this->render()->make(
@@ -299,6 +300,7 @@ class Grants extends AbstractService
             array_map(fn (MemberValues $held): int => $held->relationId, array_values($values->members)),
             $design,
             $member,
+            $this->repo()->milpacs([$member->relationId]),
         ));
 
         $typesetting = $this->render()->make(
