@@ -3,6 +3,7 @@
 namespace Cav7\Citations\Service;
 
 use Cav7\Citations\Entity\TemplateVersion;
+use Cav7\Citations\Grant\GrantRules;
 use Cav7\Citations\Render\FontCatalog;
 use Cav7\Citations\Render\VersionRules;
 use Cav7\Citations\Template\FileStore;
@@ -19,11 +20,17 @@ class Publication extends AbstractService
     {
         $billetIds = array_map('intval', $this->db()->fetchAllColumn('SELECT billet_id FROM xf_cav7_citation_signing_billet'));
 
+        $regimentKinds = array_map(
+            fn (int $id): string => "award:$id",
+            GrantRules::awardList((string) $this->app->options()->cav7CitRegimentAwardIds) ?? []
+        );
+
         $problems = VersionRules::publishProblems(
             $draft->renderVersion(),
             $draft->plate_width,
             $draft->plate_height,
             $draft->kinds(),
+            array_intersect($draft->kinds(), $regimentKinds) !== [],
             $billetIds,
             $this->earlierScopes($draft),
         );

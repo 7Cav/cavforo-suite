@@ -1403,6 +1403,12 @@
         "version_string": "1.1.0",
         "hash": "3dd69033bed7d540aa2b1dc4a03c85e9"
     },
+    "cav7_cit_refused_no_signature_slot.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "24a424174e3cda726717181abafe48e1"
+    },
     "cav7_cit_refused_no_such_billet.txt": {
         "global_cache": false,
         "version_id": 1010070,

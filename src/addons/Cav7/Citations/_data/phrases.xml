@@ -234,6 +234,7 @@
   <phrase title="cav7_cit_refused_no_kind" version_id="1010070" version_string="1.1.0"><![CDATA[Pick at least one award or record type for this version to serve.]]></phrase>
   <phrase title="cav7_cit_refused_no_members" version_id="1000070" version_string="1.0.0"><![CDATA[A member grant needs at least one milpac.]]></phrase>
   <phrase title="cav7_cit_refused_no_plate" version_id="1010070" version_string="1.1.0"><![CDATA[Upload a plate before publishing.]]></phrase>
+  <phrase title="cav7_cit_refused_no_signature_slot" version_id="1020070" version_string="1.2.0"><![CDATA[This version has no signature slot.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_billet" version_id="1010070" version_string="1.1.0"><![CDATA[That signing billet doesn't exist.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_grant" version_id="1000070" version_string="1.0.0"><![CDATA[That grant doesn't exist.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_kind" version_id="1000070" version_string="1.0.0"><![CDATA[That award or record type doesn't exist.]]></phrase>

@@ -285,22 +285,25 @@ foreach ([
         [['recipient', VersionRules::NO_CATALOG_FONT], ['recipient', VersionRules::DOES_NOT_PARSE]],
     ],
 ] as $label => [$definitions, $scope, $earlier, $expected]) {
-    $problems = VersionRules::publishProblems(version($definitions, $inputs, $scope), 1275, 1650, ['award:5'], [1], $earlier);
+    // Run as a regiment version, so the slot rule below stays out of rows without a slot.
+    $problems = VersionRules::publishProblems(version($definitions, $inputs, $scope), 1275, 1650, ['award:5'], true, [1], $earlier);
     $got = array_map(fn (array $problem): array => [$problem['field'], $problem['rule']], $problems);
     check("publish: $label", $got === $expected, json_encode($problems));
 }
 
 foreach ([
     'awards, Promotion and Graduation records are the generator\'s' => [
-        ['award:5', 'record_type:' . VersionRules::PROMOTION, 'record_type:' . VersionRules::GRADUATION], [],
+        [signatureDefinition()], ['award:5', 'record_type:' . VersionRules::PROMOTION, 'record_type:' . VersionRules::GRADUATION], false, [],
     ],
-    'any other record type is outside it' => [['award:5', 'record_type:4'], [VersionRules::KIND_OUTSIDE_GENERATOR]],
-] as $label => [$kinds, $expected]) {
-    $problems = VersionRules::publishProblems(version([signatureDefinition()], [], 'none'), 1275, 1650, $kinds, [1], []);
+    'any other record type is outside it' => [[signatureDefinition()], ['award:5', 'record_type:4'], false, [VersionRules::KIND_OUTSIDE_GENERATOR]],
+    'a member version with no signature slot' => [[textDefinition(['pattern' => '{name}'])], ['award:5'], false, [VersionRules::NO_SIGNATURE_SLOT]],
+    'a regiment version needs no slot' => [[], ['award:5'], true, []],
+] as $label => [$definitions, $kinds, $regiment, $expected]) {
+    $problems = VersionRules::publishProblems(version($definitions, [], 'none'), 1275, 1650, $kinds, $regiment, [1], []);
     check("publish: $label", array_column($problems, 'rule') === $expected, json_encode($problems));
 }
 
-$bare = VersionRules::publishProblems(version([textDefinition(['x' => 5000])], [], 'member'), 0, 0, [], [], []);
+$bare = VersionRules::publishProblems(version([textDefinition(['x' => 5000])], [], 'member'), 0, 0, [], true, [], []);
 check(
     'no plate and no kind are the version\'s own, and no plate means no box is measured',
     $bare === [['field' => '', 'rule' => VersionRules::NO_PLATE], ['field' => '', 'rule' => VersionRules::NO_KIND]],
@@ -308,7 +311,7 @@ check(
 );
 check(
     'every refusal shows at once',
-    count(VersionRules::publishProblems(version([artDefinition(), signatureDefinition(['font' => 'x', 'billet_id' => 9])], [], 'none'), 0, 0, [], [1], [])) === 5
+    count(VersionRules::publishProblems(version([artDefinition(), signatureDefinition(['font' => 'x', 'billet_id' => 9])], [], 'none'), 0, 0, [], false, [1], [])) === 5
 );
 
 exit($failures === 0 ? 0 : 1);

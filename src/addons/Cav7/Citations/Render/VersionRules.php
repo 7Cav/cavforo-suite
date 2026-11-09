@@ -10,6 +10,7 @@ final class VersionRules
     public const KIND_OUTSIDE_GENERATOR = 'kind_outside_generator';
     public const BOX_OFF_PLATE = 'box_off_plate';
     public const NO_BILLET = 'no_billet';
+    public const NO_SIGNATURE_SLOT = 'no_signature_slot';
     public const NO_CATALOG_FONT = 'no_catalog_font';
     public const RANK_ART_WITHOUT_SCOPE = 'rank_art_without_scope';
     public const INPUT_SCOPE_CHANGED = 'input_scope_changed';
@@ -31,6 +32,7 @@ final class VersionRules
      * Plate size 0 means no plate. Duplicate keys never reach here, since a draft can't save them.
      *
      * @param list<string> $kinds As `award:<id>` or `record_type:<id>`.
+     * @param bool $regiment The version serves a regiment-grant award. A PUC plate carries no slot.
      * @param list<int> $billetIds Every signing billet that exists.
      * @param array<string, string> $earlierScopes Input key => scope on the template's earlier versions.
      * @return list<array{field: string, rule: string}>
@@ -40,6 +42,7 @@ final class VersionRules
         int $plateWidth,
         int $plateHeight,
         array $kinds,
+        bool $regiment,
         array $billetIds,
         array $earlierScopes,
     ): array {
@@ -52,6 +55,10 @@ final class VersionRules
         }
         if (array_filter($kinds, fn (string $kind): bool => !self::generated($kind)) !== []) {
             $problems[] = ['field' => '', 'rule' => self::KIND_OUTSIDE_GENERATOR];
+        }
+
+        if (!$regiment && array_filter($version->fields, fn (object $field): bool => $field instanceof SignatureSlot) === []) {
+            $problems[] = ['field' => '', 'rule' => self::NO_SIGNATURE_SLOT];
         }
 
         foreach ($version->fields as $field) {
