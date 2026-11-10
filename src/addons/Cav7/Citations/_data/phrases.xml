@@ -386,7 +386,7 @@
   <phrase title="option.cav7CitationReencodeEnabled" version_id="1000070" version_string="1.0.0"><![CDATA[Allow the re-encode]]></phrase>
   <phrase title="option_explain.cav7CitCutover" version_id="1000070" version_string="1.0.0"><![CDATA[With this on, the award and record forms pick a citation in place of the upload, and uploads are refused on every kind but Disciplinary. Turning it off reopens upload. Attached citations stay either way.]]></phrase>
   <phrase title="option_explain.cav7CitRegimentAwardIds" version_id="1000070" version_string="1.0.0"><![CDATA[Comma-separated award ids. A grant of one of these awards is a regiment grant. Removing an award here doesn't change a grant already issued.]]></phrase>
-  <phrase title="option_explain.cav7CitationReencodeEnabled" version_id="1000070" version_string="1.0.0"><![CDATA[With this off, the re-encode command refuses to run. A revert of all runs turns it off, and turning it back on is a decision for leadership.]]></phrase>
+  <phrase title="option_explain.cav7CitationReencodeEnabled" version_id="1000070" version_string="1.0.0"><![CDATA[Installs off. With it off, the re-encode command refuses to run. A revert of all runs turns it off again, and turning it back on after that is a decision for leadership.]]></phrase>
   <phrase title="option_group.cav7Citations" version_id="1000070" version_string="1.0.0"><![CDATA[Citations]]></phrase>
   <phrase title="option_group_description.cav7Citations" version_id="1000070" version_string="1.0.0"><![CDATA[Settings for citation storage.]]></phrase>
   <phrase title="permission.cav7Citations_editTemplateDrafts" version_id="1000070" version_string="1.0.0"><![CDATA[Edit template drafts]]></phrase>
