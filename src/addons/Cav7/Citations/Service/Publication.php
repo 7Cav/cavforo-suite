@@ -44,18 +44,20 @@ class Publication extends AbstractService
     /** @throws PrintableException */
     public function publish(TemplateVersion $draft, int $userId): void
     {
-        $problems = $this->problems($draft);
-        if ($problems !== []) {
-            throw new PrintableException($problems);
-        }
+        $this->service(Drafts::class)->locked($draft, function () use ($draft, $userId): void {
+            $problems = $this->problems($draft);
+            if ($problems !== []) {
+                throw new PrintableException($problems);
+            }
 
-        $draft->bulkSet([
-            'font_hashes' => json_encode($this->pinFonts($draft), JSON_THROW_ON_ERROR),
-            'state' => VersionLifecycle::PUBLISHED,
-            'publish_user_id' => $userId,
-            'publish_date' => \XF::$time,
-        ]);
-        $draft->save();
+            $draft->bulkSet([
+                'font_hashes' => json_encode($this->pinFonts($draft), JSON_THROW_ON_ERROR),
+                'state' => VersionLifecycle::PUBLISHED,
+                'publish_user_id' => $userId,
+                'publish_date' => \XF::$time,
+            ]);
+            $draft->save(true, false);
+        });
     }
 
     /** @throws PrintableException */
