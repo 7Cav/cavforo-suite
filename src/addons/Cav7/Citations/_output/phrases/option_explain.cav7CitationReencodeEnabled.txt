@@ -1,0 +1,1 @@
+With this off, the re-encode command refuses to run. A revert of all runs turns it off, and turning it back on is a decision for leadership.

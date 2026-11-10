@@ -1,0 +1,32 @@
+{
+    "cron_entry.cav7CitationsSweep.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "bb3c5ad2fb46d99c2eb920c6a34fcbc9"
+    },
+    "option.cav7CitationReencodeEnabled.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "bb48b053766ee423c7085c51cf4cc46a"
+    },
+    "option_explain.cav7CitationReencodeEnabled.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "7ac89fe6881ad6f7ef33ca2b89d52b6b"
+    },
+    "option_group.cav7Citations.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "027b53670d4e8a6c3d6d8a3db356eb26"
+    },
+    "option_group_description.cav7Citations.txt": {
+        "global_cache": false,
+        "version_id": 1000070,
+        "version_string": "1.0.0",
+        "hash": "a42955c246f6d738775e4a5131ee74c3"
+    }
+}

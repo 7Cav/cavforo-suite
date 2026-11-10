@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cron>
+  <entry entry_id="cav7CitationsSweep" cron_class="Cav7\Citations\Cron\Sweep" cron_method="run" active="0"><![CDATA[{"day_type":"dom","dom":[-1],"hours":[3],"minutes":[10]}]]></entry>
+</cron>

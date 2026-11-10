@@ -22,8 +22,9 @@ class RosterUserAward extends XFCP_RosterUserAward
 	protected function getAuditExcludedColumns(): array
 	{
 		// citation_date is a timestamp stamped by the citation image service on
-		// every image upload/removal; excluding it keeps those saves from
-		// producing noise entries. Creates and deletes are still logged in full.
-		return ['citation_date'];
+		// every image upload/removal, and citation_blob_id is the citation reference
+		// Cav7/Citations clears on those same saves. Excluding them keeps those saves
+		// from producing noise entries. Creates and deletes are still logged in full.
+		return ['citation_date', 'citation_blob_id'];
 	}
 }

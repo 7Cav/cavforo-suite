@@ -32,7 +32,7 @@ For release builds, generate hashes first: `php cmd.php xf-addon:build-release C
 
 **The two stores can disagree.** A crash, or a rollback of the save transaction after the entity hooks have run, can leave an index row without its detail line or a detail line without its row. The admin UI tolerates both and the repository logs each anomaly it encounters.
 
-**Image churn is excluded, not suppressed.** The image services stamp a timestamp column on every upload or removal (`award_image`, `rank_image`, `citation_date`, `uniform_date`). Those columns are excluded from update diffs, so image operations do not flood the log, but creates and deletes of the owning records are always recorded in full.
+**Image churn is excluded, not suppressed.** Every upload or removal changes an image column on its row (`award_image`, `rank_image`, `citation_date`, `citation_blob_id`, `uniform_date`). Those columns are excluded from update diffs, so image operations do not flood the log, but creates and deletes of the owning records are always recorded in full.
 
 **A position cannot be deleted while members hold it.** The delete is refused while any member still holds the position, primary or secondary, because the vendor's delete would take those members off the roster along with their awards, service records, field values, and uniform. Reassign them first, and each reassignment is audited as a normal update.
 

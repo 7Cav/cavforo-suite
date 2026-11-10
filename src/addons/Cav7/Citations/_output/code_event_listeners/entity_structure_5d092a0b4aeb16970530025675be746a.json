@@ -1,0 +1,9 @@
+{
+    "event_id": "entity_structure",
+    "execute_order": 10,
+    "callback_class": "Cav7\\Citations\\Listener",
+    "callback_method": "awardStructure",
+    "active": true,
+    "hint": "NF\\Rosters\\Entity\\RosterUserAward",
+    "description": "Adds the citation reference and its blob relation to the row entity"
+}
