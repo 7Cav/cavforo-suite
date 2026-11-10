@@ -6,7 +6,11 @@ use Cav7\Citations\Render\LibraryVersions;
 use Cav7\Citations\Render\Overrun;
 use XF\Db\AbstractAdapter;
 
-/** One row per version and library pair, so a bad rebuild leaves one error per version, and a new library logs again. */
+/**
+ * One row per version and library pair, so a bad rebuild leaves one error per version, and a
+ * new library logs again. A failed render takes the version's row with no libraries, since a
+ * missing file fails under any.
+ */
 final class OverrunLog
 {
     public const TABLE = 'xf_cav7_citation_overrun_log';
@@ -21,17 +25,7 @@ final class OverrunLog
     /** A failure here doesn't fail the render, which still serves. */
     public function record(int $versionId, int $grantMemberId, Overrun $overrun, LibraryVersions $libraries, int $date): void
     {
-        try {
-            $inserted = $this->db->query(
-                'INSERT IGNORE INTO ' . self::TABLE . ' (template_version_id, imagemagick_version, freetype_version, log_date)
-                VALUES (?, ?, ?, ?)',
-                [$versionId, $libraries->imagemagick_version, $libraries->freetype_version, $date]
-            )->rowsAffected();
-        } catch (\Exception) {
-            return;
-        }
-
-        if ($inserted > 0) {
+        if ($this->claim($versionId, $libraries->imagemagick_version, $libraries->freetype_version, $date)) {
             ($this->logError)(sprintf(
                 'Citation overrun: template version %d, field %s, grant member %d, %.2fpx past its box, ImageMagick %s, FreeType %s.',
                 $versionId,
@@ -41,6 +35,25 @@ final class OverrunLog
                 $libraries->imagemagick_version,
                 $libraries->freetype_version,
             ));
+        }
+    }
+
+    /** Whether this is the version's first failed render, the one worth logging. */
+    public function firstFailure(int $versionId, int $date): bool
+    {
+        return $this->claim($versionId, '', '', $date);
+    }
+
+    private function claim(int $versionId, string $imagemagick, string $freetype, int $date): bool
+    {
+        try {
+            return $this->db->query(
+                'INSERT IGNORE INTO ' . self::TABLE . ' (template_version_id, imagemagick_version, freetype_version, log_date)
+                VALUES (?, ?, ?, ?)',
+                [$versionId, $imagemagick, $freetype, $date]
+            )->rowsAffected() > 0;
+        } catch (\Exception) {
+            return false;
         }
     }
 }

@@ -243,9 +243,15 @@ namespace Cav7\Citations\Tests {
     $overruns->record(42, 7, $overrun, $libraries, 3000);
     check('G-45 another version logs', count($errors) === 3);
 
+    check('a version\'s first failed render logs, even after an overrun', $overruns->firstFailure(41, 4000));
+    check('its next failed render doesn\'t', !$overruns->firstFailure(41, 5000));
+    $overruns->firstFailure(44, 5000);
+    $overruns->record(44, 7, $overrun, $libraries, 5000);
+    check('a failure doesn\'t hold back an overrun on its version', count($errors) === 4);
+
     $db->query('DROP TABLE ' . OverrunLog::TABLE);
     $overruns->record(43, 7, $overrun, $libraries, 3000);
-    check('a failure writing the log doesn\'t fail the render', count($errors) === 3);
+    check('a failure writing the log doesn\'t fail the render', count($errors) === 4);
 
     // #295: the upgrade marks every signature a grant has used, including one a correction replaced.
     require_once __DIR__ . '/../Setup/TemplateSchema.php';
