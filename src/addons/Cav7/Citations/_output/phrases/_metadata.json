@@ -1775,6 +1775,12 @@
         "version_string": "1.1.0",
         "hash": "bccbdf4525a9acde38690ed8d7c20f3e"
     },
+    "cav7_cit_saved_without_citation.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "0384f0ad23a9c7ab31164b8baef0de3a"
+    },
     "cav7_cit_serves.txt": {
         "global_cache": false,
         "version_id": 1020070,

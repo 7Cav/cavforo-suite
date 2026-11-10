@@ -82,13 +82,17 @@ final class PreviewFit
 
         $below = [];
         $text = null;
+        // A generic version's wrapped field holds its text, as the prototype's EIB body does.
+        $generic = FieldDependencies::generic($version);
 
         foreach ($version->fields as $field) {
             if ($field instanceof RankArtField) {
                 continue;
             }
             $row = $rows[$field->key];
-            $isText = in_array('citation_text', FieldDependencies::of($field, $version)->uses, true);
+            $isText = $generic
+                ? $field instanceof TextField && $field->mode === 'wrap'
+                : in_array('citation_text', FieldDependencies::of($field, $version)->uses, true);
 
             if ($isText && $row->size > 0) {
                 $text = ['size' => $pt($row->size), 'largest' => $row->size >= $field->size];

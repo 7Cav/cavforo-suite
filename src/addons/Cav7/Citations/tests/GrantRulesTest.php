@@ -725,6 +725,19 @@ check('fit: a filled one gets none', $keys(PreviewFit::placeholders($design, Pre
     'sig_co' => new SetField('sig_co', 19.0, false, [], ink: new PlacedImage('h', 0, 0, 10, 10)),
 ]))) === []);
 
+// A generic version's wrapped literal is its citation text, as the prototype's EIB body is.
+$genericBody = new TextField('body', 0, 0, 100, 100, 'Awarded for passing the course.', 'tinos-regular', 30.0, 23.0, 1.2, 'wrap', 'justify', false, '#000000');
+$generic = new Version([$genericBody, $dateLine, $slot], [], 'none');
+$genericFit = PreviewFit::of($generic, PreviewFit::rows($generic, [
+    'body' => new SetField('body', 17.75, true, []),
+    'date_line' => new SetField('date_line', 24.0, false, []),
+]), 1275, 1650);
+check(
+    'fit: a generic version\'s wrapped text reports and warns as the citation text',
+    $genericFit->text === ['size' => 8.52, 'largest' => false] && $genericFit->below[0]['text'],
+    json_encode($genericFit)
+);
+
 // The history's "what changed".
 $names = [14 => 'Quenby.T'];
 foreach ([

@@ -213,7 +213,7 @@
 				</xf:if>
 			</xf:if>
 
-			<xf:if is="$grantInputs is not empty OR $writesText">
+			<xf:if is="$grantInputs is not empty OR $writesText OR $genericText">
 				<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_text') }}</h3>
 			</xf:if>
 			<xf:foreach loop="$grantInputs" value="$input">
@@ -531,7 +531,7 @@
 				<div class="u-muted">{{ phrase('cav7_cit_generic_page_note') }}</div>
 				<div class="cav7Pre">{{ $genericText ?: '-' }}</div>
 			</div>
-		<xf:else />
+		<xf:elseif is="$grant.citation_text" />
 			<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_citation_text') }}</h3>
 			<div class="block-row"><div class="cav7Pre">{$grant.citation_text}</div></div>
 		</xf:if>

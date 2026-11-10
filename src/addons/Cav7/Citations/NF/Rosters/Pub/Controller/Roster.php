@@ -10,6 +10,7 @@ use XF\Mvc\Reply\AbstractReply;
 use XF\Mvc\Reply\Error;
 use XF\Mvc\Reply\Redirect;
 use XF\Mvc\Reply\View;
+use XF\PrintableException;
 
 /**
  * The citation picker on the row forms, and the check around the vendor's save. A refusal
@@ -113,7 +114,12 @@ class Roster extends XFCP_Roster
 
         $reply = $save();
         if ($pick !== 0 && $reply instanceof Redirect) {
-            $links->attach($kind, $rosterUser->newRow?->record_id ?? $recordId, $pick);
+            try {
+                $links->attach($kind, $rosterUser->newRow?->record_id ?? $recordId, $pick);
+            } catch (PrintableException $e) {
+                // The vendor's save has committed, so the row stands without its citation.
+                $reply->setMessage(\XF::phrase('cav7_cit_saved_without_citation', ['reason' => $e->getMessage()]));
+            }
         }
         return $reply;
     }

@@ -132,9 +132,19 @@ check('a line shrinks in a handful of measures, not a walk down the grid', $metr
 
 $hopeless = setText(field(['legible_size' => 12.0]), str_repeat('W', 1000));
 check(
-    'a line that fits at no size stores at the last resort and overflows, flagged',
-    $hopeless->size === 1.0 && $hopeless->belowLegibility && $hopeless->lines[0]->w === 1000.0
+    'a line too long for the grid goes on shrinking below 1px until it fits, flagged',
+    $hopeless->size === 0.4 && $hopeless->belowLegibility && $hopeless->lines[0]->w === 400.0,
+    json_encode($hopeless->row())
 );
+
+foreach (['line', 'wrap'] as $mode) {
+    $never = setText(field(['w' => 1, 'mode' => $mode, 'align' => 'left']), str_repeat('W', 500));
+    check(
+        "$mode text that fits at no size stops at the smallest size and keeps its lines",
+        $never->size === Typesetter::MIN_SIZE && linesOf($never) === [str_repeat('W', 500)],
+        json_encode($never->row())
+    );
+}
 
 // Placement.
 foreach ([
@@ -189,8 +199,7 @@ $hairOver = setText(field(['w' => 100, 'h' => 400, 'mode' => 'wrap', 'align' => 
 check('a word past the box by less than the tolerance still forces the size down', $hairOver->size === 21.0, (string) $hairOver->size);
 
 $noFit = setText(field(['w' => 100, 'h' => 400, 'mode' => 'wrap', 'legible_size' => 12.0]), str_repeat('a', 400));
-check('a word too wide at any size stores at the last resort, flagged', $noFit->size === 1.0 && $noFit->belowLegibility);
-check('text that overflows at the last resort still saves its lines', linesOf($noFit) === [str_repeat('a', 400)]);
+check('a word too wide for the grid shrinks below 1px until it fits, flagged', $noFit->size === 0.5 && $noFit->belowLegibility, (string) $noFit->size);
 
 // The table's kerning ratio comes from the AV-heavy paragraph, so it runs short on the plain one.
 $kerned = setText(
