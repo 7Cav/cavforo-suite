@@ -1,7 +1,8 @@
 /**
- * Cav7/Citations: the template preview. The image is always the server's render; this only
- * zooms it, draws the field boxes over it as page chrome, and asks for a new one when a value
- * changes. Zoom and scroll belong to the elements here, so a new render leaves both alone.
+ * Cav7/Citations: the template and signature previews. The images are always the server's
+ * render; this only zooms the template one, draws the field boxes over it as page chrome, and
+ * asks for a new render when a value changes. Zoom and scroll belong to the elements here, so a
+ * new render leaves both alone.
  */
 ((window, document) =>
 {
@@ -196,5 +197,48 @@
 		},
 	})
 
+	XF.Cav7SignaturePreview = XF.Element.newHandler({
+		options: {
+			previewUrl: '',
+		},
+
+		timer: null,
+		latest: 0,
+
+		init ()
+		{
+			this.body = this.target.querySelector('.js-signaturePreview')
+			this.target.addEventListener('input', () => this.schedule())
+			this.target.addEventListener('change', () => this.refresh())
+			this.refresh()
+		},
+
+		schedule ()
+		{
+			clearTimeout(this.timer)
+			this.timer = setTimeout(() => this.refresh(), PREVIEW_DELAY)
+		},
+
+		refresh ()
+		{
+			clearTimeout(this.timer)
+			const sent = ++this.latest
+
+			XF.ajax('post', this.options.previewUrl, XF.getDefaultFormData(this.target), response =>
+			{
+				if (sent !== this.latest || !response.html)
+				{
+					return
+				}
+
+				XF.setupHtmlInsert(response.html, html =>
+				{
+					this.body.replaceChildren(html)
+				})
+			}, { global: false, skipError: true })
+		},
+	})
+
 	XF.Element.register('cav7-plate-preview', 'XF.Cav7PlatePreview')
+	XF.Element.register('cav7-signature-preview', 'XF.Cav7SignaturePreview')
 })(window, document)

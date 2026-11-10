@@ -1,8 +1,10 @@
 <xf:title>{{ $signature ? phrase('cav7_cit_edit_signature') : phrase('cav7_cit_add_signature') }}</xf:title>
 <xf:breadcrumb href="{{ link('rosters/citation-signatures') }}">{{ phrase('cav7_cit_signatures') }}</xf:breadcrumb>
 <xf:css src="cav7_cit_pages.less" />
+<xf:js src="Cav7/Citations/manager.js" addon="Cav7/Citations" min="1" />
 
-<xf:form action="{{ $signature ? link('rosters/citation-signatures/edit', $signature) : link('rosters/citation-signatures/add') }}" ajax="true" upload="true" class="block">
+<xf:form action="{{ $signature ? link('rosters/citation-signatures/edit', $signature) : link('rosters/citation-signatures/add') }}" ajax="true" upload="true" class="block"
+	data-xf-init="cav7-signature-preview" data-preview-url="{{ $signature ? link('rosters/citation-signatures/preview', $signature) : link('rosters/citation-signatures/preview') }}">
 	<div class="block-container">
 		<div class="block-body">
 			<xf:selectrow name="billet_id" value="{$signature.billet_id}" label="{{ phrase('cav7_cit_signing_billet') }}" explain="{{ phrase('cav7_cit_signature_billet_explain') }}">
@@ -19,6 +21,9 @@
 				</div>
 			</xf:formrow>
 			<xf:uploadrow name="ink" accept=".png" label="{{ phrase('cav7_cit_ink_image') }}" hint="{{ phrase('cav7_cit_ink_image_hint') }}" explain="{{ $signature ? phrase('cav7_cit_ink_keep_explain') : '' }}" />
+			<xf:formrow label="{{ phrase('cav7_cit_preview') }}" hint="{{ phrase('cav7_cit_signature_preview_hint') }}">
+				<div class="js-signaturePreview"></div>
+			</xf:formrow>
 		</div>
 		<xf:submitrow icon="save" />
 	</div>

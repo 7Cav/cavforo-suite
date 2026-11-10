@@ -320,6 +320,11 @@
   <phrase title="cav7_cit_show_retired" version_id="1010070" version_string="1.1.0"><![CDATA[Show retired signatures]]></phrase>
   <phrase title="cav7_cit_signature_active_again" version_id="1020070" version_string="1.2.0"><![CDATA[The signature is active again.]]></phrase>
   <phrase title="cav7_cit_signature_billet_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Clerks see this signature in every slot that takes this billet.]]></phrase>
+  <phrase title="cav7_cit_signature_preview_hint" version_id="1020070" version_string="1.2.0"><![CDATA[Slots that take this billet]]></phrase>
+  <phrase title="cav7_cit_signature_preview_none" version_id="1020070" version_string="1.2.0"><![CDATA[No template version has a slot for this billet yet.]]></phrase>
+  <phrase title="cav7_cit_signature_preview_sizes" version_id="1020070" version_string="1.2.0"><![CDATA[Prints at {size} pt. This slot's reading size is {legible} pt.]]></phrase>
+  <phrase title="cav7_cit_signature_preview_slot" version_id="1020070" version_string="1.2.0"><![CDATA[{template} v{version} · {slot}]]></phrase>
+  <phrase title="cav7_cit_signature_preview_small" version_id="1020070" version_string="1.2.0"><![CDATA[Too small to read well. Shorten a line, such as LTC for Lieutenant Colonel.]]></phrase>
   <phrase title="cav7_cit_signature_retired" version_id="1020070" version_string="1.2.0"><![CDATA[The signature is retired.]]></phrase>
   <phrase title="cav7_cit_signature_slot" version_id="1020070" version_string="1.2.0"><![CDATA[Signature slot]]></phrase>
   <phrase title="cav7_cit_signature_slot_x" version_id="1020070" version_string="1.2.0"><![CDATA[Signature slot: {billet}]]></phrase>
