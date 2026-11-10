@@ -117,6 +117,7 @@
   <phrase title="cav7_cit_log_puc_sync" version_id="1010070" version_string="1.1.0"><![CDATA[PUC sync]]></phrase>
   <phrase title="cav7_cit_log_rank" version_id="1010070" version_string="1.1.0"><![CDATA[Rank]]></phrase>
   <phrase title="cav7_cit_log_retypeset" version_id="1010070" version_string="1.1.0"><![CDATA[Retypeset]]></phrase>
+  <phrase title="cav7_cit_log_retypeset_unchanged" version_id="1020070" version_string="1.2.0"><![CDATA[Retypeset, no change]]></phrase>
   <phrase title="cav7_cit_log_signature" version_id="1010070" version_string="1.1.0"><![CDATA[Signatures]]></phrase>
   <phrase title="cav7_cit_log_template_version" version_id="1010070" version_string="1.1.0"><![CDATA[Template version]]></phrase>
   <phrase title="cav7_cit_log_withdrawn" version_id="1010070" version_string="1.1.0"><![CDATA[Withdrawn]]></phrase>

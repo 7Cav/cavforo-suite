@@ -774,6 +774,8 @@ foreach ([
             ['cav7_cit_log_cleared_record', ['title' => 'Promotion', 'date' => '2026-06-30']],
         ],
     ],
+    'a retypeset that changed something says so' => [LogSummary::of('retypeset', ['before' => []], $names), [['cav7_cit_log_retypeset', []]]],
+    'a retypeset that changed nothing says that' => [LogSummary::of('retypeset', ['unchanged' => true], $names), [['cav7_cit_log_retypeset_unchanged', []]]],
 ] as $label => [$actual, $expected]) {
     check("history: $label", $actual === $expected, var_export($actual, true));
 }

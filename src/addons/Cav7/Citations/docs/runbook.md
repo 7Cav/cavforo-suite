@@ -163,7 +163,7 @@ cav7-citations:retypeset --template-version=7 --reason="ImageMagick upgrade"
 Choose grants with `--grant` (repeatable), `--template-version` or `--addon-version`. The
 dry run lists what would change and writes nothing. A real run needs `--reason`. Each grant
 whose typesetting changes logs it and moves its revision, so its URL changes and the old one
-redirects. A grant with no change is left as it was. It exits 0 when clean, 1 when a grant failed and 2 when the command was refused.
+redirects. A grant with no change keeps its typesetting and revision, and logs only that the check ran. It exits 0 when clean, 1 when a grant failed and 2 when the command was refused.
 
 ## Reading damage
 

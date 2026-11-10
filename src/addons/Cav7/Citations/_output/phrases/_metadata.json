@@ -701,6 +701,12 @@
         "version_string": "1.1.0",
         "hash": "5b411a63f701d33c93d4e6624ba31fec"
     },
+    "cav7_cit_log_retypeset_unchanged.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "908a7db621ea7acdc255d795bd21e71a"
+    },
     "cav7_cit_log_signature.txt": {
         "global_cache": false,
         "version_id": 1010070,

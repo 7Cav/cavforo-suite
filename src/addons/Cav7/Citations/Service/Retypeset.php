@@ -51,7 +51,8 @@ class Retypeset extends AbstractService
     /**
      * Each grant is its own transaction with the grant row held, so a correction can't land
      * mid-way. That makes this the one place Imagick runs inside a transaction. A grant with
-     * no changes is left alone, since its stamps record what made its typesetting.
+     * no changes keeps its rows and revision, since its stamps record what made its typesetting,
+     * and logs only that the check ran.
      *
      * @return array{grant: Grant, changes: list<FieldChange>}
      * @throws \Exception A grant that can't be read or set, left as it was.
@@ -65,6 +66,7 @@ class Retypeset extends AbstractService
             [$fresh, $changes] = $this->compare($grant);
 
             if ($changes === []) {
+                $this->log($grant, $selection, ['unchanged' => true]);
                 return ['grant' => $grant, 'changes' => []];
             }
 
@@ -73,7 +75,7 @@ class Retypeset extends AbstractService
 
             $grant->revision += 1;
             $grant->save(true, false);
-            $this->log($grant, $selection, $before);
+            $this->log($grant, $selection, ['before' => $before]);
 
             return ['grant' => $grant, 'changes' => $changes];
         });
@@ -119,8 +121,8 @@ class Retypeset extends AbstractService
         return $grant ?? throw new \InvalidArgumentException("No grant $grantId");
     }
 
-    /** @param list<array<string, mixed>> $before */
-    private function log(Grant $grant, RetypesetSelection $selection, array $before): void
+    /** @param array<string, mixed> $detail */
+    private function log(Grant $grant, RetypesetSelection $selection, array $detail): void
     {
         $render = $this->render();
 
@@ -133,9 +135,7 @@ class Retypeset extends AbstractService
             'username' => self::OPERATOR,
             'reason' => $selection->reason,
             'revision_after' => $grant->revision,
-            'detail' => [
-                'selector' => $selection->label(),
-                'before' => $before,
+            'detail' => ['selector' => $selection->label()] + $detail + [
                 'after' => [
                     'addon_version_id' => $render->addonVersionId,
                     'imagemagick_version' => $render->libraries->imagemagick_version,
