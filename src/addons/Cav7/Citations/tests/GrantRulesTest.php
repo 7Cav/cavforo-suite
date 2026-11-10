@@ -379,6 +379,7 @@ foreach ([
     'I-8 text can\'t be corrected away' => [new GrantChanges(citationText: ''), 'Typo', ['citation_text_required']],
     'I-6 nor a date made bad' => [new GrantChanges(date: '2026-02-30'), 'Typo', ['bad_date']],
     'I-9 a signature of another billet' => [new GrantChanges(signatures: ['sig' => 12]), 'Typo', ['signature_wrong_billet sig']],
+    'I-9 a slot emptied on the form' => [GrantForm::changes(['signatures' => ['sig' => 0]] + GrantForm::fromValues($two())), 'Typo', ['slot_empty sig']],
     'I-10 a required input blanked' => [new GrantChanges(inputs: ['unit' => '']), 'Typo', ['input_required unit']],
     'I-11 a name blanked' => [new GrantChanges(members: [401 => new MemberChanges(name: '')]), 'Typo', ['name_required 1']],
     'a rank that doesn\'t exist' => [new GrantChanges(members: [401 => new MemberChanges(rankId: 999)]), 'Typo', ['no_such_rank 1']],
@@ -408,8 +409,8 @@ $slotsMoved = new Version([text('b', '{citation_text}'), slot('co_sig', 5), slot
 $got = $moved($slotsMoved);
 check('C-9 a slot fills from the pinned signature with its billet', $got->signatures === ['co_sig' => 11], json_encode($got->signatures));
 check('C-9 a slot nothing fills comes back missing', rules(GrantRules::valueProblems($slotsMoved, $got, $billets, [])) === ['slot_empty xo_sig']);
-$got = $moved($slotsMoved, new GrantChanges(signatures: ['xo_sig' => 12]));
-check('C-9 supplying it clears the list', rules(GrantRules::valueProblems($slotsMoved, $got, $billets, [])) === []);
+$got = $moved($slotsMoved, new GrantChanges(signatures: ['co_sig' => 0, 'xo_sig' => 12]));
+check('C-9 supplying it clears the list, and a slot left unchosen keeps its fill', rules(GrantRules::valueProblems($slotsMoved, $got, $billets, [])) === []);
 
 $needsInput = new Version([text('b', '{input:award_number}')], [new InputDefinition('award_number', 'Number', 'grant', true), new InputDefinition('unit', 'Unit', 'grant', true)], 'none');
 $got = $moved($needsInput);

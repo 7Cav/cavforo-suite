@@ -51,7 +51,7 @@ final class GrantForm
         return new GrantChanges(
             $post['date'],
             $post['citation_text'],
-            array_filter($post['signatures']),
+            $post['signatures'],
             array_map('trim', $post['inputs']),
             $post['rank_id'] ?: null,
             $members,
