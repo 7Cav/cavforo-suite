@@ -1,1 +1,1 @@
-{field}: that signature belongs to another billet.
+The signature chosen for the {billet} slot belongs to another billet.

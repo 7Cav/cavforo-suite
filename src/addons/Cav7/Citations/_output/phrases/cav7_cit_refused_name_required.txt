@@ -1,1 +1,1 @@
-{field}: this template prints a name, so enter one.
+Please enter a name for every member.

@@ -74,10 +74,18 @@ function slot(string $key, int $billetId): SignatureSlot
     return new SignatureSlot($key, 0, 0, 100, 100, $billetId, 40, 'tinos-regular', 12.0, 0.0, 1.2, '#000000');
 }
 
-/** @param list<array{field: string, rule: string}> $problems */
+/**
+ * Each problem as its rule and field, then what its message prints, as `key=value`.
+ *
+ * @param list<array{field: string, rule: string, params: array<string, string|int>}> $problems
+ */
 function rules(array $problems): array
 {
-    $rules = array_map(fn (array $problem): string => trim("{$problem['rule']} {$problem['field']}"), $problems);
+    $rules = array_map(fn (array $problem): string => trim(implode(' ', [
+        $problem['rule'],
+        $problem['field'],
+        ...array_map(fn (string $key, string|int $value): string => "$key=$value", array_keys($problem['params']), $problem['params']),
+    ])), $problems);
     sort($rules);
     return $rules;
 }
@@ -206,21 +214,21 @@ foreach ([
     'I-6 a bad date' => [['values' => $values(['date' => '2026-13-40'])], ['bad_date']],
     'I-8 a written version with no text' => [['values' => $values(['citationText' => null])], ['citation_text_required']],
     'I-8 whitespace is no text' => [['values' => $values(['citationText' => " \n "])], ['citation_text_required']],
-    'I-9 an empty slot' => [['values' => $values(['signatures' => []])], ['slot_empty sig']],
-    'I-9 the wrong billet' => [['values' => $values(['signatures' => ['sig' => 12]])], ['signature_wrong_billet sig']],
-    'I-9 a signature that\'s gone' => [['values' => $values(['signatures' => ['sig' => 99]])], ['signature_wrong_billet sig']],
-    'I-10 a required grant input' => [['values' => $values(['inputs' => []])], ['input_required unit']],
+    'I-9 an empty slot' => [['values' => $values(['signatures' => []])], ['slot_empty sig billet_id=5']],
+    'I-9 the wrong billet' => [['values' => $values(['signatures' => ['sig' => 12]])], ['signature_wrong_billet sig billet_id=5']],
+    'I-9 a signature that\'s gone' => [['values' => $values(['signatures' => ['sig' => 99]])], ['signature_wrong_billet sig billet_id=5']],
+    'I-10 a required grant input' => [['values' => $values(['inputs' => []])], ['input_required unit label=Unit']],
     'I-10 an optional one blocks nothing' => [['values' => $values(['inputs' => ['unit' => 'A Troop', 'note' => '']])], []],
-    'I-10 a required member input' => [['values' => $values(['members' => [$member(1, [])]])], ['input_required 1: role']],
+    'I-10 a required member input' => [['values' => $values(['members' => [$member(1, [])]])], ['member_input_required 1: role name=Ewan McQuill label=Role']],
     'I-11 a blank name where one prints' => [['values' => $values(['members' => [$member(1, ['role' => 'x'], '  ')]])], ['name_required 1']],
-    'I-12 no member rank' => [['values' => $values(['members' => [$member(1, ['role' => 'x'], 'Ewan', null)]])], ['rank_required 1']],
+    'I-12 no member rank' => [['values' => $values(['members' => [$member(1, ['role' => 'x'], 'Ewan', null)]])], ['member_rank_required 1 name=Ewan']],
     'I-12 a member rank with no snapshot is no rank' => [
         ['values' => $values(['members' => [new MemberValues(1, 'Ewan', 7, ['role' => 'x'])]])],
-        ['no_such_rank 1'],
+        ['member_no_such_rank 1 name=Ewan'],
     ],
     'every refusal at once' => [
         ['values' => $values(['citationText' => '', 'signatures' => [], 'inputs' => []])],
-        ['citation_text_required', 'input_required unit', 'slot_empty sig'],
+        ['citation_text_required', 'input_required unit label=Unit', 'slot_empty sig billet_id=5'],
     ],
 ] as $label => [$with, $expected]) {
     $got = $issue($with);
@@ -272,7 +280,7 @@ foreach ([
     'M-1 a grant with no members left still does' => [false, [], $member(1), []],
     'M-1 a regiment grant doesn\'t' => [true, [], $member(1), ['not_a_member_grant']],
     'M-4 a milpac already on it' => [false, [1, 2], $member(1), ['duplicate_member 1']],
-    'M-5 a required member input' => [false, [], $member(1, []), ['input_required 1: role']],
+    'M-5 a required member input' => [false, [], $member(1, []), ['member_input_required 1: role name=Ewan McQuill label=Role']],
     'a relation id with no milpac' => [false, [], $member(3), ['no_such_milpac 3']],
 ] as $label => [$isRegiment, $held, $adding, $expected]) {
     $got = rules(GrantRules::addProblems($isRegiment, $held, $written, $adding, [1]));
@@ -378,11 +386,11 @@ foreach ([
     'C-1 a reason is required' => [new GrantChanges(citationText: 'For gallantry.'), ' ', ['reason_required']],
     'I-8 text can\'t be corrected away' => [new GrantChanges(citationText: ''), 'Typo', ['citation_text_required']],
     'I-6 nor a date made bad' => [new GrantChanges(date: '2026-02-30'), 'Typo', ['bad_date']],
-    'I-9 a signature of another billet' => [new GrantChanges(signatures: ['sig' => 12]), 'Typo', ['signature_wrong_billet sig']],
-    'I-9 a slot emptied on the form' => [GrantForm::changes(['signatures' => ['sig' => 0]] + GrantForm::fromValues($two())), 'Typo', ['slot_empty sig']],
-    'I-10 a required input blanked' => [new GrantChanges(inputs: ['unit' => '']), 'Typo', ['input_required unit']],
+    'I-9 a signature of another billet' => [new GrantChanges(signatures: ['sig' => 12]), 'Typo', ['signature_wrong_billet sig billet_id=5']],
+    'I-9 a slot emptied on the form' => [GrantForm::changes(['signatures' => ['sig' => 0]] + GrantForm::fromValues($two())), 'Typo', ['slot_empty sig billet_id=5']],
+    'I-10 a required input blanked' => [new GrantChanges(inputs: ['unit' => '']), 'Typo', ['input_required unit label=Unit']],
     'I-11 a name blanked' => [new GrantChanges(members: [401 => new MemberChanges(name: '')]), 'Typo', ['name_required 1']],
-    'a rank that doesn\'t exist' => [new GrantChanges(members: [401 => new MemberChanges(rankId: 999)]), 'Typo', ['no_such_rank 1']],
+    'a rank that doesn\'t exist' => [new GrantChanges(members: [401 => new MemberChanges(rankId: 999)]), 'Typo', ['member_no_such_rank 1 name=Ewan McQuill']],
     'a member no longer on the grant' => [new GrantChanges(members: [499 => new MemberChanges(name: 'x')]), 'Typo', ['no_such_member 499']],
 ] as $label => [$changes, $reason, $expected]) {
     $got = $reasoned($changes, $reason);
@@ -408,14 +416,14 @@ $moved = fn (Version $target, GrantChanges $extra = new GrantChanges()): GrantVa
 $slotsMoved = new Version([text('b', '{citation_text}'), slot('co_sig', 5), slot('xo_sig', 9)], [new InputDefinition('unit', 'Unit', 'grant', true)], 'none');
 $got = $moved($slotsMoved);
 check('C-9 a slot fills from the pinned signature with its billet', $got->signatures === ['co_sig' => 11], json_encode($got->signatures));
-check('C-9 a slot nothing fills comes back missing', rules(GrantRules::valueProblems($slotsMoved, $got, $billets, [])) === ['slot_empty xo_sig']);
+check('C-9 a slot nothing fills comes back missing', rules(GrantRules::valueProblems($slotsMoved, $got, $billets, [])) === ['slot_empty xo_sig billet_id=9']);
 $got = $moved($slotsMoved, new GrantChanges(signatures: ['co_sig' => 0, 'xo_sig' => 12]));
 check('C-9 supplying it clears the list, and a slot left unchosen keeps its fill', rules(GrantRules::valueProblems($slotsMoved, $got, $billets, [])) === []);
 
 $needsInput = new Version([text('b', '{input:award_number}')], [new InputDefinition('award_number', 'Number', 'grant', true), new InputDefinition('unit', 'Unit', 'grant', true)], 'none');
 $got = $moved($needsInput);
 check('G-34 a value the grant holds carries by key', $got->inputs === ['unit' => 'A Troop']);
-check('G-34 a required input it doesn\'t hold is missing', rules(GrantRules::valueProblems($needsInput, $got, $billets, [])) === ['input_required award_number']);
+check('G-34 a required input it doesn\'t hold is missing', rules(GrantRules::valueProblems($needsInput, $got, $billets, [])) === ['input_required award_number label=Number']);
 $got = $moved(new Version([text('b', '{year}')], [], 'none'));
 check('G-34 a value the new version doesn\'t use is kept', $got->inputs === ['unit' => 'A Troop'] && $got->citationText === 'For valour.');
 

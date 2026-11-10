@@ -181,7 +181,7 @@ class Grants extends AbstractService
     }
 
     /**
-     * @return list<array{field: string, rule: string}> The missing list. Nothing moved unless it's empty.
+     * @return list<array{field: string, rule: string, params: array<string, string|int>}> The missing list. Nothing moved unless it's empty.
      * @throws PrintableException
      * @throws RenderFailed
      */
@@ -615,7 +615,7 @@ class Grants extends AbstractService
         return bin2hex(random_bytes(16));
     }
 
-    /** @param list<array{field: string, rule: string}> $problems */
+    /** @param list<array{field: string, rule: string, params: array<string, string|int>}> $problems */
     private static function refuse(array $problems): void
     {
         if ($problems !== []) {
@@ -624,14 +624,22 @@ class Grants extends AbstractService
     }
 
     /**
-     * @param list<array{field: string, rule: string}> $problems
+     * @param list<array{field: string, rule: string, params: array<string, string|int>}> $problems
      * @return list<Phrase>
      */
     public static function messages(array $problems): array
     {
-        return array_map(
-            fn (array $problem): Phrase => \XF::phrase("cav7_cit_refused_{$problem['rule']}", ['field' => $problem['field']]),
+        $billets = \XF::em()->findByIds('Cav7\Citations:SigningBillet', array_filter(array_map(
+            fn (array $problem): ?int => $problem['params']['billet_id'] ?? null,
             $problems
-        );
+        )));
+
+        return array_map(function (array $problem) use ($billets): Phrase {
+            $params = ['field' => $problem['field']] + $problem['params'];
+            if (isset($params['billet_id'])) {
+                $params['billet'] = $billets[$params['billet_id']]->title ?? '';
+            }
+            return \XF::phrase("cav7_cit_refused_{$problem['rule']}", $params);
+        }, $problems);
     }
 }

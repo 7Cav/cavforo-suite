@@ -1,1 +1,1 @@
-{field}: that rank doesn't exist.
+That rank doesn't exist.

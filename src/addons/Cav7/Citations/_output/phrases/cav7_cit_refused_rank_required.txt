@@ -1,1 +1,1 @@
-{field}: this template prints a rank, so choose one.
+Please choose a rank.
