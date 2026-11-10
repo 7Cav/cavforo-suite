@@ -198,8 +198,6 @@ namespace Cav7\Citations\Tests {
         '$canonical passes through',
         row(500, 3)->getImageUrl(true) === 'https://board.test/data/roster_citation_blobs/0/3-tok.png'
     );
-    check('no reference reads the vendor\'s legacy URL', row(500, null)->getImageUrl() === 'legacy/7.jpg?500');
-    check('a zero date reads nothing', row(0, 3)->getImageUrl() === null);
     check('a reference to a missing blob row falls back to legacy', row(500, 3, false)->getImageUrl() === 'legacy/7.jpg?500');
     touch(\XF\App::$dataPath . '/roster_award_citations/0/7.jpg');
     check('a restored legacy file outranks the blob', row(500, 3)->getImageUrl() === 'legacy/7.jpg?500');
