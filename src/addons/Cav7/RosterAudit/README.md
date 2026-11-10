@@ -34,6 +34,8 @@ For release builds, generate hashes first: `php cmd.php xf-addon:build-release C
 
 **Image churn is excluded, not suppressed.** Every upload or removal changes an image column on its row (`award_image`, `rank_image`, `citation_date`, `citation_blob_id`, `uniform_date`). Those columns are excluded from update diffs, so image operations do not flood the log, but creates and deletes of the owning records are always recorded in full.
 
+**The PUC sync's writes are not logged.** `Cav7/EnlistmentDefaults` keeps PUC rows in step on every milpac, which can mean thousands of writes in one run. It records its counts on the regiment grant's log instead, so nothing it writes appears here.
+
 **A position cannot be deleted while members hold it.** The delete is refused while any member still holds the position, primary or secondary, because the vendor's delete would take those members off the roster along with their awards, service records, field values, and uniform. Reassign them first, and each reassignment is audited as a normal update.
 
 **Uninstall keeps the files.** Uninstalling drops the DB table but leaves the JSONL files in `internal_data/cav7_roster_audit`, since they are audit evidence. Delete them manually if they are no longer needed.

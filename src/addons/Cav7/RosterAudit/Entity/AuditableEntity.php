@@ -2,6 +2,7 @@
 
 namespace Cav7\RosterAudit\Entity;
 
+use Cav7\RosterAudit\AuditPause;
 use Cav7\RosterAudit\Repository\AuditLog as AuditLogRepo;
 
 /**
@@ -49,6 +50,11 @@ trait AuditableEntity
 
 	protected function writeAuditLog(string $action): void
 	{
+		if (AuditPause::active())
+		{
+			return;
+		}
+
 		try
 		{
 			$visitor = \XF::visitor();
