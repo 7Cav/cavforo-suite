@@ -1313,6 +1313,12 @@
         "version_string": "1.0.0",
         "hash": "53487690af6ef630c7bdecf8a883a396"
     },
+    "cav7_cit_refused_date_required.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "11e1da1408c2a7ad60751961c4190574"
+    },
     "cav7_cit_refused_does_not_parse.txt": {
         "global_cache": false,
         "version_id": 1010070,

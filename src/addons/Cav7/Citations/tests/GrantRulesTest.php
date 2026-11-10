@@ -212,6 +212,7 @@ foreach ([
     'I-5 a record type under an award\'s id' => [['kind' => ['record_type', 12]], ['kind_not_served']],
     'an award that no longer exists' => [['title' => null], ['no_such_kind']],
     'I-6 a bad date' => [['values' => $values(['date' => '2026-13-40'])], ['bad_date']],
+    'I-6 a blank date asks for one' => [['values' => $values(['date' => ' '])], ['date_required']],
     'I-8 a written version with no text' => [['values' => $values(['citationText' => null])], ['citation_text_required']],
     'I-8 whitespace is no text' => [['values' => $values(['citationText' => " \n "])], ['citation_text_required']],
     'I-9 an empty slot' => [['values' => $values(['signatures' => []])], ['slot_empty sig billet_id=5']],

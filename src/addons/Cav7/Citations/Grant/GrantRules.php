@@ -26,6 +26,7 @@ final class GrantRules
     public const REGIMENT_TAKES_NO_MEMBERS = 'regiment_takes_no_members';
     public const VERSION_NEEDS_MEMBER = 'version_needs_member';
     public const REGIMENT_DUPLICATE = 'regiment_duplicate';
+    public const DATE_REQUIRED = 'date_required';
     public const BAD_DATE = 'bad_date';
     public const CITATION_TEXT_REQUIRED = 'citation_text_required';
     public const SLOT_EMPTY = 'slot_empty';
@@ -156,11 +157,8 @@ final class GrantRules
      */
     public static function valueProblems(Version $version, GrantValues $values, array $billets, array $artRanks): array
     {
-        $problems = [];
+        $problems = self::dateProblems($values->date);
 
-        if (self::day($values->date) === null) {
-            $problems[] = self::problem(self::BAD_DATE);
-        }
         if (FieldDependencies::used($version, 'citation_text') && !PatternResolver::filled($values->citationText ?? '')) {
             $problems[] = self::problem(self::CITATION_TEXT_REQUIRED);
         }
@@ -324,6 +322,15 @@ final class GrantRules
     public static function reasonProblems(string $reason): array
     {
         return trim($reason) === '' ? [self::problem(self::REASON_REQUIRED)] : [];
+    }
+
+    /** @return list<array{field: string, rule: string, params: array<string, string|int>}> */
+    private static function dateProblems(string $date): array
+    {
+        if (trim($date) === '') {
+            return [self::problem(self::DATE_REQUIRED)];
+        }
+        return self::day($date) === null ? [self::problem(self::BAD_DATE)] : [];
     }
 
     /** @return list<array{field: string, rule: string, params: array<string, string|int>}> */

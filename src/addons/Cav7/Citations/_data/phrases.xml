@@ -219,6 +219,7 @@
   <phrase title="cav7_cit_refused_busy" version_id="1020070" version_string="1.2.0"><![CDATA[Another save for this award is still running. Try again in a moment.]]></phrase>
   <phrase title="cav7_cit_refused_citation_text_outside_wrap" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: citation text needs a wrap field.]]></phrase>
   <phrase title="cav7_cit_refused_citation_text_required" version_id="1000070" version_string="1.0.0"><![CDATA[This template prints citation text, so enter some.]]></phrase>
+  <phrase title="cav7_cit_refused_date_required" version_id="1020070" version_string="1.2.0"><![CDATA[Please enter the date the citation was approved.]]></phrase>
   <phrase title="cav7_cit_refused_does_not_parse" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: the pattern doesn't parse.]]></phrase>
   <phrase title="cav7_cit_refused_duplicate_member" version_id="1000070" version_string="1.0.0"><![CDATA[Milpac {field} is already on this grant.]]></phrase>
   <phrase title="cav7_cit_refused_file_on_closed_kind" version_id="1010070" version_string="1.1.0"><![CDATA[Citations for this kind of row come from a grant, so it can't take an uploaded file.]]></phrase>
