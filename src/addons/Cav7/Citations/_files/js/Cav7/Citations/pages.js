@@ -150,6 +150,14 @@
 			if (filter)
 			{
 				filter.addEventListener('input', () => this.filter(filter.value.trim().toLowerCase()))
+				// The filter sits inside the row's form, where Enter would submit it.
+				filter.addEventListener('keydown', event =>
+				{
+					if (event.key === 'Enter')
+					{
+						event.preventDefault()
+					}
+				})
 			}
 		},
 
