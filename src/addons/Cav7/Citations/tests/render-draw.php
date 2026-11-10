@@ -253,6 +253,10 @@ check('a colour image on a greyscale plate lands at its stored position in colou
 check('an image\'s transparency shows the plate', similar(colourAt($page, 203, 303), [255, 255, 255]));
 check('an image larger than its stored size is resized to it', similar(colourAt($page, 595, 345), [0, 192, 0]) && similar(colourAt($page, 605, 345), [255, 255, 255]));
 
+$region = decoded($drawer->drawRegion(new DrawPlan($greyPlate, [$exact]), 150, 280, 200, 100));
+check('a region draw is the region\'s size', [$region->getImageWidth(), $region->getImageHeight()] === [200, 100]);
+check('a region draw keeps plate positions, shifted by its corner', similar(colourAt($region, 100, 45), [0, 0, 255]) && similar(colourAt($region, 30, 45), [255, 255, 255]));
+
 $overText = new PlannedImage(inkFile("$tmp/cover.png", 300, 100, '#00c000'), new PlacedImage('h', 80, 150, 300, 100));
 $hhhh = $planned(new Line('HHHH', 100.0, 200.0, 0.0, 0.0));
 $page = decoded($drawer->draw(new DrawPlan($plate, [$hhhh, $overText]))->jpeg);

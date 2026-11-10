@@ -4,10 +4,15 @@ namespace Cav7\Citations\Pub\Controller;
 
 use Cav7\Citations\Entity\Signature;
 use Cav7\Citations\Entity\SigningBillet;
+use Cav7\Citations\Render\ImageFile;
 use Cav7\Citations\Repository\Signature as SignatureRepository;
+use Cav7\Citations\Service\SignaturePreview;
 use Cav7\Citations\Service\Signatures as SignatureService;
+use Cav7\Citations\Template\FileStore;
+use Cav7\Citations\Template\ImageUpload;
 use Cav7\Citations\Template\ManagerAccess;
 use Cav7\Citations\Template\SignatureRules;
+use Cav7\Citations\Template\UploadRefused;
 use Cav7\Citations\Template\VersionLifecycle;
 use XF\Mvc\ParameterBag;
 use XF\Mvc\Reply\AbstractReply;
@@ -97,6 +102,31 @@ class Signatures extends AbstractManager
         $this->signatures()->update($signature, $this->filter('billet_id', 'uint'), $this->printedLines(), $this->uploaded('ink'));
 
         return $this->redirect($this->buildLink('rosters/citation-signatures'), \XF::phrase('your_changes_have_been_saved'));
+    }
+
+    /** The form's lines and ink in every slot on the billet. A new file wins over the signature's own ink. */
+    public function actionPreview(ParameterBag $params): AbstractReply
+    {
+        $this->assertPostOnly();
+        $signature = $params->signature_id ? $this->signature($params) : null;
+
+        $ink = $signature?->pinned()->ink;
+        $inkPath = $ink ? FileStore::forApp($this->app)->path($ink->hash, 'png') : '';
+        $refused = null;
+        $upload = $this->uploaded('ink');
+        if ($upload !== null) {
+            try {
+                $image = ImageUpload::read($upload, ImageUpload::ART_FORMATS);
+                [$ink, $inkPath] = [new ImageFile('upload', $image->width, $image->height), $upload];
+            } catch (UploadRefused $e) {
+                $refused = \XF::phrase('cav7_cit_refused_' . $e->getMessage());
+            }
+        }
+
+        return $this->view('Cav7\Citations:Signature\Preview', 'cav7_cit_signature_preview', [
+            'slots' => $this->service(SignaturePreview::class)->slots($this->filter('billet_id', 'uint'), $this->printedLines(), $ink, $inkPath),
+            'refused' => $refused,
+        ]);
     }
 
     public function actionDelete(ParameterBag $params): AbstractReply

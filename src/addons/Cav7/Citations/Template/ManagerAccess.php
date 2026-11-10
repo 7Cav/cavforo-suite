@@ -31,7 +31,7 @@ final class ManagerAccess
 
             'templates/savepaygrades',
             'versions/publish', 'versions/retire',
-            'signatures/add', 'signatures/edit', 'signatures/delete', 'signatures/retire', 'signatures/reinstate',
+            'signatures/add', 'signatures/edit', 'signatures/preview', 'signatures/delete', 'signatures/retire', 'signatures/reinstate',
             'signatures/addbillet', 'signatures/editbillet', 'signatures/deletebillet' => $actor->canPublish(),
 
             'versions/movecitations' => $actor->canIssue(false) || $actor->canIssue(true),

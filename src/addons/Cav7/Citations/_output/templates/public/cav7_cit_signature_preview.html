@@ -1,0 +1,25 @@
+<xf:if is="$refused">
+	<div class="blockMessage blockMessage--error blockMessage--small cav7SigPreview-refused">{$refused}</div>
+</xf:if>
+<xf:if is="$slots is empty">
+	<div class="u-muted">{{ phrase('cav7_cit_signature_preview_none') }}</div>
+<xf:else />
+	<div class="cav7SigPreview">
+		<xf:foreach loop="$slots" value="$slot">
+			<div class="cav7SigPreview-slot" data-xf-init="tooltip"
+				title="{{ $slot.size ? phrase('cav7_cit_signature_preview_sizes', {'size': number($slot.size, 1), 'legible': number($slot.legible, 1)}) : '' }}">
+				<xf:if is="$slot.src">
+					<div class="cav7Preview-mount"><img src="{$slot.src}" alt="" /></div>
+				<xf:else />
+					<div class="blockMessage blockMessage--error blockMessage--small">{{ phrase('cav7_cit_preview_failed') }}</div>
+				</xf:if>
+				<div class="cav7SigPreview-caption">
+					{{ phrase('cav7_cit_signature_preview_slot', {'template': $slot.template, 'version': $slot.version, 'slot': $slot.slot}) }}<xf:if is="$slot.draft"> &middot; {{ phrase('cav7_cit_draft') }}</xf:if>
+				</div>
+				<xf:if is="$slot.below">
+					<div class="cav7SigPreview-small">{{ phrase('cav7_cit_signature_preview_small') }}</div>
+				</xf:if>
+			</div>
+		</xf:foreach>
+	</div>
+</xf:if>

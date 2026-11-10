@@ -875,6 +875,28 @@
 	margin-top: @xf-paddingMedium;
 }
 
+.cav7SigPreview
+{
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+	gap: @xf-paddingLarge;
+}
+
+.cav7SigPreview-caption
+{
+	margin-top: @xf-paddingSmall;
+}
+
+.cav7SigPreview-small
+{
+	color: @xf-textColorAttention;
+}
+
+.cav7SigPreview-refused
+{
+	margin-bottom: @xf-paddingMedium;
+}
+
 .cav7MemberCards
 {
 	display: grid;
@@ -1318,8 +1340,10 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
   <template type="public" title="cav7_cit_signature_form" version_id="1020070" version_string="1.2.0"><![CDATA[<xf:title>{{ $signature ? phrase('cav7_cit_edit_signature') : phrase('cav7_cit_add_signature') }}</xf:title>
 <xf:breadcrumb href="{{ link('rosters/citation-signatures') }}">{{ phrase('cav7_cit_signatures') }}</xf:breadcrumb>
 <xf:css src="cav7_cit_pages.less" />
+<xf:js src="Cav7/Citations/manager.js" addon="Cav7/Citations" min="1" />
 
-<xf:form action="{{ $signature ? link('rosters/citation-signatures/edit', $signature) : link('rosters/citation-signatures/add') }}" ajax="true" upload="true" class="block">
+<xf:form action="{{ $signature ? link('rosters/citation-signatures/edit', $signature) : link('rosters/citation-signatures/add') }}" ajax="true" upload="true" class="block"
+	data-xf-init="cav7-signature-preview" data-preview-url="{{ $signature ? link('rosters/citation-signatures/preview', $signature) : link('rosters/citation-signatures/preview') }}">
 	<div class="block-container">
 		<div class="block-body">
 			<xf:selectrow name="billet_id" value="{$signature.billet_id}" label="{{ phrase('cav7_cit_signing_billet') }}" explain="{{ phrase('cav7_cit_signature_billet_explain') }}">
@@ -1336,6 +1360,9 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 				</div>
 			</xf:formrow>
 			<xf:uploadrow name="ink" accept=".png" label="{{ phrase('cav7_cit_ink_image') }}" hint="{{ phrase('cav7_cit_ink_image_hint') }}" explain="{{ $signature ? phrase('cav7_cit_ink_keep_explain') : '' }}" />
+			<xf:formrow label="{{ phrase('cav7_cit_preview') }}" hint="{{ phrase('cav7_cit_signature_preview_hint') }}">
+				<div class="js-signaturePreview"></div>
+			</xf:formrow>
 		</div>
 		<xf:submitrow icon="save" />
 	</div>
@@ -1458,6 +1485,32 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 		</div>
 	</div>
 </xf:form>
+]]></template>
+  <template type="public" title="cav7_cit_signature_preview" version_id="1020070" version_string="1.2.0"><![CDATA[<xf:if is="$refused">
+	<div class="blockMessage blockMessage--error blockMessage--small cav7SigPreview-refused">{$refused}</div>
+</xf:if>
+<xf:if is="$slots is empty">
+	<div class="u-muted">{{ phrase('cav7_cit_signature_preview_none') }}</div>
+<xf:else />
+	<div class="cav7SigPreview">
+		<xf:foreach loop="$slots" value="$slot">
+			<div class="cav7SigPreview-slot" data-xf-init="tooltip"
+				title="{{ $slot.size ? phrase('cav7_cit_signature_preview_sizes', {'size': number($slot.size, 1), 'legible': number($slot.legible, 1)}) : '' }}">
+				<xf:if is="$slot.src">
+					<div class="cav7Preview-mount"><img src="{$slot.src}" alt="" /></div>
+				<xf:else />
+					<div class="blockMessage blockMessage--error blockMessage--small">{{ phrase('cav7_cit_preview_failed') }}</div>
+				</xf:if>
+				<div class="cav7SigPreview-caption">
+					{{ phrase('cav7_cit_signature_preview_slot', {'template': $slot.template, 'version': $slot.version, 'slot': $slot.slot}) }}<xf:if is="$slot.draft"> &middot; {{ phrase('cav7_cit_draft') }}</xf:if>
+				</div>
+				<xf:if is="$slot.below">
+					<div class="cav7SigPreview-small">{{ phrase('cav7_cit_signature_preview_small') }}</div>
+				</xf:if>
+			</div>
+		</xf:foreach>
+	</div>
+</xf:if>
 ]]></template>
   <template type="public" title="cav7_cit_template_add" version_id="1020070" version_string="1.2.0"><![CDATA[<xf:title>{{ phrase('cav7_cit_add_template') }}</xf:title>
 <xf:breadcrumb href="{{ link('rosters/citation-templates') }}">{{ phrase('cav7_cit_citation_templates') }}</xf:breadcrumb>

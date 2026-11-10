@@ -1919,6 +1919,36 @@
         "version_string": "1.2.0",
         "hash": "fd487fbf937e078654c1ea5bbcd3bb08"
     },
+    "cav7_cit_signature_preview_hint.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "5ef184b73f3b41fd7e9c6bb1fbe231ff"
+    },
+    "cav7_cit_signature_preview_none.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "56a1ba16f8586536bd2da00d9ddf414a"
+    },
+    "cav7_cit_signature_preview_sizes.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "4161d884854f2f010192eaf9720e677d"
+    },
+    "cav7_cit_signature_preview_slot.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "2aafe168bb3d7011c4404021169b8323"
+    },
+    "cav7_cit_signature_preview_small.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "7c43e2ac8e3cc62fd4f7315b66518933"
+    },
     "cav7_cit_signature_retired.txt": {
         "global_cache": false,
         "version_id": 1020070,

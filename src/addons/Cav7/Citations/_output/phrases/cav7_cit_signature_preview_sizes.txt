@@ -1,0 +1,1 @@
+Prints at {size} pt. This slot's reading size is {legible} pt.

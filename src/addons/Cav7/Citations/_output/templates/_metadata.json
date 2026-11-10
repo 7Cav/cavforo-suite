@@ -67,7 +67,7 @@
     "public/cav7_cit_pages.less": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "73f9c77b9d7a3dbfe301ccef60d6917a"
+        "hash": "99abcf989e86e5df303b8dde995633d7"
     },
     "public/cav7_cit_pay_grades.html": {
         "version_id": 1020070,
@@ -82,12 +82,17 @@
     "public/cav7_cit_signature_form.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "351aae0263f99aabb2150a7400033fce"
+        "hash": "a5e917e5c762d8cd8fc67f9aa1634184"
     },
     "public/cav7_cit_signature_list.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
         "hash": "31a556243321ff1c9cc9c74e1333a877"
+    },
+    "public/cav7_cit_signature_preview.html": {
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "47be24d041cd75387184a04722527911"
     },
     "public/cav7_cit_template_add.html": {
         "version_id": 1020070,
