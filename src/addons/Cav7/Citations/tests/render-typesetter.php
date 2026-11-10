@@ -195,12 +195,16 @@ $wideWord = setText(field(['w' => 100, 'h' => 400, 'mode' => 'wrap', 'align' => 
 check('one word wider than the box forces the size down', $wideWord->size === 10.0, (string) $wideWord->size);
 check('the size that word forces is flagged', $wideWord->belowLegibility);
 
+// The short box is too low for the cap, so the size has to shrink with a measured width of 0.
 foreach (['line', 'wrap'] as $mode) {
-    try {
-        $invisible = setText(field(['mode' => $mode]), "\u{200B}\u{FEFF}");
-        check("$mode text of only zero-advance characters sets without failing", count($invisible->lines) === 1, json_encode($invisible->row()));
-    } catch (\Throwable $e) {
-        check("$mode text of only zero-advance characters sets without failing", false, $e::class);
+    foreach (['a box it fits' => [], 'a box too short for the cap' => ['w' => 300, 'h' => 20, 'size' => 36.0]] as $box => $shape) {
+        $label = "$mode text of only zero-advance characters sets without failing in $box";
+        try {
+            $invisible = setText(field(['mode' => $mode] + $shape), "\u{200B}\u{FEFF}");
+            check($label, count($invisible->lines) === 1, json_encode($invisible->row()));
+        } catch (\Throwable $e) {
+            check($label, false, $e::class);
+        }
     }
 }
 

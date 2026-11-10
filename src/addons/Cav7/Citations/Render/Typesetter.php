@@ -121,7 +121,7 @@ final class Typesetter
 
             $next = self::smaller($size);
             if (!$jumped) {
-                $ratio = min($field->w / $widest, $field->h / $height);
+                $ratio = min($widest > 0 ? $field->w / $widest : INF, $field->h / $height);
                 $next = min($next, ceil($size * $ratio / self::SIZE_STEP) * self::SIZE_STEP);
                 $jumped = true;
             }
