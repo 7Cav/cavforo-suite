@@ -242,6 +242,7 @@
   <phrase title="cav7_cit_refused_no_citations_chosen" version_id="1020070" version_string="1.2.0"><![CDATA[Choose at least one citation to move.]]></phrase>
   <phrase title="cav7_cit_refused_no_file" version_id="1020070" version_string="1.2.0"><![CDATA[Choose a file to upload.]]></phrase>
   <phrase title="cav7_cit_refused_no_kind" version_id="1010070" version_string="1.1.0"><![CDATA[Pick at least one award or record type for this version to serve.]]></phrase>
+  <phrase title="cav7_cit_refused_no_kind_chosen" version_id="1020070" version_string="1.2.0"><![CDATA[Please choose what is being awarded.]]></phrase>
   <phrase title="cav7_cit_refused_no_members" version_id="1000070" version_string="1.0.0"><![CDATA[A member grant needs at least one milpac.]]></phrase>
   <phrase title="cav7_cit_refused_no_plate" version_id="1010070" version_string="1.1.0"><![CDATA[Upload a plate before publishing.]]></phrase>
   <phrase title="cav7_cit_refused_no_signature_slot" version_id="1020070" version_string="1.2.0"><![CDATA[This version has no signature slot.]]></phrase>
@@ -253,6 +254,7 @@
   <phrase title="cav7_cit_refused_no_such_pick" version_id="1010070" version_string="1.1.0"><![CDATA[That citation no longer exists. Reload the form and pick again.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_rank" version_id="1020070" version_string="1.2.0"><![CDATA[That rank doesn't exist.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_row" version_id="1010070" version_string="1.1.0"><![CDATA[That row no longer exists.]]></phrase>
+  <phrase title="cav7_cit_refused_no_template_chosen" version_id="1020070" version_string="1.2.0"><![CDATA[Please choose a template.]]></phrase>
   <phrase title="cav7_cit_refused_not_a_draft" version_id="1010070" version_string="1.1.0"><![CDATA[A new version must start as a draft.]]></phrase>
   <phrase title="cav7_cit_refused_not_a_member_grant" version_id="1000070" version_string="1.0.0"><![CDATA[Only a member grant takes members.]]></phrase>
   <phrase title="cav7_cit_refused_not_a_regiment_grant" version_id="1000070" version_string="1.0.0"><![CDATA[Only a regiment grant can be withdrawn.]]></phrase>

@@ -48,6 +48,12 @@ class Grants extends AbstractService
         /** @var TemplateVersion|null $version */
         $version = $this->em()->find('Cav7\Citations:TemplateVersion', $request->templateVersionId);
         if ($version === null) {
+            if ($request->templateVersionId === 0) {
+                self::refuse(GrantRules::noVersionProblems(
+                    $request,
+                    $this->repo()->milpacs(array_map(fn (MemberValues $member): int => $member->relationId, array_values($request->values->members))),
+                ));
+            }
             throw new PrintableException(\XF::phrase('cav7_cit_refused_version_not_published'));
         }
 

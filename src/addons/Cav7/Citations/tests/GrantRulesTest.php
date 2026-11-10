@@ -236,6 +236,17 @@ foreach ([
     check($label, $got === $expected, json_encode($got));
 }
 
+// An issue form sent before a template was chosen.
+foreach ([
+    'an empty form asks for everything at once' => [['award', 0], new GrantValues(''), [], ['date_required', 'no_kind_chosen', 'no_members', 'no_template_chosen']],
+    'a chosen kind asks only for the template' => [['award', 12], $values(), [1], ['no_template_chosen']],
+    'the member checks still run' => [['award', 12], $values(['members' => [$member(1), $member(2)]]), [1], ['no_such_milpac 2', 'no_template_chosen']],
+    'a regiment award asks for no members' => [['award', 61], $regimentValues, [], ['no_template_chosen']],
+] as $label => [[$type, $id], $sent, $milpacs, $expected]) {
+    $got = rules(GrantRules::noVersionProblems(new IssueRequest($type, $id, 0, $sent, [61]), $milpacs));
+    check($label, $got === $expected, json_encode($got));
+}
+
 $regiment = ['kind' => ['award', 61], 'version' => $regimentVersion, 'values' => $regimentValues, 'actor' => $manager];
 $memberVersion = new Version([text('who', '{name}')], [], 'none');
 $memberInput = new Version([text('dated', '{year}')], [new InputDefinition('role', 'Role', 'member', false)], 'none');

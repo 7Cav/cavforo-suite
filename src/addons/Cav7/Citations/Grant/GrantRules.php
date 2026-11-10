@@ -17,6 +17,8 @@ use Cav7\Citations\Template\VersionLifecycle;
 final class GrantRules
 {
     public const REGIMENT_NEEDS_PERMISSION = 'regiment_needs_permission';
+    public const NO_KIND_CHOSEN = 'no_kind_chosen';
+    public const NO_TEMPLATE_CHOSEN = 'no_template_chosen';
     public const NO_SUCH_KIND = 'no_such_kind';
     public const VERSION_NOT_PUBLISHED = 'version_not_published';
     public const KIND_NOT_SERVED = 'kind_not_served';
@@ -144,6 +146,24 @@ final class GrantRules
             $problems,
             $regiment ? self::regimentProblems($values, $version, $liveDuplicate) : self::memberListProblems($values, $milpacs),
             self::valueProblems($version, $values, $billets, $artRanks),
+        );
+    }
+
+    /**
+     * An issue sent before a template was chosen. What the version decides waits until there is one.
+     *
+     * @param list<int> $milpacs The members' relation ids that have a milpac.
+     * @return list<array{field: string, rule: string, params: array<string, string|int>}>
+     */
+    public static function noVersionProblems(IssueRequest $request, array $milpacs): array
+    {
+        $problems = $request->kindId === 0 ? [self::problem(self::NO_KIND_CHOSEN)] : [];
+        $problems[] = self::problem(self::NO_TEMPLATE_CHOSEN);
+
+        return array_merge(
+            $problems,
+            self::dateProblems($request->values->date),
+            self::isRegiment($request->kindType, $request->kindId, $request->regimentAwardIds) ? [] : self::memberListProblems($request->values, $milpacs),
         );
     }
 
