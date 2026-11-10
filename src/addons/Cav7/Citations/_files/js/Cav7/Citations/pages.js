@@ -85,7 +85,7 @@
 					body.replaceWith(html)
 					this.refreshPreview()
 				})
-			}).then(() =>
+			}).finally(() =>
 			{
 				// A superseded reply shares the body with the reshape still in flight.
 				if (!replacing && sent === this.reshapes)
