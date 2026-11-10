@@ -209,8 +209,9 @@ final class Sweeper
 
     private function takeIn(SweepProgress $p, string $key, RowKind $kind, int $recordId, int $seenDate): void
     {
+        // The shard's listing may be stale by now, and the vendor writes the file before it stamps the row.
         $seenFile = $this->disk->stat($key);
-        if ($seenFile === null) {
+        if ($seenFile === null || !SweepRules::isSettled($seenFile['mtime'], time())) {
             return;
         }
 
@@ -322,12 +323,13 @@ final class Sweeper
 
         $orphan = $this->orphanReason($kind, $shard, $name, $entry);
         $key = "{$kind->legacyTree()}/$shard/$name";
-        $hash = $orphan !== null ? $this->disk->hash($key) : null;
+        $file = $orphan !== null ? $this->disk->stat($key) : null;
+        $hash = $file !== null && SweepRules::isSettled($file['mtime'], time()) ? $this->disk->hash($key) : null;
         if ($hash === null) {
             return;
         }
 
-        $this->blobs->logDeletion($orphan, $key, $entry['size'], $hash, null, null, $p->liftBrake);
+        $this->blobs->logDeletion($orphan, $key, $file['size'], $hash, null, null, $p->liftBrake);
         if ($this->disk->delete($key)) {
             $p->orphansDeleted++;
         } else {

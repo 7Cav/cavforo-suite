@@ -85,6 +85,16 @@ $run = $stage->sweep();
 check('a file under an hour old is left, row or no row', $stage->exists($fresh) && $stage->exists($freshOrphan));
 check('and a young file behind a row is not damage', $run->damage === 0);
 
+// The shard is listed once, so a re-upload can land after its file was judged settled.
+$stage = new Stage();
+$stage->row($award, 1, 500);
+$stage->row($award, 2, 500);
+$stage->legacyFile($award, 1, png());
+$reupload = $stage->legacyFile($award, 2, png(9, 9));
+$stage->db->beforeBegin = [fn () => file_put_contents($stage->disk->path($reupload), png(10, 10))];
+$stage->sweep();
+check('a file re-uploaded after the listing is left', $stage->exists($reupload) && $stage->refOf($award, 2) === null);
+
 // An upload landing around the row lock. findOrCreate's own transaction comes first, so
 // the race is staged on the second.
 $race = function (\Closure $upload, string $when = 'beforeBegin') use ($award): array {
