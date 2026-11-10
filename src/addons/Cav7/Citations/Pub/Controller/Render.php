@@ -96,7 +96,7 @@ class Render extends AbstractController
         try {
             $version = $grant->Version ?? throw new RenderFailed("Grant {$grant->grant_id} has no template version");
             $jpeg = GrantRender::forApp($this->app)->draw($version, $grant->grant_id, $grantMemberId)->jpeg;
-        } catch (RenderFailed $e) {
+        } catch (RenderFailed | \JsonException | \InvalidArgumentException $e) {
             $damage = new DamageLog(fn (string $line) => \XF::logError($line), fn (string $line) => null);
             $damage->report(
                 "render failed: {$e->getMessage()}",
