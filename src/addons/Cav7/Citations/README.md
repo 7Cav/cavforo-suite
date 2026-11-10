@@ -81,7 +81,7 @@ These are under **Setup > Options > Citations**.
 
 | Option | Default | What it does |
 |---|---|---|
-| **Allow the re-encode** | On | With it off the re-encode refuses to run. `revert apply --all` turns it off. |
+| **Allow the re-encode** | Off | With it off the re-encode refuses to run. Turn it on before the first run. `revert apply --all` turns it off. |
 | **Regiment awards** | `61` | Comma-separated award ids. A grant of one of these awards is a regiment grant, issued to the whole regiment. Changing the list leaves issued grants alone. |
 | **Citation cutover** | Off | With it on, the row forms show the citation picker in place of the upload box, and every row but a Disciplinary record refuses a citation file. Renders and attached citations never read it. |
 

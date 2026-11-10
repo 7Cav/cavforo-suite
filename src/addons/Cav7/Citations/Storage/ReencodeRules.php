@@ -27,7 +27,7 @@ final class ReencodeRules
     public static function refusal(bool $enabled, bool $imagickLoaded, array $jpegFormats, ?string $syncedAt, int $now): ?string
     {
         if (!$enabled) {
-            return 'the re-encode is switched off in the options';
+            return 'Allow the re-encode is off in Setup > Options > Citations';
         }
         if (!$imagickLoaded || !$jpegFormats) {
             return 'Imagick with JPEG support is not available';

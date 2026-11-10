@@ -90,6 +90,9 @@ The addon has no R2 access and never gets any. It knows about a sync only throug
 
 ## Re-encoding
 
+The addon installs with **Allow the re-encode** off, under Setup > Options > Citations.
+Turn it on before the first run, or the command refuses and exits 2.
+
 ```sh
 cav7-citations:reencode --synced-at=<the time the sync began>
 ```
@@ -148,7 +151,7 @@ its keys are legacy paths.
 - The revert deletes nothing. The next sweep deletes the zero-reference encoded blobs. If
   that trips the brake, run a dry run and then `--lift-brake`.
 - `--all` turns the re-encode off, and turning it back on is a new decision with
-  leadership. `--run`, `--blob` and `--row` leave it on.
+  leadership. A reinstall leaves it off too. `--run`, `--blob` and `--row` leave it on.
 
 ## Retypesetting
 
