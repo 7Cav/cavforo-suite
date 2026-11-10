@@ -329,8 +329,8 @@ final class Sweeper
             return;
         }
 
-        $this->blobs->logDeletion($orphan, $key, $file['size'], $hash, null, null, $p->liftBrake);
         if ($this->disk->delete($key)) {
+            $this->blobs->logDeletion($orphan, $key, $file['size'], $hash, null, null, $p->liftBrake);
             $p->orphansDeleted++;
         } else {
             $this->damage->report('legacy file could not be deleted', $key, '', $hash);
