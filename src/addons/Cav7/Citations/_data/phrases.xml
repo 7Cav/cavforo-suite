@@ -134,6 +134,7 @@
   <phrase title="cav7_cit_move_them_to" version_id="1020070" version_string="1.2.0"><![CDATA[Move them to]]></phrase>
   <phrase title="cav7_cit_move_version" version_id="1010070" version_string="1.1.0"><![CDATA[Move to another template version]]></phrase>
   <phrase title="cav7_cit_move_version_short" version_id="1020070" version_string="1.2.0"><![CDATA[Move version]]></phrase>
+  <phrase title="cav7_cit_move_x" version_id="1020070" version_string="1.2.0"><![CDATA[Move: {title}, {date}]]></phrase>
   <phrase title="cav7_cit_name_on_certificate" version_id="1010070" version_string="1.1.0"><![CDATA[Name on certificate]]></phrase>
   <phrase title="cav7_cit_no_art" version_id="1020070" version_string="1.2.0"><![CDATA[No art]]></phrase>
   <phrase title="cav7_cit_no_billets" version_id="1020070" version_string="1.2.0"><![CDATA[No billets yet.]]></phrase>

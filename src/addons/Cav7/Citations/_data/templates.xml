@@ -43,7 +43,7 @@
 	<xf:set var="$formUrl" value="{{ link('rosters/citations/form') }}" />
 	<xf:set var="$previewUrl" value="{{ link('rosters/citations/preview') }}" />
 <xf:else />
-	<xf:title>{{ phrase('cav7_cit_correct_x', {'title': $grant.kind_title, 'date': $grant.getDay()}) }}</xf:title>
+	<xf:title>{{ $mode == 'move' ? phrase('cav7_cit_move_x', {'title': $grant.kind_title, 'date': $grant.getDay()}) : phrase('cav7_cit_correct_x', {'title': $grant.kind_title, 'date': $grant.getDay()}) }}</xf:title>
 	<xf:breadcrumb href="{{ link('rosters/citations', $grant) }}">{$grant.kind_title}, {$grant.getDay()}</xf:breadcrumb>
 	<xf:set var="$action" value="{{ link('rosters/citations/' . $mode, $grant) }}" />
 	<xf:set var="$formUrl" value="{{ link('rosters/citations/form', $grant) }}" />
