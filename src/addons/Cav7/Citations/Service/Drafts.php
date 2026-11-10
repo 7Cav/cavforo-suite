@@ -29,11 +29,24 @@ class Drafts extends AbstractService
         });
     }
 
+    /**
+     * The template row stays locked until the draft commits, so a second request waits, then
+     * sees this draft and refuses rather than copying it or taking its number.
+     *
+     * @throws PrintableException
+     */
     public function startDraft(Template $template, int $userId): TemplateVersion
     {
-        $source = $template->Versions->last();
+        return $this->db()->executeTransaction(function () use ($template, $userId): TemplateVersion {
+            $this->db()->fetchOne('SELECT template_id FROM xf_cav7_citation_template WHERE template_id = ? FOR UPDATE', $template->template_id);
+            $template->clearCache('Versions');
+            foreach ($template->Versions as $version) {
+                if (VersionLifecycle::isDraft($version->state)) {
+                    throw new PrintableException(\XF::phrase('cav7_cit_refused_one_draft'));
+                }
+            }
 
-        return $this->db()->executeTransaction(function () use ($template, $source, $userId): TemplateVersion {
+            $source = $template->Versions->last();
             $draft = $this->newDraft($template, VersionLifecycle::draftFrom($source->toArray(false)), $userId);
 
             foreach ($source->Kinds as $kind) {
