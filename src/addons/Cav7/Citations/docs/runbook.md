@@ -99,6 +99,9 @@ touches source blobs created before `--synced-at` only, so rerunning for stray u
 safe. Replaced sources stay on disk until you purge them, so the blob tree holds both
 copies until then.
 
+Each encoded blob records its libjpeg version, read from `magick -list format`. With no
+`magick` binary on the PATH, or none that names its libjpeg, the run refuses and exits 2.
+
 The re-encode keeps a source as `decode_failed` for good. If a run hit an ImageMagick
 resource limit rather than a bad file, read the log and clear those blobs by hand:
 

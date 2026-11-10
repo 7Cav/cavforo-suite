@@ -46,8 +46,7 @@ final class ReencodeRules
 
     /**
      * Imagick's PHP API doesn't expose the delegate's version, so this reads the JPEG line
-     * of `magick -list format`. Empty when the binary gave nothing, since the version
-     * doesn't change the output.
+     * of `magick -list format`. Empty when the binary gave nothing.
      */
     public static function libjpegVersionIn(string $formatList): string
     {

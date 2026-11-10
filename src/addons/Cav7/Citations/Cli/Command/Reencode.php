@@ -41,15 +41,16 @@ class Reencode extends AbstractCommand
             return 2;
         }
 
+        $libjpeg = ReencodeRules::libjpegVersionIn((string) @shell_exec('magick -list format 2>/dev/null'));
+        if ($libjpeg === '') {
+            $output->writeln('<error>Refused: the magick binary gave no libjpeg version to record.</error>');
+            return 2;
+        }
+
         $storage = Storage::forApp(\XF::app());
         if (!$storage->lock()) {
             $output->writeln('<error>Refused: another storage operation holds the lock.</error>');
             return 2;
-        }
-
-        $libjpeg = ReencodeRules::libjpegVersionIn((string) @shell_exec('magick -list format 2>/dev/null'));
-        if ($libjpeg === '') {
-            $output->writeln('<comment>The magick binary gave no libjpeg version, so none is recorded.</comment>');
         }
 
         try {
