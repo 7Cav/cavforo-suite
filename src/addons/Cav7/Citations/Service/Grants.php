@@ -83,13 +83,7 @@ class Grants extends AbstractService
         );
 
         $grant = $this->awardTransaction($regiment ? $request->kindId : null, function () use ($request, $version, $values, $regiment, $day, $kindTitle, $actor, $typesetting, $pinned, $billets): Grant {
-            $state = $this->db()->fetchOne(
-                'SELECT state FROM xf_cav7_citation_template_version WHERE template_version_id = ? FOR UPDATE',
-                $version->template_version_id
-            );
-            if ($state !== VersionLifecycle::PUBLISHED) {
-                throw new PrintableException(\XF::phrase('cav7_cit_refused_version_not_published'));
-            }
+            $this->holdPublished($version->template_version_id);
             $this->holdSignatures($values->signatures, $pinned, $billets);
             if ($regiment && $day !== null && $this->repo()->liveRegimentExists($request->kindId, $day)) {
                 throw new PrintableException(\XF::phrase('cav7_cit_refused_regiment_duplicate'));
@@ -418,6 +412,9 @@ class Grants extends AbstractService
 
         $redated = $grant->is_regiment && $new->date !== $old->date;
         $this->awardTransaction($redated ? $grant->kind_id : null, function () use ($grant, $version, $old, $new, $billets, $changes, $typesetting, $pinned, $reason, $actor): void {
+            if ($version->template_version_id !== $grant->template_version_id) {
+                $this->holdPublished($version->template_version_id);
+            }
             $this->holdSignatures($new->signatures, $pinned, $billets);
             $this->assertUnmoved($grant, $old);
             if ($this->dateMeetsLiveRegiment($grant, $old, $new)) {
@@ -504,6 +501,24 @@ class Grants extends AbstractService
             return $this->db()->executeTransaction($write);
         } finally {
             $this->db()->fetchOne('SELECT RELEASE_LOCK(?)', $lock);
+        }
+    }
+
+    /**
+     * The version row stays locked until the write commits, so a retire waits for it, and one
+     * that got in first refuses this write. Call it first in the transaction, before the
+     * signatures: MariaDB fails a locking read of a row changed since the first plain read.
+     *
+     * @throws PrintableException
+     */
+    private function holdPublished(int $versionId): void
+    {
+        $state = $this->db()->fetchOne(
+            'SELECT state FROM xf_cav7_citation_template_version WHERE template_version_id = ? FOR UPDATE',
+            $versionId
+        );
+        if ($state !== VersionLifecycle::PUBLISHED) {
+            throw new PrintableException(\XF::phrase('cav7_cit_refused_version_not_published'));
         }
     }
 
