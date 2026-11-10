@@ -12,10 +12,8 @@ step=1</edit_format_params>
 step=1</edit_format_params>
     <relation group_id="cav7EnlistmentDefaults" display_order="40"/>
   </option>
-  <option option_id="cav7EnlistDefPucAwardId" edit_format="spinbox" data_type="unsigned_integer" advanced="0">
-    <default_value>61</default_value>
-    <edit_format_params>min=0
-step=1</edit_format_params>
+  <option option_id="cav7EnlistDefPucSync" edit_format="onoff" data_type="boolean" advanced="0">
+    <default_value>0</default_value>
     <relation group_id="cav7EnlistmentDefaults" display_order="10"/>
   </option>
   <option option_id="cav7EnlistDefRecordTypeId" edit_format="spinbox" data_type="unsigned_integer" advanced="0">

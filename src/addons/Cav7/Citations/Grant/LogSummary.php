@@ -21,7 +21,11 @@ final class LogSummary
             ],
             'retypeset' => [[empty($detail['unchanged']) ? 'cav7_cit_log_retypeset' : 'cav7_cit_log_retypeset_unchanged', []]],
             'withdrawn' => [['cav7_cit_log_withdrawn', []]],
-            default => [['cav7_cit_log_puc_sync', []]],
+            default => [['cav7_cit_log_puc_sync', [
+                'added' => (string) ($detail['added'] ?? 0),
+                'reset' => (string) ($detail['reset'] ?? 0),
+                'removed' => (string) ($detail['removed'] ?? 0),
+            ]]],
         };
     }
 

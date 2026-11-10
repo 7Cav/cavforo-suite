@@ -53,6 +53,21 @@ with `link()`.
 Neither step waits for the PUC strip or the generator. The strip runs after the sweep.
 It takes every reference off the six PUC blobs at once, and that stays under the brake.
 
+### PUC setup
+
+Once, after the first sweep. For each of the six PUC dates:
+
+1. Make a template serving the PUC award, with no fields and no signature slots. Its plate
+   is that date's original JPEG, never a re-encoded blob. The originals are in the archive
+   and in git history at
+   `d27e8f4:src/addons/Cav7/EnlistmentDefaults/assets/puc-citations/<date>.jpg`. Publish it.
+2. Issue its one regiment grant on that date.
+3. Retire the version, or the grant form keeps offering the old plate for a new PUC.
+
+Then run `cav7-enlistment-defaults:puc-strip --dry-run`, read it, and run it again without
+`--dry-run`. The strip turns the PUC sync on (`cav7EnlistDefPucSync`), and from then on
+every milpac carries one PUC row per regiment grant.
+
 **The addon can't be turned off once the sweep has run.** Disabling it sends every
 swept citation to a legacy URL with no file behind it. Uninstall keeps the tables, the
 `citation_blob_id` columns and the blob tree, and a reinstall picks them back up.

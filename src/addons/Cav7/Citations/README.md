@@ -85,8 +85,10 @@ These are under **Setup > Options > Citations**.
 | **Regiment awards** | `61` | Comma-separated award ids. A grant of one of these awards is a regiment grant, issued to the whole regiment. Changing the list leaves issued grants alone. |
 | **Citation cutover** | Off | With it on, the row forms show the citation picker in place of the upload box, and every row but a Disciplinary record refuses a citation file. Renders and attached citations never read it. |
 
-A row with a grant link refuses a file whatever the cutover says. To put an upload there,
-tick "Delete current image" and save, then upload in a second save.
+A row with a grant link refuses a file whatever the cutover says. To put an upload on a
+row linked to a grant member, tick "Delete current image" and save, then upload in a second
+save. A row linked to a regiment grant refuses that too, and any other change to its
+citation.
 
 ### Permissions
 

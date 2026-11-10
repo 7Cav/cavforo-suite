@@ -18,7 +18,7 @@ use XF\PrintableException;
  * vendor has replied with a redirect. A new row commits with its attach or not at all, since
  * the vendor's form stays filled after an error and a second Save would add a second row.
  * Direct callers of the image services never come through here, so Cav7/EnlistmentDefaults
- * is untouched. delete_image is never refused: a removal is how a linked row takes a file.
+ * is untouched. A clear, delete_image or No citation, is refused only on a regiment-linked row.
  *
  * Assumes the vendor reads the file with getFile('upload', false, false), finds the row by
  * record_id alone, makes new rows through RosterUser::getNewAward() and getNewServiceRecord(),
@@ -79,8 +79,9 @@ class Roster extends XFCP_Roster
         $choice = $this->filter('citation_pick', 'str');
         $pick = ctype_digit($choice) ? (int) $choice : 0;
         $hasFile = (bool) $this->request->getFile('upload', false, false);
+        $clears = $choice === self::NO_CITATION || $this->filter('delete_image', 'bool');
 
-        if (!$this->isPost() || (!$hasFile && $pick === 0 && $choice !== self::NO_CITATION)) {
+        if (!$this->isPost() || (!$hasFile && $pick === 0 && !$clears)) {
             return $save();
         }
 
@@ -97,6 +98,7 @@ class Roster extends XFCP_Roster
             $rosterUser->relation_id,
             $this->filter('record_type_id', 'int'),
             $hasFile,
+            $clears,
             $pick,
             (bool) $this->options()->cav7CitCutover,
         );

@@ -1,0 +1,1 @@
+Keeps one PUC row per live regiment grant on every milpac: on a new milpac, when a regiment grant is issued, corrected or withdrawn, and daily. With it on, the award forms refuse to add, edit or delete a PUC row. Off until the cav7-enlistment-defaults:puc-strip command has run, which turns it on.

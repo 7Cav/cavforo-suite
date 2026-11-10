@@ -1,1 +1,1 @@
-PUC sync
+PUC sync: {added} rows added, {reset} reset, {removed} removed

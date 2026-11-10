@@ -37,6 +37,7 @@ class GrantLinks extends AbstractService implements RowClearer
         int $urlMilpac,
         int $recordTypeId,
         bool $hasFile,
+        bool $clears,
         int $pick,
         bool $cutover,
     ): ?Phrase {
@@ -47,8 +48,10 @@ class GrantLinks extends AbstractService implements RowClearer
             $kind,
             $recordTypeId,
             (bool) $row?->hasGrantLink(),
+            $row?->citation_regiment_grant_id !== null,
             $row?->relation_id ?? $urlMilpac,
             $hasFile,
+            $clears,
             $pick,
             $picked?->relation_id,
             $cutover,

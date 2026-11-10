@@ -397,6 +397,23 @@ class Grants extends AbstractService
     }
 
     /**
+     * What a PUC sync changed on the rows of one regiment grant, by the system. Nothing
+     * changed, nothing logged.
+     *
+     * @param array{added: int, reset: int, removed: int} $counts
+     */
+    public function logPucSync(int $grantId, array $counts): void
+    {
+        if (array_sum($counts) === 0) {
+            return;
+        }
+
+        /** @var Grant $grant */
+        $grant = $this->em()->find('Cav7\Citations:Grant', $grantId);
+        $this->log($grant, GrantLog::PUC_SYNC, new Actor(0, '', []), '', $counts);
+    }
+
+    /**
      * One save moves the revision by one, however many things changed.
      *
      * @param array<int, int> $billets Billet id by signature id, as the refusals read them.

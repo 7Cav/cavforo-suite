@@ -1,0 +1,1 @@
+This row holds a regiment citation, which every milpac carries. It can't be cleared, swapped or replaced with a file.

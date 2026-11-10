@@ -685,9 +685,9 @@
     },
     "cav7_cit_log_puc_sync.txt": {
         "global_cache": false,
-        "version_id": 1010070,
-        "version_string": "1.1.0",
-        "hash": "183dd43c3a8f3882b51e1083b2f90336"
+        "version_id": 1030070,
+        "version_string": "1.3.0",
+        "hash": "aee5a144d03cf8dc82e1f10054cc2758"
     },
     "cav7_cit_log_rank.txt": {
         "global_cache": false,
@@ -1300,6 +1300,12 @@
         "version_id": 1020070,
         "version_string": "1.2.0",
         "hash": "06a9b462f0ce3f0a28d6f17280d4da1d"
+    },
+    "cav7_cit_refused_change_on_regiment_row.txt": {
+        "global_cache": false,
+        "version_id": 1030070,
+        "version_string": "1.3.0",
+        "hash": "32983ec3741a24579b9d92a2b13fe8f0"
     },
     "cav7_cit_refused_citation_text_outside_wrap.txt": {
         "global_cache": false,

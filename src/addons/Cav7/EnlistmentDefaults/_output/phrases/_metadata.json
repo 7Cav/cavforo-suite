@@ -1,4 +1,16 @@
 {
+    "cav7_enlist_def_puc_rows_managed.txt": {
+        "global_cache": false,
+        "version_id": 2000070,
+        "version_string": "2.0.0",
+        "hash": "68a3a53ea5cbcb0754223f253e03b92f"
+    },
+    "cron_entry.cav7EnlistDefPucSync.txt": {
+        "global_cache": false,
+        "version_id": 2000070,
+        "version_string": "2.0.0",
+        "hash": "4025960817fbbf958ec2f06f85eb15a6"
+    },
     "option.cav7EnlistDefDefaultPositionId.txt": {
         "global_cache": false,
         "version_id": 1000070,
@@ -11,11 +23,11 @@
         "version_string": "1.0.0",
         "hash": "0117d47996bc19ccdd9083e5243d48c2"
     },
-    "option.cav7EnlistDefPucAwardId.txt": {
+    "option.cav7EnlistDefPucSync.txt": {
         "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "acfe0e989f23e5a7b76e45af55419e0d"
+        "version_id": 2000070,
+        "version_string": "2.0.0",
+        "hash": "183dd43c3a8f3882b51e1083b2f90336"
     },
     "option.cav7EnlistDefRecordTypeId.txt": {
         "global_cache": false,
@@ -41,11 +53,11 @@
         "version_string": "1.0.0",
         "hash": "342c302a3252011f66fa968768b23959"
     },
-    "option_explain.cav7EnlistDefPucAwardId.txt": {
+    "option_explain.cav7EnlistDefPucSync.txt": {
         "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "59850d23a02d42d7fe277f55b97ae943"
+        "version_id": 2000070,
+        "version_string": "2.0.0",
+        "hash": "e044bf58dcae065dc817b5760a9a1113"
     },
     "option_explain.cav7EnlistDefRecordTypeId.txt": {
         "global_cache": false,
@@ -55,9 +67,9 @@
     },
     "option_explain.cav7EnlistDefSystemUserId.txt": {
         "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "db4e8c12936ad829876f2d6f3b30ab08"
+        "version_id": 2000070,
+        "version_string": "2.0.0",
+        "hash": "5f3ee36034f1511ac6b40be41b2b805a"
     },
     "option_group.cav7EnlistmentDefaults.txt": {
         "global_cache": false,
@@ -67,8 +79,8 @@
     },
     "option_group_description.cav7EnlistmentDefaults.txt": {
         "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "7040aeb6146466bd8aa38e286cd380b8"
+        "version_id": 2000070,
+        "version_string": "2.0.0",
+        "hash": "4573c815b1cdc5d3b14da00cf1a1aeeb"
     }
 }

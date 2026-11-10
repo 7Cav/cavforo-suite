@@ -11,7 +11,7 @@ namespace Cav7\EnlistmentDefaults;
  *
  * These are the form's initial state only — presentational defaults the
  * recruiter edits before saving, never written on save and never re-injected
- * after submit. The post-save application (the PUC set, the enlistment record)
+ * after submit. The post-save application (the PUC rows, the enlistment record)
  * is a separate moment and lives in EnlistmentApplier.
  */
 class EnlistmentFormDefaults

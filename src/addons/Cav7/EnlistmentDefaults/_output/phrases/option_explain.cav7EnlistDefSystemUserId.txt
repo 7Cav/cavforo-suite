@@ -1,1 +1,1 @@
-The user a granted PUC award is attributed to when a milpac is created with no acting visitor (CLI or cron). When there is a session, the acting visitor is used. 0 leaves the vendor default.
+The user a PUC row is attributed to when no member is acting: on a milpac created from the CLI, and on every row the strip or the PUC sync job writes. A milpac created by a member attributes its rows to them.

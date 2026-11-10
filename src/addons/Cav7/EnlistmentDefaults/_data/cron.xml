@@ -1,2 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<cron/>
+<cron>
+  <entry entry_id="cav7EnlistDefPucSync" cron_class="Cav7\EnlistmentDefaults\PucSync" cron_method="enqueue" active="1"><![CDATA[{"day_type":"dom","dom":[-1],"hours":[4],"minutes":[20]}]]></entry>
+</cron>

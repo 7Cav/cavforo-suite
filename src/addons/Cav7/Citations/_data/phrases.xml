@@ -114,7 +114,7 @@
   <phrase title="cav7_cit_log_member_name" version_id="1010070" version_string="1.1.0"><![CDATA[Name for {name}]]></phrase>
   <phrase title="cav7_cit_log_member_rank" version_id="1010070" version_string="1.1.0"><![CDATA[Rank for {name}]]></phrase>
   <phrase title="cav7_cit_log_member_removed" version_id="1010070" version_string="1.1.0"><![CDATA[Removed {name}]]></phrase>
-  <phrase title="cav7_cit_log_puc_sync" version_id="1010070" version_string="1.1.0"><![CDATA[PUC sync]]></phrase>
+  <phrase title="cav7_cit_log_puc_sync" version_id="1030070" version_string="1.3.0"><![CDATA[PUC sync: {added} rows added, {reset} reset, {removed} removed]]></phrase>
   <phrase title="cav7_cit_log_rank" version_id="1010070" version_string="1.1.0"><![CDATA[Rank]]></phrase>
   <phrase title="cav7_cit_log_retypeset" version_id="1010070" version_string="1.1.0"><![CDATA[Retypeset]]></phrase>
   <phrase title="cav7_cit_log_retypeset_unchanged" version_id="1020070" version_string="1.2.0"><![CDATA[Retypeset, no change]]></phrase>
@@ -217,6 +217,7 @@
   <phrase title="cav7_cit_refused_billet_in_use" version_id="1010070" version_string="1.1.0"><![CDATA[A signature or a signature slot still names this billet.]]></phrase>
   <phrase title="cav7_cit_refused_box_off_plate" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: the box runs off the plate.]]></phrase>
   <phrase title="cav7_cit_refused_busy" version_id="1020070" version_string="1.2.0"><![CDATA[Another save for this award is still running. Try again in a moment.]]></phrase>
+  <phrase title="cav7_cit_refused_change_on_regiment_row" version_id="1030070" version_string="1.3.0"><![CDATA[This row holds a regiment citation, which every milpac carries. It can't be cleared, swapped or replaced with a file.]]></phrase>
   <phrase title="cav7_cit_refused_citation_text_outside_wrap" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: citation text needs a wrap field.]]></phrase>
   <phrase title="cav7_cit_refused_citation_text_required" version_id="1000070" version_string="1.0.0"><![CDATA[This template prints citation text, so enter some.]]></phrase>
   <phrase title="cav7_cit_refused_correction_reason_required" version_id="1020070" version_string="1.2.0"><![CDATA[Please give a reason for the correction.]]></phrase>

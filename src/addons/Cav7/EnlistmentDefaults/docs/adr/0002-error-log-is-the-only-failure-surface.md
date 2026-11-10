@@ -6,6 +6,9 @@
 - **Amended by:** [ADR-0003](0003-a-prefill-rejection-stays-silent.md), which scopes
   "recorded in the error log and nowhere else" below to the applier path. A value
   the add-form prefill cannot set is dropped silently and deliberately.
+- **Amended by:** [ADR-0004](0004-puc-rows-follow-regiment-grants.md), which
+  replaced the bundled PUC set with the PUC sync. Its daily run repairs a PUC row
+  that failed at creation, and Consequences below says so.
 
 ## Context
 
@@ -72,13 +75,7 @@ message.
 
 ## Consequences
 
-A dropped grant is permanent. Nothing re-applies the PUC set: the automation fires
-only on a milpac INSERT, and there is no cron, admin action, or CLI command that
-re-runs it. The idempotency guard in `pendingDates()` makes a re-run safe, but no
-re-run exists to be made safe. Fixing a dropped grant means adding the award by hand
-in the Rosters UI, which is accepted because a sporadic drop is rare and the repair
-takes a minute.
-
-A re-apply path is therefore a real gap, deliberately left open. If it is ever wanted
-it is the same shape as the `Cav7/DiscordSyncPatch` resync work and belongs in its own
-issue, not bolted onto the error policy.
+A PUC row that fails at creation is logged as above and comes back on the PUC
+sync's next daily run (amended 2026-11-10, see ADR-0004). Before that ADR a dropped
+grant was permanent: nothing re-applied the bundled set, and the repair was adding
+the award by hand.

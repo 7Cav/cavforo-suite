@@ -91,9 +91,9 @@ namespace Cav7\Citations\Service {
         /** Why attach refuses, as a removal landing between the check and the attach would. */
         public ?string $attachRefusal = null;
 
-        public function saveRefusal(RowKind $kind, int $recordId, int $urlMilpac, int $recordTypeId, bool $hasFile, int $pick, bool $cutover): ?string
+        public function saveRefusal(RowKind $kind, int $recordId, int $urlMilpac, int $recordTypeId, bool $hasFile, bool $clears, int $pick, bool $cutover): ?string
         {
-            $this->checked[] = [$kind, $recordId, $urlMilpac, $recordTypeId, $hasFile, $pick, $cutover];
+            $this->checked[] = [$kind, $recordId, $urlMilpac, $recordTypeId, $hasFile, $clears, $pick, $cutover];
 
             return $this->refusal;
         }
@@ -337,7 +337,7 @@ namespace Cav7\Citations\Tests {
 
     $picked = saved(['record_id' => 40, 'citation_pick' => '5']);
     check('a pick on an existing row attaches to that row', $picked->links->attached === [[RowKind::Award, 40, 5]]);
-    check('the pick reaches the check before the save', $picked->links->checked[0][5] === 5 && $picked->saves === 1);
+    check('the pick reaches the check before the save', $picked->links->checked[0][6] === 5 && $picked->saves === 1);
 
     $record = saved(['record_id' => 40, 'record_type_id' => 2, 'citation_pick' => '5'], null, RowKind::Record);
     check('a record attaches as a record', $record->links->attached === [[RowKind::Record, 40, 5]]);
@@ -399,6 +399,10 @@ namespace Cav7\Citations\Tests {
 
     $removed = saved(['record_id' => 40, 'citation_pick' => 'none']);
     check('No citation takes the vendor\'s removal path', $removed->deleteImageAtSave === true && $removed->links->attached === []);
+    check('and is checked as a clear', $removed->links->checked[0][5] === true);
+
+    $deleteBox = saved(['record_id' => 40, 'delete_image' => 1]);
+    check('the delete box alone is checked as a clear before the save', $deleteBox->links->checked[0][5] === true && $deleteBox->saves === 1);
 
     $kept = saved(['record_id' => 40, 'citation_pick' => 'keep']);
     check('Keep the current image leaves the vendor alone', $kept->deleteImageAtSave === false && $kept->links->attached === [] && $kept->links->checked === []);
@@ -413,10 +417,10 @@ namespace Cav7\Citations\Tests {
     check('the delete box with the row\'s own pick ends on no citation', $own->deleteImageAtSave === true && $own->links->attached === []);
 
     $file = saved(['record_id' => 40], fn (Roster $r) => $r->file = true);
-    check('a file is checked with no pick', $file->links->checked[0][4] === true && $file->links->checked[0][5] === 0);
+    check('a file is checked with no pick', $file->links->checked[0][4] === true && $file->links->checked[0][6] === 0);
 
     $off = saved(['record_id' => 40, 'citation_pick' => '5'], fn (Roster $r) => $r->cutover = false);
-    check('the check is told the option', $off->links->checked[0][6] === false);
+    check('the check is told the option', $off->links->checked[0][7] === false);
 
     foreach (['actionProfileAwardsAdd', 'actionAwardsEdit', 'actionProfileServiceRecordAdd', 'actionServiceRecordEdit'] as $action) {
         $on = new Roster();

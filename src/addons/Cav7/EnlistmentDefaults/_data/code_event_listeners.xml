@@ -1,2 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<code_event_listeners/>
+<code_event_listeners>
+  <listener event_id="cav7_citation_regiment_grant_changed" execute_order="10" callback_class="Cav7\EnlistmentDefaults\PucSync" callback_method="enqueue" active="1" description="Queues the PUC sync when a regiment grant is issued, corrected or withdrawn"/>
+</code_event_listeners>

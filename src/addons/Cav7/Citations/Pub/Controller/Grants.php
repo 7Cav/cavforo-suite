@@ -58,7 +58,7 @@ class Grants extends AbstractController
     public function actionIssue(): AbstractReply
     {
         if (!$this->isPost()) {
-            return $this->formPage($this->formView()->forIssue(GrantForm::blank(), $this->actor(), $this->regimentAwardIds()));
+            return $this->formPage($this->formView()->forIssue(GrantForm::blank(), $this->actor(), $this->repo()->regimentAwardIds()));
         }
 
         $post = $this->post();
@@ -68,7 +68,7 @@ class Grants extends AbstractController
             $kindId,
             $post['template_version_id'],
             GrantForm::values($post),
-            $this->regimentAwardIds()
+            $this->repo()->regimentAwardIds()
         );
 
         $grant = $this->typesetting(fn (): Grant => $this->grants()->issue($request, $this->actor()));
@@ -94,7 +94,7 @@ class Grants extends AbstractController
                 $fields['moveTargets'] = $this->moveTargets($grant);
             }
         } else {
-            $fields = $this->formView()->forIssue($post, $this->actor(), $this->regimentAwardIds());
+            $fields = $this->formView()->forIssue($post, $this->actor(), $this->repo()->regimentAwardIds());
         }
 
         return $this->view('Cav7\Citations:Grant\Form', 'cav7_cit_grant_form_body', $fields);
@@ -416,7 +416,7 @@ class Grants extends AbstractController
             array_unshift($history, [
                 'revision' => $log->revision_after,
                 'date' => $log->log_date,
-                'by' => $log->username,
+                'by' => $log->username !== '' ? $log->username : \XF::phrase('system'),
                 'what' => array_map(
                     fn (array $line): Phrase => \XF::phrase($line[0], $line[1]),
                     LogSummary::of($log->event, $log->detail, $names)
@@ -537,13 +537,7 @@ class Grants extends AbstractController
 
         $kind = GrantForm::kind($this->filter('kind', 'str'));
 
-        return $kind === null ? null : GrantRules::isRegiment($kind[0], $kind[1], $this->regimentAwardIds());
-    }
-
-    /** @return list<int> */
-    private function regimentAwardIds(): array
-    {
-        return GrantRules::awardList((string) $this->options()->cav7CitRegimentAwardIds) ?? [];
+        return $kind === null ? null : GrantRules::isRegiment($kind[0], $kind[1], $this->repo()->regimentAwardIds());
     }
 
     private function grant(ParameterBag $params): Grant
