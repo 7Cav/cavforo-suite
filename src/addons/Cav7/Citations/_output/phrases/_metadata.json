@@ -1261,9 +1261,9 @@
     },
     "cav7_cit_refused_already_withdrawn.txt": {
         "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "24fd2f310b4f41a1a40c260e7553a321"
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "f786029e9df85ae4897393464bbedfbb"
     },
     "cav7_cit_refused_bad_date.txt": {
         "global_cache": false,
@@ -1351,9 +1351,9 @@
     },
     "cav7_cit_refused_grant_moved_on.txt": {
         "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "3582bef8dfe8fe2df3ae5ca8258e6533"
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "5e7c35d1097164799319b6486e7262ab"
     },
     "cav7_cit_refused_grant_undeletable.txt": {
         "global_cache": false,
@@ -1395,7 +1395,7 @@
         "global_cache": false,
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "a6bebd764163d528fed8a9348e023978"
+        "hash": "cdd6cb56e937dcbdfb189054c1b526a9"
     },
     "cav7_cit_refused_member_input_required.txt": {
         "global_cache": false,
@@ -1543,9 +1543,9 @@
     },
     "cav7_cit_refused_not_a_member_grant.txt": {
         "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "8ef021b18f72d1aea94d4ec7c85f6107"
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "96d17feafb0e893698f02858f3a4448a"
     },
     "cav7_cit_refused_not_a_regiment_grant.txt": {
         "global_cache": false,
