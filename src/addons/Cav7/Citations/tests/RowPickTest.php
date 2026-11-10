@@ -329,8 +329,8 @@ namespace Cav7\Citations\Tests {
     $late->links->attachRefusal = 'That citation is gone.';
     $lateReply = $late->actionProfileAwardsSave(new ParameterBag());
     check(
-        'a refused attach after the save keeps the vendor\'s redirect and says why the citation is missing',
-        $lateReply === $late->reply && $lateReply instanceof Redirect
+        'a refused attach after the save says the row saved and why the citation is missing',
+        $late->saves === 1 && $late->links->attached === [] && $lateReply instanceof Error
             && $lateReply->message === 'cav7_cit_saved_without_citation{"reason":"That citation is gone."}',
         json_encode($lateReply)
     );

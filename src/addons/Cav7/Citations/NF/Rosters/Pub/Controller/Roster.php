@@ -117,8 +117,9 @@ class Roster extends XFCP_Roster
             try {
                 $links->attach($kind, $rosterUser->newRow?->record_id ?? $recordId, $pick);
             } catch (PrintableException $e) {
-                // The vendor's save has committed, so the row stands without its citation.
-                $reply->setMessage(\XF::phrase('cav7_cit_saved_without_citation', ['reason' => $e->getMessage()]));
+                // The vendor's save has committed. An error, not the redirect: the vendor's ajax
+                // form follows a redirect at once and never shows its message.
+                return $this->error(\XF::phrase('cav7_cit_saved_without_citation', ['reason' => $e->getMessage()]));
             }
         }
         return $reply;
