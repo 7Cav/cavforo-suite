@@ -367,7 +367,8 @@ class TemplateVersions extends AbstractManager
             $targets += $this->repo()->movableVersions(
                 $version->template_id,
                 $version->template_version_id,
-                "{$grant->kind_type}:{$grant->kind_id}"
+                "{$grant->kind_type}:{$grant->kind_id}",
+                $grant->is_regiment
             );
         }
         krsort($targets);

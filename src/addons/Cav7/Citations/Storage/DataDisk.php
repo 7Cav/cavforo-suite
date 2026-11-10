@@ -75,7 +75,10 @@ final class DataDisk
     }
 
     /**
-     * Refuses to replace anything, so a blob file can only ever be written once.
+     * Refuses to replace anything, so a blob file can only ever be written once. A disk
+     * that is full or won't take the write is damage, so the run carries on past it.
+     *
+     * @throws BlobDamage
      */
     public function writeOnce(string $key, string $file): void
     {
@@ -85,7 +88,7 @@ final class DataDisk
         $target = @fopen($path, 'xb');
         $source = @fopen($file, 'rb');
         if (!$target || !$source) {
-            throw new \RuntimeException("Could not write $key");
+            throw new BlobDamage('blob file could not be written');
         }
 
         $copied = stream_copy_to_stream($source, $target);
@@ -94,7 +97,7 @@ final class DataDisk
         chmod($path, 0644);
 
         if ($copied !== filesize($file)) {
-            throw new \RuntimeException("Short write to $key");
+            throw new BlobDamage('blob file written short');
         }
     }
 
@@ -131,7 +134,7 @@ final class DataDisk
 
         $this->ensureDirectory(dirname($dir));
         if (!@mkdir($dir, 0755) && !is_dir($dir)) {
-            throw new \RuntimeException("Could not create $dir");
+            throw new BlobDamage('blob directory could not be created');
         }
         file_put_contents("$dir/index.html", ' ');
     }

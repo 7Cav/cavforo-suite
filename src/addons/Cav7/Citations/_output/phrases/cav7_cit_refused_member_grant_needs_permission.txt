@@ -1,1 +1,1 @@
-Moving a member citation needs Issue and correct grants to members.
+Moving a member citation needs permission to issue member citations.

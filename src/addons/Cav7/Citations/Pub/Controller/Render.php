@@ -52,20 +52,40 @@ class Render extends AbstractController
         return false;
     }
 
+    // Each action reads in one REPEATABLE READ transaction, so the grant row and the typesetting
+    // drawn on it come from one snapshot and a correction committing between them can't mix
+    // revisions. The level is set here because the server default may be READ COMMITTED.
     public function actionIndex(ParameterBag $params): AbstractReply
     {
-        /** @var GrantMember|null $member */
-        $member = $this->em()->find('Cav7\Citations:GrantMember', $params->grant_member_id, 'Grant.Version');
+        return $this->snapshot(function () use ($params): AbstractReply {
+            /** @var GrantMember|null $member */
+            $member = $this->em()->find('Cav7\Citations:GrantMember', $params->grant_member_id, 'Grant.Version');
 
-        return $this->answer($params, $member, $member?->Grant, (int) $member?->grant_member_id);
+            return $this->answer($params, $member, $member?->Grant, (int) $member?->grant_member_id);
+        });
     }
 
     public function actionRegiment(ParameterBag $params): AbstractReply
     {
-        /** @var Grant|null $grant */
-        $grant = $this->em()->find('Cav7\Citations:Grant', $params->grant_id, 'Version');
+        return $this->snapshot(function () use ($params): AbstractReply {
+            /** @var Grant|null $grant */
+            $grant = $this->em()->find('Cav7\Citations:Grant', $params->grant_id, 'Version');
 
-        return $this->answer($params, $grant, $grant, TypesettingRows::SHARED);
+            return $this->answer($params, $grant, $grant, TypesettingRows::SHARED);
+        });
+    }
+
+    /**
+     * @param \Closure(): AbstractReply $read
+     */
+    private function snapshot(\Closure $read): AbstractReply
+    {
+        $db = $this->app->db();
+        if (!$db->inTransaction()) {
+            $db->query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+        }
+
+        return $db->executeTransaction($read);
     }
 
     private function answer(ParameterBag $params, GrantMember|Grant|null $citation, ?Grant $grant, int $grantMemberId): AbstractReply
@@ -90,7 +110,7 @@ class Render extends AbstractController
         try {
             $version = $grant->Version ?? throw new RenderFailed("Grant {$grant->grant_id} has no template version");
             $jpeg = GrantRender::forApp($this->app)->draw($version, $grant->grant_id, $grantMemberId)->jpeg;
-        } catch (RenderFailed $e) {
+        } catch (RenderFailed | \JsonException | \InvalidArgumentException $e) {
             $damage = new DamageLog(fn (string $line) => \XF::logError($line), fn (string $line) => null);
             $damage->report(
                 "render failed: {$e->getMessage()}",

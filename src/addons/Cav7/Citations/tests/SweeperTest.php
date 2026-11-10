@@ -268,6 +268,25 @@ foreach (['citation_grant_member_id', 'citation_regiment_grant_id'] as $link) {
     check('and the row takes no reference and reports no damage', $stage->refOf($award, 5) === null && $run->damage === 0);
 }
 
+// A clerk removes the grant link and uploads to the same path while the orphan is deleted.
+// The orphan's lock is the only transaction in these runs.
+foreach (['after the orphan is moved aside' => 'afterCommit', 'before the orphan is moved aside' => 'beforeBegin'] as $when => $hook) {
+    $stage = new Stage();
+    $stage->row($award, 5, 500);
+    $stage->db->update($award->table(), ['citation_grant_member_id' => 9], 'record_id = ?', [5]);
+    $file = $stage->legacyFile($award, 5, png());
+    $stage->db->$hook = [fn () => file_put_contents($stage->disk->path($file), png(70, 70))];
+    $run = $stage->sweep();
+    check(
+        "an upload landing $when survives at its path",
+        $stage->disk->hash($file) === hash('sha256', png(70, 70), true) && !glob($stage->disk->path($file) . '.taken-*')
+    );
+    check(
+        "and only the orphan's own bytes are logged as deleted ($hook)",
+        array_column($stage->deletions('orphan_grant_linked'), 'content_hash') === ($hook === 'afterCommit' ? [hash('sha256', png(), true)] : [])
+    );
+}
+
 // Brake on orphans: refuses that kind and carries on with everything else.
 $stage = new Stage();
 for ($id = 1; $id <= 51; $id++) {

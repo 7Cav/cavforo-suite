@@ -37,19 +37,19 @@
 	</div>
 </xf:form>
 ]]></template>
-  <template type="public" title="cav7_cit_grant_form" version_id="1010070" version_string="1.1.0"><![CDATA[<xf:if is="$mode == 'issue'">
+  <template type="public" title="cav7_cit_grant_form" version_id="1010070" version_string="1.1.0"><![CDATA[<xf:breadcrumb href="{{ link('rosters/citations') }}">{{ phrase('cav7_cit_citations') }}</xf:breadcrumb>
+<xf:if is="$mode == 'issue'">
 	<xf:title>{{ phrase('cav7_cit_issue_a_citation') }}</xf:title>
 	<xf:set var="$action" value="{{ link('rosters/citations/issue') }}" />
 	<xf:set var="$formUrl" value="{{ link('rosters/citations/form') }}" />
 	<xf:set var="$previewUrl" value="{{ link('rosters/citations/preview') }}" />
 <xf:else />
-	<xf:title>{{ phrase('cav7_cit_correct_x', {'title': $grant.kind_title, 'date': $grant.getDay()}) }}</xf:title>
+	<xf:title>{{ $mode == 'move' ? phrase('cav7_cit_move_x', {'title': $grant.kind_title, 'date': $grant.getDay()}) : phrase('cav7_cit_correct_x', {'title': $grant.kind_title, 'date': $grant.getDay()}) }}</xf:title>
 	<xf:breadcrumb href="{{ link('rosters/citations', $grant) }}">{$grant.kind_title}, {$grant.getDay()}</xf:breadcrumb>
 	<xf:set var="$action" value="{{ link('rosters/citations/' . $mode, $grant) }}" />
 	<xf:set var="$formUrl" value="{{ link('rosters/citations/form', $grant) }}" />
 	<xf:set var="$previewUrl" value="{{ link('rosters/citations/preview', $grant) }}" />
 </xf:if>
-<xf:breadcrumb href="{{ link('rosters/citations') }}">{{ phrase('cav7_cit_citations') }}</xf:breadcrumb>
 
 <xf:css src="cav7_cit_pages.less" />
 <xf:js src="Cav7/Citations/pages.js" addon="Cav7/Citations" min="1" />
@@ -320,10 +320,14 @@
 			</xf:if>
 		</div>
 
-		<xf:if is="$regimentGrants is not empty">
+		<xf:if is="$canSeeRegiment">
 			<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_regiment_citations') }}</h3>
 			<div class="block-body block-row">
-				<xf:macro id="table" arg-grants="{$regimentGrants}" arg-corrections="{$corrections}" />
+				<xf:if is="$regimentGrants is not empty">
+					<xf:macro id="table" arg-grants="{$regimentGrants}" arg-corrections="{$corrections}" />
+				<xf:else />
+					{{ phrase('cav7_cit_nothing_issued') }}
+				</xf:if>
 			</div>
 		</xf:if>
 	</div>
@@ -565,7 +569,7 @@
 									</td>
 									<td class="dataList-cell">{$row.member.name}</td>
 									<td class="dataList-cell">
-										<xf:if is="$memberRank">{$row.member.rank_title} <span class="u-muted">({$row.member.rank_pay_grade})</span><xf:else /><span class="u-muted">{{ phrase('cav7_cit_on_the_plate') }}</span></xf:if>
+										<xf:if is="$memberRank">{$row.member.rank_title} <span class="u-muted">({$row.member.rank_pay_grade})</span><xf:elseif is="$grant.rank_id" />{$grant.rank_title} <span class="u-muted">({$grant.rank_pay_grade})</span><xf:else /><span class="u-muted">{{ phrase('cav7_cit_on_the_plate') }}</span></xf:if>
 									</td>
 									<xf:foreach loop="$memberInputs" value="$input">
 										<td class="dataList-cell">{{ $row.member.input_values.{$input.key} ?: '-' }}</td>
@@ -1275,14 +1279,14 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 	<xf:css src="cav7_cit_pages.less" />
 	<xf:js src="Cav7/Citations/pages.js" addon="Cav7/Citations" min="1" />
 
-	<xf:set var="$keeps" value="{{ $record.citation_date && !$record.citation_grant_member_id }}" />
+	<xf:set var="$keeps" value="{{ $record.citation_date && !$record.citation_grant_member_id && !$record.citation_regiment_grant_id }}" />
 	<xf:set var="$name" value="{$rosterUser.User.username}" />
 	<xf:formrow label="{{ phrase('cav7_cit_citation') }}" hint="{{ phrase('cav7_cit_issued_to_x', {'name': $name}) }}">
 		<div data-xf-init="cav7-citation-picker" class="{{ ($record.citation_grant_member_id || $record.citation_regiment_grant_id) ? 'cav7Picker--linked' : '' }}">
 			<xf:if is="count($entries) > 3">
 				<xf:textbox class="input--small cav7PickerFilter js-pickerFilter" placeholder="{{ phrase('cav7_cit_filter_placeholder')|for_attr }}" />
 			</xf:if>
-			<xf:radio name="citation_pick" value="{{ $record.citation_grant_member_id ?: ($keeps ? 'keep' : 'none') }}">
+			<xf:radio name="citation_pick" value="{{ $record.citation_grant_member_id ?: ($record.citation_regiment_grant_id ? '' : ($keeps ? 'keep' : 'none')) }}">
 				<xf:if is="$keeps">
 					<xf:option value="keep">{{ phrase('cav7_cit_keep_current_image') }}</xf:option>
 				</xf:if>

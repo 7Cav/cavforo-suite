@@ -29,11 +29,24 @@ class Drafts extends AbstractService
         });
     }
 
+    /**
+     * The template row stays locked until the draft commits, so a second request waits, then
+     * sees this draft and refuses rather than copying it or taking its number.
+     *
+     * @throws PrintableException
+     */
     public function startDraft(Template $template, int $userId): TemplateVersion
     {
-        $source = $template->Versions->last();
+        return $this->db()->executeTransaction(function () use ($template, $userId): TemplateVersion {
+            $this->db()->fetchOne('SELECT template_id FROM xf_cav7_citation_template WHERE template_id = ? FOR UPDATE', $template->template_id);
+            $template->clearCache('Versions');
+            foreach ($template->Versions as $version) {
+                if (VersionLifecycle::isDraft($version->state)) {
+                    throw new PrintableException(\XF::phrase('cav7_cit_refused_one_draft'));
+                }
+            }
 
-        return $this->db()->executeTransaction(function () use ($template, $source, $userId): TemplateVersion {
+            $source = $template->Versions->last();
             $draft = $this->newDraft($template, VersionLifecycle::draftFrom($source->toArray(false)), $userId);
 
             foreach ($source->Kinds as $kind) {
@@ -48,23 +61,26 @@ class Drafts extends AbstractService
     }
 
     /**
-     * Publishing and every draft write hold the version row and work from it as stored, so
-     * nothing lands on a version another request published after this one loaded it.
+     * Publishing, retiring and every draft write hold the version row and work from it as
+     * stored, so nothing lands on a version another request moved on after this one loaded it.
      *
      * @template T
      * @param \Closure(): T $write
+     * @param string $state The state the write needs the version in.
      * @return T
      * @throws PrintableException
      */
-    public function locked(TemplateVersion $draft, \Closure $write): mixed
+    public function locked(TemplateVersion $draft, \Closure $write, string $state = VersionLifecycle::DRAFT): mixed
     {
-        return $this->db()->executeTransaction(function () use ($draft, $write): mixed {
+        return $this->db()->executeTransaction(function () use ($draft, $write, $state): mixed {
             $row = $this->db()->fetchRow(
                 'SELECT * FROM xf_cav7_citation_template_version WHERE template_version_id = ? FOR UPDATE',
                 $draft->template_version_id
             );
-            if (!$row || !VersionLifecycle::isDraft($row['state'])) {
-                throw new PrintableException(\XF::phrase('cav7_cit_refused_version_frozen'));
+            if (!$row || $row['state'] !== $state) {
+                throw new PrintableException(\XF::phrase(VersionLifecycle::isDraft($state)
+                    ? 'cav7_cit_refused_version_frozen'
+                    : 'cav7_cit_refused_bad_transition'));
             }
 
             foreach ($row as $column => $value) {

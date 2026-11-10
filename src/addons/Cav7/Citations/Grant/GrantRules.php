@@ -11,11 +11,14 @@ use Cav7\Citations\Template\VersionLifecycle;
 
 /**
  * What refuses an issue, a correction, a move, an addition, a removal or a withdrawal.
- * A problem's `rule` names its phrase, and `field` is the slot, input or milpac it's about.
+ * A problem's `rule` names its phrase, `field` is the slot, input or milpac it's about, and
+ * `params` is what the phrase prints in place of those keys.
  */
 final class GrantRules
 {
     public const REGIMENT_NEEDS_PERMISSION = 'regiment_needs_permission';
+    public const NO_KIND_CHOSEN = 'no_kind_chosen';
+    public const NO_TEMPLATE_CHOSEN = 'no_template_chosen';
     public const NO_SUCH_KIND = 'no_such_kind';
     public const VERSION_NOT_PUBLISHED = 'version_not_published';
     public const KIND_NOT_SERVED = 'kind_not_served';
@@ -25,16 +28,21 @@ final class GrantRules
     public const REGIMENT_TAKES_NO_MEMBERS = 'regiment_takes_no_members';
     public const VERSION_NEEDS_MEMBER = 'version_needs_member';
     public const REGIMENT_DUPLICATE = 'regiment_duplicate';
+    public const DATE_REQUIRED = 'date_required';
     public const BAD_DATE = 'bad_date';
     public const CITATION_TEXT_REQUIRED = 'citation_text_required';
     public const SLOT_EMPTY = 'slot_empty';
     public const SIGNATURE_WRONG_BILLET = 'signature_wrong_billet';
     public const INPUT_REQUIRED = 'input_required';
+    public const MEMBER_INPUT_REQUIRED = 'member_input_required';
     public const NAME_REQUIRED = 'name_required';
     public const RANK_REQUIRED = 'rank_required';
+    public const MEMBER_RANK_REQUIRED = 'member_rank_required';
     public const NO_SUCH_RANK = 'no_such_rank';
+    public const MEMBER_NO_SUCH_RANK = 'member_no_such_rank';
     public const RANK_WITHOUT_ART = 'rank_without_art';
     public const REASON_REQUIRED = 'reason_required';
+    public const CORRECTION_REASON_REQUIRED = 'correction_reason_required';
     public const NO_SUCH_MEMBER = 'no_such_member';
     public const WRONG_TEMPLATE = 'wrong_template';
     public const NOT_A_MEMBER_GRANT = 'not_a_member_grant';
@@ -104,7 +112,7 @@ final class GrantRules
      * @param array<int, int> $billets Billet id by signature id.
      * @param array<string, list<int>> $artRanks Rank ids with art, by field key.
      * @param list<int> $milpacs The members' relation ids that have a milpac.
-     * @return list<array{field: string, rule: string}>
+     * @return list<array{field: string, rule: string, params: array<string, string|int>}>
      */
     public static function issueProblems(
         IssueRequest $request,
@@ -143,20 +151,35 @@ final class GrantRules
     }
 
     /**
+     * An issue sent before a template was chosen. What the version decides waits until there is one.
+     *
+     * @param list<int> $milpacs The members' relation ids that have a milpac.
+     * @return list<array{field: string, rule: string, params: array<string, string|int>}>
+     */
+    public static function noVersionProblems(IssueRequest $request, array $milpacs): array
+    {
+        $problems = $request->kindId === 0 ? [self::problem(self::NO_KIND_CHOSEN)] : [];
+        $problems[] = self::problem(self::NO_TEMPLATE_CHOSEN);
+
+        return array_merge(
+            $problems,
+            self::dateProblems($request->values->date),
+            self::isRegiment($request->kindType, $request->kindId, $request->regimentAwardIds) ? [] : self::memberListProblems($request->values, $milpacs),
+        );
+    }
+
+    /**
      * Whether these values make a whole grant on this version. Issuing, correcting and
      * moving all end here, and for a move these problems are the missing list.
      *
      * @param array<int, int> $billets Billet id by signature id.
      * @param array<string, list<int>> $artRanks Rank ids with art, by field key.
-     * @return list<array{field: string, rule: string}>
+     * @return list<array{field: string, rule: string, params: array<string, string|int>}>
      */
     public static function valueProblems(Version $version, GrantValues $values, array $billets, array $artRanks): array
     {
-        $problems = [];
+        $problems = self::dateProblems($values->date);
 
-        if (self::day($values->date) === null) {
-            $problems[] = self::problem(self::BAD_DATE);
-        }
         if (FieldDependencies::used($version, 'citation_text') && !PatternResolver::filled($values->citationText ?? '')) {
             $problems[] = self::problem(self::CITATION_TEXT_REQUIRED);
         }
@@ -165,15 +188,15 @@ final class GrantRules
             if ($field instanceof SignatureSlot) {
                 $signatureId = $values->signatures[$field->key] ?? null;
                 if ($signatureId === null) {
-                    $problems[] = self::problem(self::SLOT_EMPTY, $field->key);
+                    $problems[] = self::problem(self::SLOT_EMPTY, $field->key, ['billet_id' => $field->billet_id]);
                 } elseif (($billets[$signatureId] ?? null) !== $field->billet_id) {
-                    $problems[] = self::problem(self::SIGNATURE_WRONG_BILLET, $field->key);
+                    $problems[] = self::problem(self::SIGNATURE_WRONG_BILLET, $field->key, ['billet_id' => $field->billet_id]);
                 }
             }
         }
 
         foreach (self::missing($version, 'grant', $values->inputs) as $key) {
-            $problems[] = self::problem(self::INPUT_REQUIRED, $key);
+            $problems[] = self::problem(self::INPUT_REQUIRED, $key, ['label' => self::label($version, $key)]);
         }
 
         if ($version->rank_scope === 'grant') {
@@ -187,10 +210,11 @@ final class GrantRules
         return $problems;
     }
 
-    /** @return list<array{field: string, rule: string}> */
+    /** @return list<array{field: string, rule: string, params: array<string, string|int>}> */
     public static function memberProblems(Version $version, MemberValues $member): array
     {
         $who = (string) $member->relationId;
+        $name = ['name' => PatternResolver::filled($member->name) ? $member->name : $who];
         $problems = [];
 
         if (FieldDependencies::used($version, 'name') && !PatternResolver::filled($member->name)) {
@@ -198,13 +222,13 @@ final class GrantRules
         }
         if ($version->rank_scope === 'member') {
             if ($member->rankId === null) {
-                $problems[] = self::problem(self::RANK_REQUIRED, $who);
+                $problems[] = self::problem(self::MEMBER_RANK_REQUIRED, $who, $name);
             } elseif ($member->rank === null) {
-                $problems[] = self::problem(self::NO_SUCH_RANK, $who);
+                $problems[] = self::problem(self::MEMBER_NO_SUCH_RANK, $who, $name);
             }
         }
         foreach (self::missing($version, 'member', $member->inputs) as $key) {
-            $problems[] = self::problem(self::INPUT_REQUIRED, "$who: $key");
+            $problems[] = self::problem(self::MEMBER_INPUT_REQUIRED, "$who: $key", $name + ['label' => self::label($version, $key)]);
         }
 
         return $problems;
@@ -214,7 +238,7 @@ final class GrantRules
      * @param array<int, int> $billets Billet id by signature id.
      * @param array<string, list<int>> $artRanks
      * @param bool $liveDuplicate A date change meets another live regiment grant.
-     * @return list<array{field: string, rule: string}>
+     * @return list<array{field: string, rule: string, params: array<string, string|int>}>
      */
     public static function correctionProblems(
         Version $version,
@@ -226,7 +250,7 @@ final class GrantRules
         array $billets,
         array $artRanks,
     ): array {
-        $problems = self::reasonProblems($reason);
+        $problems = self::reasonProblems($reason, self::CORRECTION_REASON_REQUIRED);
         if ($withdrawnDate > 0) {
             $problems[] = self::problem(self::ALREADY_WITHDRAWN);
         }
@@ -244,7 +268,7 @@ final class GrantRules
      *
      * @param string|null $targetState Null when the version doesn't exist.
      * @param list<string> $targetKinds
-     * @return list<array{field: string, rule: string}>
+     * @return list<array{field: string, rule: string, params: array<string, string|int>}>
      */
     public static function moveProblems(
         string $reason,
@@ -287,7 +311,7 @@ final class GrantRules
     /**
      * @param list<int> $relationIds Milpacs already on the grant.
      * @param list<int> $milpacs The added member's relation id if it has a milpac, otherwise empty.
-     * @return list<array{field: string, rule: string}>
+     * @return list<array{field: string, rule: string, params: array<string, string|int>}>
      */
     public static function addProblems(bool $regiment, array $relationIds, Version $version, MemberValues $member, array $milpacs): array
     {
@@ -303,7 +327,7 @@ final class GrantRules
         return self::memberProblems($version, $member);
     }
 
-    /** @return list<array{field: string, rule: string}> */
+    /** @return list<array{field: string, rule: string, params: array<string, string|int>}> */
     public static function withdrawProblems(bool $regiment, int $withdrawnDate, string $reason): array
     {
         $problems = self::reasonProblems($reason);
@@ -315,13 +339,22 @@ final class GrantRules
         return $problems;
     }
 
-    /** @return list<array{field: string, rule: string}> */
-    public static function reasonProblems(string $reason): array
+    /** @return list<array{field: string, rule: string, params: array<string, string|int>}> */
+    public static function reasonProblems(string $reason, string $rule = self::REASON_REQUIRED): array
     {
-        return trim($reason) === '' ? [self::problem(self::REASON_REQUIRED)] : [];
+        return trim($reason) === '' ? [self::problem($rule)] : [];
     }
 
-    /** @return list<array{field: string, rule: string}> */
+    /** @return list<array{field: string, rule: string, params: array<string, string|int>}> */
+    private static function dateProblems(string $date): array
+    {
+        if (trim($date) === '') {
+            return [self::problem(self::DATE_REQUIRED)];
+        }
+        return self::day($date) === null ? [self::problem(self::BAD_DATE)] : [];
+    }
+
+    /** @return list<array{field: string, rule: string, params: array<string, string|int>}> */
     private static function regimentProblems(GrantValues $values, Version $version, bool $liveDuplicate): array
     {
         $problems = [];
@@ -339,7 +372,7 @@ final class GrantRules
 
     /**
      * @param list<int> $milpacs
-     * @return list<array{field: string, rule: string}>
+     * @return list<array{field: string, rule: string, params: array<string, string|int>}>
      */
     private static function memberListProblems(GrantValues $values, array $milpacs): array
     {
@@ -362,7 +395,7 @@ final class GrantRules
 
     /**
      * @param array<string, list<int>> $artRanks
-     * @return list<array{field: string, rule: string}>
+     * @return list<array{field: string, rule: string, params: array<string, string|int>}>
      */
     private static function grantRankProblems(Version $version, GrantValues $values, array $artRanks): array
     {
@@ -387,9 +420,22 @@ final class GrantRules
         return array_values(array_intersect($version->missingInputs($inputs), $version->inputKeys($scope)));
     }
 
-    /** @return array{field: string, rule: string} */
-    private static function problem(string $rule, string $field = ''): array
+    private static function label(Version $version, string $key): string
     {
-        return ['field' => $field, 'rule' => $rule];
+        foreach ($version->inputs as $input) {
+            if ($input->key === $key) {
+                return $input->label;
+            }
+        }
+        return $key;
+    }
+
+    /**
+     * @param array<string, string|int> $params
+     * @return array{field: string, rule: string, params: array<string, string|int>}
+     */
+    private static function problem(string $rule, string $field = '', array $params = []): array
+    {
+        return ['field' => $field, 'rule' => $rule, 'params' => $params];
     }
 }

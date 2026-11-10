@@ -74,7 +74,7 @@ final class GrantValues
             'citationText' => FieldDependencies::used($version, 'citation_text')
                 ? $changes->citationText ?? $this->citationText
                 : $this->citationText,
-            'signatures' => array_intersect_key($changes->signatures, array_flip(self::slotKeys($version))) + $this->signatures,
+            'signatures' => array_filter(array_intersect_key($changes->signatures, array_flip(self::slotKeys($version))) + $this->signatures),
             'inputs' => array_intersect_key($changes->inputs, array_flip($version->inputKeys('grant'))) + $this->inputs,
             'rankId' => $newRank ? $changes->rankId : $this->rankId,
             'rank' => $newRank ? null : $this->rank,
@@ -84,7 +84,8 @@ final class GrantValues
 
     /**
      * Each of the target's slots fills from the pinned signature with its billet, then
-     * `$extra` applies. A slot neither fills is left for the missing list.
+     * `$extra` applies, where a slot it leaves empty keeps that fill. A slot neither fills
+     * is left for the missing list.
      *
      * @param array<int, int> $billets Billet id by signature id.
      */
@@ -102,7 +103,9 @@ final class GrantValues
             }
         }
 
-        return $this->but(['signatures' => $signatures])->changed($extra, $target);
+        $moved = $this->but(['signatures' => $signatures])->changed($extra, $target);
+
+        return $moved->but(['signatures' => $moved->signatures + $signatures]);
     }
 
     /** @param array<int, RankSnapshot> $ranks By rank id. */

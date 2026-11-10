@@ -53,6 +53,11 @@ final class SweepRules
         return $row['citation_date'] === 0 ? self::DAMAGE : self::TAKE_IN;
     }
 
+    public static function isOrphan(string $outcome): bool
+    {
+        return in_array($outcome, [self::ORPHAN_ROWLESS, self::ORPHAN_GRANT_LINKED], true);
+    }
+
     /**
      * @return list<string> what is wrong with this row, if anything
      */

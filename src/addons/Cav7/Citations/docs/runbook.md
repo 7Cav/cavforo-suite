@@ -33,6 +33,9 @@ every render with a 404. Keep `/citations/` out of it, and leave its headers to 
 
 ## First run on a board
 
+The data volume must support hard links, because the sweep puts kept-aside files back
+with `link()`.
+
 1. Install `Cav7/RosterAudit` 1.1.3 or later, then this addon.
 2. Add the nginx lines.
 3. `cav7-citations:sweep --dry-run`. Read the orphan list and the damage. Size the run
@@ -42,7 +45,10 @@ every render with a 404. Keep `/citations/` out of it, and leave its headers to 
 5. Enable the cron entry. An active cron on a board with `jobRunTrigger` set to activity
    would start the first sweep under traffic, which is why it installs inactive.
 6. Sync the archive and re-encode, below.
-7. After cutover, sync and re-encode once more for what arrived in between.
+7. Before cutover, check the record type ids the code pins against the board's own:
+   Disciplinary is 4 in `Grant/RowSaveRules.php`, and Promotion 1 and Graduation 9 in
+   `Render/VersionRules.php`. A wrong id closes upload on the wrong kind.
+8. After cutover, sync and re-encode once more for what arrived in between.
 
 Neither step waits for the PUC strip or the generator. The strip runs after the sweep.
 It takes every reference off the six PUC blobs at once, and that stays under the brake.
@@ -90,6 +96,9 @@ The addon has no R2 access and never gets any. It knows about a sync only throug
 
 ## Re-encoding
 
+The addon installs with **Allow the re-encode** off, under Setup > Options > Citations.
+Turn it on before the first run, or the command refuses and exits 2.
+
 ```sh
 cav7-citations:reencode --synced-at=<the time the sync began>
 ```
@@ -117,9 +126,11 @@ that can't be undone.
 ```sh
 cav7-citations:purge-sources --dry-run --out=purge.txt
 cut -c67- purge.txt > purge-keys.txt
-rclone check data arc:$BUCKET --files-from purge-keys.txt --one-way --download
-cav7-citations:purge-sources --list=purge.txt
+rclone check data arc:$BUCKET --files-from purge-keys.txt --one-way --download \
+  && cav7-citations:purge-sources --list=purge.txt
 ```
+
+Stop unless the check reports 0 differences.
 
 Each line of the list reads like `sha256sum` output, hash then two spaces then archive
 key, so `sha256sum -c` from inside `data/` also works. The purge deletes only what is on
@@ -148,7 +159,7 @@ its keys are legacy paths.
 - The revert deletes nothing. The next sweep deletes the zero-reference encoded blobs. If
   that trips the brake, run a dry run and then `--lift-brake`.
 - `--all` turns the re-encode off, and turning it back on is a new decision with
-  leadership. `--run`, `--blob` and `--row` leave it on.
+  leadership. A reinstall leaves it off too. `--run`, `--blob` and `--row` leave it on.
 
 ## Retypesetting
 
@@ -160,7 +171,7 @@ cav7-citations:retypeset --template-version=7 --reason="ImageMagick upgrade"
 Choose grants with `--grant` (repeatable), `--template-version` or `--addon-version`. The
 dry run lists what would change and writes nothing. A real run needs `--reason`. Each grant
 whose typesetting changes logs it and moves its revision, so its URL changes and the old one
-redirects. A grant with no change is left as it was. It exits 0 when clean, 1 when a grant failed and 2 when the command was refused.
+redirects. A grant with no change keeps its typesetting and revision, and logs only that the check ran. It exits 0 when clean, 1 when a grant failed and 2 when the command was refused.
 
 ## Reading damage
 

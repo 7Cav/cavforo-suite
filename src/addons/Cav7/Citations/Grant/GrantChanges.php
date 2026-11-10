@@ -7,7 +7,7 @@ final class GrantChanges
 {
     /**
      * @param string|null $date As entered, `Y-m-d`.
-     * @param array<string, int> $signatures Signature id by slot key.
+     * @param array<string, int> $signatures Signature id by slot key. 0 empties the slot.
      * @param array<string, string> $inputs Grant-scoped inputs by key.
      * @param array<int, MemberChanges> $members By grant member id.
      */

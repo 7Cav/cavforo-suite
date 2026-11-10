@@ -19,7 +19,7 @@ final class LogSummary
                 ['cav7_cit_log_member_removed', ['name' => (string) ($detail['name'] ?? '')]],
                 ...self::cleared($detail['rows'] ?? []),
             ],
-            'retypeset' => [['cav7_cit_log_retypeset', []]],
+            'retypeset' => [[empty($detail['unchanged']) ? 'cav7_cit_log_retypeset' : 'cav7_cit_log_retypeset_unchanged', []]],
             'withdrawn' => [['cav7_cit_log_withdrawn', []]],
             default => [['cav7_cit_log_puc_sync', []]],
         };

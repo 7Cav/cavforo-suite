@@ -17,8 +17,10 @@ use Cav7\Citations\Grant\IssueRequest;
 use Cav7\Citations\Grant\MemberValues;
 use Cav7\Citations\Grant\RemakePlan;
 use Cav7\Citations\Grant\RowClearer;
+use Cav7\Citations\Render\PinnedSignature;
 use Cav7\Citations\Render\RenderFailed;
 use Cav7\Citations\Repository\Grant as GrantRepository;
+use Cav7\Citations\Template\VersionLifecycle;
 use XF\Phrase;
 use XF\PrintableException;
 use XF\Service\AbstractService;
@@ -46,6 +48,12 @@ class Grants extends AbstractService
         /** @var TemplateVersion|null $version */
         $version = $this->em()->find('Cav7\Citations:TemplateVersion', $request->templateVersionId);
         if ($version === null) {
+            if ($request->templateVersionId === 0) {
+                self::refuse(GrantRules::noVersionProblems(
+                    $request,
+                    $this->repo()->milpacs(array_map(fn (MemberValues $member): int => $member->relationId, array_values($request->values->members))),
+                ));
+            }
             throw new PrintableException(\XF::phrase('cav7_cit_refused_version_not_published'));
         }
 
@@ -56,6 +64,7 @@ class Grants extends AbstractService
         );
         $kindTitle = $this->repo()->kindTitle($request->kindType, $request->kindId);
         $day = GrantRules::day($values->date);
+        $billets = $this->repo()->billets(array_values($values->signatures));
 
         self::refuse(GrantRules::issueProblems(
             $request,
@@ -66,19 +75,26 @@ class Grants extends AbstractService
             $kindTitle,
             $regiment && $day !== null && $this->repo()->liveRegimentExists($request->kindId, $day),
             $actor,
-            $this->repo()->billets(array_values($values->signatures)),
+            $billets,
             $version->artRanks(),
             $this->repo()->milpacs(array_map(fn (MemberValues $member): int => $member->relationId, array_values($values->members))),
         ));
 
+        $pinned = $this->repo()->pinned($values);
         $typesetting = $this->render()->make(
             $version,
             $values,
             RemakePlan::everything($design, array_keys($values->members)),
-            $this->repo()->pinned($values),
+            $pinned,
         );
 
-        $grant = $this->db()->executeTransaction(function () use ($request, $version, $values, $regiment, $kindTitle, $actor, $typesetting): Grant {
+        $grant = $this->awardTransaction($regiment ? $request->kindId : null, function () use ($request, $version, $values, $regiment, $day, $kindTitle, $actor, $typesetting, $pinned, $billets): Grant {
+            $this->holdPublished($version->template_version_id);
+            $this->holdSignatures($values->signatures, $pinned, $billets);
+            if ($regiment && $day !== null && $this->repo()->liveRegimentExists($request->kindId, $day)) {
+                throw new PrintableException(\XF::phrase('cav7_cit_refused_regiment_duplicate'));
+            }
+
             /** @var Grant $grant */
             $grant = $this->em()->create('Cav7\Citations:Grant');
             $grant->bulkSet([
@@ -156,6 +172,7 @@ class Grants extends AbstractService
             return false;
         }
 
+        $billets = $this->repo()->billets(array_values($new->signatures));
         self::refuse(GrantRules::correctionProblems(
             $design,
             $new,
@@ -163,16 +180,16 @@ class Grants extends AbstractService
             $reason,
             $grant->withdrawn_date,
             $this->dateMeetsLiveRegiment($grant, $old, $new),
-            $this->repo()->billets(array_values($new->signatures)),
+            $billets,
             $version->artRanks(),
         ));
 
-        $this->applyCorrection($grant, $version, $old, $new, $correction->changes, $correction->remake, $reason, $actor);
+        $this->applyCorrection($grant, $version, $old, $new, $billets, $correction->changes, $correction->remake, $reason, $actor);
         return true;
     }
 
     /**
-     * @return list<array{field: string, rule: string}> The missing list. Nothing moved unless it's empty.
+     * @return list<array{field: string, rule: string, params: array<string, string|int>}> The missing list. Nothing moved unless it's empty.
      * @throws PrintableException
      * @throws RenderFailed
      */
@@ -218,6 +235,7 @@ class Grants extends AbstractService
             $target,
             $old,
             $new,
+            $billets,
             $changes,
             RemakePlan::everything($design, array_keys($new->members)),
             $reason,
@@ -381,6 +399,7 @@ class Grants extends AbstractService
     /**
      * One save moves the revision by one, however many things changed.
      *
+     * @param array<int, int> $billets Billet id by signature id, as the refusals read them.
      * @param list<array<string, mixed>> $changes
      */
     private function applyCorrection(
@@ -388,15 +407,25 @@ class Grants extends AbstractService
         TemplateVersion $version,
         GrantValues $old,
         GrantValues $new,
+        array $billets,
         array $changes,
         RemakePlan $remake,
         string $reason,
         Actor $actor,
     ): void {
-        $typesetting = $this->render()->make($version, $new, $remake, $this->repo()->pinned($new));
+        $pinned = $this->repo()->pinned($new);
+        $typesetting = $this->render()->make($version, $new, $remake, $pinned);
 
-        $this->db()->executeTransaction(function () use ($grant, $version, $old, $new, $changes, $typesetting, $reason, $actor): void {
+        $redated = $grant->is_regiment && $new->date !== $old->date;
+        $this->awardTransaction($redated ? $grant->kind_id : null, function () use ($grant, $version, $old, $new, $billets, $changes, $typesetting, $pinned, $reason, $actor): void {
+            if ($version->template_version_id !== $grant->template_version_id) {
+                $this->holdPublished($version->template_version_id);
+            }
+            $this->holdSignatures($new->signatures, $pinned, $billets);
             $this->assertUnmoved($grant, $old);
+            if ($this->dateMeetsLiveRegiment($grant, $old, $new)) {
+                throw new PrintableException(\XF::phrase('cav7_cit_refused_regiment_duplicate'));
+            }
 
             if ($version->template_version_id !== $grant->template_version_id) {
                 $this->render()->rows->clearGrant($grant->grant_id);
@@ -430,6 +459,7 @@ class Grants extends AbstractService
     /**
      * Typesetting runs outside the transaction, so what it read may have moved on. Holding the
      * row, a save compares what it planned from with what's there, and a clerk tries again.
+     * The member rows are locked too, so a removal's row clear still comes before any plain read.
      *
      * @throws PrintableException
      */
@@ -440,7 +470,7 @@ class Grants extends AbstractService
             $grant->grant_id
         );
         $members = array_map('intval', $this->db()->fetchAllColumn(
-            'SELECT grant_member_id FROM xf_cav7_citation_grant_member WHERE grant_id = ? ORDER BY grant_member_id',
+            'SELECT grant_member_id FROM xf_cav7_citation_grant_member WHERE grant_id = ? ORDER BY grant_member_id FOR UPDATE',
             $grant->grant_id
         ));
         $held = array_keys($read->members);
@@ -450,6 +480,72 @@ class Grants extends AbstractService
             || (int) $row['withdrawn_date'] !== $grant->withdrawn_date
             || $members !== $held) {
             throw new PrintableException(\XF::phrase('cav7_cit_refused_grant_moved_on'));
+        }
+    }
+
+    /**
+     * No two live regiment grants share an award and a day, and since withdrawn ones don't
+     * count no unique key can say so. A named lock per award puts the check and the write in
+     * one step. It's taken before the transaction begins, so the transaction's reads see
+     * whatever the last holder committed.
+     *
+     * @template T
+     * @param \Closure(): T $write
+     * @return T
+     */
+    private function awardTransaction(?int $awardId, \Closure $write): mixed
+    {
+        if ($awardId === null) {
+            return $this->db()->executeTransaction($write);
+        }
+
+        $lock = "cav7_cit_regiment_award_$awardId";
+        if ((int) $this->db()->fetchOne('SELECT GET_LOCK(?, 30)', $lock) !== 1) {
+            throw new PrintableException(\XF::phrase('cav7_cit_refused_busy'));
+        }
+        try {
+            return $this->db()->executeTransaction($write);
+        } finally {
+            $this->db()->fetchOne('SELECT RELEASE_LOCK(?)', $lock);
+        }
+    }
+
+    /**
+     * The version row stays locked until the write commits, so a retire waits for it, and one
+     * that got in first refuses this write. Call it first in the transaction, before the
+     * signatures: MariaDB fails a locking read of a row changed since the first plain read.
+     *
+     * @throws PrintableException
+     */
+    private function holdPublished(int $versionId): void
+    {
+        $state = $this->db()->fetchOne(
+            'SELECT state FROM xf_cav7_citation_template_version WHERE template_version_id = ? FOR UPDATE',
+            $versionId
+        );
+        if ($state !== VersionLifecycle::PUBLISHED) {
+            throw new PrintableException(\XF::phrase('cav7_cit_refused_version_not_published'));
+        }
+    }
+
+    /**
+     * Typesetting and the refusals read the signatures before the transaction. Their rows stay
+     * locked until it commits, so an edit or a delete waits for the first-use mark and then
+     * refuses. One that got in first refuses this write instead. Call it first in the
+     * transaction: MariaDB fails a locking read of a row changed since the first plain read.
+     *
+     * @param array<string, int> $signatures By slot key.
+     * @param array<string, PinnedSignature> $pinned What typesetting printed, by slot key.
+     * @param array<int, int> $billets Billet id by signature id, as the refusals read them.
+     * @throws PrintableException
+     */
+    private function holdSignatures(array $signatures, array $pinned, array $billets): void
+    {
+        $held = $this->repo()->lockSignatures(array_values($signatures));
+        foreach ($signatures as $slot => $id) {
+            if (!isset($held[$id]) || $held[$id] != [$billets[$id] ?? null, $pinned[$slot] ?? null]) {
+                throw new PrintableException(\XF::phrase('cav7_cit_refused_signature_moved_on'));
+            }
         }
     }
 
@@ -549,7 +645,7 @@ class Grants extends AbstractService
         return bin2hex(random_bytes(16));
     }
 
-    /** @param list<array{field: string, rule: string}> $problems */
+    /** @param list<array{field: string, rule: string, params: array<string, string|int>}> $problems */
     private static function refuse(array $problems): void
     {
         if ($problems !== []) {
@@ -558,14 +654,22 @@ class Grants extends AbstractService
     }
 
     /**
-     * @param list<array{field: string, rule: string}> $problems
+     * @param list<array{field: string, rule: string, params: array<string, string|int>}> $problems
      * @return list<Phrase>
      */
     public static function messages(array $problems): array
     {
-        return array_map(
-            fn (array $problem): Phrase => \XF::phrase("cav7_cit_refused_{$problem['rule']}", ['field' => $problem['field']]),
+        $billets = \XF::em()->findByIds('Cav7\Citations:SigningBillet', array_filter(array_map(
+            fn (array $problem): ?int => $problem['params']['billet_id'] ?? null,
             $problems
-        );
+        )));
+
+        return array_map(function (array $problem) use ($billets): Phrase {
+            $params = ['field' => $problem['field']] + $problem['params'];
+            if (isset($params['billet_id'])) {
+                $params['billet'] = $billets[$params['billet_id']]->title ?? '';
+            }
+            return \XF::phrase("cav7_cit_refused_{$problem['rule']}", $params);
+        }, $problems);
     }
 }

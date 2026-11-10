@@ -10,7 +10,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use XF\Cli\Command\AbstractCommand;
 
 /**
- * Exits 0 clean, 2 when the command was refused.
+ * Exits 0 clean, 2 when the command was refused or couldn't write its list.
  */
 class PurgeSources extends AbstractCommand
 {
@@ -34,7 +34,10 @@ class PurgeSources extends AbstractCommand
 
         if ($dryRun && $out !== null && $list === null) {
             $candidates = $purger->candidateList();
-            file_put_contents($out, $candidates);
+            if (file_put_contents($out, $candidates) !== strlen($candidates)) {
+                $output->writeln("<error>Couldn't write the whole list to $out.</error>");
+                return 2;
+            }
             $output->writeln(sprintf('%d replaced source(s) listed in %s.', substr_count($candidates, "\n"), $out));
             return 0;
         }

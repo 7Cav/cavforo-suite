@@ -63,18 +63,10 @@ class Publication extends AbstractService
     /** @throws PrintableException */
     public function retire(TemplateVersion $version): void
     {
-        self::assertState($version, VersionLifecycle::PUBLISHED);
-
-        $version->bulkSet(['state' => VersionLifecycle::RETIRED, 'retire_date' => \XF::$time]);
-        $version->save();
-    }
-
-    /** A draft may become published, but only through publish(), which checks it and pins its fonts. */
-    private static function assertState(TemplateVersion $version, string $state): void
-    {
-        if ($version->state !== $state) {
-            throw new PrintableException(\XF::phrase('cav7_cit_refused_bad_transition'));
-        }
+        $this->service(Drafts::class)->locked($version, function () use ($version): void {
+            $version->bulkSet(['state' => VersionLifecycle::RETIRED, 'retire_date' => \XF::$time]);
+            $version->save(true, false);
+        }, VersionLifecycle::PUBLISHED);
     }
 
     /** @return array<string, string> Font key => SHA-256, for the fonts this version uses. */

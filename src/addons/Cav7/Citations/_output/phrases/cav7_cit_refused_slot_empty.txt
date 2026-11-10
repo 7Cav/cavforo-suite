@@ -1,1 +1,1 @@
-{field}: choose a signature.
+Please choose a signature for the {billet} slot.

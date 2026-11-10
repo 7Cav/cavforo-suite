@@ -22,8 +22,7 @@ define the terms. [docs/adr](docs/adr/) has the reasons behind the generator.
 - XenForo 2.3.0+, NF/Rosters 2.1.5+ and PHP 8.1+. The NF/Rosters floor is in the
   vendor's own `version_id` numbering.
 - Imagick with JPEG, PNG and FreeType support. The re-encode, every plate, ink and rank
-  art upload, and every draw need it. The addon installs without it, and
-  `cav7-citations:reencode` refuses to run.
+  art upload, and every draw need it, so XenForo refuses the install without it.
 - GD on the same PHP. Imagick can't report its FreeType version, so a typesetting reads
   it from GD and records `unknown` without it.
 - `Cav7/RosterAudit` 1.1.3+ if that addon is installed. An older version logs a line
@@ -64,7 +63,7 @@ Everything runs from `cmd.php`, as the same user PHP-FPM runs as. The
 | `cav7-citations:reencode` | Replaces eligible source blobs with encoded blobs, after an archive sync. |
 | `cav7-citations:revert` | Puts source blobs back, with `plan` and then `apply`. |
 | `cav7-citations:purge-sources` | Deletes replaced sources from a list checked against the archive. |
-| `cav7-citations:retypeset` | Remakes the typesetting of chosen grants with the current renderer. A grant whose typesetting changes moves its revision and logs it, and one with no change is left as it was, stamps included. |
+| `cav7-citations:retypeset` | Remakes the typesetting of chosen grants with the current renderer. A grant whose typesetting changes moves its revision and logs it, and one with no change keeps its typesetting, stamps and revision and logs only that the check ran. |
 
 The cron entry **Citations: sweep** runs daily at 03:10 and installs inactive. Enable
 it under **Tools > Cron entries** after the first CLI sweep.
@@ -82,7 +81,7 @@ These are under **Setup > Options > Citations**.
 
 | Option | Default | What it does |
 |---|---|---|
-| **Allow the re-encode** | On | With it off the re-encode refuses to run. `revert apply --all` turns it off. |
+| **Allow the re-encode** | Off | With it off the re-encode refuses to run. Turn it on before the first run. `revert apply --all` turns it off. |
 | **Regiment awards** | `61` | Comma-separated award ids. A grant of one of these awards is a regiment grant, issued to the whole regiment. Changing the list leaves issued grants alone. |
 | **Citation cutover** | Off | With it on, the row forms show the citation picker in place of the upload box, and every row but a Disciplinary record refuses a citation file. Renders and attached citations never read it. |
 
@@ -98,9 +97,9 @@ interface groups.
 | Permission | Group | Lets a member |
 |---|---|---|
 | View grants and templates | Citation permissions | Open the grants and the template manager, read-only. |
-| Issue and correct grants to members | Citation moderator permissions | Issue, correct and add members to member grants. |
+| Issue and correct grants to members | Citation moderator permissions | Issue, correct, move and add members to member grants. |
 | Remove members from grants | Citation moderator permissions | Remove a member from a grant, which clears every row linked to them. |
-| Manage regiment grants | Citation moderator permissions | Issue, correct and withdraw regiment grants. |
+| Manage regiment grants | Citation moderator permissions | Issue, correct, move and withdraw regiment grants. |
 | Edit template drafts | Citation moderator permissions | Create templates and versions, and edit their uploads and fields. |
 | Publish templates and manage signatures and pay grades | Citation moderator permissions | Publish and retire versions, and manage signatures, billets and pay grades. |
 

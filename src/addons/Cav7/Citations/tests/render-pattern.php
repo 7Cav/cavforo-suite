@@ -130,6 +130,11 @@ check(
     'an optional holding only control characters is not filled',
     resolved('{rank}[ ({input:note})]', false, ['inputs' => ['note' => "\x01"]]) === 'Staff Sergeant'
 );
+check(
+    'an optional holding only zero-width characters is not filled',
+    resolved('{rank}[ ({input:note})]', false, ['inputs' => ['note' => "\u{200B}\u{FEFF}"]]) === 'Staff Sergeant'
+);
+check('text of only zero-width characters is not filled', !PatternResolver::filled("\u{200B} \u{FEFF}"));
 
 // The parsed shape stage 2 and the publish checks read.
 check(

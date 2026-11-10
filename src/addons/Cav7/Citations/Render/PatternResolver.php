@@ -33,9 +33,10 @@ final class PatternResolver
         return trim(preg_replace('/\n{3,}/', "\n\n", implode("\n", $lines)), "\n");
     }
 
+    /** Filled means something prints: zero-width and space characters alone do not count. */
     public static function filled(string $value): bool
     {
-        return self::normalise($value) !== '';
+        return preg_match('/[^\p{Cf}\p{Z}\s]/u', self::normalise($value)) === 1;
     }
 
     private static function optional(Optional $segment, Values $values): string

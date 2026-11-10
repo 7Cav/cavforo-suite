@@ -6,6 +6,7 @@ use Cav7\Citations\Entity\GrantLog;
 use Cav7\Citations\Entity\Signature;
 use Cav7\Citations\Grant\Actor;
 use Cav7\Citations\Grant\GrantValues;
+use Cav7\Citations\Render\ImageFile;
 use Cav7\Citations\Render\PinnedSignature;
 use Cav7\Citations\Render\RankSnapshot;
 use XF\Entity\User;
@@ -85,6 +86,37 @@ class Grant extends Repository
             }
         }
         return $pinned;
+    }
+
+    /**
+     * The signatures as stored, each row locked until the transaction ends. Read raw, since
+     * the entity cache hands back what the first read saw.
+     *
+     * @param list<int> $ids
+     * @return array<int, array{int, PinnedSignature}> Billet id and print, by signature id.
+     */
+    public function lockSignatures(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = $this->db()->fetchAll(
+            'SELECT signature_id, billet_id, printed_lines, ink_hash, ink_width, ink_height
+            FROM xf_cav7_citation_signature
+            WHERE signature_id IN (' . $this->db()->quote($ids) . ')
+            ORDER BY signature_id
+            FOR UPDATE'
+        );
+
+        $held = [];
+        foreach ($rows as $row) {
+            $held[(int) $row['signature_id']] = [(int) $row['billet_id'], new PinnedSignature(
+                json_decode($row['printed_lines'], true, 2, JSON_THROW_ON_ERROR),
+                new ImageFile($row['ink_hash'], (int) $row['ink_width'], (int) $row['ink_height']),
+            )];
+        }
+        return $held;
     }
 
     public function liveRegimentExists(int $awardId, int $grantDate, int $exceptGrantId = 0): bool

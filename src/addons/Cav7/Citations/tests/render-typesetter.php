@@ -47,14 +47,14 @@ function check(string $label, bool $ok, string $detail = ''): void
     }
 }
 
-/** Letters 0.5em, `i` 0.25em, `W` 1em, a space 0.25em. `AV` kerns by -0.2em. Ascent 0.8, descent -0.2. */
+/** Letters 0.5em, `i` 0.25em, `W` 1em, a space 0.25em, U+200B and U+FEFF nothing. `AV` kerns by -0.2em. Ascent 0.8, descent -0.2. */
 final class FixtureMetrics implements FontMetrics
 {
     public int $widthCalls = 0;
 
     public function advance(string $fontPath, string $char): float
     {
-        return ['i' => 0.25, 'W' => 1.0, ' ' => 0.25][$char] ?? 0.5;
+        return ['i' => 0.25, 'W' => 1.0, ' ' => 0.25, "\u{200B}" => 0.0, "\u{FEFF}" => 0.0][$char] ?? 0.5;
     }
 
     public function width(string $fontPath, float $size, string $text, float $interword = 0): float
@@ -194,6 +194,19 @@ check('U+00A0 is not a break', linesOf($nbsp) === ['aaaaaaaa', "aaaaaa\u{A0}aaaa
 $wideWord = setText(field(['w' => 100, 'h' => 400, 'mode' => 'wrap', 'align' => 'left', 'legible_size' => 12.0]), 'aa ' . str_repeat('a', 20));
 check('one word wider than the box forces the size down', $wideWord->size === 10.0, (string) $wideWord->size);
 check('the size that word forces is flagged', $wideWord->belowLegibility);
+
+// The short box is too low for the cap, so the size has to shrink with a measured width of 0.
+foreach (['line', 'wrap'] as $mode) {
+    foreach (['a box it fits' => [], 'a box too short for the cap' => ['w' => 300, 'h' => 20, 'size' => 36.0]] as $box => $shape) {
+        $label = "$mode text of only zero-advance characters sets without failing in $box";
+        try {
+            $invisible = setText(field(['mode' => $mode] + $shape), "\u{200B}\u{FEFF}");
+            check($label, count($invisible->lines) === 1, json_encode($invisible->row()));
+        } catch (\Throwable $e) {
+            check($label, false, $e::class);
+        }
+    }
+}
 
 $hairOver = setText(field(['w' => 100, 'h' => 400, 'mode' => 'wrap', 'align' => 'left']), str_repeat('a', 9) . 'i');
 check('a word past the box by less than the tolerance still forces the size down', $hairOver->size === 21.0, (string) $hairOver->size);

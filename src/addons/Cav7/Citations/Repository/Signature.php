@@ -8,11 +8,14 @@ use XF\Mvc\Entity\Repository;
 
 class Signature extends Repository
 {
-    /** Read fresh rather than off the entity, so a grant pinning it since the load still counts. */
+    /**
+     * Read fresh rather than off the entity, so a grant pinning it since the load still counts.
+     * Inside a transaction the row stays locked until it ends, so no grant can pin it meanwhile.
+     */
     public function isFrozen(int $signatureId): bool
     {
         return (int) $this->db()->fetchOne(
-            'SELECT first_used_date FROM xf_cav7_citation_signature WHERE signature_id = ?',
+            'SELECT first_used_date FROM xf_cav7_citation_signature WHERE signature_id = ? FOR UPDATE',
             $signatureId
         ) > 0;
     }

@@ -20,6 +20,7 @@
 		timer: null,
 		latest: 0,
 		reshapes: 0,
+		unshaped: false,
 
 		init ()
 		{
@@ -55,6 +56,16 @@
 					this.reshape('add')
 				}
 			})
+			// After a failed reshape the body still holds the old template's inputs and slots.
+			this.target.addEventListener('submit', event =>
+			{
+				if (this.unshaped)
+				{
+					event.preventDefault()
+					event.stopImmediatePropagation()
+					this.reshape('')
+				}
+			}, true)
 			preview.addEventListener('click', event => this.previewClicked(event))
 
 			this.refreshPreview()
@@ -80,18 +91,20 @@
 				}
 
 				replacing = true
+				this.unshaped = false
 				XF.setupHtmlInsert(response.html, html =>
 				{
 					body.replaceWith(html)
 					this.refreshPreview()
 				})
-			}).then(() =>
+			}).finally(() =>
 			{
 				// A superseded reply shares the body with the reshape still in flight.
 				if (!replacing && sent === this.reshapes)
 				{
 					body.inert = false
 					body.removeAttribute('aria-busy')
+					this.unshaped = true
 				}
 			})
 		},
@@ -135,8 +148,13 @@
 			if (event.target.closest('.js-grantPreviewFull'))
 			{
 				event.preventDefault()
+				const image = this.previewBody.querySelector('.js-grantPreviewImage')
+				if (!image)
+				{
+					return
+				}
 				// A browser won't open a data: URL in a tab, so it goes through a blob.
-				fetch(this.previewBody.querySelector('.js-grantPreviewImage').src)
+				fetch(image.src)
 					.then(reply => reply.blob())
 					.then(blob => window.open(URL.createObjectURL(blob), '_blank'))
 			}
@@ -150,6 +168,14 @@
 			if (filter)
 			{
 				filter.addEventListener('input', () => this.filter(filter.value.trim().toLowerCase()))
+				// The filter sits inside the row's form, where Enter would submit it.
+				filter.addEventListener('keydown', event =>
+				{
+					if (event.key === 'Enter')
+					{
+						event.preventDefault()
+					}
+				})
 			}
 		},
 

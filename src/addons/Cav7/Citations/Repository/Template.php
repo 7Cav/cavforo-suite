@@ -53,11 +53,11 @@ class Template extends Repository
 
     /**
      * Where a version move can take a grant: the template's other published versions serving
-     * its kind.
+     * its kind, and for a regiment grant only those that need no member.
      *
      * @return array<int, TemplateVersion> By template version id.
      */
-    public function movableVersions(int $templateId, int $fromVersionId, string $kind): array
+    public function movableVersions(int $templateId, int $fromVersionId, string $kind, bool $regiment): array
     {
         $versions = $this->finder('Cav7\Citations:TemplateVersion')
             ->where('template_id', $templateId)
@@ -67,7 +67,8 @@ class Template extends Repository
             ->fetch()
             ->toArray();
 
-        return array_filter($versions, fn (TemplateVersion $version): bool => in_array($kind, $version->kinds(), true));
+        return array_filter($versions, fn (TemplateVersion $version): bool => in_array($kind, $version->kinds(), true)
+            && (!$regiment || TemplateChoices::servesRegiment($version->renderVersion())));
     }
 
     /** The template's newest published version. */
