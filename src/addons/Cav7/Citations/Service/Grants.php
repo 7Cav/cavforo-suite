@@ -20,6 +20,7 @@ use Cav7\Citations\Grant\RowClearer;
 use Cav7\Citations\Render\PinnedSignature;
 use Cav7\Citations\Render\RenderFailed;
 use Cav7\Citations\Repository\Grant as GrantRepository;
+use Cav7\Citations\Template\VersionLifecycle;
 use XF\Phrase;
 use XF\PrintableException;
 use XF\Service\AbstractService;
@@ -82,6 +83,13 @@ class Grants extends AbstractService
         );
 
         $grant = $this->awardTransaction($regiment ? $request->kindId : null, function () use ($request, $version, $values, $regiment, $day, $kindTitle, $actor, $typesetting, $pinned, $billets): Grant {
+            $state = $this->db()->fetchOne(
+                'SELECT state FROM xf_cav7_citation_template_version WHERE template_version_id = ? FOR UPDATE',
+                $version->template_version_id
+            );
+            if ($state !== VersionLifecycle::PUBLISHED) {
+                throw new PrintableException(\XF::phrase('cav7_cit_refused_version_not_published'));
+            }
             $this->holdSignatures($values->signatures, $pinned, $billets);
             if ($regiment && $day !== null && $this->repo()->liveRegimentExists($request->kindId, $day)) {
                 throw new PrintableException(\XF::phrase('cav7_cit_refused_regiment_duplicate'));
