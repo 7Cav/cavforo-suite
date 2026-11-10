@@ -33,6 +33,9 @@ every render with a 404. Keep `/citations/` out of it, and leave its headers to 
 
 ## First run on a board
 
+The data volume must support hard links, because the sweep puts kept-aside files back
+with `link()`.
+
 1. Install `Cav7/RosterAudit` 1.1.3 or later, then this addon.
 2. Add the nginx lines.
 3. `cav7-citations:sweep --dry-run`. Read the orphan list and the damage. Size the run
@@ -123,9 +126,11 @@ that can't be undone.
 ```sh
 cav7-citations:purge-sources --dry-run --out=purge.txt
 cut -c67- purge.txt > purge-keys.txt
-rclone check data arc:$BUCKET --files-from purge-keys.txt --one-way --download
-cav7-citations:purge-sources --list=purge.txt
+rclone check data arc:$BUCKET --files-from purge-keys.txt --one-way --download \
+  && cav7-citations:purge-sources --list=purge.txt
 ```
+
+Stop unless the check reports 0 differences.
 
 Each line of the list reads like `sha256sum` output, hash then two spaces then archive
 key, so `sha256sum -c` from inside `data/` also works. The purge deletes only what is on
