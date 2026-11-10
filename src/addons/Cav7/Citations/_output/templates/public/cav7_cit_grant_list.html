@@ -67,14 +67,16 @@
 			</xf:if>
 		</div>
 
-		<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_regiment_citations') }}</h3>
-		<div class="block-body block-row">
-			<xf:if is="$regimentGrants is not empty">
-				<xf:macro id="table" arg-grants="{$regimentGrants}" arg-corrections="{$corrections}" />
-			<xf:else />
-				{{ phrase('cav7_cit_nothing_issued') }}
-			</xf:if>
-		</div>
+		<xf:if is="$canSeeRegiment">
+			<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_regiment_citations') }}</h3>
+			<div class="block-body block-row">
+				<xf:if is="$regimentGrants is not empty">
+					<xf:macro id="table" arg-grants="{$regimentGrants}" arg-corrections="{$corrections}" />
+				<xf:else />
+					{{ phrase('cav7_cit_nothing_issued') }}
+				</xf:if>
+			</div>
+		</xf:if>
 	</div>
 	<xf:pagenav page="{$page}" perpage="{$perPage}" total="{$total}" link="rosters/citations" params="{$filters}" wrapperclass="block-outer block-outer--after" />
 </div>
