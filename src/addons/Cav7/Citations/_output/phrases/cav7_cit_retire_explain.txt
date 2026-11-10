@@ -1,0 +1,1 @@
+Clerks won't be offered version {number} of <strong>{title}</strong> any more. The {count} citations issued on it keep rendering exactly as issued. Nothing moves to a newer version unless S1 moves it as a logged correction.

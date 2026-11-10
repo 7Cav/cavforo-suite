@@ -1,0 +1,25 @@
+<xf:if is="$invalid">
+	<div class="blockMessage blockMessage--warning blockMessage--small cav7Preview-warning">{{ phrase('cav7_cit_preview_waiting', {'detail': $invalid}) }}</div>
+<xf:elseif is="$noPlate" />
+	<div class="cav7Preview-note u-muted">{{ phrase('cav7_cit_preview_no_plate') }}</div>
+<xf:elseif is="$failed" />
+	<div class="blockMessage blockMessage--error blockMessage--small cav7Preview-warning">{{ phrase('cav7_cit_preview_failed') }}</div>
+<xf:else />
+	<table class="cav7Fit">
+		<xf:foreach loop="$fit" value="$row">
+			<tr>
+				<th scope="row">{$row.key}</th>
+				<td>{{ $row.size > 0 ? phrase('cav7_cit_x_px', {'size': number($row.size, 2)}) : '-' }}</td>
+				<td>
+					<xf:if is="$row.error">
+						<span class="cav7Fit-warn">{{ phrase('cav7_cit_pattern_error_at', {'at': $row.error.at, 'message': $row.error.message}) }}</span>
+					<xf:elseif is="$row.undrawn" />
+						<span class="u-muted">{{ phrase_dynamic('cav7_cit_undrawn_' . $row.undrawn) }}</span>
+					<xf:elseif is="$row.below" />
+						<span class="cav7Fit-warn">{{ phrase('cav7_cit_below_reading_size', {'legible': number($row.legible, 2)}) }}</span>
+					</xf:if>
+				</td>
+			</tr>
+		</xf:foreach>
+	</table>
+</xf:if>

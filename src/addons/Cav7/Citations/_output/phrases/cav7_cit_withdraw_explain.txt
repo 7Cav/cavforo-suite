@@ -1,0 +1,1 @@
+The citation stops showing at once. The PUC sync takes its rows off every milpac, and there is no undoing it.

@@ -1,0 +1,11 @@
+<xf:title>{{ $version.plate_format ? phrase('cav7_cit_replace_plate') : phrase('cav7_cit_upload_plate') }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citation-versions', $version) }}">{{ phrase('cav7_cit_x_version_y', {'title': $version.Template.title, 'number': $version.version_number}) }}</xf:breadcrumb>
+
+<xf:form action="{{ link('rosters/citation-versions/upload-plate', $version) }}" ajax="true" upload="true" class="block">
+	<div class="block-container">
+		<div class="block-body">
+			<xf:uploadrow name="plate" accept=".png,.jpg,.jpeg" label="{{ phrase('cav7_cit_plate') }}" explain="{{ phrase('cav7_cit_plate_upload_explain') }}" />
+		</div>
+		<xf:submitrow icon="upload" submit="{{ phrase('upload') }}" />
+	</div>
+</xf:form>

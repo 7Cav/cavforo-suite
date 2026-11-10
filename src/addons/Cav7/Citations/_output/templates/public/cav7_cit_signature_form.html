@@ -1,0 +1,25 @@
+<xf:title>{{ $signature ? phrase('cav7_cit_edit_signature') : phrase('cav7_cit_add_signature') }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citation-signatures') }}">{{ phrase('cav7_cit_signatures') }}</xf:breadcrumb>
+<xf:css src="cav7_cit_pages.less" />
+
+<xf:form action="{{ $signature ? link('rosters/citation-signatures/edit', $signature) : link('rosters/citation-signatures/add') }}" ajax="true" upload="true" class="block">
+	<div class="block-container">
+		<div class="block-body">
+			<xf:selectrow name="billet_id" value="{$signature.billet_id}" label="{{ phrase('cav7_cit_signing_billet') }}" explain="{{ phrase('cav7_cit_signature_billet_explain') }}">
+				<xf:foreach loop="$billets" value="$billet">
+					<xf:option value="{$billet.billet_id}">{$billet.title}</xf:option>
+				</xf:foreach>
+			</xf:selectrow>
+			<xf:formrow rowtype="input" label="{{ phrase('cav7_cit_printed_lines') }}" hint="{{ phrase('cav7_cit_printed_lines_hint') }}">
+				<div class="inputGroup-container">
+					<xf:textbox name="lines[]" value="{$lines.0}" placeholder="{{ phrase('cav7_cit_printed_line_placeholder')|for_attr }}" class="u-inputSpacer" />
+					<xf:textbox name="lines[]" value="{$lines.1}" class="u-inputSpacer" />
+					<xf:textbox name="lines[]" value="{$lines.2}" class="u-inputSpacer" />
+					<xf:textbox name="lines[]" value="{$lines.3}" />
+				</div>
+			</xf:formrow>
+			<xf:uploadrow name="ink" accept=".png" label="{{ phrase('cav7_cit_ink_image') }}" hint="{{ phrase('cav7_cit_ink_image_hint') }}" explain="{{ $signature ? phrase('cav7_cit_ink_keep_explain') : '' }}" />
+		</div>
+		<xf:submitrow icon="save" />
+	</div>
+</xf:form>

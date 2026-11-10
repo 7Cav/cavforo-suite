@@ -10,6 +10,7 @@
 
 namespace Cav7\Citations\NF\Rosters\Entity
 {
+	class XFCP_RosterUser extends \NF\Rosters\Entity\RosterUser {}
 	class XFCP_RosterUserAward extends \NF\Rosters\Entity\RosterUserAward {}
 	class XFCP_ServiceRecord extends \NF\Rosters\Entity\ServiceRecord {}
 }

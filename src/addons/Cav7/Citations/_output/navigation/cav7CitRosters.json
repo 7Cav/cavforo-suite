@@ -1,0 +1,11 @@
+{
+    "parent_navigation_id": "nfRosters",
+    "display_order": 10,
+    "navigation_type_id": "basic",
+    "type_config": {
+        "link": "{{ link('rosters') }}",
+        "display_condition": "$xf.visitor.hasPermission('cav7Citations', 'viewGrantsTemplates')",
+        "extra_attributes": []
+    },
+    "enabled": true
+}

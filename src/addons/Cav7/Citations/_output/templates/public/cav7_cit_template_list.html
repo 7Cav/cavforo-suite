@@ -1,0 +1,66 @@
+<xf:title>{{ phrase('cav7_cit_citation_templates') }}</xf:title>
+<xf:css src="cav7_cit_pages.less" />
+
+<xf:pageaction>
+	<div class="buttonGroup">
+		<xf:button href="{{ link('rosters/citation-signatures') }}">{{ phrase('cav7_cit_signatures') }}</xf:button>
+		<xf:button href="{{ link('rosters/citation-templates/pay-grades') }}">{{ phrase('cav7_cit_pay_grades') }}</xf:button>
+		<xf:button href="{{ link('rosters/citation-templates/legibility') }}">{{ phrase('cav7_cit_legibility_list') }}</xf:button>
+	</div>
+	<xf:if is="$canAdd">
+		<xf:button href="{{ link('rosters/citation-templates/add') }}" class="button--cta" icon="add" overlay="true">{{ phrase('cav7_cit_add_template') }}</xf:button>
+	</xf:if>
+</xf:pageaction>
+
+<div class="block">
+	<div class="block-container">
+		<form action="{{ link('rosters/citation-templates') }}" method="get" class="cav7GrantFilters block-row">
+			<select name="kind" class="input" aria-label="{{ phrase('cav7_cit_award_or_record_type')|for_attr }}">
+				<option value="">{{ phrase('cav7_cit_any_award_or_record_type') }}</option>
+				<xf:foreach loop="$kinds" key="$kindKey" value="$kindTitle">
+					<option value="{$kindKey}" {{ $kind == $kindKey ? 'selected="selected"' : '' }}>{$kindTitle}</option>
+				</xf:foreach>
+			</select>
+			<xf:button type="submit" icon="search">{{ phrase('filter') }}</xf:button>
+		</form>
+		<div class="block-body block-row">
+			<xf:if is="$rows is not empty">
+				<div class="dataList">
+					<table class="dataList-table">
+						<tr class="dataList-row dataList-row--header dataList-row--noHover">
+							<th class="dataList-cell">&nbsp;</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_template') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_serves') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_versions') }}</th>
+							<th class="dataList-cell">{{ phrase('cav7_cit_citations_issued') }}</th>
+						</tr>
+						<xf:foreach loop="$rows" value="$row">
+							<tr class="dataList-row">
+								<td class="dataList-cell dataList-cell--min">
+									<xf:if is="$row.shown.plate_format">
+										<img class="cav7Thumb cav7Thumb--small" loading="lazy" alt="" src="{{ link('rosters/citation-versions/plate', $row.shown, {'h': $row.shown.plate_hash}) }}" />
+									</xf:if>
+								</td>
+								<td class="dataList-cell">
+									<a href="{{ link('rosters/citation-templates', $row.template) }}">{$row.template.title}</a>
+									<xf:if is="$row.regiment"><span class="u-muted">{{ phrase('cav7_cit_regiment_note_short') }}</span></xf:if>
+								</td>
+								<td class="dataList-cell">
+									<xf:foreach loop="$row.serves" value="$title" i="$i"><xf:if is="$i > 1">, </xf:if>{$title}</xf:foreach>
+								</td>
+								<td class="dataList-cell">
+									<xf:foreach loop="$row.template.Versions" value="$version">
+										<span class="cav7VersionTag">v{$version.version_number} <xf:macro id="cav7_cit_manager_macros::state_label" arg-state="{$version.state}" /></span>
+									</xf:foreach>
+								</td>
+								<td class="dataList-cell">{$row.issued}</td>
+							</tr>
+						</xf:foreach>
+					</table>
+				</div>
+			<xf:else />
+				{{ phrase('cav7_cit_no_templates') }}
+			</xf:if>
+		</div>
+	</div>
+</div>

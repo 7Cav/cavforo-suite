@@ -112,10 +112,49 @@ class GrantLinks extends AbstractService implements RowClearer
         return $rows;
     }
 
-    /** @see LinkedRows::picker() */
+    /**
+     * The picker's entries with what the form prints beside each.
+     *
+     * @see LinkedRows::picker()
+     * @return list<array<string, mixed>>
+     */
     public function picker(int $relationId): array
     {
-        return $this->linkedRows()->picker($relationId);
+        $entries = $this->linkedRows()->picker($relationId);
+        $members = $this->em()->findByIds('Cav7\Citations:GrantMember', array_column($entries, 'grant_member_id'), 'Grant');
+
+        return array_map(function (array $entry) use ($members): array {
+            $member = $members[$entry['grant_member_id']];
+
+            return $entry + [
+                'day' => $member->Grant->getDay(),
+                'generic' => $member->Grant->citation_text === null,
+                'render_url' => $member->renderUrl(),
+                'row_labels' => $this->labels($entry['rows']),
+            ];
+        }, $entries);
+    }
+
+    /**
+     * The rows holding this member's citation, as a removal lists them.
+     *
+     * @return list<Phrase>
+     */
+    public function rowLabels(int $grantMemberId): array
+    {
+        return $this->labels($this->linkedRows()->onMember($grantMemberId));
+    }
+
+    /**
+     * @param list<array<string, int|string>> $rows
+     * @return list<Phrase>
+     */
+    private function labels(array $rows): array
+    {
+        return array_map(fn (array $row): Phrase => \XF::phrase("cav7_cit_row_{$row['row_type']}", [
+            'title' => $row['kind_title'],
+            'date' => gmdate('Y-m-d', $row['row_date']),
+        ]), $rows);
     }
 
     private function linkedRows(): LinkedRows

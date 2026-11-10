@@ -1,0 +1,1 @@
+Paragraph breaks are kept. Name, rank and date are separate fields, so leave them out of the text unless the prose itself uses them.

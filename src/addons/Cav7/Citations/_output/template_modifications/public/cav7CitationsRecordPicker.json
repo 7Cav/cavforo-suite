@@ -1,0 +1,9 @@
+{
+    "template": "nf_rosters_user_record_edit",
+    "description": "After cutover the record form shows the citation picker, and the upload box on the one kind that stays open",
+    "execution_order": 10,
+    "enabled": true,
+    "action": "preg_replace",
+    "find": "#<xf:uploadrow\\s+name=\"upload\"[^>]*/>#s",
+    "replace": "<xf:if is=\"$xf.options.cav7CitCutover\">\n\t<div data-xf-init=\"cav7-citation-swap\" data-open-type=\"{$citationOpenRecordType}\">\n\t\t<div class=\"js-citationPicker\" {{ $record.record_type_id == $citationOpenRecordType ? 'hidden=\"hidden\"' : '' }}>\n\t\t\t<xf:macro id=\"cav7_cit_picker_macros::picker\" arg-record=\"{$record}\" arg-rosterUser=\"{$rosterUser}\" arg-entries=\"{$citationPicker}\" />\n\t\t</div>\n\t\t<div class=\"js-citationUpload\" {{ $record.record_type_id == $citationOpenRecordType ? '' : 'hidden=\"hidden\"' }}>\n\t\t\t$0\n\t\t</div>\n\t</div>\n<xf:else />\n\t$0\n</xf:if>"
+}

@@ -1,0 +1,26 @@
+<xf:title>{{ phrase('cav7_cit_remove_a_member') }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citations') }}">{{ phrase('cav7_cit_citations') }}</xf:breadcrumb>
+<xf:breadcrumb href="{{ link('rosters/citations', $grant) }}">{$grant.kind_title}, {$grant.getDay()}</xf:breadcrumb>
+
+<xf:form action="{{ link('rosters/citations/remove-member', $grant) }}" ajax="true" class="block">
+	<div class="block-container">
+		<div class="block-body">
+			<xf:radiorow name="grant_member_id" label="{{ phrase('cav7_cit_member') }}" explain="{{ phrase('cav7_cit_remove_explain') }}">
+				<xf:foreach loop="$members" value="$row">
+					<xf:option value="{$row.member.grant_member_id}">
+						<xf:label>{$row.username}</xf:label>
+						<xf:hint>
+							<xf:if is="$row.rows is not empty">
+								{{ phrase('cav7_cit_loses_on_x', {'rows': $row.rows|join('; ')}) }}
+							<xf:else />
+								{{ phrase('cav7_cit_not_on_a_row') }}
+							</xf:if>
+						</xf:hint>
+					</xf:option>
+				</xf:foreach>
+			</xf:radiorow>
+			<xf:textarearow name="reason" rows="2" autosize="true" label="{{ phrase('reason') }}" hint="{{ phrase('cav7_cit_reason_hint') }}" />
+		</div>
+		<xf:submitrow icon="delete" submit="{{ phrase('cav7_cit_remove_member') }}" />
+	</div>
+</xf:form>

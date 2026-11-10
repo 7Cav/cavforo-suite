@@ -1,0 +1,24 @@
+<xf:title>{{ phrase('cav7_cit_move_citations_off_x', {'title': $version.Template.title, 'number': $version.version_number}) }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citation-templates', $version.Template) }}">{$version.Template.title}</xf:breadcrumb>
+
+<div class="block">
+	<div class="block-container">
+		<div class="block-body block-row">{{ phrase('cav7_cit_x_moved', {'count': $moved}) }}</div>
+		<xf:if is="$skipped is not empty">
+			<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_skipped') }}</h3>
+			<div class="block-body block-row">
+				<div class="dataList">
+					<table class="dataList-table">
+						<xf:foreach loop="$skipped" value="$row">
+							<tr class="dataList-row">
+								<td class="dataList-cell"><a href="{{ link('rosters/citations', $row.grant) }}">{$row.grant.kind_title}, {$row.grant.getDay()}</a></td>
+								<td class="dataList-cell">{$row.why}</td>
+							</tr>
+						</xf:foreach>
+					</table>
+				</div>
+			</div>
+		</xf:if>
+		<div class="block-footer"><a href="{{ link('rosters/citation-templates', $version.Template) }}">{{ phrase('cav7_cit_back_to_x', {'title': $version.Template.title}) }}</a></div>
+	</div>
+</div>

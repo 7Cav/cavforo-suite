@@ -1,0 +1,1 @@
+{width} &times; {height} pixels

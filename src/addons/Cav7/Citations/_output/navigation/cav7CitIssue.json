@@ -1,0 +1,11 @@
+{
+    "parent_navigation_id": "nfRosters",
+    "display_order": 30,
+    "navigation_type_id": "basic",
+    "type_config": {
+        "link": "{{ link('rosters/citations/issue') }}",
+        "display_condition": "$xf.visitor.hasPermission('cav7Citations', 'viewGrantsTemplates') AND ($xf.visitor.hasPermission('cav7Citations', 'issueGrants') OR $xf.visitor.hasPermission('cav7Citations', 'manageRegimentGrants'))",
+        "extra_attributes": []
+    },
+    "enabled": true
+}

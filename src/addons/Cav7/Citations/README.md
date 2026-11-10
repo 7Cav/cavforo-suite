@@ -10,7 +10,9 @@ holds them.
 The addon also generates citations. A grant holds one citation's text, date and
 signatures, and a template sets it on a plate. Attach a grant to a roster row and the
 row's Citation link goes to a render, a JPEG drawn from the stored typesetting on each
-request. Grants have no pages, so only code can issue or attach one.
+request. S1 issues and corrects grants at `rosters/citations`, and a row form's citation
+picker attaches them. S1 HQ keeps templates at `rosters/citation-templates`, with the pay
+grade list and legibility list beside them, and signatures at `rosters/citation-signatures`.
 
 [GLOSSARY.md](GLOSSARY.md) and the suite-wide [GLOSSARY.md](../../../../GLOSSARY.md)
 define the terms. [docs/adr](docs/adr/) has the reasons behind the generator.
@@ -82,7 +84,7 @@ These are under **Setup > Options > Citations**.
 |---|---|---|
 | **Allow the re-encode** | On | With it off the re-encode refuses to run. `revert apply --all` turns it off. |
 | **Regiment awards** | `61` | Comma-separated award ids. A grant of one of these awards is a regiment grant, issued to the whole regiment. Changing the list leaves issued grants alone. |
-| **Citation cutover** | Off | With it on, a citation file is refused on every row but a Disciplinary record. Renders and attached citations never read it. |
+| **Citation cutover** | Off | With it on, the row forms show the citation picker in place of the upload box, and every row but a Disciplinary record refuses a citation file. Renders and attached citations never read it. |
 
 A row with a grant link refuses a file whatever the cutover says. To put an upload there,
 tick "Delete current image" and save, then upload in a second save.

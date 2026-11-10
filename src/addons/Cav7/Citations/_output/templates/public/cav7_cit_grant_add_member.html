@@ -1,0 +1,23 @@
+<xf:title>{{ phrase('cav7_cit_add_member_left_off') }}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citations') }}">{{ phrase('cav7_cit_citations') }}</xf:breadcrumb>
+<xf:breadcrumb href="{{ link('rosters/citations', $grant) }}">{$grant.kind_title}, {$grant.getDay()}</xf:breadcrumb>
+<xf:css src="cav7_cit_pages.less" />
+
+<xf:form action="{{ link('rosters/citations/add-member', $grant) }}" ajax="true" class="block">
+	<div class="block-container">
+		<div class="block-body">
+			<xf:formrow label="{{ phrase('cav7_cit_citation') }}">{$grant.kind_title}, {$grant.getDay()}</xf:formrow>
+			<xf:if is="$members is not empty">
+				<div class="block-row cav7MemberCards">
+					<xf:foreach loop="$members" value="$member">
+						<xf:macro id="cav7_cit_grant_macros::member_card" arg-member="{$member}" arg-inputs="{$memberInputs}" arg-ranks="{$memberRanks}" />
+					</xf:foreach>
+				</div>
+			<xf:else />
+				<xf:textboxrow name="add_username" ac="single" label="{{ phrase('cav7_cit_member') }}"
+					placeholder="{{ phrase('cav7_cit_username')|for_attr }}" explain="{{ phrase('cav7_cit_add_member_explain') }}" />
+			</xf:if>
+		</div>
+		<xf:submitrow icon="add" submit="{{ $members is not empty ? phrase('cav7_cit_add_member') : phrase('continue') }}" />
+	</div>
+</xf:form>

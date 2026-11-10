@@ -1,0 +1,187 @@
+<xf:title>{$grant.kind_title}, {$grant.getDay()}</xf:title>
+<xf:breadcrumb href="{{ link('rosters/citations') }}">{{ phrase('cav7_cit_citations') }}</xf:breadcrumb>
+<xf:css src="cav7_cit_pages.less" />
+
+<xf:if is="$can.correct OR $can.addMember OR $can.removeMember OR $can.move OR $can.withdraw">
+	<xf:pageaction>
+		<div class="buttonGroup">
+			<xf:if is="$can.correct">
+				<xf:button href="{{ link('rosters/citations/correct', $grant) }}" icon="edit">{{ phrase('cav7_cit_correct') }}</xf:button>
+			</xf:if>
+			<xf:if is="$can.withdraw">
+				<xf:button href="{{ link('rosters/citations/withdraw', $grant) }}" overlay="true">{{ phrase('cav7_cit_withdraw') }}</xf:button>
+			</xf:if>
+			<xf:if is="$can.addMember OR $can.removeMember OR $can.move">
+				<div class="buttonGroup-buttonWrapper">
+					<xf:button class="menuTrigger" data-xf-click="menu" aria-expanded="false" aria-haspopup="true" title="{{ phrase('more_options')|for_attr }}">&#8226;&#8226;&#8226;</xf:button>
+					<div class="menu" data-menu="menu" aria-hidden="true">
+						<div class="menu-content">
+							<h4 class="menu-header">{{ phrase('more_options') }}</h4>
+							<xf:if is="$can.addMember">
+								<a href="{{ link('rosters/citations/add-member', $grant) }}" class="menu-linkRow" data-xf-click="overlay">{{ phrase('cav7_cit_add_member_left_off') }}</a>
+							</xf:if>
+							<xf:if is="$can.move">
+								<a href="{{ link('rosters/citations/move', $grant) }}" class="menu-linkRow">{{ phrase('cav7_cit_move_version') }}</a>
+							</xf:if>
+							<xf:if is="$can.removeMember">
+								<a href="{{ link('rosters/citations/remove-member', $grant) }}" class="menu-linkRow" data-xf-click="overlay">{{ phrase('cav7_cit_remove_a_member') }}</a>
+							</xf:if>
+						</div>
+					</div>
+				</div>
+			</xf:if>
+		</div>
+	</xf:pageaction>
+</xf:if>
+
+<div class="block">
+	<div class="block-container">
+		<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_information') }}</h3>
+		<div class="block-body block-row">
+			<dl class="pairs pairs--columns pairs--fixedSmall">
+				<dt>{{ $grant.kind_type == 'award' ? phrase('cav7_cit_award') : phrase('cav7_cit_record_type') }}</dt>
+				<dd>{$grant.kind_title}</dd>
+			</dl>
+			<dl class="pairs pairs--columns pairs--fixedSmall">
+				<dt>{{ phrase('date') }}</dt>
+				<dd>{$grant.getDay()}</dd>
+			</dl>
+			<dl class="pairs pairs--columns pairs--fixedSmall">
+				<dt>{{ phrase('cav7_cit_template') }}</dt>
+				<dd>
+					<xf:if is="$canOpenTemplate"><a href="{{ link('rosters/citation-templates', $grant.Version.Template) }}">{$grant.Version.Template.title}</a><xf:else />{$grant.Version.Template.title}</xf:if>, {{ phrase('cav7_cit_version_x', {'number': $grant.Version.version_number}) }}
+					<xf:if is="$grant.Version.state == 'published'">
+						<span class="label label--green">{{ phrase('cav7_cit_published') }}</span>
+					<xf:else />
+						<span class="label label--silver">{{ phrase('cav7_cit_retired') }}</span>
+					</xf:if>
+				</dd>
+			</dl>
+			<xf:if is="$signatures is not empty">
+				<dl class="pairs pairs--columns pairs--fixedSmall">
+					<dt>{{ phrase('cav7_cit_signatures') }}</dt>
+					<dd>
+						<xf:foreach loop="$signatures" value="$signature">
+							<div>{$signature.billet}: {$signature.line}
+								<xf:if is="$signature.retired"><span class="label label--silver">{{ phrase('cav7_cit_retired') }}</span></xf:if>
+							</div>
+						</xf:foreach>
+					</dd>
+				</dl>
+			</xf:if>
+			<xf:foreach loop="$grantInputs" value="$input">
+				<dl class="pairs pairs--columns pairs--fixedSmall">
+					<dt>{$input.label}</dt>
+					<dd>{{ $input.value ?: '-' }}</dd>
+				</dl>
+			</xf:foreach>
+			<xf:if is="$grant.rank_id">
+				<dl class="pairs pairs--columns pairs--fixedSmall">
+					<dt>{{ phrase('cav7_cit_rank') }}</dt>
+					<dd>{$grant.rank_title} ({$grant.rank_pay_grade})</dd>
+				</dl>
+			</xf:if>
+			<dl class="pairs pairs--columns pairs--fixedSmall">
+				<dt>{{ phrase('cav7_cit_issued_by') }}</dt>
+				<dd>{{ username_link({'user_id': $grant.issue_user_id, 'username': $grant.issue_username}, false) }}, {{ date($grant.issue_date, 'Y-m-d') }}</dd>
+			</dl>
+			<dl class="pairs pairs--columns pairs--fixedSmall">
+				<dt>{{ phrase('cav7_cit_revision') }}</dt>
+				<dd>{$grant.revision}</dd>
+			</dl>
+			<xf:if is="$grant.withdrawn_date">
+				<dl class="pairs pairs--columns pairs--fixedSmall">
+					<dt>{{ phrase('cav7_cit_withdrawn') }}</dt>
+					<dd>{{ date($grant.withdrawn_date, 'Y-m-d') }}</dd>
+				</dl>
+			</xf:if>
+		</div>
+
+		<xf:if is="$generic">
+			<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_citation_text') }}</h3>
+			<div class="block-row">
+				<div class="u-muted">{{ phrase('cav7_cit_generic_page_note') }}</div>
+				<div class="cav7Pre">{{ $genericText ?: '-' }}</div>
+			</div>
+		<xf:else />
+			<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_citation_text') }}</h3>
+			<div class="block-row"><div class="cav7Pre">{$grant.citation_text}</div></div>
+		</xf:if>
+
+		<xf:if is="$grant.is_regiment">
+			<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_recipient') }}</h3>
+			<div class="block-row">
+				{{ phrase('cav7_cit_regiment_note') }}
+				<xf:if is="!$grant.withdrawn_date"><a href="{$regimentUrl}" target="_blank">{{ phrase('cav7_cit_open_certificate') }}</a></xf:if>
+			</div>
+		<xf:else />
+			<h3 class="block-formSectionHeader">{{ phrase('members') }}</h3>
+			<div class="block-body block-row">
+				<xf:if is="$members is not empty">
+					<div class="dataList">
+						<table class="dataList-table">
+							<tr class="dataList-row dataList-row--header dataList-row--noHover">
+								<th class="dataList-cell">{{ phrase('cav7_cit_member') }}</th>
+								<th class="dataList-cell">{{ phrase('cav7_cit_name_on_certificate') }}</th>
+								<th class="dataList-cell">{{ phrase('cav7_cit_rank') }}</th>
+								<xf:foreach loop="$memberInputs" value="$input">
+									<th class="dataList-cell">{$input.label}</th>
+								</xf:foreach>
+								<th class="dataList-cell">{{ phrase('cav7_cit_on_rows') }}</th>
+								<th class="dataList-cell">{{ phrase('cav7_cit_citation') }}</th>
+							</tr>
+							<xf:foreach loop="$members" value="$row">
+								<tr class="dataList-row">
+									<td class="dataList-cell">
+										<xf:if is="$row.milpac"><a href="{{ link('rosters/profile', $row.milpac) }}">{$row.username}</a><xf:else />{$row.username}</xf:if>
+									</td>
+									<td class="dataList-cell">{$row.member.name}</td>
+									<td class="dataList-cell">
+										<xf:if is="$memberRank">{$row.member.rank_title} <span class="u-muted">({$row.member.rank_pay_grade})</span><xf:else /><span class="u-muted">{{ phrase('cav7_cit_on_the_plate') }}</span></xf:if>
+									</td>
+									<xf:foreach loop="$memberInputs" value="$input">
+										<td class="dataList-cell">{{ $row.member.input_values.{$input.key} ?: '-' }}</td>
+									</xf:foreach>
+									<td class="dataList-cell">
+										<xf:if is="$row.rows is not empty">
+											<xf:foreach loop="$row.rows" value="$label"><div>{$label}</div></xf:foreach>
+										<xf:else />
+											<span class="u-muted">{{ phrase('cav7_cit_not_on_a_row') }}</span>
+										</xf:if>
+									</td>
+									<td class="dataList-cell"><a href="{$row.render_url}" target="_blank">{{ phrase('cav7_cit_citation') }}</a></td>
+								</tr>
+							</xf:foreach>
+						</table>
+					</div>
+				<xf:else />
+					{{ phrase('cav7_cit_no_members_left') }}
+				</xf:if>
+			</div>
+		</xf:if>
+
+		<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_history') }}</h3>
+		<div class="block-body block-row">
+			<div class="dataList">
+				<table class="dataList-table">
+					<tr class="dataList-row dataList-row--header dataList-row--noHover">
+						<th class="dataList-cell">{{ phrase('cav7_cit_revision') }}</th>
+						<th class="dataList-cell">{{ phrase('date') }}</th>
+						<th class="dataList-cell">{{ phrase('cav7_cit_by') }}</th>
+						<th class="dataList-cell">{{ phrase('cav7_cit_what_changed') }}</th>
+						<th class="dataList-cell">{{ phrase('reason') }}</th>
+					</tr>
+					<xf:foreach loop="$log" value="$entry">
+						<tr class="dataList-row">
+							<td class="dataList-cell">{$entry.revision}</td>
+							<td class="dataList-cell">{{ date($entry.date, 'Y-m-d') }}</td>
+							<td class="dataList-cell">{$entry.by}</td>
+							<td class="dataList-cell"><xf:foreach loop="$entry.what" value="$line" i="$i"><xf:if is="$i > 1">, </xf:if>{$line}</xf:foreach></td>
+							<td class="dataList-cell">{{ $entry.reason ?: '-' }}</td>
+						</tr>
+					</xf:foreach>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>

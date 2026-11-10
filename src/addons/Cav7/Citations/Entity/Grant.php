@@ -53,7 +53,7 @@ class Grant extends Entity
         }
 
         return new GrantValues(
-            gmdate('Y-m-d', $this->grant_date),
+            $this->getDay(),
             $this->citation_text,
             $signatures,
             $this->input_values,
@@ -61,6 +61,12 @@ class Grant extends Entity
             $members,
             $this->rankSnapshot(),
         );
+    }
+
+    /** The grant's day as entered. grant_date is midnight UTC, so a visitor's timezone never moves it. */
+    public function getDay(): string
+    {
+        return gmdate('Y-m-d', $this->grant_date);
     }
 
     /** The columns a correction can reach. Members and signatures have rows of their own. */

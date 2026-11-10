@@ -1,0 +1,1 @@
+Delete the billet <strong>{title}</strong>?

@@ -344,6 +344,18 @@ const TYPES = [
         ],
         'sort' => ['navigation_id'],
     ],
+    'navigation' => [
+        'dir' => 'navigation',
+        'container' => 'navigation',
+        'childTag' => 'navigation_entry',
+        'shape' => 'json',
+        'attributes' => ['navigation_id', 'parent_navigation_id', 'display_order', 'navigation_type_id', 'enabled'],
+        'cdataBody' => 'type_config',
+        'cdataBodyCodec' => 'json',
+        'jsonKeys' => ['parent_navigation_id', 'display_order', 'navigation_type_id', 'type_config', 'enabled'],
+        'casts' => ['display_order' => 'int', 'enabled' => 'bool'],
+        'sort' => ['navigation_id'],
+    ],
     'cron_entries' => [
         'dir' => 'cron_entries',
         'container' => 'cron',
@@ -449,6 +461,7 @@ function fileNameFor(string $type, array $record): string
             return "{$record['event_id']}.json";
 
         case 'admin_navigation':
+        case 'navigation':
             return "{$record['navigation_id']}.json";
 
         case 'cron_entries':
@@ -501,6 +514,7 @@ function fieldsFromPath(string $type, string $relativePath): array
             return ['group_id' => basename($relativePath, '.json')];
 
         case 'admin_navigation':
+        case 'navigation':
             return ['navigation_id' => basename($relativePath, '.json')];
 
         case 'cron_entries':

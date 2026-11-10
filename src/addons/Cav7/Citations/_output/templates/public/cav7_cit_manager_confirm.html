@@ -1,0 +1,21 @@
+<xf:title>{$title}</xf:title>
+
+<xf:if is="$problems is not empty">
+	<div class="block">
+		<div class="block-container">
+			<div class="block-body block-row">
+				<div class="blockMessage blockMessage--error blockMessage--small">{{ phrase('cav7_cit_cant_publish_yet') }}</div>
+				<ul class="listPlain">
+					<xf:foreach loop="$problems" value="$problem"><li>{$problem}</li></xf:foreach>
+				</ul>
+			</div>
+		</div>
+	</div>
+<xf:else />
+	<xf:form action="{$action}" ajax="true" class="block">
+		<div class="block-container">
+			<div class="block-body block-row">{$message}</div>
+			<xf:submitrow rowtype="simple" submit="{$button}" />
+		</div>
+	</xf:form>
+</xf:if>

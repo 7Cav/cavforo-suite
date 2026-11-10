@@ -126,6 +126,12 @@ final class GrantValues
         return array_values(array_unique($pending));
     }
 
+    /** Who a preview prints: the member asked for, otherwise the first, and nobody on a grant with none. */
+    public function previewedMember(int $key): ?MemberValues
+    {
+        return $this->members[$key] ?? array_values($this->members)[0] ?? null;
+    }
+
     /** The rank a typesetting prints for this member, or for the grant's shared fields when null. */
     public function rankIdFor(Version $version, ?MemberValues $member): ?int
     {

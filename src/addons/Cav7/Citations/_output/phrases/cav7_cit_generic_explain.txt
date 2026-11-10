@@ -1,0 +1,1 @@
+A generic citation's text belongs to its template, so there's nothing to type.

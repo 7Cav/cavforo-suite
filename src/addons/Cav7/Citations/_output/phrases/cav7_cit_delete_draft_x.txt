@@ -1,0 +1,1 @@
+Delete draft version {number} of <strong>{title}</strong>?

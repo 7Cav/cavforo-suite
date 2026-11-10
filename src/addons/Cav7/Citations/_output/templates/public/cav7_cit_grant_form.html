@@ -1,0 +1,35 @@
+<xf:if is="$mode == 'issue'">
+	<xf:title>{{ phrase('cav7_cit_issue_a_citation') }}</xf:title>
+	<xf:set var="$action" value="{{ link('rosters/citations/issue') }}" />
+	<xf:set var="$formUrl" value="{{ link('rosters/citations/form') }}" />
+	<xf:set var="$previewUrl" value="{{ link('rosters/citations/preview') }}" />
+<xf:else />
+	<xf:title>{{ phrase('cav7_cit_correct_x', {'title': $grant.kind_title, 'date': $grant.getDay()}) }}</xf:title>
+	<xf:breadcrumb href="{{ link('rosters/citations', $grant) }}">{$grant.kind_title}, {$grant.getDay()}</xf:breadcrumb>
+	<xf:set var="$action" value="{{ link('rosters/citations/' . $mode, $grant) }}" />
+	<xf:set var="$formUrl" value="{{ link('rosters/citations/form', $grant) }}" />
+	<xf:set var="$previewUrl" value="{{ link('rosters/citations/preview', $grant) }}" />
+</xf:if>
+<xf:breadcrumb href="{{ link('rosters/citations') }}">{{ phrase('cav7_cit_citations') }}</xf:breadcrumb>
+
+<xf:css src="cav7_cit_pages.less" />
+<xf:js src="Cav7/Citations/pages.js" addon="Cav7/Citations" min="1" />
+
+<xf:if is="$mode != 'issue'">
+	<div class="blockMessage blockMessage--important blockMessage--iconic">{{ phrase('cav7_cit_correction_warning') }}</div>
+</xf:if>
+
+<div class="cav7GrantLayout">
+	<xf:form action="{$action}" ajax="true" class="block cav7GrantLayout-form"
+		data-xf-init="cav7-grant-form" data-form-url="{$formUrl}" data-preview-url="{$previewUrl}">
+		<xf:include template="cav7_cit_grant_form_body" />
+	</xf:form>
+	<div class="cav7GrantLayout-preview js-grantPreview">
+		<div class="block-container">
+			<h3 class="block-header">{{ phrase('cav7_cit_preview') }} <span class="block-desc">{{ phrase('cav7_cit_preview_desc') }}</span></h3>
+			<div class="js-grantPreviewBody">
+				<div class="block-row"><div class="cav7Preview-empty">{{ phrase('cav7_cit_preview_empty') }}</div></div>
+			</div>
+		</div>
+	</div>
+</div>
