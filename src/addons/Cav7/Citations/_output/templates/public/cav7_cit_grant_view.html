@@ -103,7 +103,7 @@
 				<div class="u-muted">{{ phrase('cav7_cit_generic_page_note') }}</div>
 				<div class="cav7Pre">{{ $genericText ?: '-' }}</div>
 			</div>
-		<xf:else />
+		<xf:elseif is="$grant.citation_text" />
 			<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_citation_text') }}</h3>
 			<div class="block-row"><div class="cav7Pre">{$grant.citation_text}</div></div>
 		</xf:if>
