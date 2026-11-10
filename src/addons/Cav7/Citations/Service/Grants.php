@@ -489,7 +489,7 @@ class Grants extends AbstractService
 
         $lock = "cav7_cit_regiment_award_$awardId";
         if ((int) $this->db()->fetchOne('SELECT GET_LOCK(?, 30)', $lock) !== 1) {
-            throw new \RuntimeException("Timed out waiting for the $lock lock.");
+            throw new PrintableException(\XF::phrase('cav7_cit_refused_busy'));
         }
         try {
             return $this->db()->executeTransaction($write);

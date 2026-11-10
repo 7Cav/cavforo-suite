@@ -216,6 +216,7 @@
   <phrase title="cav7_cit_refused_bad_transition" version_id="1010070" version_string="1.1.0"><![CDATA[A version can't move to that state.]]></phrase>
   <phrase title="cav7_cit_refused_billet_in_use" version_id="1010070" version_string="1.1.0"><![CDATA[A signature or a signature slot still names this billet.]]></phrase>
   <phrase title="cav7_cit_refused_box_off_plate" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: the box runs off the plate.]]></phrase>
+  <phrase title="cav7_cit_refused_busy" version_id="1020070" version_string="1.2.0"><![CDATA[Another save for this award is still running. Try again in a moment.]]></phrase>
   <phrase title="cav7_cit_refused_citation_text_outside_wrap" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: citation text needs a wrap field.]]></phrase>
   <phrase title="cav7_cit_refused_citation_text_required" version_id="1000070" version_string="1.0.0"><![CDATA[This template prints citation text, so enter some.]]></phrase>
   <phrase title="cav7_cit_refused_does_not_parse" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: the pattern doesn't parse.]]></phrase>

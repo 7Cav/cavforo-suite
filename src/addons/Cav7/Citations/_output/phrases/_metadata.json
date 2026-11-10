@@ -1295,6 +1295,12 @@
         "version_string": "1.1.0",
         "hash": "a735417c96a32c251ebfc540a772f330"
     },
+    "cav7_cit_refused_busy.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "06a9b462f0ce3f0a28d6f17280d4da1d"
+    },
     "cav7_cit_refused_citation_text_outside_wrap.txt": {
         "global_cache": false,
         "version_id": 1010070,
