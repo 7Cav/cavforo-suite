@@ -112,6 +112,24 @@ check(
     '4:4:4 sampling',
     $sof !== false && substr($sof[1], 7, 1) === "\x11" && substr($sof[1], 10, 1) === "\x11" && substr($sof[1], 13, 1) === "\x11"
 );
+$readBack = new \Imagick();
+$readBack->readImageBlob($jpeg);
+check('quality 85, as estimated from the quantisation tables', $readBack->getImageCompressionQuality() === 85);
+
+// The code-length counts of each Huffman table, which tell the standard Annex K tables apart.
+$huffmanCounts = [];
+foreach (array_filter($found, fn (array $s) => $s[0] === 0xC4) as [, $payload]) {
+    for ($at = 0; $at + 17 <= strlen($payload); $at += 17 + array_sum(unpack('C16', substr($payload, $at + 1, 16)))) {
+        $huffmanCounts[] = bin2hex(substr($payload, $at + 1, 16));
+    }
+}
+$annexK = [
+    '00010501010101010100000000000000',
+    '00030101010101010101010000000000',
+    '0002010303020403050504040000017d',
+    '00020102040403040705040400010277',
+];
+check('optimised Huffman tables, none of them Annex K', count($huffmanCounts) === 4 && !array_intersect($huffmanCounts, $annexK));
 
 $tagged = new \Imagick();
 $tagged->setFormat('png');
