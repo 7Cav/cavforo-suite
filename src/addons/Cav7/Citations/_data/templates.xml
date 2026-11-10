@@ -1277,14 +1277,14 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 	<xf:css src="cav7_cit_pages.less" />
 	<xf:js src="Cav7/Citations/pages.js" addon="Cav7/Citations" min="1" />
 
-	<xf:set var="$keeps" value="{{ $record.citation_date && !$record.citation_grant_member_id }}" />
+	<xf:set var="$keeps" value="{{ $record.citation_date && !$record.citation_grant_member_id && !$record.citation_regiment_grant_id }}" />
 	<xf:set var="$name" value="{$rosterUser.User.username}" />
 	<xf:formrow label="{{ phrase('cav7_cit_citation') }}" hint="{{ phrase('cav7_cit_issued_to_x', {'name': $name}) }}">
 		<div data-xf-init="cav7-citation-picker" class="{{ ($record.citation_grant_member_id || $record.citation_regiment_grant_id) ? 'cav7Picker--linked' : '' }}">
 			<xf:if is="count($entries) > 3">
 				<xf:textbox class="input--small cav7PickerFilter js-pickerFilter" placeholder="{{ phrase('cav7_cit_filter_placeholder')|for_attr }}" />
 			</xf:if>
-			<xf:radio name="citation_pick" value="{{ $record.citation_grant_member_id ?: ($keeps ? 'keep' : 'none') }}">
+			<xf:radio name="citation_pick" value="{{ $record.citation_grant_member_id ?: ($record.citation_regiment_grant_id ? '' : ($keeps ? 'keep' : 'none')) }}">
 				<xf:if is="$keeps">
 					<xf:option value="keep">{{ phrase('cav7_cit_keep_current_image') }}</xf:option>
 				</xf:if>
