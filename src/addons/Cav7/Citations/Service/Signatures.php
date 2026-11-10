@@ -6,7 +6,11 @@ use Cav7\Citations\Entity\Signature;
 use Cav7\Citations\Template\ImageUpload;
 use XF\Service\AbstractService;
 
-/** Retiring and printed lines are plain saves on the entity, and it refuses what freezing forbids. */
+/**
+ * Retiring and printed lines are saves on the entity, and it refuses what freezing forbids.
+ * Its frozen check locks the row, which holds only inside a transaction, so an edit or a
+ * delete saves in one.
+ */
 class Signatures extends AbstractService
 {
     /** @param list<string> $printedLines */
@@ -33,7 +37,12 @@ class Signatures extends AbstractService
         if ($inkPath !== null) {
             $this->takeInk($signature, $inkPath);
         }
-        $signature->save();
+        $this->db()->executeTransaction(fn () => $signature->save(true, false));
+    }
+
+    public function delete(Signature $signature): void
+    {
+        $this->db()->executeTransaction(fn () => $signature->delete(true, false));
     }
 
     private function takeInk(Signature $signature, string $inkPath): void

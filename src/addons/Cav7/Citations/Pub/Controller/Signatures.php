@@ -99,7 +99,7 @@ class Signatures extends AbstractManager
         $signature = $this->signature($params);
 
         if ($this->isPost()) {
-            $signature->delete();
+            $this->signatures()->delete($signature);
 
             return $this->redirect($this->buildLink('rosters/citation-signatures'));
         }

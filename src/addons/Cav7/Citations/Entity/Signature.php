@@ -57,11 +57,12 @@ class Signature extends Entity
 
     protected function _preSave(): void
     {
-        if ($this->isChanged('billet_id') && !$this->Billet) {
-            $this->error(\XF::phrase('cav7_cit_refused_no_such_billet'));
-        }
+        // First, since MariaDB fails a locking read of a row changed since the first plain read.
         if ($this->isUpdate() && SignatureRules::editRefused($this->isFrozen(), array_keys($this->getNewValues()))) {
             $this->error(\XF::phrase('cav7_cit_refused_signature_frozen'));
+        }
+        if ($this->isChanged('billet_id') && !$this->Billet) {
+            $this->error(\XF::phrase('cav7_cit_refused_no_such_billet'));
         }
     }
 

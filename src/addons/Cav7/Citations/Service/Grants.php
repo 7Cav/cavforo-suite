@@ -17,6 +17,7 @@ use Cav7\Citations\Grant\IssueRequest;
 use Cav7\Citations\Grant\MemberValues;
 use Cav7\Citations\Grant\RemakePlan;
 use Cav7\Citations\Grant\RowClearer;
+use Cav7\Citations\Render\PinnedSignature;
 use Cav7\Citations\Render\RenderFailed;
 use Cav7\Citations\Repository\Grant as GrantRepository;
 use XF\Phrase;
@@ -56,6 +57,7 @@ class Grants extends AbstractService
         );
         $kindTitle = $this->repo()->kindTitle($request->kindType, $request->kindId);
         $day = GrantRules::day($values->date);
+        $billets = $this->repo()->billets(array_values($values->signatures));
 
         self::refuse(GrantRules::issueProblems(
             $request,
@@ -66,19 +68,22 @@ class Grants extends AbstractService
             $kindTitle,
             $regiment && $day !== null && $this->repo()->liveRegimentExists($request->kindId, $day),
             $actor,
-            $this->repo()->billets(array_values($values->signatures)),
+            $billets,
             $version->artRanks(),
             $this->repo()->milpacs(array_map(fn (MemberValues $member): int => $member->relationId, array_values($values->members))),
         ));
 
+        $pinned = $this->repo()->pinned($values);
         $typesetting = $this->render()->make(
             $version,
             $values,
             RemakePlan::everything($design, array_keys($values->members)),
-            $this->repo()->pinned($values),
+            $pinned,
         );
 
-        $grant = $this->db()->executeTransaction(function () use ($request, $version, $values, $regiment, $kindTitle, $actor, $typesetting): Grant {
+        $grant = $this->db()->executeTransaction(function () use ($request, $version, $values, $regiment, $kindTitle, $actor, $typesetting, $pinned, $billets): Grant {
+            $this->holdSignatures($values->signatures, $pinned, $billets);
+
             /** @var Grant $grant */
             $grant = $this->em()->create('Cav7\Citations:Grant');
             $grant->bulkSet([
@@ -156,6 +161,7 @@ class Grants extends AbstractService
             return false;
         }
 
+        $billets = $this->repo()->billets(array_values($new->signatures));
         self::refuse(GrantRules::correctionProblems(
             $design,
             $new,
@@ -163,11 +169,11 @@ class Grants extends AbstractService
             $reason,
             $grant->withdrawn_date,
             $this->dateMeetsLiveRegiment($grant, $old, $new),
-            $this->repo()->billets(array_values($new->signatures)),
+            $billets,
             $version->artRanks(),
         ));
 
-        $this->applyCorrection($grant, $version, $old, $new, $correction->changes, $correction->remake, $reason, $actor);
+        $this->applyCorrection($grant, $version, $old, $new, $billets, $correction->changes, $correction->remake, $reason, $actor);
         return true;
     }
 
@@ -218,6 +224,7 @@ class Grants extends AbstractService
             $target,
             $old,
             $new,
+            $billets,
             $changes,
             RemakePlan::everything($design, array_keys($new->members)),
             $reason,
@@ -381,6 +388,7 @@ class Grants extends AbstractService
     /**
      * One save moves the revision by one, however many things changed.
      *
+     * @param array<int, int> $billets Billet id by signature id, as the refusals read them.
      * @param list<array<string, mixed>> $changes
      */
     private function applyCorrection(
@@ -388,14 +396,17 @@ class Grants extends AbstractService
         TemplateVersion $version,
         GrantValues $old,
         GrantValues $new,
+        array $billets,
         array $changes,
         RemakePlan $remake,
         string $reason,
         Actor $actor,
     ): void {
-        $typesetting = $this->render()->make($version, $new, $remake, $this->repo()->pinned($new));
+        $pinned = $this->repo()->pinned($new);
+        $typesetting = $this->render()->make($version, $new, $remake, $pinned);
 
-        $this->db()->executeTransaction(function () use ($grant, $version, $old, $new, $changes, $typesetting, $reason, $actor): void {
+        $this->db()->executeTransaction(function () use ($grant, $version, $old, $new, $billets, $changes, $typesetting, $pinned, $reason, $actor): void {
+            $this->holdSignatures($new->signatures, $pinned, $billets);
             $this->assertUnmoved($grant, $old);
 
             if ($version->template_version_id !== $grant->template_version_id) {
@@ -450,6 +461,27 @@ class Grants extends AbstractService
             || (int) $row['withdrawn_date'] !== $grant->withdrawn_date
             || $members !== $held) {
             throw new PrintableException(\XF::phrase('cav7_cit_refused_grant_moved_on'));
+        }
+    }
+
+    /**
+     * Typesetting and the refusals read the signatures before the transaction. Their rows stay
+     * locked until it commits, so an edit or a delete waits for the first-use mark and then
+     * refuses. One that got in first refuses this write instead. Call it first in the
+     * transaction: MariaDB fails a locking read of a row changed since the first plain read.
+     *
+     * @param array<string, int> $signatures By slot key.
+     * @param array<string, PinnedSignature> $pinned What typesetting printed, by slot key.
+     * @param array<int, int> $billets Billet id by signature id, as the refusals read them.
+     * @throws PrintableException
+     */
+    private function holdSignatures(array $signatures, array $pinned, array $billets): void
+    {
+        $held = $this->repo()->lockSignatures(array_values($signatures));
+        foreach ($signatures as $slot => $id) {
+            if (!isset($held[$id]) || $held[$id] != [$billets[$id] ?? null, $pinned[$slot] ?? null]) {
+                throw new PrintableException(\XF::phrase('cav7_cit_refused_signature_moved_on'));
+            }
         }
     }
 

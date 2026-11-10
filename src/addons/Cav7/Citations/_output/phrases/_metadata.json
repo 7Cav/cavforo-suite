@@ -1577,6 +1577,12 @@
         "version_string": "1.1.0",
         "hash": "9115778df6429b7a74bd812c31d07cf3"
     },
+    "cav7_cit_refused_signature_moved_on.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "c5e5eadb785fd131faccd33190d74a87"
+    },
     "cav7_cit_refused_signature_wrong_billet.txt": {
         "global_cache": false,
         "version_id": 1000070,
