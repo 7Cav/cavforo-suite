@@ -20,6 +20,7 @@
 		timer: null,
 		latest: 0,
 		reshapes: 0,
+		unshaped: false,
 
 		init ()
 		{
@@ -55,6 +56,16 @@
 					this.reshape('add')
 				}
 			})
+			// After a failed reshape the body still holds the old template's inputs and slots.
+			this.target.addEventListener('submit', event =>
+			{
+				if (this.unshaped)
+				{
+					event.preventDefault()
+					event.stopImmediatePropagation()
+					this.reshape('')
+				}
+			}, true)
 			preview.addEventListener('click', event => this.previewClicked(event))
 
 			this.refreshPreview()
@@ -80,6 +91,7 @@
 				}
 
 				replacing = true
+				this.unshaped = false
 				XF.setupHtmlInsert(response.html, html =>
 				{
 					body.replaceWith(html)
@@ -92,6 +104,7 @@
 				{
 					body.inert = false
 					body.removeAttribute('aria-busy')
+					this.unshaped = true
 				}
 			})
 		},
