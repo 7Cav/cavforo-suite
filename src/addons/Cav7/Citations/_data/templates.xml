@@ -37,7 +37,8 @@
 	</div>
 </xf:form>
 ]]></template>
-  <template type="public" title="cav7_cit_grant_form" version_id="1010070" version_string="1.1.0"><![CDATA[<xf:if is="$mode == 'issue'">
+  <template type="public" title="cav7_cit_grant_form" version_id="1010070" version_string="1.1.0"><![CDATA[<xf:breadcrumb href="{{ link('rosters/citations') }}">{{ phrase('cav7_cit_citations') }}</xf:breadcrumb>
+<xf:if is="$mode == 'issue'">
 	<xf:title>{{ phrase('cav7_cit_issue_a_citation') }}</xf:title>
 	<xf:set var="$action" value="{{ link('rosters/citations/issue') }}" />
 	<xf:set var="$formUrl" value="{{ link('rosters/citations/form') }}" />
@@ -49,7 +50,6 @@
 	<xf:set var="$formUrl" value="{{ link('rosters/citations/form', $grant) }}" />
 	<xf:set var="$previewUrl" value="{{ link('rosters/citations/preview', $grant) }}" />
 </xf:if>
-<xf:breadcrumb href="{{ link('rosters/citations') }}">{{ phrase('cav7_cit_citations') }}</xf:breadcrumb>
 
 <xf:css src="cav7_cit_pages.less" />
 <xf:js src="Cav7/Citations/pages.js" addon="Cav7/Citations" min="1" />
