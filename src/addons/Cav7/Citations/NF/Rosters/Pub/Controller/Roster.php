@@ -114,15 +114,24 @@ class Roster extends XFCP_Roster
         }
 
         if ($pick !== 0 && $links->makesRow($kind, $recordId)) {
+            $refused = null;
             try {
-                return $links->holdingPick($pick, function () use ($save, $links, $kind, $rosterUser, $pick): AbstractReply {
+                return $links->holdingPick($pick, function () use ($save, $links, $kind, $rosterUser, $pick, &$refused): AbstractReply {
                     $reply = $save();
                     if ($reply instanceof Redirect) {
-                        $links->attach($kind, $rosterUser->newRow->record_id, $pick);
+                        try {
+                            $links->attach($kind, $rosterUser->newRow->record_id, $pick);
+                        } catch (PrintableException $e) {
+                            $refused = $e;
+                            throw $e;
+                        }
                     }
                     return $reply;
                 });
             } catch (PrintableException $e) {
+                if ($e !== $refused) {
+                    throw $e;
+                }
                 return $this->error(\XF::phrase('cav7_cit_row_not_saved', ['reason' => $e->getMessage()]));
             }
         }

@@ -168,6 +168,7 @@ namespace Cav7\Citations\NF\Rosters\Pub\Controller {
         /** What the save does: the reply, and the id of a row it creates. */
         public AbstractReply $reply;
         public ?int $createsRow = null;
+        public ?\Throwable $saveThrows = null;
         public int $saves = 0;
         public ?bool $deleteImageAtSave = null;
 
@@ -243,6 +244,9 @@ namespace Cav7\Citations\NF\Rosters\Pub\Controller {
         private function vendorSave(): AbstractReply
         {
             $this->saves++;
+            if ($this->saveThrows !== null) {
+                throw $this->saveThrows;
+            }
             $this->deleteImageAtSave = (bool) ($this->input['delete_image'] ?? false);
             if ($this->createsRow !== null) {
                 $this->milpac->newRow = (object) ['record_id' => $this->createsRow];
@@ -359,6 +363,18 @@ namespace Cav7\Citations\Tests {
             && $undoneReply->message === \XF::phrase('cav7_cit_row_not_saved', ['reason' => 'That citation is gone.']),
         json_encode($undoneReply)
     );
+
+    $vendorRefusal = new \XF\PrintableException('The vendor refused the row.');
+    $vendorRefused = new Roster();
+    $vendorRefused->input = ['citation_pick' => '5'];
+    $vendorRefused->saveThrows = $vendorRefusal;
+    try {
+        $vendorRefused->actionProfileAwardsSave(new ParameterBag());
+        $escaped = null;
+    } catch (\XF\PrintableException $e) {
+        $escaped = $e;
+    }
+    check('the vendor\'s own refusal of a new row reaches the visitor as it is', $escaped === $vendorRefusal);
 
     $refused = saved(['record_id' => 40, 'citation_pick' => '5'], fn (Roster $r) => $r->links->refusal = 'refused');
     check('a refusal writes nothing', $refused->saves === 0 && $refused->links->attached === []);
