@@ -331,7 +331,7 @@ namespace Cav7\Citations\Tests {
     check(
         'a refused attach after the save says the row saved and why the citation is missing',
         $late->saves === 1 && $late->links->attached === [] && $lateReply instanceof Error
-            && $lateReply->message === 'cav7_cit_saved_without_citation{"reason":"That citation is gone."}',
+            && $lateReply->message === \XF::phrase('cav7_cit_saved_without_citation', ['reason' => 'That citation is gone.']),
         json_encode($lateReply)
     );
 
