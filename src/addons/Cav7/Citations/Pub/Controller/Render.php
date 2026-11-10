@@ -52,20 +52,26 @@ class Render extends AbstractController
         return false;
     }
 
+    // Each action reads in one transaction, so the grant row and the typesetting drawn on it
+    // come from one InnoDB snapshot and a correction committing between them can't mix revisions.
     public function actionIndex(ParameterBag $params): AbstractReply
     {
-        /** @var GrantMember|null $member */
-        $member = $this->em()->find('Cav7\Citations:GrantMember', $params->grant_member_id, 'Grant.Version');
+        return $this->app->db()->executeTransaction(function () use ($params): AbstractReply {
+            /** @var GrantMember|null $member */
+            $member = $this->em()->find('Cav7\Citations:GrantMember', $params->grant_member_id, 'Grant.Version');
 
-        return $this->answer($params, $member, $member?->Grant, (int) $member?->grant_member_id);
+            return $this->answer($params, $member, $member?->Grant, (int) $member?->grant_member_id);
+        });
     }
 
     public function actionRegiment(ParameterBag $params): AbstractReply
     {
-        /** @var Grant|null $grant */
-        $grant = $this->em()->find('Cav7\Citations:Grant', $params->grant_id, 'Version');
+        return $this->app->db()->executeTransaction(function () use ($params): AbstractReply {
+            /** @var Grant|null $grant */
+            $grant = $this->em()->find('Cav7\Citations:Grant', $params->grant_id, 'Version');
 
-        return $this->answer($params, $grant, $grant, TypesettingRows::SHARED);
+            return $this->answer($params, $grant, $grant, TypesettingRows::SHARED);
+        });
     }
 
     private function answer(ParameterBag $params, GrantMember|Grant|null $citation, ?Grant $grant, int $grantMemberId): AbstractReply
