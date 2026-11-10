@@ -295,6 +295,7 @@
   <phrase title="cav7_cit_row_record" version_id="1010070" version_string="1.1.0"><![CDATA[{title} record, {date}]]></phrase>
   <phrase title="cav7_cit_sample_values" version_id="1020070" version_string="1.2.0"><![CDATA[Sample values]]></phrase>
   <phrase title="cav7_cit_save_correction" version_id="1010070" version_string="1.1.0"><![CDATA[Save correction]]></phrase>
+  <phrase title="cav7_cit_saved_without_citation" version_id="1020070" version_string="1.2.0"><![CDATA[The row saved, but its citation wasn't attached. {reason}]]></phrase>
   <phrase title="cav7_cit_serves" version_id="1020070" version_string="1.2.0"><![CDATA[Serves]]></phrase>
   <phrase title="cav7_cit_serves_explain" version_id="1020070" version_string="1.2.0"><![CDATA[The grant form offers this template for what's ticked here, once this version is published.]]></phrase>
   <phrase title="cav7_cit_service_records" version_id="1010070" version_string="1.1.0"><![CDATA[Service records]]></phrase>

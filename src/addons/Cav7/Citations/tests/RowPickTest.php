@@ -10,6 +10,22 @@
  *   php tests/RowPickTest.php
  */
 
+namespace {
+    class XF
+    {
+        public static function phrase(string $name, array $params = []): string
+        {
+            return $name . json_encode($params);
+        }
+    }
+}
+
+namespace XF {
+    class PrintableException extends \Exception
+    {
+    }
+}
+
 namespace XF\Mvc {
     class ParameterBag
     {
@@ -24,6 +40,12 @@ namespace XF\Mvc\Reply {
 
     class Redirect extends AbstractReply
     {
+        public mixed $message = '';
+
+        public function setMessage(mixed $message): void
+        {
+            $this->message = $message;
+        }
     }
 
     class Error extends AbstractReply
@@ -66,6 +88,9 @@ namespace Cav7\Citations\Service {
         /** The grant member the row holds before the save. */
         public ?int $held = null;
 
+        /** Why attach refuses, as a removal landing between the check and the attach would. */
+        public ?string $attachRefusal = null;
+
         public function saveRefusal(RowKind $kind, int $recordId, int $urlMilpac, int $recordTypeId, bool $hasFile, int $pick, bool $cutover): ?string
         {
             $this->checked[] = [$kind, $recordId, $urlMilpac, $recordTypeId, $hasFile, $pick, $cutover];
@@ -80,6 +105,9 @@ namespace Cav7\Citations\Service {
 
         public function attach(RowKind $kind, int $recordId, int $grantMemberId): void
         {
+            if ($this->attachRefusal !== null) {
+                throw new \XF\PrintableException($this->attachRefusal);
+            }
             $this->attached[] = [$kind, $recordId, $grantMemberId];
         }
 
@@ -244,6 +272,7 @@ namespace Cav7\Citations\Tests {
     use Cav7\Citations\Storage\RowKind;
     use XF\Mvc\ParameterBag;
     use XF\Mvc\Reply\Error;
+    use XF\Mvc\Reply\Redirect;
     use XF\Mvc\Reply\View;
 
     $failures = 0;
@@ -294,6 +323,17 @@ namespace Cav7\Citations\Tests {
 
     $failed = saved(['record_id' => 40, 'citation_pick' => '5'], fn (Roster $r) => $r->reply = new Error('bad date'));
     check('an error from the save attaches nothing', $failed->saves === 1 && $failed->links->attached === []);
+
+    $late = new Roster();
+    $late->input = ['record_id' => 40, 'citation_pick' => '5'];
+    $late->links->attachRefusal = 'That citation is gone.';
+    $lateReply = $late->actionProfileAwardsSave(new ParameterBag());
+    check(
+        'a refused attach after the save keeps the vendor\'s redirect and says why the citation is missing',
+        $lateReply === $late->reply && $lateReply instanceof Redirect
+            && $lateReply->message === 'cav7_cit_saved_without_citation{"reason":"That citation is gone."}',
+        json_encode($lateReply)
+    );
 
     $outsider = saved(['record_id' => 40, 'citation_pick' => '5'], fn (Roster $r) => $r->milpac->manage = false);
     check('a visitor who can\'t edit the row is left to the vendor', $outsider->saves === 1 && $outsider->links->checked === []);
