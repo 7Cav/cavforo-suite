@@ -297,6 +297,7 @@ class Grants extends AbstractController
             'filters' => $filters,
             'kinds' => $repo->issuedKinds(),
             'canIssue' => PageAccess::allows('issue', $actor, null),
+            'canSeeRegiment' => $actor->canOpenGrant(true),
             'page' => $page,
             'perPage' => self::PER_PAGE,
             'total' => $total,
