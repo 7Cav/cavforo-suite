@@ -286,7 +286,8 @@ class Grants extends AbstractController
             $total = $finder->total();
             $grants = $finder->limitByPage($page, self::PER_PAGE)->fetch();
         }
-        $regiment = $actor->canOpenGrant(true) ? $repo->listed(true, $kind, $day, $relationId)->fetch() : [];
+        // A regiment grant reaches every milpac, so a member filter leaves the regiment section whole.
+        $regiment = $actor->canOpenGrant(true) ? $repo->listed(true, $kind, $day, null)->fetch() : [];
         $shownIds = array_merge($grants === [] ? [] : $grants->keys(), $regiment === [] ? [] : $regiment->keys());
 
         return $this->view('Cav7\Citations:Grant\List', 'cav7_cit_grant_list', [
