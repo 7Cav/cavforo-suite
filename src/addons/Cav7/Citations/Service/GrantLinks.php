@@ -97,22 +97,39 @@ class GrantLinks extends AbstractService implements RowClearer
         return $recordId !== 0 ? $this->row($kind, $recordId)?->citation_grant_member_id : null;
     }
 
-    /** @throws PrintableException */
-    public function remove(RowKind $kind, int $recordId): void
-    {
-        $service = match ($kind) {
-            RowKind::Award => 'NF\Rosters:AwardRecord\Image',
-            RowKind::Record => 'NF\Rosters:ServiceRecord\Image',
-        };
-
-        $this->service($service, $this->rowOrRefuse($kind, $recordId))->deleteImage();
-    }
-
+    /**
+     * Lists rows by a locking read of the link itself, so a row swapped to another citation
+     * since the removal page loaded is left alone. Call it before any plain read in the
+     * transaction: MariaDB fails a locking read of a row changed since the first one.
+     */
     public function clear(int $grantMemberId): array
     {
-        $rows = $this->linkedRows()->onMember($grantMemberId);
+        $held = [];
+        foreach (RowKind::cases() as $kind) {
+            $locked = $this->db()->fetchAll(
+                "SELECT record_id, citation_date, citation_blob_id, citation_grant_member_id, citation_regiment_grant_id
+                FROM {$kind->table()} WHERE citation_grant_member_id = ? FOR UPDATE",
+                $grantMemberId
+            );
+            foreach ($locked as $row) {
+                $held[$kind->value][(int) $row['record_id']] = $row;
+            }
+        }
+
+        $rows = array_values(array_filter(
+            $this->linkedRows()->onMember($grantMemberId),
+            fn (array $row): bool => isset($held[$row['row_type']][$row['record_id']])
+        ));
         foreach ($rows as $row) {
-            $this->remove(RowKind::from($row['row_type']), $row['record_id']);
+            $kind = RowKind::from($row['row_type']);
+            $entity = $this->rowOrRefuse($kind, $row['record_id']);
+            foreach ($held[$kind->value][$row['record_id']] as $column => $value) {
+                $entity->setAsSaved($column, $value);
+            }
+            $this->service(match ($kind) {
+                RowKind::Award => 'NF\Rosters:AwardRecord\Image',
+                RowKind::Record => 'NF\Rosters:ServiceRecord\Image',
+            }, $entity)->deleteImage();
         }
 
         return $rows;

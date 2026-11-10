@@ -456,6 +456,7 @@ class Grants extends AbstractService
     /**
      * Typesetting runs outside the transaction, so what it read may have moved on. Holding the
      * row, a save compares what it planned from with what's there, and a clerk tries again.
+     * The member rows are locked too, so a removal's row clear still comes before any plain read.
      *
      * @throws PrintableException
      */
@@ -466,7 +467,7 @@ class Grants extends AbstractService
             $grant->grant_id
         );
         $members = array_map('intval', $this->db()->fetchAllColumn(
-            'SELECT grant_member_id FROM xf_cav7_citation_grant_member WHERE grant_id = ? ORDER BY grant_member_id',
+            'SELECT grant_member_id FROM xf_cav7_citation_grant_member WHERE grant_id = ? ORDER BY grant_member_id FOR UPDATE',
             $grant->grant_id
         ));
         $held = array_keys($read->members);
