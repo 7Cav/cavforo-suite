@@ -565,7 +565,7 @@
 									</td>
 									<td class="dataList-cell">{$row.member.name}</td>
 									<td class="dataList-cell">
-										<xf:if is="$memberRank">{$row.member.rank_title} <span class="u-muted">({$row.member.rank_pay_grade})</span><xf:else /><span class="u-muted">{{ phrase('cav7_cit_on_the_plate') }}</span></xf:if>
+										<xf:if is="$memberRank">{$row.member.rank_title} <span class="u-muted">({$row.member.rank_pay_grade})</span><xf:elseif is="$grant.rank_id" />{$grant.rank_title} <span class="u-muted">({$grant.rank_pay_grade})</span><xf:else /><span class="u-muted">{{ phrase('cav7_cit_on_the_plate') }}</span></xf:if>
 									</td>
 									<xf:foreach loop="$memberInputs" value="$input">
 										<td class="dataList-cell">{{ $row.member.input_values.{$input.key} ?: '-' }}</td>
