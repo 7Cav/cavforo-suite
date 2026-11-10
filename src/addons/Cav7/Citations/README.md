@@ -22,8 +22,7 @@ define the terms. [docs/adr](docs/adr/) has the reasons behind the generator.
 - XenForo 2.3.0+, NF/Rosters 2.1.5+ and PHP 8.1+. The NF/Rosters floor is in the
   vendor's own `version_id` numbering.
 - Imagick with JPEG, PNG and FreeType support. The re-encode, every plate, ink and rank
-  art upload, and every draw need it. The addon installs without it, and
-  `cav7-citations:reencode` refuses to run.
+  art upload, and every draw need it, so XenForo refuses the install without it.
 - GD on the same PHP. Imagick can't report its FreeType version, so a typesetting reads
   it from GD and records `unknown` without it.
 - `Cav7/RosterAudit` 1.1.3+ if that addon is installed. An older version logs a line
