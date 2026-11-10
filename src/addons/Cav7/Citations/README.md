@@ -97,9 +97,9 @@ interface groups.
 | Permission | Group | Lets a member |
 |---|---|---|
 | View grants and templates | Citation permissions | Open the grants and the template manager, read-only. |
-| Issue and correct grants to members | Citation moderator permissions | Issue, correct and add members to member grants. |
+| Issue and correct grants to members | Citation moderator permissions | Issue, correct, move and add members to member grants. |
 | Remove members from grants | Citation moderator permissions | Remove a member from a grant, which clears every row linked to them. |
-| Manage regiment grants | Citation moderator permissions | Issue, correct and withdraw regiment grants. |
+| Manage regiment grants | Citation moderator permissions | Issue, correct, move and withdraw regiment grants. |
 | Edit template drafts | Citation moderator permissions | Create templates and versions, and edit their uploads and fields. |
 | Publish templates and manage signatures and pay grades | Citation moderator permissions | Publish and retire versions, and manage signatures, billets and pay grades. |
 

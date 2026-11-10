@@ -42,7 +42,10 @@ every render with a 404. Keep `/citations/` out of it, and leave its headers to 
 5. Enable the cron entry. An active cron on a board with `jobRunTrigger` set to activity
    would start the first sweep under traffic, which is why it installs inactive.
 6. Sync the archive and re-encode, below.
-7. After cutover, sync and re-encode once more for what arrived in between.
+7. Before cutover, check the record type ids the code pins against the board's own:
+   Disciplinary is 4 in `Grant/RowSaveRules.php`, and Promotion 1 and Graduation 9 in
+   `Render/VersionRules.php`. A wrong id closes upload on the wrong kind.
+8. After cutover, sync and re-encode once more for what arrived in between.
 
 Neither step waits for the PUC strip or the generator. The strip runs after the sweep.
 It takes every reference off the six PUC blobs at once, and that stays under the brake.
