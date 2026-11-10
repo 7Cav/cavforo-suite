@@ -8,6 +8,7 @@ use Cav7\Citations\Repository\Signature as SignatureRepository;
 use Cav7\Citations\Service\Signatures as SignatureService;
 use Cav7\Citations\Template\ManagerAccess;
 use Cav7\Citations\Template\SignatureRules;
+use Cav7\Citations\Template\VersionLifecycle;
 use XF\Mvc\ParameterBag;
 use XF\Mvc\Reply\AbstractReply;
 use XF\PrintableException;
@@ -32,9 +33,13 @@ class Signatures extends AbstractManager
         }
         usort($signatures, fn (array $a, array $b): int => ($a['signature']->Billet?->display_order ?? 0) <=> ($b['signature']->Billet?->display_order ?? 0));
 
-        $slots = SignatureRules::slotCounts(
-            $this->app->db()->fetchAllColumn('SELECT field_definitions FROM xf_cav7_citation_template_version')
-        );
+        $versions = $this->app->db()->fetchAll('SELECT field_definitions, state FROM xf_cav7_citation_template_version');
+        // A retired version still names its billets, so it guards removal but no longer counts as a slot.
+        $slots = SignatureRules::slotCounts(array_column($versions, 'field_definitions'));
+        $liveSlots = SignatureRules::slotCounts(array_column(
+            array_filter($versions, fn (array $version): bool => $version['state'] !== VersionLifecycle::RETIRED),
+            'field_definitions'
+        ));
 
         $active = [];
         $held = [];
@@ -48,7 +53,7 @@ class Signatures extends AbstractManager
         foreach ($billets as $id => $billet) {
             $rows[] = [
                 'billet' => $billet,
-                'slots' => $slots[$id] ?? 0,
+                'slots' => $liveSlots[$id] ?? 0,
                 'active' => $active[$id] ?? 0,
                 'removable' => !isset($slots[$id]) && !isset($held[$id]),
             ];
