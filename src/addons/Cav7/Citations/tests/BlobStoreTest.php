@@ -69,13 +69,7 @@ check('and the file is not recreated', !file_exists($path));
 
 $blocked = new Stage();
 file_put_contents($blocked->disk->path('roster_citation_blobs'), 'a file where the tree should go');
-$failed = false;
-try {
-    $blocked->blob(png());
-} catch (\Throwable $e) {
-    $failed = true;
-}
-check('a write that fails throws', $failed);
+check('a write that fails is damage, so the run carries on', damage(fn () => $blocked->blob(png())) !== null);
 check('and leaves no row behind', (int) $blocked->db->fetchOne('SELECT COUNT(*) FROM ' . BlobStore::TABLE) === 0);
 
 // A delete that fails leaves no transaction open on a connection the job keeps using.
@@ -99,12 +93,9 @@ $stage2 = new Stage();
 $first = $stage2->blob(png(10, 10));
 $dir = dirname($stage2->disk->path(BlobFile::keyOf($first)));
 check('a new blob directory gets a guard index', file_exists("$dir/index.html"));
-$rewrite = false;
-try {
-    $stage2->disk->writeOnce(BlobFile::keyOf($first), $stage2->tempFile('new'));
-} catch (\RuntimeException $e) {
-    $rewrite = true;
-}
-check('a blob file cannot be written twice', $rewrite);
+check(
+    'a blob file cannot be written twice',
+    damage(fn () => $stage2->disk->writeOnce(BlobFile::keyOf($first), $stage2->tempFile('new'))) !== null
+);
 
 finish();
