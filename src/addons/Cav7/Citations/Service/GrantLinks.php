@@ -66,16 +66,15 @@ class GrantLinks extends AbstractService implements RowClearer
     public function attach(RowKind $kind, int $recordId, int $grantMemberId): void
     {
         $row = $this->rowOrRefuse($kind, $recordId);
+        $grantId = $this->db()->fetchOne('SELECT grant_id FROM xf_cav7_citation_grant_member WHERE grant_member_id = ?', $grantMemberId);
 
-        $this->db()->executeTransaction(function () use ($row, $grantMemberId): void {
-            // The grant's row lock is the one removal holds, so a member can't go mid-attach
-            // and leave a link to nothing.
+        $this->db()->executeTransaction(function () use ($row, $grantMemberId, $grantId): void {
+            // Grant row, then member row, the order removal locks in, so a member can't go
+            // mid-attach and leave a link to nothing. The plain read stays outside: MariaDB
+            // fails a locking read of a row changed since the transaction's first plain read.
+            $this->db()->fetchOne('SELECT grant_id FROM xf_cav7_citation_grant WHERE grant_id = ? FOR UPDATE', (int) $grantId);
             $milpac = $this->db()->fetchOne(
-                'SELECT m.relation_id
-                FROM xf_cav7_citation_grant_member AS m
-                INNER JOIN xf_cav7_citation_grant AS g ON g.grant_id = m.grant_id
-                WHERE m.grant_member_id = ?
-                FOR UPDATE',
+                'SELECT relation_id FROM xf_cav7_citation_grant_member WHERE grant_member_id = ? FOR UPDATE',
                 $grantMemberId
             );
 
