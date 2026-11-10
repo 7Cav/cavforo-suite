@@ -81,8 +81,11 @@ class Grants extends AbstractService
             $pinned,
         );
 
-        $grant = $this->db()->executeTransaction(function () use ($request, $version, $values, $regiment, $kindTitle, $actor, $typesetting, $pinned, $billets): Grant {
+        $grant = $this->awardTransaction($regiment ? $request->kindId : null, function () use ($request, $version, $values, $regiment, $day, $kindTitle, $actor, $typesetting, $pinned, $billets): Grant {
             $this->holdSignatures($values->signatures, $pinned, $billets);
+            if ($regiment && $day !== null && $this->repo()->liveRegimentExists($request->kindId, $day)) {
+                throw new PrintableException(\XF::phrase('cav7_cit_refused_regiment_duplicate'));
+            }
 
             /** @var Grant $grant */
             $grant = $this->em()->create('Cav7\Citations:Grant');
@@ -405,9 +408,13 @@ class Grants extends AbstractService
         $pinned = $this->repo()->pinned($new);
         $typesetting = $this->render()->make($version, $new, $remake, $pinned);
 
-        $this->db()->executeTransaction(function () use ($grant, $version, $old, $new, $billets, $changes, $typesetting, $pinned, $reason, $actor): void {
+        $redated = $grant->is_regiment && $new->date !== $old->date;
+        $this->awardTransaction($redated ? $grant->kind_id : null, function () use ($grant, $version, $old, $new, $billets, $changes, $typesetting, $pinned, $reason, $actor): void {
             $this->holdSignatures($new->signatures, $pinned, $billets);
             $this->assertUnmoved($grant, $old);
+            if ($this->dateMeetsLiveRegiment($grant, $old, $new)) {
+                throw new PrintableException(\XF::phrase('cav7_cit_refused_regiment_duplicate'));
+            }
 
             if ($version->template_version_id !== $grant->template_version_id) {
                 $this->render()->rows->clearGrant($grant->grant_id);
@@ -461,6 +468,33 @@ class Grants extends AbstractService
             || (int) $row['withdrawn_date'] !== $grant->withdrawn_date
             || $members !== $held) {
             throw new PrintableException(\XF::phrase('cav7_cit_refused_grant_moved_on'));
+        }
+    }
+
+    /**
+     * No two live regiment grants share an award and a day, and since withdrawn ones don't
+     * count no unique key can say so. A named lock per award puts the check and the write in
+     * one step. It's taken before the transaction begins, so the transaction's reads see
+     * whatever the last holder committed.
+     *
+     * @template T
+     * @param \Closure(): T $write
+     * @return T
+     */
+    private function awardTransaction(?int $awardId, \Closure $write): mixed
+    {
+        if ($awardId === null) {
+            return $this->db()->executeTransaction($write);
+        }
+
+        $lock = "cav7_cit_regiment_award_$awardId";
+        if ((int) $this->db()->fetchOne('SELECT GET_LOCK(?, 30)', $lock) !== 1) {
+            throw new \RuntimeException("Timed out waiting for the $lock lock.");
+        }
+        try {
+            return $this->db()->executeTransaction($write);
+        } finally {
+            $this->db()->fetchOne('SELECT RELEASE_LOCK(?)', $lock);
         }
     }
 
