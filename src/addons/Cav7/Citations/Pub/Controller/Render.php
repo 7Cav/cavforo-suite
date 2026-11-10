@@ -8,7 +8,6 @@ use Cav7\Citations\Grant\GrantRender;
 use Cav7\Citations\Grant\RenderAnswer;
 use Cav7\Citations\Render\RenderFailed;
 use Cav7\Citations\Storage\DamageLog;
-use Cav7\Citations\Template\OverrunLog;
 use Cav7\Citations\Template\TypesettingRows;
 use XF\Mvc\ParameterBag;
 use XF\Mvc\Reply\AbstractReply;
@@ -98,15 +97,12 @@ class Render extends AbstractController
             $version = $grant->Version ?? throw new RenderFailed("Grant {$grant->grant_id} has no template version");
             $jpeg = GrantRender::forApp($this->app)->draw($version, $grant->grant_id, $grantMemberId)->jpeg;
         } catch (RenderFailed | \JsonException | \InvalidArgumentException $e) {
-            $overruns = new OverrunLog($this->app->db(), fn (string $line) => \XF::logError($line));
-            if ($overruns->firstFailure($grant->template_version_id, \XF::$time)) {
-                $damage = new DamageLog(fn (string $line) => \XF::logError($line), fn (string $line) => null);
-                $damage->report(
-                    "render failed: {$e->getMessage()}",
-                    '',
-                    $grantMemberId !== TypesettingRows::SHARED ? "grant_member:$grantMemberId" : "grant:{$grant->grant_id}"
-                );
-            }
+            $damage = new DamageLog(fn (string $line) => \XF::logError($line), fn (string $line) => null);
+            $damage->report(
+                "render failed: {$e->getMessage()}",
+                '',
+                $grantMemberId !== TypesettingRows::SHARED ? "grant_member:$grantMemberId" : "grant:{$grant->grant_id}"
+            );
 
             return $this->uncached(500);
         }
