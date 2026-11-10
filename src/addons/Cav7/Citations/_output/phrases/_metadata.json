@@ -1313,6 +1313,12 @@
         "version_string": "1.0.0",
         "hash": "53487690af6ef630c7bdecf8a883a396"
     },
+    "cav7_cit_refused_correction_reason_required.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "303d2408da92ffa0f9688a4ba5ce71e2"
+    },
     "cav7_cit_refused_date_required.txt": {
         "global_cache": false,
         "version_id": 1020070,
@@ -1459,9 +1465,9 @@
     },
     "cav7_cit_refused_no_members.txt": {
         "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "f45cba72fb48513e87bf1ac14be08869"
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "f79832837bd520a352e68dafe3b8f094"
     },
     "cav7_cit_refused_no_plate.txt": {
         "global_cache": false,

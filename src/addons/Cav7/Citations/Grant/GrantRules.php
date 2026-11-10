@@ -42,6 +42,7 @@ final class GrantRules
     public const MEMBER_NO_SUCH_RANK = 'member_no_such_rank';
     public const RANK_WITHOUT_ART = 'rank_without_art';
     public const REASON_REQUIRED = 'reason_required';
+    public const CORRECTION_REASON_REQUIRED = 'correction_reason_required';
     public const NO_SUCH_MEMBER = 'no_such_member';
     public const WRONG_TEMPLATE = 'wrong_template';
     public const NOT_A_MEMBER_GRANT = 'not_a_member_grant';
@@ -249,7 +250,7 @@ final class GrantRules
         array $billets,
         array $artRanks,
     ): array {
-        $problems = self::reasonProblems($reason);
+        $problems = self::reasonProblems($reason, self::CORRECTION_REASON_REQUIRED);
         if ($withdrawnDate > 0) {
             $problems[] = self::problem(self::ALREADY_WITHDRAWN);
         }
@@ -339,9 +340,9 @@ final class GrantRules
     }
 
     /** @return list<array{field: string, rule: string, params: array<string, string|int>}> */
-    public static function reasonProblems(string $reason): array
+    public static function reasonProblems(string $reason, string $rule = self::REASON_REQUIRED): array
     {
-        return trim($reason) === '' ? [self::problem(self::REASON_REQUIRED)] : [];
+        return trim($reason) === '' ? [self::problem($rule)] : [];
     }
 
     /** @return list<array{field: string, rule: string, params: array<string, string|int>}> */

@@ -395,7 +395,7 @@ $reasoned = fn (GrantChanges $changes, string $reason = 'Typo', int $withdrawn =
 
 foreach ([
     'a whole correction passes' => [new GrantChanges(citationText: 'For gallantry.'), 'Typo', []],
-    'C-1 a reason is required' => [new GrantChanges(citationText: 'For gallantry.'), ' ', ['reason_required']],
+    'C-1 a reason is required' => [new GrantChanges(citationText: 'For gallantry.'), ' ', ['correction_reason_required']],
     'I-8 text can\'t be corrected away' => [new GrantChanges(citationText: ''), 'Typo', ['citation_text_required']],
     'I-6 nor a date made bad' => [new GrantChanges(date: '2026-02-30'), 'Typo', ['bad_date']],
     'I-9 a signature of another billet' => [new GrantChanges(signatures: ['sig' => 12]), 'Typo', ['signature_wrong_billet sig billet_id=5']],
