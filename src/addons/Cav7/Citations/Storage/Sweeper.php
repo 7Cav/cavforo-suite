@@ -239,7 +239,14 @@ final class Sweeper
             if ($row !== null && $row['citation_date'] === $seenDate && !$row['grant_linked']) {
                 // The vendor rewrites this path in place, so only a file moved off it is safe to delete.
                 $aside = $key . self::ASIDE . bin2hex(random_bytes(4));
-                $aside = $this->disk->move($key, $aside) ? $aside : null;
+                if (!$this->disk->move($key, $aside)) {
+                    $aside = null;
+                    // Gone or rewritten since the copy is the next run's business; a file still
+                    // here that won't move would otherwise be skipped silently every run.
+                    if ($this->disk->stat($key) === $seenFile) {
+                        $this->damage->report('legacy file could not be moved', $key, "{$kind->value}:$recordId");
+                    }
+                }
             }
 
             // The mtime catches a re-upload of the same bytes, the hash anything else.
