@@ -135,8 +135,13 @@
 			if (event.target.closest('.js-grantPreviewFull'))
 			{
 				event.preventDefault()
+				const image = this.previewBody.querySelector('.js-grantPreviewImage')
+				if (!image)
+				{
+					return
+				}
 				// A browser won't open a data: URL in a tab, so it goes through a blob.
-				fetch(this.previewBody.querySelector('.js-grantPreviewImage').src)
+				fetch(image.src)
 					.then(reply => reply.blob())
 					.then(blob => window.open(URL.createObjectURL(blob), '_blank'))
 			}
