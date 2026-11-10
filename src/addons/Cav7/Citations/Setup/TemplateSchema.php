@@ -5,6 +5,7 @@ namespace Cav7\Citations\Setup;
 use Cav7\Citations\Template\PayGradeSeed;
 use Cav7\Citations\Template\TypesettingRows;
 use XF\Db\AbstractAdapter;
+use XF\Db\Schema\Alter;
 use XF\Db\Schema\Create;
 use XF\Db\SchemaManager;
 
@@ -87,8 +88,15 @@ final class TemplateSchema
             $table->addColumn('state', 'enum')->values(['active', 'retired'])->setDefault('active');
             $table->addColumn('create_user_id', 'int');
             $table->addColumn('create_date', 'int');
+            $table->addColumn('first_used_date', 'int')->setDefault(0);
             $table->addKey(['billet_id', 'state'], 'billet_state');
         });
+
+        if (!$schema->columnExists('xf_cav7_citation_signature', 'first_used_date')) {
+            $schema->alterTable('xf_cav7_citation_signature', function (Alter $table) {
+                $table->addColumn('first_used_date', 'int')->setDefault(0);
+            });
+        }
 
         $schema->createTable('xf_cav7_citation_pay_grade', function (Create $table) {
             $table->checkExists(true);
@@ -123,6 +131,43 @@ final class TemplateSchema
             $table->addColumn('log_date', 'int');
             $table->addPrimaryKey(['template_version_id', 'imagemagick_version', 'freetype_version']);
         });
+    }
+
+    /**
+     * Dates the first use of every signature a grant has held, for grants older than the
+     * column: a current pin from its earliest grant, and one a correction or move replaced
+     * from the earliest log entry that names it.
+     */
+    public static function backfillFirstUse(AbstractAdapter $db): void
+    {
+        $db->query(
+            'UPDATE xf_cav7_citation_signature SET first_used_date = COALESCE((
+                SELECT MIN(g.issue_date)
+                FROM xf_cav7_citation_grant_signature AS p
+                INNER JOIN xf_cav7_citation_grant AS g ON g.grant_id = p.grant_id
+                WHERE p.signature_id = xf_cav7_citation_signature.signature_id
+            ), create_date)
+            WHERE first_used_date = 0
+                AND signature_id IN (SELECT signature_id FROM xf_cav7_citation_grant_signature)'
+        );
+
+        $logged = [];
+        $logs = $db->fetchAll('SELECT log_date, detail FROM xf_cav7_citation_grant_log WHERE detail LIKE ?', '%"signature:%');
+        foreach ($logs as $log) {
+            foreach (json_decode($log['detail'], true)['changes'] ?? [] as $change) {
+                if (str_starts_with($change['what'], 'signature:')) {
+                    foreach (array_filter([$change['old'], $change['new']]) as $signatureId) {
+                        $logged[$signatureId] = min($logged[$signatureId] ?? PHP_INT_MAX, (int) $log['log_date']);
+                    }
+                }
+            }
+        }
+        foreach ($logged as $signatureId => $date) {
+            $db->query(
+                'UPDATE xf_cav7_citation_signature SET first_used_date = ? WHERE signature_id = ? AND first_used_date = 0',
+                [$date, $signatureId]
+            );
+        }
     }
 
     /** INSERT IGNORE, so a reinstall leaves what S1 has edited. */

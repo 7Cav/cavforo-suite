@@ -4,7 +4,7 @@
     "navigation_type_id": "basic",
     "type_config": {
         "link": "{{ link('rosters/citation-signatures') }}",
-        "display_condition": "$xf.visitor.hasPermission('cav7Citations', 'viewGrantsTemplates') OR $xf.visitor.hasPermission('cav7Citations', 'editTemplateDrafts') OR $xf.visitor.hasPermission('cav7Citations', 'publishTemplates') OR $xf.visitor.hasPermission('cav7Citations', 'issueGrants')",
+        "display_condition": "$xf.visitor.hasPermission('cav7Citations', 'viewGrantsTemplates') OR $xf.visitor.hasPermission('cav7Citations', 'editTemplateDrafts') OR $xf.visitor.hasPermission('cav7Citations', 'publishTemplates')",
         "extra_attributes": []
     },
     "enabled": true

@@ -10,6 +10,7 @@ use XF\Mvc\Reply\AbstractReply;
 use XF\Mvc\Reply\Error;
 use XF\Mvc\Reply\Redirect;
 use XF\Mvc\Reply\View;
+use XF\PrintableException;
 
 /**
  * The citation picker on the row forms, and the check around the vendor's save. A refusal
@@ -106,9 +107,20 @@ class Roster extends XFCP_Roster
             $this->request->set('delete_image', 1);
         }
 
+        // The radio defaults to the row's own pick, so the delete box beside it means No citation.
+        if ($pick !== 0 && $this->filter('delete_image', 'bool') && $pick === $links->heldPick($kind, $recordId)) {
+            $pick = 0;
+        }
+
         $reply = $save();
         if ($pick !== 0 && $reply instanceof Redirect) {
-            $links->attach($kind, $rosterUser->newRow?->record_id ?? $recordId, $pick);
+            try {
+                $links->attach($kind, $rosterUser->newRow?->record_id ?? $recordId, $pick);
+            } catch (PrintableException $e) {
+                // The vendor's save has committed. An error, not the redirect: the vendor's ajax
+                // form follows a redirect at once and never shows its message.
+                return $this->error(\XF::phrase('cav7_cit_saved_without_citation', ['reason' => $e->getMessage()]));
+            }
         }
         return $reply;
     }

@@ -6,13 +6,13 @@ namespace Cav7\Citations\Render;
 final class DrawPlan
 {
     /**
-     * @param list<PlannedLine> $lines
-     * @param list<PlannedImage> $images
+     * @param list<PlannedLine|PlannedImage> $steps In draw order, which is field order.
+     * @param list<PreviewBox> $previewBoxes
      */
     public function __construct(
         public readonly Plate $plate,
-        public readonly array $lines,
-        public readonly array $images,
+        public readonly array $steps,
+        public readonly array $previewBoxes = [],
     ) {
     }
 
@@ -20,18 +20,25 @@ final class DrawPlan
      * @param array<string, SetField> $rows By field key. A member's row and the shared rows together.
      * @param array<string, string> $fontPaths Font key => path, pinned or catalog.
      * @param \Closure(string): string $imagePath Image hash => path.
+     * @param list<PreviewBox> $previewBoxes
      * @throws RenderFailed A field with no row, or a line with no font path.
      */
-    public static function build(Version $version, array $rows, Plate $plate, array $fontPaths, \Closure $imagePath): self
+    public static function build(Version $version, array $rows, Plate $plate, array $fontPaths, \Closure $imagePath, array $previewBoxes = []): self
     {
-        $lines = [];
-        $images = [];
+        $steps = [];
 
         foreach ($version->fields as $field) {
             $row = $rows[$field->key] ?? throw new RenderFailed("No typesetting row for field {$field->key}");
 
+            // A slot's ink goes under its name lines, as in the prototype.
+            foreach ([$row->ink, $row->art] as $image) {
+                if ($image !== null) {
+                    $steps[] = new PlannedImage($imagePath($image->hash), $image);
+                }
+            }
+
             foreach ($row->lines ?? [] as $line) {
-                $lines[] = new PlannedLine(
+                $steps[] = new PlannedLine(
                     $field->key,
                     $fontPaths[$field->font] ?? throw new RenderFailed("No path for font {$field->font}"),
                     $row->size,
@@ -40,14 +47,8 @@ final class DrawPlan
                     $field->x + $field->w,
                 );
             }
-
-            foreach ([$row->ink, $row->art] as $image) {
-                if ($image !== null) {
-                    $images[] = new PlannedImage($imagePath($image->hash), $image);
-                }
-            }
         }
 
-        return new self($plate, $lines, $images);
+        return new self($plate, $steps, $previewBoxes);
     }
 }

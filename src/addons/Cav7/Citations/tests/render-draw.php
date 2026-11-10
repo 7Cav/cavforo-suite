@@ -177,7 +177,7 @@ $planned = fn (Line $line, float $size = 40.0, int $boxRight = 780, string $colo
     => new PlannedLine('body', $font !== '' ? $font : $tinos, $size, $colour, $line, $boxRight);
 
 // A render is the plate's own size, in the encoder's profile.
-$drawn = $drawer->draw(new DrawPlan($plate, [$planned(new Line('HHHH', 100.0, 200.0, 0.0, 0.0))], []));
+$drawn = $drawer->draw(new DrawPlan($plate, [$planned(new Line('HHHH', 100.0, 200.0, 0.0, 0.0))]));
 $image = decoded($drawn->jpeg);
 $structure = jpegStructure($drawn->jpeg);
 
@@ -199,8 +199,8 @@ check('capitals rise from the baseline by the cap height', near($bounds[1], 200 
 
 // The stored numbers decide, not the current metrics.
 $stored = [$planned(new Line('HHHH', 300.5, 450.0, 0.0, 0.0))];
-$real = $drawer->draw(new DrawPlan($plate, $stored, []));
-$wild = (new ImagickDrawer(new WildMetrics()))->draw(new DrawPlan($plate, $stored, []));
+$real = $drawer->draw(new DrawPlan($plate, $stored));
+$wild = (new ImagickDrawer(new WildMetrics()))->draw(new DrawPlan($plate, $stored));
 check('other font metrics change no drawn pixel', $real->jpeg === $wild->jpeg);
 check('other font metrics report the overrun', $wild->overrun?->fieldKey === 'body' && $real->overrun === null);
 
@@ -211,7 +211,7 @@ foreach ([
     'a line 1px past its box reports nothing' => [100 + $past - 1, null],
     'a line 2px past its box reports the overrun' => [100 + $past - 2, 2.0],
 ] as $label => [$boxRight, $pixels]) {
-    $result = $drawer->draw(new DrawPlan($plate, [$planned(new Line('HHHH', 100.0, 200.0, 0.0, 0.0), 40.0, (int) $boxRight)], []));
+    $result = $drawer->draw(new DrawPlan($plate, [$planned(new Line('HHHH', 100.0, 200.0, 0.0, 0.0), 40.0, (int) $boxRight)]));
     check($label, ($result->overrun?->pixels) === $pixels, json_encode($result->overrun));
     check("$label and still renders", decoded($result->jpeg)->getImageWidth() === 800);
 }
@@ -225,14 +225,14 @@ foreach ([
     $set = (new Typesetter($metrics))->set([$justifyField], ['tinos-regular' => $tinos], new Values('', null, '2026-03-21', $text))['body'];
     $line = $set->lines[0];
     check("justified with $label: the measured width is within 1px of the box", near($line->w, 600, 1), json_encode($line));
-    $page = decoded($drawer->draw(new DrawPlan($plate, [$planned($line, $set->size)], []))->jpeg);
+    $page = decoded($drawer->draw(new DrawPlan($plate, [$planned($line, $set->size)]))->jpeg);
     $ink = inkBounds($page, 0, 0, 800, 600);
     check("justified with $label: ink reaches the box edge", near($ink[2], 700, 4), json_encode($ink));
 }
 
 // Values reach the page as typed.
 $literal = "100% of %w @/etc/passwd 'it' \"so\" \\n H";
-$page = decoded($drawer->draw(new DrawPlan($plate, [$planned(new Line($literal, 20.0, 200.0, 0.0, 0.0), 30.0)], []))->jpeg);
+$page = decoded($drawer->draw(new DrawPlan($plate, [$planned(new Line($literal, 20.0, 200.0, 0.0, 0.0), 30.0)]))->jpeg);
 $ink = inkBounds($page, 0, 0, 800, 600);
 check(
     'percent escapes, @paths, quotes and backslashes print literally',
@@ -241,25 +241,31 @@ check(
 );
 
 // Colour, and images over the text.
-$colours = $drawer->draw(new DrawPlan($plate, [$planned(new Line('HHHH', 100.0, 200.0, 0.0, 0.0), 120.0, 780, '#c00000')], []));
+$colours = $drawer->draw(new DrawPlan($plate, [$planned(new Line('HHHH', 100.0, 200.0, 0.0, 0.0), 120.0, 780, '#c00000')]));
 $page = decoded($colours->jpeg);
 $bar = inkBounds($page, 100, 80, 40, 130);
 check('the fill colour is the field\'s', similar(colourAt($page, (int) (($bar[0] + $bar[2]) / 2), $bar[3] - 30), [192, 0, 0]));
 
 $exact = new PlannedImage(inkFile("$tmp/ink.png", 100, 50, '#0000ff', 10), new PlacedImage('h', 200, 300, 100, 50));
 $scaled = new PlannedImage(inkFile("$tmp/big.png", 400, 200, '#00c000'), new PlacedImage('h', 500, 300, 100, 50));
-$page = decoded($drawer->draw(new DrawPlan($greyPlate, [], [$exact, $scaled]))->jpeg);
+$page = decoded($drawer->draw(new DrawPlan($greyPlate, [$exact, $scaled]))->jpeg);
 check('a colour image on a greyscale plate lands at its stored position in colour', similar(colourAt($page, 250, 325), [0, 0, 255]));
 check('an image\'s transparency shows the plate', similar(colourAt($page, 203, 303), [255, 255, 255]));
 check('an image larger than its stored size is resized to it', similar(colourAt($page, 595, 345), [0, 192, 0]) && similar(colourAt($page, 605, 345), [255, 255, 255]));
 
 $overText = new PlannedImage(inkFile("$tmp/cover.png", 300, 100, '#00c000'), new PlacedImage('h', 80, 150, 300, 100));
-$page = decoded($drawer->draw(new DrawPlan($plate, [$planned(new Line('HHHH', 100.0, 200.0, 0.0, 0.0))], [$overText]))->jpeg);
-check('images composite over the text', similar(colourAt($page, 120, 190), [0, 192, 0]));
+$hhhh = $planned(new Line('HHHH', 100.0, 200.0, 0.0, 0.0));
+$page = decoded($drawer->draw(new DrawPlan($plate, [$hhhh, $overText]))->jpeg);
+check('an image after the text composites over it', similar(colourAt($page, 120, 190), [0, 192, 0]));
+$page = decoded($drawer->draw(new DrawPlan($plate, [$overText, $hhhh]))->jpeg);
+check(
+    'text after an image prints over it',
+    array_filter(range($bounds[0], $bounds[0] + 10), fn (int $x): bool => similar(colourAt($page, $x, 190), [0, 0, 0])) !== []
+);
 
 // Plates.
 $jpegPlate = new Plate(plateFile("$tmp/plate.jpg", 'jpeg', 511, 400, '#336699'), 'jpeg');
-$page = decoded($drawer->draw(new DrawPlan($jpegPlate, [], []))->jpeg);
+$page = decoded($drawer->draw(new DrawPlan($jpegPlate, []))->jpeg);
 check('a JPEG plate reads through its own coder at its own size', [$page->getImageWidth(), $page->getImageHeight()] === [511, 400]);
 check('a plate alone draws with no fields', similar(colourAt($page, 100, 100), [0x33, 0x66, 0x99]));
 
@@ -267,7 +273,7 @@ $clear = new \Imagick();
 $clear->newImage(200, 100, 'transparent');
 $clear->setImageFormat('png');
 $clear->writeImage("png:$tmp/clear.png");
-$page = decoded($drawer->draw(new DrawPlan(new Plate("$tmp/clear.png", 'png'), [], []))->jpeg);
+$page = decoded($drawer->draw(new DrawPlan(new Plate("$tmp/clear.png", 'png'), []))->jpeg);
 check('a transparent plate flattens onto white', similar(colourAt($page, 100, 50), [255, 255, 255]));
 
 $marked = new \Imagick();
@@ -279,18 +285,18 @@ $marked->setImageFormat('png');
 $marked->writeImage("png:$tmp/marked.png");
 check(
     'a plate\'s density and metadata do not reach the JPEG, so equal pixels encode equally',
-    $drawer->draw(new DrawPlan(new Plate("$tmp/marked.png", 'png'), [], []))->jpeg
-        === $drawer->draw(new DrawPlan(new Plate(plateFile("$tmp/plain.png", 'png', 100, 100), 'png'), [], []))->jpeg
+    $drawer->draw(new DrawPlan(new Plate("$tmp/marked.png", 'png'), []))->jpeg
+        === $drawer->draw(new DrawPlan(new Plate(plateFile("$tmp/plain.png", 'png', 100, 100), 'png'), []))->jpeg
 );
 
 // Failed renders.
 file_put_contents("$tmp/fake.png", '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>');
 foreach ([
-    'a missing plate' => new DrawPlan(new Plate("$tmp/nope.png", 'png'), [], []),
-    'SVG bytes named .png' => new DrawPlan(new Plate("$tmp/fake.png", 'png'), [], []),
-    'a plate whose bytes are not its format' => new DrawPlan(new Plate(plateFile("$tmp/jpeg.png.jpg", 'jpeg'), 'png'), [], []),
-    'a missing font' => new DrawPlan($plate, [$planned(new Line('H', 10.0, 10.0, 0.0, 0.0), font: "$tmp/nope.ttf")], []),
-    'a missing image' => new DrawPlan($plate, [], [new PlannedImage("$tmp/nope.png", new PlacedImage('h', 0, 0, 10, 10))]),
+    'a missing plate' => new DrawPlan(new Plate("$tmp/nope.png", 'png'), []),
+    'SVG bytes named .png' => new DrawPlan(new Plate("$tmp/fake.png", 'png'), []),
+    'a plate whose bytes are not its format' => new DrawPlan(new Plate(plateFile("$tmp/jpeg.png.jpg", 'jpeg'), 'png'), []),
+    'a missing font' => new DrawPlan($plate, [$planned(new Line('H', 10.0, 10.0, 0.0, 0.0), font: "$tmp/nope.ttf")]),
+    'a missing image' => new DrawPlan($plate, [new PlannedImage("$tmp/nope.png", new PlacedImage('h', 0, 0, 10, 10))]),
 ] as $label => $plan) {
     try {
         $drawer->draw($plan);

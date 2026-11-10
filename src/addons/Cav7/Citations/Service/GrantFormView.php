@@ -120,7 +120,9 @@ class GrantFormView extends AbstractService
     }
 
     /**
-     * @param list<TemplateVersion> $offered
+     * The version the clerk picked, or, when one template offers them all, its newest.
+     *
+     * @param list<TemplateVersion> $offered By template, newest first.
      */
     private function chosen(array $offered, int $versionId): ?TemplateVersion
     {
@@ -129,7 +131,9 @@ class GrantFormView extends AbstractService
                 return $version;
             }
         }
-        return count($offered) === 1 ? $offered[0] : null;
+        $templates = array_unique(array_map(fn (TemplateVersion $version): int => $version->template_id, $offered));
+
+        return count($templates) === 1 ? $offered[0] : null;
     }
 
     /**
@@ -180,7 +184,7 @@ class GrantFormView extends AbstractService
             'version_number' => $version->version_number,
             'landscape' => $version->plate_width > $version->plate_height,
             'published' => gmdate('Y-m-d', $version->publish_date),
-            'generic' => !FieldDependencies::used($version->renderVersion(), 'citation_text'),
+            'generic' => FieldDependencies::generic($version->renderVersion()),
         ];
     }
 

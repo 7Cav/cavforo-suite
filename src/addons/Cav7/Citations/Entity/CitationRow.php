@@ -2,7 +2,9 @@
 
 namespace Cav7\Citations\Entity;
 
+use Cav7\Citations\Storage\DataDisk;
 use Cav7\Citations\Storage\ImageSource;
+use Cav7\Citations\Storage\RowKind;
 
 /**
  * The read path and reference guard on both vendor row entities.
@@ -23,6 +25,8 @@ use Cav7\Citations\Storage\ImageSource;
  */
 trait CitationRow
 {
+    abstract protected function citationKind(): RowKind;
+
     public function hasGrantLink(): bool
     {
         return $this->citation_grant_member_id !== null || $this->citation_regiment_grant_id !== null;
@@ -30,7 +34,12 @@ trait CitationRow
 
     public function getImageUrl($canonical = false): ?string
     {
-        $source = ImageSource::for($this->hasGrantLink(), (int) $this->citation_date, $this->citation_blob_id);
+        $source = ImageSource::for(
+            $this->hasGrantLink(),
+            (int) $this->citation_date,
+            $this->citation_blob_id,
+            fn () => DataDisk::forApp($this->app())->stat($this->citationKind()->legacyKey($this->record_id)) !== null
+        );
 
         return match ($source) {
             ImageSource::Grant => ($this->CitationGrantMember ?? $this->CitationRegimentGrant)?->renderUrl((bool) $canonical),

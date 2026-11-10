@@ -99,6 +99,9 @@ touches source blobs created before `--synced-at` only, so rerunning for stray u
 safe. Replaced sources stay on disk until you purge them, so the blob tree holds both
 copies until then.
 
+Each encoded blob records its libjpeg version, read from `magick -list format`. With no
+`magick` binary on the PATH, or none that names its libjpeg, the run refuses and exits 2.
+
 The re-encode keeps a source as `decode_failed` for good. If a run hit an ImageMagick
 resource limit rather than a bad file, read the log and clear those blobs by hand:
 
@@ -155,9 +158,9 @@ cav7-citations:retypeset --template-version=7 --reason="ImageMagick upgrade"
 ```
 
 Choose grants with `--grant` (repeatable), `--template-version` or `--addon-version`. The
-dry run lists what would change and writes nothing. A real run needs `--reason`, logs it on
-each grant and moves each revision, so every attached row gets a new URL and the old one
-redirects. It exits 0 when clean, 1 when a grant failed and 2 when the command was refused.
+dry run lists what would change and writes nothing. A real run needs `--reason`. Each grant
+whose typesetting changes logs it and moves its revision, so its URL changes and the old one
+redirects. A grant with no change is left as it was. It exits 0 when clean, 1 when a grant failed and 2 when the command was refused.
 
 ## Reading damage
 
@@ -172,6 +175,8 @@ lower-case hex. Code never repairs damage.
 | `row has a citation but no blob, grant link or legacy file` | Re-upload, or restore the file. |
 | `reference to a blob with no row` | Restore the database, or re-upload. |
 | `reference on a row with no citation` | A restore put the two out of step. Decide which is right and fix the row by hand. |
+| `legacy file kept aside` | A take-in moved the file to `<path>.taken-<hex>` and couldn't finish. Either a newer upload has since taken its path or been taken in, and the row serves that, or putting it back failed, or the blob file the row points at is missing or damaged. If `<path>` is empty and the row has no blob reference, the kept one is the row's citation: rename it back to `<path>` and the next sweep takes it in. In the second case the kept one may be the only good copy. A blob line names the bad file, though a change that keeps its size shows only under `--verify-hashes`. If that line's hash matches the kept one's, copy the kept one to the blob path. Otherwise check the kept one, then delete it by hand. Until then each run reports it again. A sweep resumes any other take-in it finds cut short. |
+| `legacy file could not be moved` | Take-in couldn't move the file aside, so it left it in place and skipped the row. Check the directory's ownership and permissions for the PHP user. The row keeps serving the file. |
 | `unexpected entry` | Something other than the vendor wrote there. Look at it and remove it by hand. |
 | `blob file missing`, `blob file size differs`, `blob file hash mismatch` | Fetch the key from the archive and put it back at that path. The path is the archive key. |
 | `blob tree file with no blob row` | Never deleted automatically, because it may be the only copy. Check it against the archive, then remove it by hand. |
@@ -213,9 +218,9 @@ done
 
 A directory newer than the database is harmless. The extra files sit unused.
 
-**Filesystem restored, legacy files back.** The next sweep takes each one in as a source
-blob, byte for byte, and re-points its row, because a legacy file beats an existing
-reference. The encoded blobs lose those references. No revert is needed, and the sweep
+**Filesystem restored, legacy files back.** A legacy file beats an existing reference, so
+each row serves its restored file at once. The next sweep takes each one in as a source
+blob, byte for byte, and re-points its row. The encoded blobs lose those references. No revert is needed, and the sweep
 keeps running. A restored file for a row with a grant link is an orphan, and the sweep
 deletes it.
 

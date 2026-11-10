@@ -17,12 +17,12 @@
     "public/cav7_cit_grant_form_body.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "bd594f2e4835939bd93f2690bca688cd"
+        "hash": "35027450531f9d0c2d0148c06f1d38fd"
     },
     "public/cav7_cit_grant_list.html": {
-        "version_id": 1010070,
-        "version_string": "1.1.0",
-        "hash": "86ab240422ec7682dacaaaff687278dc"
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "9bdb95ae075f4c9a0cd7dd644969bfda"
     },
     "public/cav7_cit_grant_macros.html": {
         "version_id": 1010070,
@@ -42,7 +42,7 @@
     "public/cav7_cit_grant_view.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "166ae197d8eb4930e59c837e235805b8"
+        "hash": "bab1da77d36a7a1ae793bb429bf0bc49"
     },
     "public/cav7_cit_grant_withdraw.html": {
         "version_id": 1010070,
@@ -52,7 +52,7 @@
     "public/cav7_cit_legibility.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "bc3e211635182eaee30ee71eccb0cb69"
+        "hash": "eebafe762a3bb825fc582ff93152adb9"
     },
     "public/cav7_cit_manager_confirm.html": {
         "version_id": 1020070,
@@ -67,7 +67,7 @@
     "public/cav7_cit_pages.less": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "52437605afa7f91e203b6f4f6464cd49"
+        "hash": "73f9c77b9d7a3dbfe301ccef60d6917a"
     },
     "public/cav7_cit_pay_grades.html": {
         "version_id": 1020070,
@@ -77,7 +77,7 @@
     "public/cav7_cit_picker_macros.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "796ef5053577cd103dd2b629bac7bfd6"
+        "hash": "c1402b558816575fa6c416ca27eb18d4"
     },
     "public/cav7_cit_signature_form.html": {
         "version_id": 1020070,
@@ -87,7 +87,7 @@
     "public/cav7_cit_signature_list.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "6fa713345b081d5a93ea98b004eb57f9"
+        "hash": "31a556243321ff1c9cc9c74e1333a877"
     },
     "public/cav7_cit_template_add.html": {
         "version_id": 1020070,
@@ -97,12 +97,12 @@
     "public/cav7_cit_template_list.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "bb63ae033870cd135c020023f7794cec"
+        "hash": "9b05fb105f6bed110fdea8a7bb3f59e0"
     },
     "public/cav7_cit_template_view.html": {
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "d91a02c2050bb049f6d9f640aced0bbd"
+        "hash": "2598d0a751bd0515ba7e39741a1c21ef"
     },
     "public/cav7_cit_version_field.html": {
         "version_id": 1020070,

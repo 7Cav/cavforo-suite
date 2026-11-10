@@ -19,11 +19,9 @@ final class RenderFilename
     }
 
     /** @param \Closure(string): string $slug */
-    public static function forRegiment(string $kindTitle, int $grantDate, int $grantId, \Closure $slug): string
+    public static function forRegiment(string $kindTitle, int $grantDate, \Closure $slug): string
     {
-        $kind = self::part($kindTitle, $slug);
-
-        return self::join([$kind !== '' ? $kind : "grant-$grantId"], $grantDate);
+        return self::join(['7th-cavalry-regiment', self::part($kindTitle, $slug)], $grantDate);
     }
 
     /** @param \Closure(string): string $slug */

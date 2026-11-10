@@ -8,11 +8,12 @@ use Cav7\Citations\Template\FieldForm;
 use Cav7\Citations\Template\ImageUpload;
 use Cav7\Citations\Template\VersionLifecycle;
 use XF\Phrase;
+use XF\PrintableException;
 use XF\Service\AbstractService;
 
 /**
- * Starting, filling and deleting drafts. All of it freezes on publish in the entities, so a
- * caller can't skip that.
+ * Starting, filling and deleting drafts. Every write to an existing draft goes through
+ * locked(), and the entities refuse a frozen version as well.
  */
 class Drafts extends AbstractService
 {
@@ -46,18 +47,40 @@ class Drafts extends AbstractService
         });
     }
 
+    /**
+     * Publishing and every draft write hold the version row and work from it as stored, so
+     * nothing lands on a version another request published after this one loaded it.
+     *
+     * @template T
+     * @param \Closure(): T $write
+     * @return T
+     * @throws PrintableException
+     */
+    public function locked(TemplateVersion $draft, \Closure $write): mixed
+    {
+        return $this->db()->executeTransaction(function () use ($draft, $write): mixed {
+            $row = $this->db()->fetchRow(
+                'SELECT * FROM xf_cav7_citation_template_version WHERE template_version_id = ? FOR UPDATE',
+                $draft->template_version_id
+            );
+            if (!$row || !VersionLifecycle::isDraft($row['state'])) {
+                throw new PrintableException(\XF::phrase('cav7_cit_refused_version_frozen'));
+            }
+
+            foreach ($row as $column => $value) {
+                $draft->setAsSaved($column, $value);
+            }
+            $draft->clearCache('Kinds');
+            $draft->clearCache('RankArt');
+
+            return $write();
+        });
+    }
+
     /** @param list<array{'award'|'record_type', int}> $kinds */
     public function setKinds(TemplateVersion $draft, array $kinds): void
     {
-        $this->db()->executeTransaction(function () use ($draft, $kinds): void {
-            foreach ($draft->Kinds as $kind) {
-                $kind->delete(true, false);
-            }
-            foreach ($kinds as [$type, $id]) {
-                $this->addPart('Cav7\Citations:VersionKind', $draft, ['kind_type' => $type, 'kind_id' => $id]);
-            }
-        });
-        $draft->clearCache('Kinds');
+        $this->locked($draft, fn () => $this->replaceKinds($draft, $kinds));
     }
 
     /**
@@ -66,12 +89,12 @@ class Drafts extends AbstractService
      */
     public function saveSettings(TemplateVersion $draft, string $rankScope, array $inputs, array $kinds): void
     {
-        $this->db()->executeTransaction(function () use ($draft, $rankScope, $inputs, $kinds): void {
+        $this->locked($draft, function () use ($draft, $rankScope, $inputs, $kinds): void {
             $draft->rank_scope = $rankScope;
             $draft->input_definitions = self::json($inputs);
             $draft->save(true, false);
 
-            $this->setKinds($draft, $kinds);
+            $this->replaceKinds($draft, $kinds);
         });
     }
 
@@ -80,20 +103,20 @@ class Drafts extends AbstractService
     {
         $this->writeFields(
             $draft,
-            FieldForm::placed($draft->fieldDefinitions(), $originalKey, $definition),
+            fn (array $fields): array => FieldForm::placed($fields, $originalKey, $definition),
             $originalKey === null ? [] : [$originalKey => $definition['key']]
         );
     }
 
     public function removeField(TemplateVersion $draft, string $key): void
     {
-        $this->writeFields($draft, FieldForm::without($draft->fieldDefinitions(), $key));
+        $this->writeFields($draft, fn (array $fields): array => FieldForm::without($fields, $key));
     }
 
     /** @param -1|1 $step */
     public function moveField(TemplateVersion $draft, string $key, int $step): void
     {
-        $this->writeFields($draft, FieldForm::stepped($draft->fieldDefinitions(), $key, $step));
+        $this->writeFields($draft, fn (array $fields): array => FieldForm::stepped($fields, $key, $step));
     }
 
     /** @return Phrase|null A warning when the plate is off the width plates aim for. It saved either way. */
@@ -101,13 +124,15 @@ class Drafts extends AbstractService
     {
         [$image, $hash] = $this->service(ImageIntake::class)->store($path, ImageUpload::PLATE_FORMATS);
 
-        $draft->bulkSet([
-            'plate_hash' => $hash,
-            'plate_format' => $image->format,
-            'plate_width' => $image->width,
-            'plate_height' => $image->height,
-        ]);
-        $draft->save();
+        $this->locked($draft, function () use ($draft, $image, $hash): void {
+            $draft->bulkSet([
+                'plate_hash' => $hash,
+                'plate_format' => $image->format,
+                'plate_width' => $image->width,
+                'plate_height' => $image->height,
+            ]);
+            $draft->save(true, false);
+        });
 
         return $image->plateWidthWarns()
             ? \XF::phrase('cav7_cit_plate_width_warning', ['width' => $image->width])
@@ -119,16 +144,18 @@ class Drafts extends AbstractService
         [$image, $hash] = $this->service(ImageIntake::class)->store($path, ImageUpload::ART_FORMATS);
 
         $id = ['template_version_id' => $draft->template_version_id, 'field_key' => $fieldKey, 'rank_id' => $rankId];
-        $art = $this->em()->find('Cav7\Citations:RankArt', $id) ?? $this->em()->create('Cav7\Citations:RankArt');
-        $art->bulkSet($id + ['image_hash' => $hash, 'image_width' => $image->width, 'image_height' => $image->height]);
-        $art->save();
+        $this->locked($draft, function () use ($id, $image, $hash): void {
+            $art = $this->em()->find('Cav7\Citations:RankArt', $id) ?? $this->em()->create('Cav7\Citations:RankArt');
+            $art->bulkSet($id + ['image_hash' => $hash, 'image_width' => $image->width, 'image_height' => $image->height]);
+            $art->save(true, false);
+        });
         $draft->clearCache('RankArt');
     }
 
     public function removeRankArt(TemplateVersion $draft, string $fieldKey, int $rankId): void
     {
         $id = ['template_version_id' => $draft->template_version_id, 'field_key' => $fieldKey, 'rank_id' => $rankId];
-        $this->em()->find('Cav7\Citations:RankArt', $id)?->delete();
+        $this->locked($draft, fn () => $this->em()->find('Cav7\Citations:RankArt', $id)?->delete(true, false));
         $draft->clearCache('RankArt');
     }
 
@@ -137,7 +164,7 @@ class Drafts extends AbstractService
     {
         $template = $draft->Template;
 
-        $this->db()->executeTransaction(function () use ($draft, $template): void {
+        $this->locked($draft, function () use ($draft, $template): void {
             $draft->delete(true, false);
 
             $template->clearCache('Versions');
@@ -151,19 +178,20 @@ class Drafts extends AbstractService
      * Rank art follows its field: a rename carries it, and a field gone or no longer rank art
      * takes it along, so a later field under the same key doesn't inherit it.
      *
-     * @param list<array<string, mixed>> $definitions
+     * @param \Closure(list<array<string, mixed>>): list<array<string, mixed>> $edit The stored fields to the new ones.
      * @param array<string, string> $renamed New key by old key.
      */
-    private function writeFields(TemplateVersion $draft, array $definitions, array $renamed = []): void
+    private function writeFields(TemplateVersion $draft, \Closure $edit, array $renamed = []): void
     {
-        $artKeys = [];
-        foreach ($definitions as $field) {
-            if ($field['kind'] === 'rank_art') {
-                $artKeys[] = $field['key'];
+        $this->locked($draft, function () use ($draft, $edit, $renamed): void {
+            $definitions = $edit($draft->fieldDefinitions());
+            $artKeys = [];
+            foreach ($definitions as $field) {
+                if ($field['kind'] === 'rank_art') {
+                    $artKeys[] = $field['key'];
+                }
             }
-        }
 
-        $this->db()->executeTransaction(function () use ($draft, $definitions, $renamed, $artKeys): void {
             $draft->field_definitions = self::json($definitions);
             $draft->save(true, false);
 
@@ -178,6 +206,18 @@ class Drafts extends AbstractService
             }
         });
         $draft->clearCache('RankArt');
+    }
+
+    /** @param list<array{'award'|'record_type', int}> $kinds */
+    private function replaceKinds(TemplateVersion $draft, array $kinds): void
+    {
+        foreach ($draft->Kinds as $kind) {
+            $kind->delete(true, false);
+        }
+        foreach ($kinds as [$type, $id]) {
+            $this->addPart('Cav7\Citations:VersionKind', $draft, ['kind_type' => $type, 'kind_id' => $id]);
+        }
+        $draft->clearCache('Kinds');
     }
 
     /** @param list<array<string, mixed>> $definitions */

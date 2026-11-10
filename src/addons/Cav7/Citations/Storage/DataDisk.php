@@ -2,6 +2,9 @@
 
 namespace Cav7\Citations\Storage;
 
+use XF\App;
+use XF\Util\File;
+
 /**
  * The data/ directory as local files. Keys are paths relative to it.
  *
@@ -13,6 +16,11 @@ final class DataDisk
 {
     public function __construct(private string $root)
     {
+    }
+
+    public static function forApp(App $app): self
+    {
+        return new self(File::canonicalizePath($app->config('externalDataPath')));
     }
 
     public function path(string $key): string
@@ -93,6 +101,24 @@ final class DataDisk
     public function delete(string $key): bool
     {
         return @unlink($this->path($key));
+    }
+
+    public function move(string $from, string $to): bool
+    {
+        return @rename($this->path($from), $this->path($to));
+    }
+
+    /**
+     * Like move(), but refuses to replace anything at $to. A hard link can't overwrite.
+     */
+    public function moveIfFree(string $from, string $to): bool
+    {
+        if (!@link($this->path($from), $this->path($to))) {
+            return false;
+        }
+        @unlink($this->path($from));
+
+        return true;
     }
 
     // Each new directory gets XF's blank index.html, so a server with listings on

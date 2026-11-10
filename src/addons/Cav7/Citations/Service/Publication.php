@@ -3,6 +3,7 @@
 namespace Cav7\Citations\Service;
 
 use Cav7\Citations\Entity\TemplateVersion;
+use Cav7\Citations\Grant\GrantRules;
 use Cav7\Citations\Render\FontCatalog;
 use Cav7\Citations\Render\VersionRules;
 use Cav7\Citations\Template\FileStore;
@@ -19,11 +20,17 @@ class Publication extends AbstractService
     {
         $billetIds = array_map('intval', $this->db()->fetchAllColumn('SELECT billet_id FROM xf_cav7_citation_signing_billet'));
 
+        $regimentKinds = array_map(
+            fn (int $id): string => "award:$id",
+            GrantRules::awardList((string) $this->app->options()->cav7CitRegimentAwardIds) ?? []
+        );
+
         $problems = VersionRules::publishProblems(
             $draft->renderVersion(),
             $draft->plate_width,
             $draft->plate_height,
-            $draft->Kinds->count(),
+            $draft->kinds(),
+            $regimentKinds,
             $billetIds,
             $this->earlierScopes($draft),
         );
@@ -37,18 +44,20 @@ class Publication extends AbstractService
     /** @throws PrintableException */
     public function publish(TemplateVersion $draft, int $userId): void
     {
-        $problems = $this->problems($draft);
-        if ($problems !== []) {
-            throw new PrintableException($problems);
-        }
+        $this->service(Drafts::class)->locked($draft, function () use ($draft, $userId): void {
+            $problems = $this->problems($draft);
+            if ($problems !== []) {
+                throw new PrintableException($problems);
+            }
 
-        $draft->bulkSet([
-            'font_hashes' => json_encode($this->pinFonts($draft), JSON_THROW_ON_ERROR),
-            'state' => VersionLifecycle::PUBLISHED,
-            'publish_user_id' => $userId,
-            'publish_date' => \XF::$time,
-        ]);
-        $draft->save();
+            $draft->bulkSet([
+                'font_hashes' => json_encode($this->pinFonts($draft), JSON_THROW_ON_ERROR),
+                'state' => VersionLifecycle::PUBLISHED,
+                'publish_user_id' => $userId,
+                'publish_date' => \XF::$time,
+            ]);
+            $draft->save(true, false);
+        });
     }
 
     /** @throws PrintableException */
@@ -57,15 +66,6 @@ class Publication extends AbstractService
         self::assertState($version, VersionLifecycle::PUBLISHED);
 
         $version->bulkSet(['state' => VersionLifecycle::RETIRED, 'retire_date' => \XF::$time]);
-        $version->save();
-    }
-
-    /** @throws PrintableException */
-    public function unretire(TemplateVersion $version): void
-    {
-        self::assertState($version, VersionLifecycle::RETIRED);
-
-        $version->bulkSet(['state' => VersionLifecycle::PUBLISHED, 'retire_date' => 0]);
         $version->save();
     }
 

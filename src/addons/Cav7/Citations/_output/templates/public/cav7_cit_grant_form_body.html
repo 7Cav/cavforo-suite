@@ -138,7 +138,7 @@
 				</xf:if>
 			</xf:if>
 
-			<xf:if is="$grantInputs is not empty OR $writesText">
+			<xf:if is="$grantInputs is not empty OR $writesText OR $genericText">
 				<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_text') }}</h3>
 			</xf:if>
 			<xf:foreach loop="$grantInputs" value="$input">

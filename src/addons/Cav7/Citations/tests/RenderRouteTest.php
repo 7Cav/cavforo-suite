@@ -62,11 +62,11 @@ foreach ([
 
 check(
     'filename: a regiment grant has no name',
-    RenderFilename::forRegiment('Presidential Unit Citation', $day, 5, $slug) === 'presidential-unit-citation-2021-05-16.jpg'
+    RenderFilename::forRegiment('Presidential Unit Citation', $day, $slug) === '7th-cavalry-regiment-presidential-unit-citation-2021-05-16.jpg'
 );
 check(
-    'filename: a regiment title that slugs to nothing names the grant',
-    RenderFilename::forRegiment('???', $day, 5, $slug) === 'grant-5-2021-05-16.jpg'
+    'filename: a regiment title that slugs to nothing drops out',
+    RenderFilename::forRegiment('???', $day, $slug) === '7th-cavalry-regiment-2021-05-16.jpg'
 );
 
 $capped = RenderFilename::forMember(str_repeat('Long Name ', 30), 'Bronze Star', $day, 7, $slug);

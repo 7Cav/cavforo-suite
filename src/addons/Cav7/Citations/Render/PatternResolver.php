@@ -30,7 +30,7 @@ final class PatternResolver
 
         $lines = array_map(fn (string $line): string => trim($line, ' '), explode("\n", $text));
 
-        return implode("\n", array_filter($lines, fn (string $line): bool => $line !== ''));
+        return trim(preg_replace('/\n{3,}/', "\n\n", implode("\n", $lines)), "\n");
     }
 
     public static function filled(string $value): bool

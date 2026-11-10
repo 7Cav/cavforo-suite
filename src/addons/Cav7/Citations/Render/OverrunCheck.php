@@ -14,7 +14,10 @@ final class OverrunCheck
     public static function worst(DrawPlan $plan, FontMetrics $metrics): ?Overrun
     {
         $worst = null;
-        foreach ($plan->lines as $planned) {
+        foreach ($plan->steps as $planned) {
+            if (!$planned instanceof PlannedLine) {
+                continue;
+            }
             $line = $planned->line;
             $past = self::past($planned, $metrics->width($planned->fontPath, $planned->size, $line->t, $line->iw));
             if ($past > Typesetter::OVERRUN_TOLERANCE && $past > ($worst?->pixels ?? 0.0)) {

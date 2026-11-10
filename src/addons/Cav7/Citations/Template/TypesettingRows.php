@@ -90,21 +90,6 @@ final class TypesettingRows
         );
     }
 
-    /** New version stamps and nothing else, for a retypeset that found no change. */
-    public function restamp(int $grantId, int $addonVersionId, LibraryVersions $libraries): void
-    {
-        $this->db->update(
-            self::TABLE,
-            [
-                'addon_version_id' => $addonVersionId,
-                'imagemagick_version' => $libraries->imagemagick_version,
-                'freetype_version' => $libraries->freetype_version,
-            ],
-            'grant_id = ?',
-            $grantId
-        );
-    }
-
     public function clearGrant(int $grantId): void
     {
         $this->db->delete(self::TABLE, 'grant_id = ?', $grantId);

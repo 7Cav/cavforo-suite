@@ -12,7 +12,10 @@ final class Typesetter
 {
     public const REFERENCE_SIZE = 100.0;
     public const SIZE_STEP = 0.25;
-    public const LAST_RESORT_SIZE = 1.0;
+    public const GRID_FLOOR = 1.0;
+    /** Below the grid the fit walks in the stored precision, decimal(6,2). */
+    public const FINE_STEP = 0.01;
+    public const MIN_SIZE = 0.01;
     public const OVERRUN_TOLERANCE = 1.0;
 
     private const GAP = '/[ \x{85}\x{A0}\x{1680}\x{180E}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}]/u';
@@ -111,18 +114,18 @@ final class Typesetter
             $widest = max($widths);
             $height = $this->blockHeight($field, $font, count($lines), $size);
 
-            if (($widest <= $field->w && $height <= $field->h) || $size <= self::LAST_RESORT_SIZE) {
+            if (($widest <= $field->w && $height <= $field->h) || $size <= self::MIN_SIZE) {
                 $rows = array_map(null, $lines, $widths, array_fill(0, count($lines), true));
                 return [$size, $rows, 0.0];
             }
 
-            $next = $size - self::SIZE_STEP;
+            $next = self::smaller($size);
             if (!$jumped) {
                 $ratio = min($field->w / $widest, $field->h / $height);
                 $next = min($next, ceil($size * $ratio / self::SIZE_STEP) * self::SIZE_STEP);
                 $jumped = true;
             }
-            $size = max($next, self::LAST_RESORT_SIZE);
+            $size = max($next, self::MIN_SIZE);
         }
     }
 
@@ -151,22 +154,27 @@ final class Typesetter
             $paragraphs[] = $words;
         }
 
-        for ($size = $field->size; ; $size -= self::SIZE_STEP) {
-            $lastResort = $size <= self::LAST_RESORT_SIZE;
+        for ($size = $field->size; ; $size = self::smaller($size)) {
+            $smallest = $size <= self::MIN_SIZE;
             $lines = self::breakLines($paragraphs, $spaceEm, $size, $field->w);
 
-            if (!$lastResort && (
+            if (!$smallest && (
                 $widestEm * $size > $field->w
                 || $this->blockHeight($field, $font, count($lines), $size) > $field->h
             )) {
                 continue;
             }
 
-            $rows = $this->measured($lines, $font, $size, $lastResort ? INF : $field->w + self::OVERRUN_TOLERANCE);
+            $rows = $this->measured($lines, $font, $size, $smallest ? INF : $field->w + self::OVERRUN_TOLERANCE);
             if ($rows !== null) {
                 return [$size, $rows, $spaceEm * $size];
             }
         }
+    }
+
+    private static function smaller(float $size): float
+    {
+        return $size > self::GRID_FLOOR ? $size - self::SIZE_STEP : round($size - self::FINE_STEP, 2);
     }
 
     /**

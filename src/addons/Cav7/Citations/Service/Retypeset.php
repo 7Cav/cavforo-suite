@@ -51,7 +51,7 @@ class Retypeset extends AbstractService
     /**
      * Each grant is its own transaction with the grant row held, so a correction can't land
      * mid-way. That makes this the one place Imagick runs inside a transaction. A grant with
-     * no changes takes new stamps alone, so `--addon-version` stops finding it.
+     * no changes is left alone, since its stamps record what made its typesetting.
      *
      * @return array{grant: Grant, changes: list<FieldChange>}
      * @throws \Exception A grant that can't be read or set, left as it was.
@@ -63,14 +63,12 @@ class Retypeset extends AbstractService
 
             $grant = $this->load($grantId);
             [$fresh, $changes] = $this->compare($grant);
-            $rows = $this->render()->rows;
 
             if ($changes === []) {
-                $rows->restamp($grantId, $this->render()->addonVersionId, $this->render()->libraries);
                 return ['grant' => $grant, 'changes' => []];
             }
 
-            $before = $rows->stamps($grantId);
+            $before = $this->render()->rows->stamps($grantId);
             $this->render()->store($grantId, $fresh);
 
             $grant->revision += 1;

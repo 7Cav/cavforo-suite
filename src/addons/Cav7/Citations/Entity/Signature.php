@@ -19,6 +19,7 @@ use XF\Mvc\Entity\Structure;
  * @property string $state
  * @property int $create_user_id
  * @property int $create_date
+ * @property int $first_used_date 0 until a grant first pins it, and never cleared.
  *
  * RELATIONS
  * @property-read SigningBillet|null $Billet
@@ -86,6 +87,7 @@ class Signature extends Entity
             'state' => ['type' => self::STR, 'default' => 'active', 'allowedValues' => ['active', 'retired']],
             'create_user_id' => ['type' => self::UINT, 'required' => true],
             'create_date' => ['type' => self::UINT, 'default' => \XF::$time],
+            'first_used_date' => ['type' => self::UINT, 'default' => 0],
         ];
         $structure->getters = [];
         $structure->relations = [

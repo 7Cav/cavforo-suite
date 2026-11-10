@@ -38,9 +38,10 @@ final class Actor
             : $this->holds(self::VIEW, self::ISSUE, self::REMOVE_MEMBERS);
     }
 
+    /** The template list and pages and the legibility list, where moving citations starts. */
     public function canOpenTemplateManager(): bool
     {
-        return $this->holds(self::VIEW, self::EDIT_DRAFTS, self::PUBLISH, self::ISSUE);
+        return $this->holds(self::VIEW, self::EDIT_DRAFTS, self::PUBLISH, self::ISSUE, self::REGIMENT);
     }
 
     /**
@@ -70,7 +71,8 @@ final class Actor
         return $this->holds(self::PUBLISH);
     }
 
-    public function canPreviewTemplate(): bool
+    /** A version's design and preview, signatures and pay grades. */
+    public function canReadTemplates(): bool
     {
         return $this->holds(self::VIEW, self::EDIT_DRAFTS, self::PUBLISH);
     }

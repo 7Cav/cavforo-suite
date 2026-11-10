@@ -67,7 +67,7 @@ foreach ([
     'publish writes its whole set in one save' => [$draft, $published, ['state', 'font_hashes', 'publish_user_id', 'publish_date'], null],
     'a draft can\'t be retired' => [$draft, $retired, ['state', 'retire_date'], VersionLifecycle::BAD_TRANSITION],
     'retire touches state and date' => [$published, $retired, ['state', 'retire_date'], null],
-    'a retired version goes back' => [$retired, $published, ['state', 'retire_date'], null],
+    'a retired version stays retired' => [$retired, $published, ['state', 'retire_date'], VersionLifecycle::BAD_TRANSITION],
     'a published version can\'t go back to draft' => [$published, $draft, ['state'], VersionLifecycle::BAD_TRANSITION],
     'a retired version can\'t go back to draft' => [$retired, $draft, ['state'], VersionLifecycle::BAD_TRANSITION],
     'a published plate is frozen' => [$published, $published, ['plate_hash'], VersionLifecycle::VERSION_FROZEN],
@@ -117,13 +117,12 @@ $other = versionFacts(21, 2, 1, $published, ['award:5']);
 $retiredOnly = versionFacts(31, 3, 1, $retired, ['award:5']);
 
 foreach ([
-    'the newest published version is the one offered' => [[$v1, $v2], 'award:5', [12]],
-    'version order in the list doesn\'t matter' => [[$v2, $v1], 'award:5', [12]],
-    'an older published version is not offered, even for a kind only it serves' => [[$v1, $v2], 'award:6', []],
+    'every published version is offered' => [[$v1, $v2], 'award:5', [11, 12]],
+    'an older published version is offered for a kind only it serves' => [[$v1, $v2], 'award:6', [11]],
     'a draft is never offered' => [[$v2, $v3Draft], 'award:7', []],
     'several templates can serve one kind' => [[$v2, $other], 'award:5', [12, 21]],
     'one version can serve several kinds' => [[$v1], 'award:6', [11]],
-    'retiring the newest makes the next published current' => [[$v1, ['state' => $retired] + $v2], 'award:6', [11]],
+    'retiring a version stops its offer' => [[$v1, ['state' => $retired] + $v2], 'award:5', [11]],
     'a template with only a retired version offers nothing' => [[$retiredOnly], 'award:5', []],
     'a kind with no published template has nothing to list' => [[$v2], 'record_type:5', []],
 ] as $label => [$versions, $kind, $expected]) {
@@ -187,9 +186,9 @@ foreach ([
     'a retired one doesn\'t count against the preselection' => [[$active, $old], null, false, [1], 1],
     'two active signatures leave the slot blank' => [[$active, $acting], null, false, [1, 2], null],
     'none to show leaves it blank' => [[$elsewhere], null, false, [], null],
-    'showing retired adds them and leaves the slot blank' => [[$active, $old], null, true, [1, 3], null],
-    'showing retired with one to show still leaves it blank' => [[$active], null, true, [1], null],
-    'showing retired stays within the billet' => [[$active, $elsewhereRetired], null, true, [1], null],
+    'showing retired adds them and still preselects the one active signature' => [[$active, $old], null, true, [1, 3], 1],
+    'showing retired with two active still leaves the slot blank' => [[$active, $acting, $old], null, true, [1, 2, 3], null],
+    'showing retired stays within the billet' => [[$active, $elsewhereRetired], null, true, [1], 1],
     'a correction starts on the current signature' => [[$active, $acting], 2, false, [1, 2], 2],
     'a correction lists a retired current signature' => [[$active, $old], 3, false, [1, 3], 3],
     'a correction lists a current signature from another billet' => [[$active, $elsewhere], 4, false, [1, 4], 4],
@@ -259,26 +258,27 @@ $regiment = $held(Actor::REGIMENT);
 $edit = $held(Actor::EDIT_DRAFTS);
 $publish = $held(Actor::PUBLISH);
 
-$opens = [$view, $issue, $edit, $publish];
-$opensNot = [$none, $remove, $regiment];
-$previews = [$view, $edit, $publish];
-$previewsNot = [$none, $issue, $remove, $regiment];
+$opens = [$view, $issue, $regiment, $edit, $publish];
+$opensNot = [$none, $remove];
+$reads = [$view, $edit, $publish];
+$readsNot = [$none, $issue, $remove, $regiment];
 $edits = [$edit];
 $editsNot = [$none, $view, $issue, $remove, $regiment, $publish];
 $publishes = [$publish];
 $publishesNot = [$none, $view, $issue, $remove, $regiment, $edit];
 
 foreach ([
-    [['templates/index', 'templates/paygrades', 'templates/legibility', 'versions/index', 'versions/plate', 'versions/art',
-        'versions/field', 'versions/rankart', 'signatures/index', 'signatures/ink'], $opens, $opensNot],
-    [['versions/preview'], $previews, $previewsNot],
+    // Issue and regiment reach bulk move through the template pages, and move one at a time from the legibility list.
+    [['templates/index', 'templates/legibility', 'versions/plate'], $opens, $opensNot],
+    [['templates/paygrades', 'versions/index', 'versions/art', 'versions/field', 'versions/rankart', 'signatures/index',
+        'signatures/ink', 'versions/preview'], $reads, $readsNot],
     [['templates/add', 'templates/newdraft', 'versions/uploadplate', 'versions/settings', 'versions/savefield',
         'versions/removefield', 'versions/movefield', 'versions/saverankart', 'versions/delete'], $edits, $editsNot],
-    [['templates/savepaygrades', 'versions/publish', 'versions/retire', 'versions/reinstate', 'signatures/add', 'signatures/edit',
+    [['templates/savepaygrades', 'versions/publish', 'versions/retire', 'signatures/add', 'signatures/edit',
         'signatures/delete', 'signatures/retire', 'signatures/reinstate', 'signatures/addbillet', 'signatures/editbillet',
         'signatures/deletebillet'], $publishes, $publishesNot],
     [['versions/movecitations'], [$issue, $regiment], [$none, $view, $remove, $edit, $publish]],
-    [['templates/anythingelse', 'versions/anythingelse', 'signatures/anythingelse', 'signatures/publish', 'versions/add'], [], [$view, $issue, $remove, $regiment, $edit, $publish]],
+    [['templates/anythingelse', 'versions/anythingelse', 'signatures/anythingelse', 'signatures/publish', 'versions/add', 'versions/reinstate'], [], [$view, $issue, $remove, $regiment, $edit, $publish]],
 ] as [$actions, $allowed, $refused]) {
     foreach ($actions as $action) {
         [$page, $name] = explode('/', $action);

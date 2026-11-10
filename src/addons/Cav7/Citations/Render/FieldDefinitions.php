@@ -64,7 +64,7 @@ final class FieldDefinitions
             return;
         }
 
-        self::require($field->size >= Typesetter::LAST_RESORT_SIZE, "Bad size on $key");
+        self::require($field->size >= Typesetter::GRID_FLOOR, "Bad size on $key");
         self::require(fmod($field->size, Typesetter::SIZE_STEP) === 0.0, "Size off the grid on $key");
         self::require($field->legible_size >= 0, "Bad legible_size on $key");
         self::require($field->leading > 0, "Bad leading on $key");

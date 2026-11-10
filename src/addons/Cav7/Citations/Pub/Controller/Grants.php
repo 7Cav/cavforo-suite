@@ -148,6 +148,9 @@ class Grants extends AbstractController
     public function actionCorrect(ParameterBag $params): AbstractReply
     {
         $grant = $this->grant($params);
+        if ($grant->withdrawn_date) {
+            return $this->error(\XF::phrase('cav7_cit_refused_already_withdrawn'));
+        }
 
         if (!$this->isPost()) {
             return $this->formPage(
@@ -174,6 +177,9 @@ class Grants extends AbstractController
     public function actionMove(ParameterBag $params): AbstractReply
     {
         $grant = $this->grant($params);
+        if ($grant->withdrawn_date) {
+            return $this->error(\XF::phrase('cav7_cit_refused_already_withdrawn'));
+        }
         $targets = $this->moveTargets($grant);
         if ($targets === []) {
             return $this->error(\XF::phrase('cav7_cit_no_version_to_move_to'));
@@ -281,11 +287,13 @@ class Grants extends AbstractController
             $grants = $finder->limitByPage($page, self::PER_PAGE)->fetch();
         }
         $regiment = $actor->canOpenGrant(true) ? $repo->listed(true, $kind, $day, $relationId)->fetch() : [];
+        $shownIds = array_merge($grants === [] ? [] : $grants->keys(), $regiment === [] ? [] : $regiment->keys());
 
         return $this->view('Cav7\Citations:Grant\List', 'cav7_cit_grant_list', [
             'grants' => $grants,
             'regimentGrants' => $regiment,
             'names' => $repo->memberSummaries($grants === [] ? [] : $grants->keys()),
+            'corrections' => $repo->lastCorrections($shownIds),
             'filters' => $filters,
             'kinds' => $repo->issuedKinds(),
             'canIssue' => PageAccess::allows('issue', $actor, null),
@@ -308,7 +316,7 @@ class Grants extends AbstractController
             'grantInputs' => $this->printedInputs($design, 'grant', $grant->input_values),
             'memberInputs' => $form['memberInputs'],
             'memberRank' => $design->rank_scope === 'member',
-            'generic' => $grant->citation_text === null,
+            'generic' => FieldDependencies::generic($design),
             'genericText' => $form['genericText'],
             'members' => $members,
             'regimentUrl' => $grant->is_regiment ? $grant->renderUrl() : '',
@@ -318,7 +326,7 @@ class Grants extends AbstractController
                 'correct' => PageAccess::allows('correct', $actor, $grant->is_regiment) && !$grant->withdrawn_date,
                 'addMember' => PageAccess::allows('addmember', $actor, $grant->is_regiment),
                 'removeMember' => $grant->Members->count() > 0 && PageAccess::allows('removemember', $actor, $grant->is_regiment),
-                'move' => PageAccess::allows('move', $actor, $grant->is_regiment) && $this->moveTargets($grant) !== [],
+                'move' => !$grant->withdrawn_date && PageAccess::allows('move', $actor, $grant->is_regiment) && $this->moveTargets($grant) !== [],
                 'withdraw' => !$grant->withdrawn_date && PageAccess::allows('withdraw', $actor, $grant->is_regiment),
             ],
         ]);

@@ -3,8 +3,10 @@
 
 <xf:pageaction>
 	<div class="buttonGroup">
-		<xf:button href="{{ link('rosters/citation-signatures') }}">{{ phrase('cav7_cit_signatures') }}</xf:button>
-		<xf:button href="{{ link('rosters/citation-templates/pay-grades') }}">{{ phrase('cav7_cit_pay_grades') }}</xf:button>
+		<xf:if is="$canRead">
+			<xf:button href="{{ link('rosters/citation-signatures') }}">{{ phrase('cav7_cit_signatures') }}</xf:button>
+			<xf:button href="{{ link('rosters/citation-templates/pay-grades') }}">{{ phrase('cav7_cit_pay_grades') }}</xf:button>
+		</xf:if>
 		<xf:button href="{{ link('rosters/citation-templates/legibility') }}">{{ phrase('cav7_cit_legibility_list') }}</xf:button>
 	</div>
 	<xf:if is="$canAdd">

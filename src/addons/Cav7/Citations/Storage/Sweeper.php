@@ -10,11 +10,13 @@ use XF\Db\AbstractAdapter;
  * zero-reference blobs.
  *
  * Orphans are counted and then deleted by walking the legacy tree again, judging each
- * file by its row at that moment. Nothing carries a list of files between steps.
+ * file by its row at that moment. Nothing carries a list of files between steps. The job
+ * drops the lock between them, so the delete pass stops at the count the brake judged.
  */
 final class Sweeper
 {
     private const ROW_PAGE = 1000;
+    private const ASIDE = '.taken-';
 
     /**
      * @param \Closure(string): void $say
@@ -144,6 +146,16 @@ final class Sweeper
         if ($name === 'index.html') {
             return;
         }
+        $taken = preg_match('/^(.+)' . preg_quote(self::ASIDE) . '[0-9a-f]{8}$/', $name, $match)
+            ? SweepRules::legacyRecordId($match[1], $shard)
+            : null;
+        if ($taken !== null && !$entry['dir']) {
+            // A dry run holds no lock, so the file may belong to a take-in still running.
+            if (!$p->dryRun) {
+                $this->recoverAside($p, $kind, $shard, $match[1], $taken, $entry, $key);
+            }
+            return;
+        }
         if ($entry['dir'] || SweepRules::legacyRecordId($name, $shard) === null) {
             $this->damage->report('unexpected entry', $key);
             return;
@@ -164,6 +176,27 @@ final class Sweeper
         }
     }
 
+    // A take-in moved this aside and died. A new upload clears the reference, so with none
+    // the row has taken nothing in since and the file goes back. Otherwise only a referenced
+    // blob whose file holds the same bytes lets it be deleted, so no pass can drop the last copy.
+    private function recoverAside(SweepProgress $p, RowKind $kind, int $shard, string $name, int $recordId, array $entry, string $aside): void
+    {
+        $key = "{$kind->legacyTree()}/$shard/$name";
+        $blobId = $this->rows->facts($kind, $recordId)['citation_blob_id'] ?? null;
+        $blob = $blobId !== null ? $this->blobs->byId($blobId) : null;
+        $hash = $this->disk->hash($aside);
+
+        if ($blobId === null && $this->disk->moveIfFree($aside, $key)) {
+            $this->visitForTakeIn($p, $kind, $shard, $name, $entry);
+        } elseif ($blob !== null && $hash !== null && $blob['content_hash'] === $hash && $this->disk->hash(BlobFile::keyOf($blob)) === $hash) {
+            if (!$this->disk->delete($aside)) {
+                $this->damage->report('legacy file could not be deleted', $aside, "{$kind->value}:$recordId");
+            }
+        } else {
+            $this->damage->report('legacy file kept aside', $aside, "{$kind->value}:$recordId", $hash);
+        }
+    }
+
     private function previewTakeIn(SweepProgress $p, string $key, RowKind $kind, int $recordId): void
     {
         if (BlobFile::format($this->disk->leadingBytes($key)) === null) {
@@ -176,8 +209,9 @@ final class Sweeper
 
     private function takeIn(SweepProgress $p, string $key, RowKind $kind, int $recordId, int $seenDate): void
     {
+        // The shard's listing may be stale by now, and the vendor writes the file before it stamps the row.
         $seenFile = $this->disk->stat($key);
-        if ($seenFile === null) {
+        if ($seenFile === null || !SweepRules::isSettled($seenFile['mtime'], time())) {
             return;
         }
 
@@ -199,22 +233,46 @@ final class Sweeper
         }
 
         $this->db->beginTransaction();
-        $row = $this->rows->facts($kind, $recordId, true);
-        $unchanged = $row !== null
-            && $row['citation_date'] === $seenDate
-            && !$row['grant_linked']
-            && $this->disk->stat($key) === $seenFile;
+        $aside = null;
+        try {
+            $row = $this->rows->facts($kind, $recordId, true);
+            if ($row !== null && $row['citation_date'] === $seenDate && !$row['grant_linked']) {
+                // The vendor rewrites this path in place, so only a file moved off it is safe to delete.
+                $aside = $key . self::ASIDE . bin2hex(random_bytes(4));
+                if (!$this->disk->move($key, $aside)) {
+                    $aside = null;
+                    // Gone or rewritten since the copy is the next run's business; a file still
+                    // here that won't move would otherwise be skipped silently every run.
+                    if ($this->disk->stat($key) === $seenFile) {
+                        $this->damage->report('legacy file could not be moved', $key, "{$kind->value}:$recordId");
+                    }
+                }
+            }
 
-        if ($unchanged) {
-            $this->rows->point($kind, $recordId, (int) $blob['blob_id']);
+            // The mtime catches a re-upload of the same bytes, the hash anything else.
+            $unchanged = $aside !== null
+                && $this->disk->stat($aside) === $seenFile
+                && $this->disk->hash($aside) === $blob['content_hash'];
+
+            if ($unchanged) {
+                $this->rows->point($kind, $recordId, (int) $blob['blob_id']);
+            }
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            if ($aside !== null && !$this->disk->moveIfFree($aside, $key)) {
+                $this->damage->report('legacy file kept aside', $aside, "{$kind->value}:$recordId");
+            }
+            throw $e;
         }
-        $this->db->commit();
 
         if ($unchanged) {
             $p->tookIn++;
-            if (!$this->disk->delete($key)) {
-                $this->damage->report('legacy file could not be deleted', $key, "{$kind->value}:$recordId");
+            if (!$this->disk->delete($aside)) {
+                $this->damage->report('legacy file could not be deleted', $aside, "{$kind->value}:$recordId");
             }
+        } elseif ($aside !== null && !$this->disk->moveIfFree($aside, $key)) {
+            $this->damage->report('legacy file kept aside', $aside, "{$kind->value}:$recordId");
         }
     }
 
@@ -266,15 +324,20 @@ final class Sweeper
 
     private function visitForDelete(SweepProgress $p, RowKind $kind, int $shard, string $name, array $entry): void
     {
+        if ($p->orphansDeleted >= $p->orphans) {
+            return;
+        }
+
         $orphan = $this->orphanReason($kind, $shard, $name, $entry);
         $key = "{$kind->legacyTree()}/$shard/$name";
-        $hash = $orphan !== null ? $this->disk->hash($key) : null;
+        $file = $orphan !== null ? $this->disk->stat($key) : null;
+        $hash = $file !== null && SweepRules::isSettled($file['mtime'], time()) ? $this->disk->hash($key) : null;
         if ($hash === null) {
             return;
         }
 
-        $this->blobs->logDeletion($orphan, $key, $entry['size'], $hash, null, null, $p->liftBrake);
         if ($this->disk->delete($key)) {
+            $this->blobs->logDeletion($orphan, $key, $file['size'], $hash, null, null, $p->liftBrake);
             $p->orphansDeleted++;
         } else {
             $this->damage->report('legacy file could not be deleted', $key, '', $hash);

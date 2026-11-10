@@ -175,15 +175,15 @@ foreach ([
 // Issuing, one mutation per row of a request that otherwise passes.
 $issue = function (array $with = []) use ($written, $regimentVersion, $generic, $values, $clerk, $manager, $billets, $rank): array {
     $with += [
-        'version' => $written, 'kind' => ['award', 12], 'shown' => 40, 'current' => 40, 'state' => 'published',
+        'version' => $written, 'kind' => ['award', 12], 'shown' => 40, 'state' => 'published',
         'kinds' => ['award:12', 'award:61'], 'title' => 'Bronze', 'duplicate' => false, 'actor' => $clerk,
-        'values' => $values(), 'art' => ['insignia' => [7]],
+        'values' => $values(), 'art' => ['insignia' => [7]], 'milpacs' => [1],
     ];
     $request = new IssueRequest($with['kind'][0], $with['kind'][1], $with['shown'], $with['values'], [61]);
 
     return rules(GrantRules::issueProblems(
-        $request, $with['values'], $with['version'], $with['state'], $with['kinds'], $with['current'],
-        $with['title'], $with['duplicate'], $with['actor'], $billets, $with['art'],
+        $request, $with['values'], $with['version'], $with['state'], $with['kinds'],
+        $with['title'], $with['duplicate'], $with['actor'], $billets, $with['art'], $with['milpacs'],
     ));
 };
 
@@ -193,6 +193,7 @@ foreach ([
     'a whole member grant passes' => [[], []],
     'I-3 a member grant needs a milpac' => [['values' => $values(['members' => []])], ['no_members']],
     'I-3 the same milpac twice' => [['values' => $values(['members' => [$member(1), $member(1)]])], ['duplicate_member 1']],
+    'a relation id with no milpac' => [['values' => $values(['members' => [$member(1), $member(2)]])], ['no_such_milpac 2']],
     'I-4 a clerk can\'t issue a listed award' => [
         ['kind' => ['award', 61], 'version' => $regimentVersion, 'values' => $regimentValues],
         ['regiment_needs_permission'],
@@ -201,7 +202,6 @@ foreach ([
     'I-5 a retired version' => [['state' => 'retired'], ['version_not_published']],
     'I-5 a kind the version doesn\'t serve' => [['kinds' => ['award:99']], ['kind_not_served']],
     'I-5 a record type under an award\'s id' => [['kind' => ['record_type', 12]], ['kind_not_served']],
-    'G-19 a form showing an old version comes back' => [['shown' => 39], ['version_not_current']],
     'an award that no longer exists' => [['title' => null], ['no_such_kind']],
     'I-6 a bad date' => [['values' => $values(['date' => '2026-13-40'])], ['bad_date']],
     'I-8 a written version with no text' => [['values' => $values(['citationText' => null])], ['citation_text_required']],
@@ -219,8 +219,8 @@ foreach ([
         ['no_such_rank 1'],
     ],
     'every refusal at once' => [
-        ['values' => $values(['citationText' => '', 'signatures' => [], 'inputs' => []]), 'shown' => 39],
-        ['citation_text_required', 'input_required unit', 'slot_empty sig', 'version_not_current'],
+        ['values' => $values(['citationText' => '', 'signatures' => [], 'inputs' => []])],
+        ['citation_text_required', 'input_required unit', 'slot_empty sig'],
     ],
 ] as $label => [$with, $expected]) {
     $got = $issue($with);
@@ -273,8 +273,9 @@ foreach ([
     'M-1 a regiment grant doesn\'t' => [true, [], $member(1), ['not_a_member_grant']],
     'M-4 a milpac already on it' => [false, [1, 2], $member(1), ['duplicate_member 1']],
     'M-5 a required member input' => [false, [], $member(1, []), ['input_required 1: role']],
+    'a relation id with no milpac' => [false, [], $member(3), ['no_such_milpac 3']],
 ] as $label => [$isRegiment, $held, $adding, $expected]) {
-    $got = rules(GrantRules::addProblems($isRegiment, $held, $written, $adding));
+    $got = rules(GrantRules::addProblems($isRegiment, $held, $written, $adding, [1]));
     check($label, $got === $expected, json_encode($got));
 }
 
@@ -369,8 +370,8 @@ $kept = $two()->changed(new GrantChanges(citationText: 'x', members: [401 => new
 check('restating a member\'s rank keeps the held snapshot', $kept->members[401]->rank === $rank && $kept->pendingRanks() === []);
 
 // Corrections that refuse.
-$reasoned = fn (GrantChanges $changes, string $reason = 'Typo'): array
-    => rules(GrantRules::correctionProblems($written, $two()->changed($changes, $written)->snapshotted([]), $changes, $reason, false, $billets, []));
+$reasoned = fn (GrantChanges $changes, string $reason = 'Typo', int $withdrawn = 0): array
+    => rules(GrantRules::correctionProblems($written, $two()->changed($changes, $written)->snapshotted([]), $changes, $reason, $withdrawn, false, $billets, []));
 
 foreach ([
     'a whole correction passes' => [new GrantChanges(citationText: 'For gallantry.'), 'Typo', []],
@@ -386,12 +387,14 @@ foreach ([
     $got = $reasoned($changes, $reason);
     check($label, $got === $expected, json_encode($got));
 }
+check('a withdrawn grant can\'t be corrected', $reasoned(new GrantChanges(citationText: 'For gallantry.'), 'Typo', 1000) === ['already_withdrawn']);
 
 check('I-17 a date landing on a live regiment grant refuses', rules(GrantRules::correctionProblems(
     $regimentVersion,
     $regimentValues,
     new GrantChanges(date: '2026-07-01'),
     'Wrong day',
+    0,
     true,
     $billets,
     ['insignia' => [7]],
@@ -434,9 +437,11 @@ foreach ([
     'C-9 it must serve the grant\'s kind' => ['Moved', false, 'award:12', 2, 'published', ['award:13'], $written, ['kind_not_served']],
     'I-16 a regiment grant needs a version with no member' => ['Moved', true, 'award:61', 2, 'published', ['award:61'], $written, ['version_needs_member']],
 ] as $label => [$reason, $isRegiment, $kind, $templateId, $state, $kinds, $target, $expected]) {
-    $got = rules(GrantRules::moveProblems($reason, $isRegiment, $kind, 2, $templateId, $state, $kinds, $target));
+    $got = rules(GrantRules::moveProblems($reason, 0, $isRegiment, $kind, 11, 12, 2, $templateId, $state, $kinds, $target));
     check($label, $got === $expected, json_encode($got));
 }
+check('a withdrawn grant can\'t be moved', rules(GrantRules::moveProblems('Moved', 1000, true, 'award:61', 11, 12, 2, 2, 'published', ['award:61'], $regimentVersion)) === ['already_withdrawn']);
+check('a grant can\'t move to the version it already holds', rules(GrantRules::moveProblems('Moved', 0, false, 'award:12', 11, 11, 2, 2, 'published', ['award:12'], $written)) === ['already_on_version']);
 
 // What the typesetter gets for each scope.
 $ink = new PinnedSignature(['Col'], new ImageFile('hash', 10, 10));
@@ -547,7 +552,7 @@ $none = $actor();
 foreach ([
     'holding nothing opens nothing' => [
         !$none->canOpenGrantList() && !$none->canOpenGrant(false) && !$none->canOpenGrant(true)
-        && !$none->canOpenTemplateManager() && !$none->canPreviewTemplate(),
+        && !$none->canOpenTemplateManager() && !$none->canReadTemplates(),
     ],
     'the list opens for view, issue, remove or regiment' => [
         $actor(Actor::VIEW)->canOpenGrantList() && $actor(Actor::ISSUE)->canOpenGrantList()
@@ -562,10 +567,10 @@ foreach ([
         $actor(Actor::VIEW)->canOpenGrant(true) && $actor(Actor::REGIMENT)->canOpenGrant(true)
         && !$actor(Actor::ISSUE, Actor::REMOVE_MEMBERS)->canOpenGrant(true),
     ],
-    'the template manager opens for view, drafts, publish or issue' => [
+    'the template manager opens for view, drafts, publish, issue or regiment' => [
         $actor(Actor::VIEW)->canOpenTemplateManager() && $actor(Actor::EDIT_DRAFTS)->canOpenTemplateManager()
         && $actor(Actor::PUBLISH)->canOpenTemplateManager() && $actor(Actor::ISSUE)->canOpenTemplateManager()
-        && !$actor(Actor::REGIMENT, Actor::REMOVE_MEMBERS)->canOpenTemplateManager(),
+        && $actor(Actor::REGIMENT)->canOpenTemplateManager() && !$actor(Actor::REMOVE_MEMBERS)->canOpenTemplateManager(),
     ],
     'issue permission doesn\'t reach a regiment grant, and the regiment one doesn\'t reach members' => [
         $actor(Actor::ISSUE)->canIssue(false) && !$actor(Actor::ISSUE)->canIssue(true)
@@ -578,9 +583,9 @@ foreach ([
         $actor(Actor::EDIT_DRAFTS)->canEditDrafts() && !$actor(Actor::EDIT_DRAFTS)->canPublish()
         && $actor(Actor::PUBLISH)->canPublish() && !$actor(Actor::PUBLISH)->canEditDrafts(),
     ],
-    'a template preview takes view or either template permission' => [
-        $actor(Actor::VIEW)->canPreviewTemplate() && $actor(Actor::EDIT_DRAFTS)->canPreviewTemplate()
-        && $actor(Actor::PUBLISH)->canPreviewTemplate() && !$actor(Actor::ISSUE)->canPreviewTemplate(),
+    'reading a template\'s design takes view or either template permission' => [
+        $actor(Actor::VIEW)->canReadTemplates() && $actor(Actor::EDIT_DRAFTS)->canReadTemplates()
+        && $actor(Actor::PUBLISH)->canReadTemplates() && !$actor(Actor::ISSUE)->canReadTemplates(),
     ],
 ] as $label => [$ok]) {
     check($label, $ok);
@@ -703,14 +708,35 @@ $rows = PreviewFit::rows($design, [
     'body' => new SetField('body', 17.75, true, []),
     'name_line' => new SetField('name_line', 20.0, true, []),
 ]);
-$fit = PreviewFit::of($design, $rows);
+$fit = PreviewFit::of($design, $rows, 1275, 1650);
 check('fit: a field left out still has a row to draw', array_keys($rows) === ['body', 'date_line', 'name_line', 'sig_co', 'art']);
 check('fit: rank art stays art', $rows['art']->lines === null && $rows['sig_co']->lines === []);
 check('fit: every flagged field warns', array_column($fit->below, 'key') === ['body', 'name_line']);
-check('fit: a warning says which is the text and its threshold', $fit->below[0]['text'] && !$fit->below[1]['text'] && $fit->below[0]['legible'] === 23.0);
-check('fit: the text size is reported', $fit->text === ['size' => 17.75, 'largest' => false]);
-check('fit: at its cap it says so', PreviewFit::of($design, PreviewFit::rows($design, ['body' => new SetField('body', 30.0, false, [])]))->text['largest']);
-check('fit: no text set reports none', PreviewFit::of($design, PreviewFit::rows($design, []))->text === null);
+check('fit: a warning says which is the text and its threshold', $fit->below[0]['text'] && !$fit->below[1]['text'] && $fit->below[0]['legible'] === 11.04);
+check(
+    'fit: the text size is reported in points on an 8.5 inch plate, portrait or landscape',
+    $fit->text === ['size' => 8.52, 'largest' => false] && PreviewFit::of($design, $rows, 1650, 1275)->text === $fit->text
+);
+check('fit: at its cap it says so', PreviewFit::of($design, PreviewFit::rows($design, ['body' => new SetField('body', 30.0, false, [])]), 1275, 1650)->text['largest']);
+check('fit: no text set reports none', PreviewFit::of($design, PreviewFit::rows($design, []), 1275, 1650)->text === null);
+check('fit: an empty signature slot and empty citation text get placeholders', $keys(PreviewFit::placeholders($design, PreviewFit::rows($design, []))) === ['body', 'sig_co']);
+check('fit: a filled one gets none', $keys(PreviewFit::placeholders($design, PreviewFit::rows($design, [
+    'body' => new SetField('body', 30.0, false, [new Line('For valour.', 0.0, 0.0, 50.0, 0.0)]),
+    'sig_co' => new SetField('sig_co', 19.0, false, [], ink: new PlacedImage('h', 0, 0, 10, 10)),
+]))) === []);
+
+// A generic version's wrapped literal is its citation text, as the prototype's EIB body is.
+$genericBody = new TextField('body', 0, 0, 100, 100, 'Awarded for passing the course.', 'tinos-regular', 30.0, 23.0, 1.2, 'wrap', 'justify', false, '#000000');
+$generic = new Version([$genericBody, $dateLine, $slot], [], 'none');
+$genericFit = PreviewFit::of($generic, PreviewFit::rows($generic, [
+    'body' => new SetField('body', 17.75, true, []),
+    'date_line' => new SetField('date_line', 24.0, false, []),
+]), 1275, 1650);
+check(
+    'fit: a generic version\'s wrapped text reports and warns as the citation text',
+    $genericFit->text === ['size' => 8.52, 'largest' => false] && $genericFit->below[0]['text'],
+    json_encode($genericFit)
+);
 
 // The history's "what changed".
 $names = [14 => 'Quenby.T'];
@@ -728,7 +754,17 @@ foreach ([
         [['cav7_cit_log_member_rank', ['name' => '#9']]],
     ],
     'an addition names the snapshot' => [LogSummary::of('member_added', ['name' => 'Tobin'], $names), [['cav7_cit_log_member_added', ['name' => 'Tobin']]]],
-    'a removal too' => [LogSummary::of('member_removed', ['name' => 'Lorne'], $names), [['cav7_cit_log_member_removed', ['name' => 'Lorne']]]],
+    'a removal names the snapshot and every row it cleared' => [
+        LogSummary::of('member_removed', ['name' => 'Lorne', 'rows' => [
+            ['row_type' => 'award', 'record_id' => 7, 'relation_id' => 10, 'kind_title' => 'Bronze Star', 'row_date' => 1782691200],
+            ['row_type' => 'record', 'record_id' => 8, 'relation_id' => 10, 'kind_title' => 'Promotion', 'row_date' => 1782777600],
+        ]], $names),
+        [
+            ['cav7_cit_log_member_removed', ['name' => 'Lorne']],
+            ['cav7_cit_log_cleared_award', ['title' => 'Bronze Star', 'date' => '2026-06-29']],
+            ['cav7_cit_log_cleared_record', ['title' => 'Promotion', 'date' => '2026-06-30']],
+        ],
+    ],
 ] as $label => [$actual, $expected]) {
     check("history: $label", $actual === $expected, var_export($actual, true));
 }

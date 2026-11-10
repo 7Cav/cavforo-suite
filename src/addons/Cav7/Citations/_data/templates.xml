@@ -213,7 +213,7 @@
 				</xf:if>
 			</xf:if>
 
-			<xf:if is="$grantInputs is not empty OR $writesText">
+			<xf:if is="$grantInputs is not empty OR $writesText OR $genericText">
 				<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_text') }}</h3>
 			</xf:if>
 			<xf:foreach loop="$grantInputs" value="$input">
@@ -251,7 +251,7 @@
 	</xf:if>
 </div>
 ]]></template>
-  <template type="public" title="cav7_cit_grant_list" version_id="1010070" version_string="1.1.0"><![CDATA[<xf:title>{{ phrase('cav7_cit_citations') }}</xf:title>
+  <template type="public" title="cav7_cit_grant_list" version_id="1020070" version_string="1.2.0"><![CDATA[<xf:title>{{ phrase('cav7_cit_citations') }}</xf:title>
 <xf:css src="cav7_cit_pages.less" />
 
 <xf:if is="$canIssue">
@@ -260,7 +260,7 @@
 	</xf:pageaction>
 </xf:if>
 
-<xf:macro id="table" arg-grants="!" arg-names="{{ [] }}">
+<xf:macro id="table" arg-grants="!" arg-names="{{ [] }}" arg-corrections="{{ [] }}">
 	<div class="dataList">
 		<table class="dataList-table">
 			<tr class="dataList-row dataList-row--header dataList-row--noHover">
@@ -289,7 +289,7 @@
 					<td class="dataList-cell">{$grant.Version.Template.title}, v{$grant.Version.version_number}</td>
 					<td class="dataList-cell">{$grant.issue_username}</td>
 					<td class="dataList-cell">
-						<xf:if is="$grant.revision > 1">{{ phrase('cav7_cit_corrected_rev_x', {'revision': $grant.revision}) }}<xf:else />-</xf:if>
+						<xf:if is="{$corrections.{$grant.grant_id}}">{{ phrase('cav7_cit_corrected_rev_x', {'revision': $corrections.{$grant.grant_id}}) }}<xf:else />-</xf:if>
 					</td>
 				</tr>
 			</xf:foreach>
@@ -314,7 +314,7 @@
 		<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_issued') }}</h3>
 		<div class="block-body block-row">
 			<xf:if is="$grants is not empty">
-				<xf:macro id="table" arg-grants="{$grants}" arg-names="{$names}" />
+				<xf:macro id="table" arg-grants="{$grants}" arg-names="{$names}" arg-corrections="{$corrections}" />
 			<xf:else />
 				{{ phrase('cav7_cit_nothing_issued') }}
 			</xf:if>
@@ -323,7 +323,7 @@
 		<xf:if is="$regimentGrants is not empty">
 			<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_regiment_citations') }}</h3>
 			<div class="block-body block-row">
-				<xf:macro id="table" arg-grants="{$regimentGrants}" />
+				<xf:macro id="table" arg-grants="{$regimentGrants}" arg-corrections="{$corrections}" />
 			</div>
 		</xf:if>
 	</div>
@@ -531,7 +531,7 @@
 				<div class="u-muted">{{ phrase('cav7_cit_generic_page_note') }}</div>
 				<div class="cav7Pre">{{ $genericText ?: '-' }}</div>
 			</div>
-		<xf:else />
+		<xf:elseif is="$grant.citation_text" />
 			<h3 class="block-formSectionHeader">{{ phrase('cav7_cit_citation_text') }}</h3>
 			<div class="block-row"><div class="cav7Pre">{$grant.citation_text}</div></div>
 		</xf:if>
@@ -650,7 +650,7 @@
 							<tr class="dataList-row">
 								<td class="dataList-cell"><a href="{{ link('rosters/citations', {'grant_id': $entry.grant_id}) }}">{$entry.kind_title}, {{ date($entry.grant_date, 'Y-m-d') }}</a></td>
 								<td class="dataList-cell">{{ $entry.member_name ?: phrase('cav7_cit_shared') }}</td>
-								<td class="dataList-cell"><a href="{{ link('rosters/citation-versions', {'template_version_id': $entry.template_version_id}) }}">{$entry.template_title}, v{$entry.version_number}</a></td>
+								<td class="dataList-cell"><xf:if is="$canRead"><a href="{{ link('rosters/citation-versions', {'template_version_id': $entry.template_version_id}) }}">{$entry.template_title}, v{$entry.version_number}</a><xf:else />{$entry.template_title}, v{$entry.version_number}</xf:if></td>
 								<td class="dataList-cell">{$entry.field_key}</td>
 								<td class="dataList-cell">{{ number($entry.size, 2) }}</td>
 								<td class="dataList-cell">{{ number($entry.legible, 2) }}</td>
@@ -970,6 +970,13 @@
 	margin-bottom: @xf-paddingLarge;
 }
 
+// No citation is how a linked row drops its citation, so the vendor's delete box goes. A record
+// refiled as Disciplinary hides the picker, and the delete box comes back as its way out.
+form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic:has(> input[name="delete_image"])
+{
+	display: none;
+}
+
 .overlay:has(.cav7FieldEditor)
 {
 	max-width: 1100px;
@@ -1271,7 +1278,7 @@
 	<xf:set var="$keeps" value="{{ $record.citation_date && !$record.citation_grant_member_id }}" />
 	<xf:set var="$name" value="{$rosterUser.User.username}" />
 	<xf:formrow label="{{ phrase('cav7_cit_citation') }}" hint="{{ phrase('cav7_cit_issued_to_x', {'name': $name}) }}">
-		<div data-xf-init="cav7-citation-picker">
+		<div data-xf-init="cav7-citation-picker" class="{{ ($record.citation_grant_member_id || $record.citation_regiment_grant_id) ? 'cav7Picker--linked' : '' }}">
 			<xf:if is="count($entries) > 3">
 				<xf:textbox class="input--small cav7PickerFilter js-pickerFilter" placeholder="{{ phrase('cav7_cit_filter_placeholder')|for_attr }}" />
 			</xf:if>
@@ -1417,6 +1424,8 @@
 								<td class="dataList-cell">
 									<xf:if is="$row.uses">
 										{{ $row.uses == 1 ? phrase('cav7_cit_one_citation') : phrase('cav7_cit_x_citations', {'count': $row.uses}) }}
+									</xf:if>
+									<xf:if is="$row.signature.first_used_date">
 										<div class="u-muted">{{ phrase('cav7_cit_frozen_note') }}</div>
 									<xf:else />
 										<span class="u-muted">{{ phrase('cav7_cit_not_used_yet') }}</span>
@@ -1429,7 +1438,7 @@
 										<xf:else />
 											<button type="submit" class="button button--small" formaction="{{ link('rosters/citation-signatures/reinstate', $row.signature) }}">{{ phrase('cav7_cit_reinstate') }}</button>
 										</xf:if>
-										<xf:if is="!$row.uses">
+										<xf:if is="!$row.signature.first_used_date">
 											<xf:button href="{{ link('rosters/citation-signatures/edit', $row.signature) }}" icon="edit" class="button--small" overlay="true">{{ phrase('edit') }}</xf:button>
 											<xf:button href="{{ link('rosters/citation-signatures/delete', $row.signature) }}" icon="delete" class="button--small" overlay="true">{{ phrase('delete') }}</xf:button>
 										</xf:if>
@@ -1463,8 +1472,10 @@
 
 <xf:pageaction>
 	<div class="buttonGroup">
-		<xf:button href="{{ link('rosters/citation-signatures') }}">{{ phrase('cav7_cit_signatures') }}</xf:button>
-		<xf:button href="{{ link('rosters/citation-templates/pay-grades') }}">{{ phrase('cav7_cit_pay_grades') }}</xf:button>
+		<xf:if is="$canRead">
+			<xf:button href="{{ link('rosters/citation-signatures') }}">{{ phrase('cav7_cit_signatures') }}</xf:button>
+			<xf:button href="{{ link('rosters/citation-templates/pay-grades') }}">{{ phrase('cav7_cit_pay_grades') }}</xf:button>
+		</xf:if>
 		<xf:button href="{{ link('rosters/citation-templates/legibility') }}">{{ phrase('cav7_cit_legibility_list') }}</xf:button>
 	</div>
 	<xf:if is="$canAdd">
@@ -1560,7 +1571,7 @@
 					<xf:foreach loop="$template.Versions" value="$version">
 						<xf:set var="$pinned" value="{{ $pins.{$version.template_version_id} ?: 0 }}" />
 						<tr class="dataList-row">
-							<td class="dataList-cell"><a href="{{ link('rosters/citation-versions', $version) }}">{{ phrase('cav7_cit_version_cap_x', {'number': $version.version_number}) }}</a></td>
+							<td class="dataList-cell"><xf:if is="$can.read"><a href="{{ link('rosters/citation-versions', $version) }}">{{ phrase('cav7_cit_version_cap_x', {'number': $version.version_number}) }}</a><xf:else />{{ phrase('cav7_cit_version_cap_x', {'number': $version.version_number}) }}</xf:if></td>
 							<td class="dataList-cell">
 								<xf:if is="$version.plate_format">
 									<img class="cav7Thumb" loading="lazy" alt="" src="{{ link('rosters/citation-versions/plate', $version, {'h': $version.plate_hash}) }}" />
@@ -1586,12 +1597,8 @@
 									<xf:if is="$can.move AND $pinned AND $published > ($version.state == 'published' ? 1 : 0)">
 										<xf:button href="{{ link('rosters/citation-versions/move-citations', $version) }}" class="button--small">{{ phrase('cav7_cit_move_citations') }}</xf:button>
 									</xf:if>
-									<xf:if is="$can.publish">
-										<xf:if is="$version.state == 'published'">
-											<xf:button href="{{ link('rosters/citation-versions/retire', $version) }}" class="button--small" overlay="true">{{ phrase('cav7_cit_retire') }}</xf:button>
-										<xf:else />
-											<xf:button href="{{ link('rosters/citation-versions/reinstate', $version) }}" class="button--small" overlay="true">{{ phrase('cav7_cit_reinstate') }}</xf:button>
-										</xf:if>
+									<xf:if is="$can.publish AND $version.state == 'published'">
+										<xf:button href="{{ link('rosters/citation-versions/retire', $version) }}" class="button--small" overlay="true">{{ phrase('cav7_cit_retire') }}</xf:button>
 									</xf:if>
 								</xf:if>
 							</td>

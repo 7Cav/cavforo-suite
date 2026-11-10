@@ -85,13 +85,23 @@ $run = $stage->sweep();
 check('a file under an hour old is left, row or no row', $stage->exists($fresh) && $stage->exists($freshOrphan));
 check('and a young file behind a row is not damage', $run->damage === 0);
 
-// An upload landing between the copy and the row lock. findOrCreate's own transaction
-// comes first, so the race is staged on the second.
-$race = function (\Closure $upload) use ($award): array {
+// The shard is listed once, so a re-upload can land after its file was judged settled.
+$stage = new Stage();
+$stage->row($award, 1, 500);
+$stage->row($award, 2, 500);
+$stage->legacyFile($award, 1, png());
+$reupload = $stage->legacyFile($award, 2, png(9, 9));
+$stage->db->beforeBegin = [fn () => file_put_contents($stage->disk->path($reupload), png(10, 10))];
+$stage->sweep();
+check('a file re-uploaded after the listing is left', $stage->exists($reupload) && $stage->refOf($award, 2) === null);
+
+// An upload landing around the row lock. findOrCreate's own transaction comes first, so
+// the race is staged on the second.
+$race = function (\Closure $upload, string $when = 'beforeBegin') use ($award): array {
     $stage = new Stage();
     $stage->row($award, 1, 500);
     $key = $stage->legacyFile($award, 1, png());
-    $stage->db->beforeBegin = [null, fn () => $upload($stage, $key)];
+    $stage->db->$when = [null, fn () => $upload($stage, $key)];
     $stage->sweep();
 
     return [$stage, $key];
@@ -107,6 +117,69 @@ check('a changed citation_date leaves the file for the next run', $stage->exists
 });
 check('a changed file is left for the next run', $stage->exists($key) && file_get_contents($stage->disk->path($key)) === png(70, 70));
 check('and the row isn\'t pointed at the old bytes', $stage->refOf($award, 1) === null);
+
+// The vendor writes the file before it stamps citation_date, whose save clears the reference.
+[$stage, $key] = $race(function (Stage $stage, string $key): void {
+    file_put_contents($stage->disk->path($key), png(70, 70));
+}, 'afterCommit');
+check('a re-upload after the commit is not deleted', $stage->exists($key) && file_get_contents($stage->disk->path($key)) === png(70, 70));
+
+// A failure between the move aside and the commit.
+$stage = new Stage();
+$stage->row($award, 1, 500);
+$key = $stage->legacyFile($award, 1, png());
+$stage->db->query("CREATE TRIGGER refuse BEFORE UPDATE OF citation_blob_id ON {$award->table()} BEGIN SELECT RAISE(ABORT, 'refused'); END");
+try {
+    $stage->sweep();
+    $threw = false;
+} catch (\RuntimeException) {
+    $threw = true;
+}
+check('a failure before the commit puts the legacy file back and rethrows', $threw && $stage->exists($key) && $stage->refOf($award, 1) === null);
+$stage->db->query('DROP TRIGGER refuse');
+$stage->sweep();
+check('and the next run takes it in', $stage->refOf($award, 1) !== null && !$stage->exists($key));
+
+// A process killed between the move aside and the commit, or just after the commit.
+$aside = fn (string $key) => "$key.taken-0badf00d";
+$stage = new Stage();
+$stage->row($award, 1, 500);
+$killedBefore = $stage->legacyFile($award, 1, png());
+$made = $stage->blob(png());
+rename($stage->disk->path($killedBefore), $stage->disk->path($aside($killedBefore)));
+$stage->row($award, 2, 500);
+$killedAfter = $stage->legacyFile($award, 2, png(17, 17));
+$stage->db->update($award->table(), ['citation_blob_id' => $stage->blob(png(17, 17))['blob_id']], 'record_id = 2');
+rename($stage->disk->path($killedAfter), $stage->disk->path($aside($killedAfter)));
+$stage->row($award, 3, 500, (int) $stage->blob(png(19, 19))['blob_id']);
+$stale = $stage->legacyFile($award, 3, png(18, 18));
+rename($stage->disk->path($stale), $stage->disk->path($aside($stale)));
+$run = $stage->sweep();
+check(
+    'a file left aside before the commit is taken in onto the blob made for it',
+    $stage->refOf($award, 1) === (int) $made['blob_id'] && !$stage->exists($aside($killedBefore)) && !$stage->exists($killedBefore)
+);
+check('one left after the commit is deleted', !$stage->exists($aside($killedAfter)) && $stage->refOf($award, 2) !== null);
+check(
+    'one older than the blob its row points at is kept and reported',
+    $stage->exists($aside($stale)) && !$stage->exists($stale) && damageMentions($stage, 'legacy file kept aside') && $run->damage === 1
+);
+foreach ([
+    'missing' => fn (string $path) => unlink($path),
+    'damaged' => fn (string $path) => file_put_contents($path, png(21, 21)),
+] as $what => $harm) {
+    $stage = new Stage();
+    $blob = $stage->blob(png(17, 17));
+    $stage->row($award, 1, 500, (int) $blob['blob_id']);
+    $key = $stage->legacyFile($award, 1, png(17, 17));
+    rename($stage->disk->path($key), $stage->disk->path($aside($key)));
+    $harm($stage->disk->path(BlobFile::keyOf($blob)));
+    $stage->sweep();
+    check(
+        "one whose blob file is $what is kept and reported",
+        $stage->exists($aside($key)) && damageMentions($stage, 'legacy file kept aside')
+    );
+}
 
 // Damage: each stays where it is.
 $stage = new Stage();
@@ -332,18 +405,26 @@ $counts = fn (Stage $board) => [
 check('a stepped run ends where a whole run ends', $counts($stepped) === $counts($whole));
 check('and finishes the work', $progress->tookIn === 4 && $progress->orphansDeleted === 1 && $progress->zeroDeleted === 1);
 
-// The job drops the lock between steps, so a revert can free blobs after the brake's count.
+// The job drops the lock between steps, so files can turn orphan and a revert can free
+// blobs after the brake's count.
 $stage = new Stage();
+$stage->legacyFile($record, 2500, png());
 $progress = new SweepProgress();
 while (!$progress->done()) {
-    $counting = $progress->phase === SweepProgress::ZERO_COUNT;
+    $phase = $progress->phase;
     $stage->sweeper()->advance($progress);
-    if ($counting) {
+    if ($phase === SweepProgress::ORPHAN_COUNT && $progress->phase !== $phase) {
+        for ($id = 1; $id <= 51; $id++) {
+            $stage->legacyFile($award, $id, png(1, 1, sprintf('#%06x', $id)));
+        }
+    }
+    if ($phase === SweepProgress::ZERO_COUNT) {
         for ($i = 1; $i <= 51; $i++) {
             $stage->blob(png(1, 1, sprintf('#%06x', $i)));
         }
     }
 }
+check('the delete pass never deletes more orphans than it counted', $progress->orphans === 1 && $progress->orphansDeleted === 1);
 check('blobs freed after the count wait for the next run', $progress->zeroDeleted === 0 && blobCount($stage) === 51);
 
 finish();

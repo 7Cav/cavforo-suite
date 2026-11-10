@@ -63,12 +63,12 @@ class Grants extends AbstractService
             $design,
             $version->state,
             $version->kinds(),
-            $this->em()->getRepository('Cav7\Citations:Template')->currentVersion($version->template_id)?->template_version_id,
             $kindTitle,
             $regiment && $day !== null && $this->repo()->liveRegimentExists($request->kindId, $day),
             $actor,
             $this->repo()->billets(array_values($values->signatures)),
             $version->artRanks(),
+            $this->repo()->milpacs(array_map(fn (MemberValues $member): int => $member->relationId, array_values($values->members))),
         ));
 
         $typesetting = $this->render()->make(
@@ -161,6 +161,7 @@ class Grants extends AbstractService
             $new,
             $changes,
             $reason,
+            $grant->withdrawn_date,
             $this->dateMeetsLiveRegiment($grant, $old, $new),
             $this->repo()->billets(array_values($new->signatures)),
             $version->artRanks(),
@@ -171,26 +172,23 @@ class Grants extends AbstractService
     }
 
     /**
-     * Moving to the version the grant already holds changes nothing.
-     *
      * @return list<array{field: string, rule: string}> The missing list. Nothing moved unless it's empty.
      * @throws PrintableException
      * @throws RenderFailed
      */
     public function moveVersion(Grant $grant, int $targetVersionId, string $reason, GrantChanges $extra, Actor $actor): array
     {
-        if ($targetVersionId === $grant->template_version_id) {
-            return [];
-        }
-
         /** @var TemplateVersion|null $target */
         $target = $this->em()->find('Cav7\Citations:TemplateVersion', $targetVersionId);
         $design = $target?->renderVersion();
 
         self::refuse(GrantRules::moveProblems(
             $reason,
+            $grant->withdrawn_date,
             $grant->is_regiment,
             "{$grant->kind_type}:{$grant->kind_id}",
+            $grant->template_version_id,
+            $targetVersionId,
             $grant->Version->template_id,
             $target?->template_id,
             $target?->state,
@@ -297,6 +295,7 @@ class Grants extends AbstractService
             array_map(fn (MemberValues $held): int => $held->relationId, array_values($values->members)),
             $design,
             $member,
+            $this->repo()->milpacs([$member->relationId]),
         ));
 
         $typesetting = $this->render()->make(
@@ -465,10 +464,22 @@ class Grants extends AbstractService
             && $this->repo()->liveRegimentExists($grant->kind_id, $day, $grant->grant_id);
     }
 
-    /** @param array<string, int> $signatures By slot key. */
+    /**
+     * A correction re-pins, so the pins alone can't tell whether a signature was ever used.
+     * The first-use mark is what freezes a signature, and nothing clears it.
+     *
+     * @param array<string, int> $signatures By slot key.
+     */
     private function pin(Grant $grant, array $signatures): void
     {
         $this->db()->delete('xf_cav7_citation_grant_signature', 'grant_id = ?', $grant->grant_id);
+        if ($signatures !== []) {
+            $this->db()->query(
+                'UPDATE xf_cav7_citation_signature SET first_used_date = ?
+                WHERE first_used_date = 0 AND signature_id IN (' . $this->db()->quote(array_values($signatures)) . ')',
+                \XF::$time
+            );
+        }
 
         foreach ($signatures as $slot => $signatureId) {
             $pin = $this->em()->create('Cav7\Citations:GrantSignature');

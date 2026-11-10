@@ -29,8 +29,9 @@ final class SignatureChoices
         $preselected = null;
         if ($currentId !== null) {
             $preselected = in_array($currentId, array_column($shown, 'signature_id'), true) ? $currentId : null;
-        } elseif (!$showRetired && count($shown) === 1) {
-            $preselected = $shown[0]['signature_id'];
+        } else {
+            $active = array_values(array_filter($shown, fn (array $signature): bool => $signature['state'] === 'active'));
+            $preselected = count($active) === 1 ? $active[0]['signature_id'] : null;
         }
 
         return new self($shown, $preselected);

@@ -5,6 +5,7 @@ namespace Cav7\Citations\Service;
 use Cav7\Citations\Grant\LinkedRows;
 use Cav7\Citations\Grant\RowClearer;
 use Cav7\Citations\Grant\RowSaveRules;
+use Cav7\Citations\Render\FieldDependencies;
 use Cav7\Citations\Storage\RowKind;
 use XF\Mvc\Entity\Entity;
 use XF\Phrase;
@@ -91,6 +92,12 @@ class GrantLinks extends AbstractService implements RowClearer
         });
     }
 
+    /** The grant member a row holds, null for a new, missing or unlinked row. */
+    public function heldPick(RowKind $kind, int $recordId): ?int
+    {
+        return $recordId !== 0 ? $this->row($kind, $recordId)?->citation_grant_member_id : null;
+    }
+
     /** @throws PrintableException */
     public function remove(RowKind $kind, int $recordId): void
     {
@@ -121,14 +128,14 @@ class GrantLinks extends AbstractService implements RowClearer
     public function picker(int $relationId): array
     {
         $entries = $this->linkedRows()->picker($relationId);
-        $members = $this->em()->findByIds('Cav7\Citations:GrantMember', array_column($entries, 'grant_member_id'), 'Grant');
+        $members = $this->em()->findByIds('Cav7\Citations:GrantMember', array_column($entries, 'grant_member_id'), 'Grant.Version');
 
         return array_map(function (array $entry) use ($members): array {
             $member = $members[$entry['grant_member_id']];
 
             return $entry + [
                 'day' => $member->Grant->getDay(),
-                'generic' => $member->Grant->citation_text === null,
+                'generic' => FieldDependencies::generic($member->Grant->Version->renderVersion()),
                 'render_url' => $member->renderUrl(),
                 'row_labels' => $this->labels($entry['rows']),
             ];

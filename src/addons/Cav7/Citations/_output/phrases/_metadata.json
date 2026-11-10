@@ -623,6 +623,18 @@
         "version_string": "1.1.0",
         "hash": "9bde7c6cecc9dd44eeecc29c323e7b3d"
     },
+    "cav7_cit_log_cleared_award.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "0add3b74454e736cfc7c23279428edd4"
+    },
+    "cav7_cit_log_cleared_record.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "79754a658d9ebdb7d47b617829cf900a"
+    },
     "cav7_cit_log_date.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -1229,6 +1241,12 @@
         "version_string": "1.1.0",
         "hash": "e3ceba76ed8ceac08631ebe7c9bc3f98"
     },
+    "cav7_cit_refused_already_on_version.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "8c23c549d0a2b6767ba8830be4dfb731"
+    },
     "cav7_cit_refused_already_withdrawn.txt": {
         "global_cache": false,
         "version_id": 1000070,
@@ -1337,6 +1355,12 @@
         "version_string": "1.0.0",
         "hash": "b1c54fdd86a6d31998db20e38c66d6a0"
     },
+    "cav7_cit_refused_kind_outside_generator.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "8af90d3cbb0997f198347b2036dc28f7"
+    },
     "cav7_cit_refused_member_grant_needs_permission.txt": {
         "global_cache": false,
         "version_id": 1020070,
@@ -1397,6 +1421,12 @@
         "version_string": "1.1.0",
         "hash": "3dd69033bed7d540aa2b1dc4a03c85e9"
     },
+    "cav7_cit_refused_no_signature_slot.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "24a424174e3cda726717181abafe48e1"
+    },
     "cav7_cit_refused_no_such_billet.txt": {
         "global_cache": false,
         "version_id": 1010070,
@@ -1420,6 +1450,12 @@
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "9731f2f2c99e32568144b010e0da16c1"
+    },
+    "cav7_cit_refused_no_such_milpac.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "c9523467e9b93fc3168889f8ca89a5a8"
     },
     "cav7_cit_refused_no_such_pick.txt": {
         "global_cache": false,
@@ -1539,7 +1575,7 @@
         "global_cache": false,
         "version_id": 1010070,
         "version_string": "1.1.0",
-        "hash": "72d9e2eca1cdddefb21e288358253af6"
+        "hash": "9115778df6429b7a74bd812c31d07cf3"
     },
     "cav7_cit_refused_signature_wrong_billet.txt": {
         "global_cache": false,
@@ -1582,12 +1618,6 @@
         "version_id": 1000070,
         "version_string": "1.0.0",
         "hash": "3f8eb7c3e8059fcb712b9ea03dbc65f3"
-    },
-    "cav7_cit_refused_version_not_current.txt": {
-        "global_cache": false,
-        "version_id": 1000070,
-        "version_string": "1.0.0",
-        "hash": "da7d36c651536978884c917fdb8b326c"
     },
     "cav7_cit_refused_version_not_published.txt": {
         "global_cache": false,
@@ -1642,18 +1672,6 @@
         "version_id": 1020070,
         "version_string": "1.2.0",
         "hash": "07b1cc3f1609931826abec8174e33b77"
-    },
-    "cav7_cit_reinstate_explain.txt": {
-        "global_cache": false,
-        "version_id": 1020070,
-        "version_string": "1.2.0",
-        "hash": "967536abd4da4e82b2ab876a44ec692c"
-    },
-    "cav7_cit_reinstate_version_x.txt": {
-        "global_cache": false,
-        "version_id": 1020070,
-        "version_string": "1.2.0",
-        "hash": "10d59d984bb239f089651383bffa8758"
     },
     "cav7_cit_remove_a_member.txt": {
         "global_cache": false,
@@ -1756,6 +1774,12 @@
         "version_id": 1010070,
         "version_string": "1.1.0",
         "hash": "bccbdf4525a9acde38690ed8d7c20f3e"
+    },
+    "cav7_cit_saved_without_citation.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "0384f0ad23a9c7ab31164b8baef0de3a"
     },
     "cav7_cit_serves.txt": {
         "global_cache": false,

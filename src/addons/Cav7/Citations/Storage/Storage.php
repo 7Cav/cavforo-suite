@@ -4,7 +4,6 @@ namespace Cav7\Citations\Storage;
 
 use XF\App;
 use XF\Db\AbstractAdapter;
-use XF\Util\File;
 
 /**
  * Builds the storage classes for a live board and holds the lock they share. The lock
@@ -25,7 +24,7 @@ final class Storage
 
     public static function forApp(App $app): self
     {
-        return new self($app->db(), new DataDisk(File::canonicalizePath($app->config('externalDataPath'))));
+        return new self($app->db(), DataDisk::forApp($app));
     }
 
     public function lock(): bool

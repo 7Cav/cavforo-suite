@@ -30,6 +30,9 @@ namespace XF\Db {
         /** @var list<?\Closure> run in order, one per beginTransaction(), to land a race there */
         public array $beforeBegin = [];
 
+        /** @var list<?\Closure> run in order, one after each commit() */
+        public array $afterCommit = [];
+
         public function __construct()
         {
             $this->pdo = new \PDO('sqlite::memory:');
@@ -119,6 +122,10 @@ namespace XF\Db {
         public function commit(): void
         {
             $this->pdo->commit();
+            $race = array_shift($this->afterCommit);
+            if ($race) {
+                $race();
+            }
         }
 
         public function rollback(): void

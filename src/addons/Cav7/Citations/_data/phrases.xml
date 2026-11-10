@@ -104,6 +104,8 @@
   <phrase title="cav7_cit_legibility_note" version_id="1020070" version_string="1.2.0"><![CDATA[Citations with a field set below its reading size. A citation leaves the list when a correction or move sets the field large enough.]]></phrase>
   <phrase title="cav7_cit_line_height" version_id="1020070" version_string="1.2.0"><![CDATA[Line height]]></phrase>
   <phrase title="cav7_cit_log_citation_text" version_id="1010070" version_string="1.1.0"><![CDATA[Citation text]]></phrase>
+  <phrase title="cav7_cit_log_cleared_award" version_id="1020070" version_string="1.2.0"><![CDATA[Cleared the {title} award of {date}]]></phrase>
+  <phrase title="cav7_cit_log_cleared_record" version_id="1020070" version_string="1.2.0"><![CDATA[Cleared the {title} record of {date}]]></phrase>
   <phrase title="cav7_cit_log_date" version_id="1010070" version_string="1.1.0"><![CDATA[Date]]></phrase>
   <phrase title="cav7_cit_log_input" version_id="1010070" version_string="1.1.0"><![CDATA[Template inputs]]></phrase>
   <phrase title="cav7_cit_log_issued" version_id="1010070" version_string="1.1.0"><![CDATA[Issued]]></phrase>
@@ -205,6 +207,7 @@
   <phrase title="cav7_cit_recipient" version_id="1010070" version_string="1.1.0"><![CDATA[Recipient]]></phrase>
   <phrase title="cav7_cit_record_note" version_id="1010070" version_string="1.1.0"><![CDATA[(record)]]></phrase>
   <phrase title="cav7_cit_record_type" version_id="1010070" version_string="1.1.0"><![CDATA[Record type]]></phrase>
+  <phrase title="cav7_cit_refused_already_on_version" version_id="1020070" version_string="1.2.0"><![CDATA[This grant is already on that version.]]></phrase>
   <phrase title="cav7_cit_refused_already_withdrawn" version_id="1000070" version_string="1.0.0"><![CDATA[This grant is already withdrawn.]]></phrase>
   <phrase title="cav7_cit_refused_bad_date" version_id="1000070" version_string="1.0.0"><![CDATA[Enter a real date as YYYY-MM-DD.]]></phrase>
   <phrase title="cav7_cit_refused_bad_printed_lines" version_id="1010070" version_string="1.1.0"><![CDATA[A signature needs one to four printed lines, none of them blank.]]></phrase>
@@ -223,6 +226,7 @@
   <phrase title="cav7_cit_refused_input_required" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: this value is required.]]></phrase>
   <phrase title="cav7_cit_refused_input_scope_changed" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: an earlier version gave this input another scope. A key means one thing across versions.]]></phrase>
   <phrase title="cav7_cit_refused_kind_not_served" version_id="1000070" version_string="1.0.0"><![CDATA[That template version doesn't serve this award or record type.]]></phrase>
+  <phrase title="cav7_cit_refused_kind_outside_generator" version_id="1020070" version_string="1.2.0"><![CDATA[A template can serve awards, Promotion records and Graduation records, and no other record type.]]></phrase>
   <phrase title="cav7_cit_refused_member_grant_needs_permission" version_id="1020070" version_string="1.2.0"><![CDATA[Moving a member citation needs Issue and correct grants to members.]]></phrase>
   <phrase title="cav7_cit_refused_name_required" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: this template prints a name, so enter one.]]></phrase>
   <phrase title="cav7_cit_refused_narrow_font_value" version_id="1010070" version_string="1.1.0"><![CDATA[{field}: this font lacks common accented letters, so it can only set dates and literal text.]]></phrase>
@@ -233,10 +237,12 @@
   <phrase title="cav7_cit_refused_no_kind" version_id="1010070" version_string="1.1.0"><![CDATA[Pick at least one award or record type for this version to serve.]]></phrase>
   <phrase title="cav7_cit_refused_no_members" version_id="1000070" version_string="1.0.0"><![CDATA[A member grant needs at least one milpac.]]></phrase>
   <phrase title="cav7_cit_refused_no_plate" version_id="1010070" version_string="1.1.0"><![CDATA[Upload a plate before publishing.]]></phrase>
+  <phrase title="cav7_cit_refused_no_signature_slot" version_id="1020070" version_string="1.2.0"><![CDATA[This version has no signature slot.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_billet" version_id="1010070" version_string="1.1.0"><![CDATA[That signing billet doesn't exist.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_grant" version_id="1000070" version_string="1.0.0"><![CDATA[That grant doesn't exist.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_kind" version_id="1000070" version_string="1.0.0"><![CDATA[That award or record type doesn't exist.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_member" version_id="1000070" version_string="1.0.0"><![CDATA[Grant member {field} isn't on this grant.]]></phrase>
+  <phrase title="cav7_cit_refused_no_such_milpac" version_id="1020070" version_string="1.2.0"><![CDATA[Milpac {field} doesn't exist.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_pick" version_id="1010070" version_string="1.1.0"><![CDATA[That citation no longer exists. Reload the form and pick again.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_rank" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: that rank doesn't exist.]]></phrase>
   <phrase title="cav7_cit_refused_no_such_row" version_id="1010070" version_string="1.1.0"><![CDATA[That row no longer exists.]]></phrase>
@@ -256,7 +262,7 @@
   <phrase title="cav7_cit_refused_regiment_duplicate" version_id="1000070" version_string="1.0.0"><![CDATA[A live regiment grant already holds this award and date.]]></phrase>
   <phrase title="cav7_cit_refused_regiment_needs_permission" version_id="1000070" version_string="1.0.0"><![CDATA[This award is a regiment grant, and issuing or moving one needs Manage regiment grants.]]></phrase>
   <phrase title="cav7_cit_refused_regiment_takes_no_members" version_id="1000070" version_string="1.0.0"><![CDATA[A regiment grant takes no members.]]></phrase>
-  <phrase title="cav7_cit_refused_signature_frozen" version_id="1010070" version_string="1.1.0"><![CDATA[A grant uses this signature, so it can't be edited or deleted. It can still be retired.]]></phrase>
+  <phrase title="cav7_cit_refused_signature_frozen" version_id="1010070" version_string="1.1.0"><![CDATA[A grant has used this signature, so it can't be edited or deleted. It can still be retired.]]></phrase>
   <phrase title="cav7_cit_refused_signature_wrong_billet" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: that signature belongs to another billet.]]></phrase>
   <phrase title="cav7_cit_refused_slot_empty" version_id="1000070" version_string="1.0.0"><![CDATA[{field}: choose a signature.]]></phrase>
   <phrase title="cav7_cit_refused_template_undeletable" version_id="1010070" version_string="1.1.0"><![CDATA[A template with a published or retired version can't be deleted.]]></phrase>
@@ -264,7 +270,6 @@
   <phrase title="cav7_cit_refused_undecodable_image" version_id="1010070" version_string="1.1.0"><![CDATA[That image can't be decoded.]]></phrase>
   <phrase title="cav7_cit_refused_version_frozen" version_id="1010070" version_string="1.1.0"><![CDATA[Published and retired versions can't be edited.]]></phrase>
   <phrase title="cav7_cit_refused_version_needs_member" version_id="1000070" version_string="1.0.0"><![CDATA[That template version prints something about a member, so a regiment grant can't use it.]]></phrase>
-  <phrase title="cav7_cit_refused_version_not_current" version_id="1000070" version_string="1.0.0"><![CDATA[The template has a newer version than the one this form showed. Check the form and submit again.]]></phrase>
   <phrase title="cav7_cit_refused_version_not_published" version_id="1000070" version_string="1.0.0"><![CDATA[That template version isn't published.]]></phrase>
   <phrase title="cav7_cit_refused_version_undeletable" version_id="1010070" version_string="1.1.0"><![CDATA[Only a draft can be deleted.]]></phrase>
   <phrase title="cav7_cit_refused_wrong_template" version_id="1000070" version_string="1.0.0"><![CDATA[A grant moves only between versions of its own template.]]></phrase>
@@ -274,8 +279,6 @@
   <phrase title="cav7_cit_regiment_note" version_id="1010070" version_string="1.1.0"><![CDATA[This citation goes to the whole regiment. Every milpac carries a row for it, kept by the PUC sync.]]></phrase>
   <phrase title="cav7_cit_regiment_note_short" version_id="1020070" version_string="1.2.0"><![CDATA[(regiment)]]></phrase>
   <phrase title="cav7_cit_reinstate" version_id="1020070" version_string="1.2.0"><![CDATA[Reinstate]]></phrase>
-  <phrase title="cav7_cit_reinstate_explain" version_id="1020070" version_string="1.2.0"><![CDATA[Clerks will be offered version {number} of <strong>{title}</strong> again if it is the newest published version.]]></phrase>
-  <phrase title="cav7_cit_reinstate_version_x" version_id="1020070" version_string="1.2.0"><![CDATA[Reinstate version {number}?]]></phrase>
   <phrase title="cav7_cit_remove_a_member" version_id="1010070" version_string="1.1.0"><![CDATA[Remove a member]]></phrase>
   <phrase title="cav7_cit_remove_explain" version_id="1010070" version_string="1.1.0"><![CDATA[The citation comes off every row listed, and the member can only come back as a new citation.]]></phrase>
   <phrase title="cav7_cit_remove_member" version_id="1010070" version_string="1.1.0"><![CDATA[Remove member]]></phrase>
@@ -293,6 +296,7 @@
   <phrase title="cav7_cit_row_record" version_id="1010070" version_string="1.1.0"><![CDATA[{title} record, {date}]]></phrase>
   <phrase title="cav7_cit_sample_values" version_id="1020070" version_string="1.2.0"><![CDATA[Sample values]]></phrase>
   <phrase title="cav7_cit_save_correction" version_id="1010070" version_string="1.1.0"><![CDATA[Save correction]]></phrase>
+  <phrase title="cav7_cit_saved_without_citation" version_id="1020070" version_string="1.2.0"><![CDATA[The row saved, but its citation wasn't attached. {reason}]]></phrase>
   <phrase title="cav7_cit_serves" version_id="1020070" version_string="1.2.0"><![CDATA[Serves]]></phrase>
   <phrase title="cav7_cit_serves_explain" version_id="1020070" version_string="1.2.0"><![CDATA[The grant form offers this template for what's ticked here, once this version is published.]]></phrase>
   <phrase title="cav7_cit_service_records" version_id="1010070" version_string="1.1.0"><![CDATA[Service records]]></phrase>
