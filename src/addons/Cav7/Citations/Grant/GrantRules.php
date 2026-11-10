@@ -40,6 +40,7 @@ final class GrantRules
     public const NOT_A_MEMBER_GRANT = 'not_a_member_grant';
     public const NOT_A_REGIMENT_GRANT = 'not_a_regiment_grant';
     public const ALREADY_WITHDRAWN = 'already_withdrawn';
+    public const ALREADY_ON_VERSION = 'already_on_version';
 
     /** @param list<int> $regimentAwardIds */
     public static function isRegiment(string $kindType, int $kindId, array $regimentAwardIds): bool
@@ -250,12 +251,18 @@ final class GrantRules
         int $withdrawnDate,
         bool $regiment,
         string $kind,
+        int $versionId,
+        int $targetVersionId,
         int $templateId,
         ?int $targetTemplateId,
         ?string $targetState,
         array $targetKinds,
         ?Version $target,
     ): array {
+        if ($targetVersionId === $versionId) {
+            return [self::problem(self::ALREADY_ON_VERSION)];
+        }
+
         $problems = self::reasonProblems($reason);
         if ($withdrawnDate > 0) {
             $problems[] = self::problem(self::ALREADY_WITHDRAWN);

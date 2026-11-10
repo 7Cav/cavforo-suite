@@ -247,5 +247,26 @@ namespace Cav7\Citations\Tests {
     $overruns->record(43, 7, $overrun, $libraries, 3000);
     check('a failure writing the log doesn\'t fail the render', count($errors) === 3);
 
+    // #295: the upgrade marks every signature a grant has used, including one a correction replaced.
+    require_once __DIR__ . '/../Setup/TemplateSchema.php';
+    $db = new AbstractAdapter();
+    $db->query('CREATE TABLE xf_cav7_citation_signature (signature_id INTEGER, create_date INTEGER, first_used_date INTEGER DEFAULT 0)');
+    $db->query('CREATE TABLE xf_cav7_citation_grant (grant_id INTEGER, issue_date INTEGER)');
+    $db->query('CREATE TABLE xf_cav7_citation_grant_signature (grant_id INTEGER, field_key TEXT, signature_id INTEGER)');
+    $db->query('CREATE TABLE xf_cav7_citation_grant_log (grant_id INTEGER, log_date INTEGER, detail BLOB)');
+    $db->query('INSERT INTO xf_cav7_citation_signature VALUES (19, 10, 0), (20, 10, 0), (21, 10, 0), (22, 10, 500)');
+    $db->query('INSERT INTO xf_cav7_citation_grant VALUES (1, 1000)');
+    $db->query("INSERT INTO xf_cav7_citation_grant_signature VALUES (1, 'xo', 20), (1, 'co', 22)");
+    $db->insert('xf_cav7_citation_grant_log', ['grant_id' => 1, 'log_date' => 2000, 'detail' => json_encode(['changes' => [
+        ['what' => 'date', 'old' => '2026-01-01', 'new' => '2026-01-02'],
+        ['what' => 'signature:xo', 'old' => 19, 'new' => 20],
+    ]])]);
+
+    \Cav7\Citations\Setup\TemplateSchema::backfillFirstUse($db);
+    \Cav7\Citations\Setup\TemplateSchema::backfillFirstUse($db);
+    $firstUse = array_map('intval', $db->fetchPairs('SELECT signature_id, first_used_date FROM xf_cav7_citation_signature'));
+    check('a signature a correction replaced is marked at that correction', $firstUse[19] === 2000, json_encode($firstUse));
+    check('a pinned signature is marked, an unused one is not, and an existing mark stays', $firstUse[20] > 0 && $firstUse[21] === 0 && $firstUse[22] === 500, json_encode($firstUse));
+
     finish();
 }

@@ -133,7 +133,11 @@ final class TemplateSchema
         });
     }
 
-    /** Dates each pinned signature's first use from its earliest grant, for pins older than the column. */
+    /**
+     * Dates the first use of every signature a grant has held, for grants older than the
+     * column: a current pin from its earliest grant, and one a correction or move replaced
+     * from the earliest log entry that names it.
+     */
     public static function backfillFirstUse(AbstractAdapter $db): void
     {
         $db->query(
@@ -146,6 +150,24 @@ final class TemplateSchema
             WHERE first_used_date = 0
                 AND signature_id IN (SELECT signature_id FROM xf_cav7_citation_grant_signature)'
         );
+
+        $logged = [];
+        $logs = $db->fetchAll('SELECT log_date, detail FROM xf_cav7_citation_grant_log WHERE detail LIKE ?', '%"signature:%');
+        foreach ($logs as $log) {
+            foreach (json_decode($log['detail'], true)['changes'] ?? [] as $change) {
+                if (str_starts_with($change['what'], 'signature:')) {
+                    foreach (array_filter([$change['old'], $change['new']]) as $signatureId) {
+                        $logged[$signatureId] = min($logged[$signatureId] ?? PHP_INT_MAX, (int) $log['log_date']);
+                    }
+                }
+            }
+        }
+        foreach ($logged as $signatureId => $date) {
+            $db->query(
+                'UPDATE xf_cav7_citation_signature SET first_used_date = ? WHERE signature_id = ? AND first_used_date = 0',
+                [$date, $signatureId]
+            );
+        }
     }
 
     /** INSERT IGNORE, so a reinstall leaves what S1 has edited. */

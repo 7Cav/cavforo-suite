@@ -172,18 +172,12 @@ class Grants extends AbstractService
     }
 
     /**
-     * Moving to the version the grant already holds changes nothing.
-     *
      * @return list<array{field: string, rule: string}> The missing list. Nothing moved unless it's empty.
      * @throws PrintableException
      * @throws RenderFailed
      */
     public function moveVersion(Grant $grant, int $targetVersionId, string $reason, GrantChanges $extra, Actor $actor): array
     {
-        if ($targetVersionId === $grant->template_version_id) {
-            return [];
-        }
-
         /** @var TemplateVersion|null $target */
         $target = $this->em()->find('Cav7\Citations:TemplateVersion', $targetVersionId);
         $design = $target?->renderVersion();
@@ -193,6 +187,8 @@ class Grants extends AbstractService
             $grant->withdrawn_date,
             $grant->is_regiment,
             "{$grant->kind_type}:{$grant->kind_id}",
+            $grant->template_version_id,
+            $targetVersionId,
             $grant->Version->template_id,
             $target?->template_id,
             $target?->state,

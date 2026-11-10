@@ -207,6 +207,7 @@
   <phrase title="cav7_cit_recipient" version_id="1010070" version_string="1.1.0"><![CDATA[Recipient]]></phrase>
   <phrase title="cav7_cit_record_note" version_id="1010070" version_string="1.1.0"><![CDATA[(record)]]></phrase>
   <phrase title="cav7_cit_record_type" version_id="1010070" version_string="1.1.0"><![CDATA[Record type]]></phrase>
+  <phrase title="cav7_cit_refused_already_on_version" version_id="1020070" version_string="1.2.0"><![CDATA[This grant is already on that version.]]></phrase>
   <phrase title="cav7_cit_refused_already_withdrawn" version_id="1000070" version_string="1.0.0"><![CDATA[This grant is already withdrawn.]]></phrase>
   <phrase title="cav7_cit_refused_bad_date" version_id="1000070" version_string="1.0.0"><![CDATA[Enter a real date as YYYY-MM-DD.]]></phrase>
   <phrase title="cav7_cit_refused_bad_printed_lines" version_id="1010070" version_string="1.1.0"><![CDATA[A signature needs one to four printed lines, none of them blank.]]></phrase>

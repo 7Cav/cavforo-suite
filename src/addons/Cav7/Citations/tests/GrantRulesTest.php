@@ -437,10 +437,11 @@ foreach ([
     'C-9 it must serve the grant\'s kind' => ['Moved', false, 'award:12', 2, 'published', ['award:13'], $written, ['kind_not_served']],
     'I-16 a regiment grant needs a version with no member' => ['Moved', true, 'award:61', 2, 'published', ['award:61'], $written, ['version_needs_member']],
 ] as $label => [$reason, $isRegiment, $kind, $templateId, $state, $kinds, $target, $expected]) {
-    $got = rules(GrantRules::moveProblems($reason, 0, $isRegiment, $kind, 2, $templateId, $state, $kinds, $target));
+    $got = rules(GrantRules::moveProblems($reason, 0, $isRegiment, $kind, 11, 12, 2, $templateId, $state, $kinds, $target));
     check($label, $got === $expected, json_encode($got));
 }
-check('a withdrawn grant can\'t be moved', rules(GrantRules::moveProblems('Moved', 1000, true, 'award:61', 2, 2, 'published', ['award:61'], $regimentVersion)) === ['already_withdrawn']);
+check('a withdrawn grant can\'t be moved', rules(GrantRules::moveProblems('Moved', 1000, true, 'award:61', 11, 12, 2, 2, 'published', ['award:61'], $regimentVersion)) === ['already_withdrawn']);
+check('a grant can\'t move to the version it already holds', rules(GrantRules::moveProblems('Moved', 0, false, 'award:12', 11, 11, 2, 2, 'published', ['award:12'], $written)) === ['already_on_version']);
 
 // What the typesetter gets for each scope.
 $ink = new PinnedSignature(['Col'], new ImageFile('hash', 10, 10));
