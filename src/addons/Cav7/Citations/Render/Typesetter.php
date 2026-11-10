@@ -138,8 +138,8 @@ final class Typesetter
     private function wrap(TextField $field, string $font, string $text): array
     {
         $whole = str_replace("\n", ' ', $text);
-        $kerning = $this->metrics->width($font, self::REFERENCE_SIZE, $whole)
-            / self::REFERENCE_SIZE / $this->ems($font, $whole);
+        $ems = $this->ems($font, $whole);
+        $kerning = $ems > 0 ? $this->metrics->width($font, self::REFERENCE_SIZE, $whole) / self::REFERENCE_SIZE / $ems : 1.0;
         $spaceEm = $this->metrics->advance($font, ' ') * $kerning;
 
         $paragraphs = [];
