@@ -381,7 +381,7 @@
         "global_cache": false,
         "version_id": 1020070,
         "version_string": "1.2.0",
-        "hash": "f2b0db2659fd8b008d815d11971dae87"
+        "hash": "11d01fa06960e742bed6f847227ddd13"
     },
     "cav7_cit_fields.txt": {
         "global_cache": false,
@@ -2119,9 +2119,9 @@
     },
     "cav7_cit_username.txt": {
         "global_cache": false,
-        "version_id": 1010070,
-        "version_string": "1.1.0",
-        "hash": "f6039d44b29456b20f8f373155ae4973"
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "c6a04a53797a51f30f4d2fa48d9a260a"
     },
     "cav7_cit_version.txt": {
         "global_cache": false,

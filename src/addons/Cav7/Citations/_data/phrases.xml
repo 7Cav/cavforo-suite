@@ -63,7 +63,7 @@
   <phrase title="cav7_cit_field_name" version_id="1020070" version_string="1.2.0"><![CDATA[Field name]]></phrase>
   <phrase title="cav7_cit_field_name_placeholder" version_id="1020070" version_string="1.2.0"><![CDATA[For example: member]]></phrase>
   <phrase title="cav7_cit_field_shrank" version_id="1010070" version_string="1.1.0"><![CDATA[The {field} line shrank to {size} pt to fit.]]></phrase>
-  <phrase title="cav7_cit_field_x" version_id="1020070" version_string="1.2.0"><![CDATA[Field: {key}]]></phrase>
+  <phrase title="cav7_cit_field_x" version_id="1020070" version_string="1.2.0"><![CDATA[Edit field: {key}]]></phrase>
   <phrase title="cav7_cit_fields" version_id="1020070" version_string="1.2.0"><![CDATA[Fields]]></phrase>
   <phrase title="cav7_cit_fill_all_explain" version_id="1010070" version_string="1.1.0"><![CDATA[Fills it in for every member. You can still change it member by member below.]]></phrase>
   <phrase title="cav7_cit_filter_placeholder" version_id="1010070" version_string="1.1.0"><![CDATA[Filter...]]></phrase>
@@ -353,7 +353,7 @@
   <phrase title="cav7_cit_upload_plate" version_id="1020070" version_string="1.2.0"><![CDATA[Upload plate]]></phrase>
   <phrase title="cav7_cit_use_long_sample" version_id="1020070" version_string="1.2.0"><![CDATA[Use a long citation text]]></phrase>
   <phrase title="cav7_cit_used_on" version_id="1020070" version_string="1.2.0"><![CDATA[Used on]]></phrase>
-  <phrase title="cav7_cit_username" version_id="1010070" version_string="1.1.0"><![CDATA[Username]]></phrase>
+  <phrase title="cav7_cit_username" version_id="1020070" version_string="1.2.0"><![CDATA[Username, such as Quill.E]]></phrase>
   <phrase title="cav7_cit_version" version_id="1020070" version_string="1.2.0"><![CDATA[Version]]></phrase>
   <phrase title="cav7_cit_version_cap_x" version_id="1020070" version_string="1.2.0"><![CDATA[Version {number}]]></phrase>
   <phrase title="cav7_cit_version_frozen_note" version_id="1020070" version_string="1.2.0"><![CDATA[This version is {state}, so it's frozen. Its plate and fields can't change.]]></phrase>
