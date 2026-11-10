@@ -13,8 +13,8 @@ enum RenderAnswer
     public static function for(?string $storedToken, string $givenToken, int $withdrawnDate, int $revision, int $givenRevision): self
     {
         return match (true) {
-            $storedToken === null, !hash_equals($storedToken, $givenToken), $withdrawnDate !== 0 => self::NotFound,
-            $givenRevision !== $revision => self::Redirect,
+            $storedToken === null, !hash_equals($storedToken, $givenToken), $withdrawnDate !== 0, $givenRevision > $revision => self::NotFound,
+            $givenRevision < $revision => self::Redirect,
             default => self::Serve,
         };
     }

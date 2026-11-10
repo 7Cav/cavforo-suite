@@ -34,7 +34,7 @@ function check(string $label, bool $ok, string $detail = ''): void
 foreach ([
     ['the current URL serves', ['tok', 'tok', 0, 3, 3], RenderAnswer::Serve],
     ['an old revision redirects', ['tok', 'tok', 0, 3, 2], RenderAnswer::Redirect],
-    ['so does a revision from the future', ['tok', 'tok', 0, 3, 4], RenderAnswer::Redirect],
+    ['a revision from the future is not found', ['tok', 'tok', 0, 3, 4], RenderAnswer::NotFound],
     ['a missing id is not found', [null, 'tok', 0, 0, 3], RenderAnswer::NotFound],
     ['a wrong token reads the same', ['tok', 'other', 0, 3, 3], RenderAnswer::NotFound],
     ['a wrong token never learns the revision', ['tok', 'other', 0, 3, 2], RenderAnswer::NotFound],
