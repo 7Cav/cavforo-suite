@@ -1,7 +1,7 @@
 {
     "legacy_addon_id": "",
     "title": "7Cav - Citations",
-    "description": "Stores NF/Rosters citation images as deduplicated citation blobs, moves them out of the vendor's per-row files, and re-encodes them under an operator's hand.",
+    "description": "Keeps citations as data: versioned templates, grants, the renders drawn from them, and deduplicated blob storage for NF/Rosters citation images.",
     "version_id": 1020070,
     "version_string": "1.2.0",
     "dev": "Cav7",
