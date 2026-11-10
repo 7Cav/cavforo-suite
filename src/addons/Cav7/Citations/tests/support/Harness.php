@@ -5,9 +5,9 @@
  *
  * The stub adapter runs the storage classes' real SQL against in-memory SQLite, so a test
  * couples to what a query means rather than its text. It is test infrastructure and says
- * nothing about running on SQLite. The one MySQL-only piece, FOR UPDATE, is dropped here:
- * SQLite has one writer, so row locks and GET_LOCK are checked on a dev stack. Collation
- * and type affinity stay the stack's business too.
+ * nothing about running on SQLite. FOR UPDATE is dropped here: SQLite has one writer, so
+ * row locks and GET_LOCK are checked on a dev stack. INSERT IGNORE takes SQLite's spelling.
+ * Collation and type affinity stay the stack's business too.
  */
 
 namespace XF\Db {
@@ -38,7 +38,7 @@ namespace XF\Db {
 
         private function run(string $sql, array $params): \PDOStatement
         {
-            $sql = str_replace(' FOR UPDATE', '', $sql);
+            $sql = str_replace([' FOR UPDATE', 'INSERT IGNORE'], ['', 'INSERT OR IGNORE'], $sql);
             try {
                 $statement = $this->pdo->prepare($sql);
                 $statement->execute(array_values($params));
@@ -217,7 +217,8 @@ namespace Cav7\Citations\Tests {
             $this->db = new AbstractAdapter();
             foreach (RowKind::cases() as $kind) {
                 $this->db->query("CREATE TABLE {$kind->table()} (
-                    record_id INTEGER PRIMARY KEY, citation_date INTEGER NOT NULL DEFAULT 0, citation_blob_id INTEGER NULL)");
+                    record_id INTEGER PRIMARY KEY, citation_date INTEGER NOT NULL DEFAULT 0, citation_blob_id INTEGER NULL,
+                    citation_grant_member_id INTEGER NULL, citation_regiment_grant_id INTEGER NULL)");
             }
             $this->db->query('CREATE TABLE ' . BlobStore::TABLE . " (
                 blob_id INTEGER PRIMARY KEY AUTOINCREMENT, content_hash BLOB NOT NULL UNIQUE, url_token TEXT NOT NULL,

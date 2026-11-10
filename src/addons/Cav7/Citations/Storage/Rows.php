@@ -11,7 +11,7 @@ use XF\Db\AbstractAdapter;
 final class Rows
 {
     // hasGrantLink() in SQL, read wherever a row is judged from the database.
-    private const GRANT_LINKED = '0';
+    private const GRANT_LINKED = '(citation_grant_member_id IS NOT NULL OR citation_regiment_grant_id IS NOT NULL)';
 
     public function __construct(private AbstractAdapter $db)
     {

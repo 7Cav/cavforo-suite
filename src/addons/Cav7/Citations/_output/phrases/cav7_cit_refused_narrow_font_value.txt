@@ -1,0 +1,1 @@
+{field}: this font lacks common accented letters, so it can only set dates and literal text.

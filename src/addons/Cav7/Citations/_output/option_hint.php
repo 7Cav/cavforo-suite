@@ -11,6 +11,8 @@
 namespace XF;
 
 /**
+ * @property bool|null $cav7CitCutover Citation cutover
+ * @property string|null $cav7CitRegimentAwardIds Regiment awards
  * @property bool|null $cav7CitationReencodeEnabled Allow the re-encode
  */
 class Options

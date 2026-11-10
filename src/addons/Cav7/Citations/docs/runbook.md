@@ -7,7 +7,7 @@ archive and `$BUCKET` its bucket, both held privately.
 ## nginx
 
 Add these to the server block. The URL lookup happens in PHP, so nginx needs nothing
-else for citations.
+else for the two file trees.
 
 ```nginx
 location ^~ /data/roster_citation_blobs/ {
@@ -26,6 +26,10 @@ A location with its own `add_header` inherits none from the server block, so rep
 server-level headers here. The legacy trees get their `max-age=691200` from Cloudflare,
 since the origin sends none. After deploying, run `curl -sI` on a blob URL and confirm
 it shows `x-robots-tag: noindex` and that same `max-age`.
+
+Renders are `.jpg` URLs under `/citations/` with no file behind them, so they have to fall
+through `try_files` to `index.php`. A static-image `location` that catches `.jpg` answers
+every render with a 404. Keep `/citations/` out of it, and leave its headers to PHP.
 
 ## First run on a board
 
@@ -143,6 +147,18 @@ its keys are legacy paths.
 - `--all` turns the re-encode off, and turning it back on is a new decision with
   leadership. `--run`, `--blob` and `--row` leave it on.
 
+## Retypesetting
+
+```sh
+cav7-citations:retypeset --template-version=7 --dry-run
+cav7-citations:retypeset --template-version=7 --reason="ImageMagick upgrade"
+```
+
+Choose grants with `--grant` (repeatable), `--template-version` or `--addon-version`. The
+dry run lists what would change and writes nothing. A real run needs `--reason`, logs it on
+each grant and moves each revision, so every attached row gets a new URL and the old one
+redirects. It exits 0 when clean, 1 when a grant failed and 2 when the command was refused.
+
 ## Reading damage
 
 The sweep logs up to 100 damage entries a run to the server error log, then one line with
@@ -160,11 +176,42 @@ lower-case hex. Code never repairs damage.
 | `blob file missing`, `blob file size differs`, `blob file hash mismatch` | Fetch the key from the archive and put it back at that path. The path is the archive key. |
 | `blob tree file with no blob row` | Never deleted automatically, because it may be the only copy. Check it against the archive, then remove it by hand. |
 | `decode failed` | The source stays and keeps serving. Repair it and re-upload. |
+| `render failed` | A render answered 500. The route logs this itself, one line per request, and `row=` names the grant member or grant. Nothing caches the failure, so a fix works at once. The usual cause is a file gone from `internal_data/cav7_citation_files/`, covered under [restores](#restores). |
+
+## Backups
+
+The archive holds citation blobs and nothing else, so the board's own backups have to carry
+the rest. Keep these two in them.
+
+- The database. Grants, grant links, typesettings and templates all live there, and so does
+  the only map from a row to its blob.
+- `internal_data/cav7_citation_files/`. It holds plates, signature ink, rank art and the
+  fonts a published version pins. The archive doesn't cover it, and nothing can re-derive
+  it.
+
+Dump the database first and copy the directory after. Each file is named by its SHA-256 and
+nothing deletes one, so a later copy of the directory holds everything an earlier dump
+names. The other order can leave a version pinning a file the backup doesn't have.
 
 ## Restores
 
 The blob table and the sweep turn a mismatch between disk and database into reported
 damage. Run a dry run before anything else after a restore.
+
+**`internal_data/cav7_citation_files/` lost or damaged.** Restore it from the board's
+backup and keep the paths exactly as they were. The sweep never looks in this directory, so
+a missing file reports nothing until something draws. Then its render answers 500 and logs
+`render failed`, and an issue or correction needing that file fails and writes nothing.
+After restoring, check that each file still matches its name:
+
+```sh
+cd internal_data/cav7_citation_files
+find . -type f ! -name index.html | while read -r f; do
+    [ "$(sha256sum "$f" | cut -c1-64)" = "$(basename "${f%.*}")" ] || echo "bad: $f"
+done
+```
+
+A directory newer than the database is harmless. The extra files sit unused.
 
 **Filesystem restored, legacy files back.** The next sweep takes each one in as a source
 blob, byte for byte, and re-points its row, because a legacy file beats an existing
@@ -181,7 +228,10 @@ The blob row's id and token derive the key, so nothing else needs to be known.
 
 **Database restored to an older point.** Files of newer rows turn into orphans, and the
 sweep deletes them unless the count trips the brake. One day of arrivals trips it. Read
-the dry run before lifting anything. Blob files with no row are damage and stay.
+the dry run before lifting anything. Blob files with no row are damage and stay. Grants
+and their links go back together, so a grant issued after the restore point is gone with
+every link to it, and its render URL 404s. A revision can also go backward, and any URL
+ahead of the restored one redirects to it.
 
 **Database restored to before the PUC strip.** The old PUC rows come back with the PUC
 sync off. Rerun the strip.

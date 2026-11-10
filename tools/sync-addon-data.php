@@ -297,6 +297,17 @@ const TYPES = [
         'casts' => ['execute_order' => 'int', 'active' => 'bool'],
         'sort' => ['event_id', 'callback_class', 'callback_method'],
     ],
+    'code_events' => [
+        'dir' => 'code_events',
+        'container' => 'code_events',
+        'childTag' => 'event',
+        'shape' => 'json',
+        'attributes' => ['event_id'],
+        'cdataBody' => 'description',
+        'jsonKeys' => ['description', 'arguments', 'hint_description'],
+        'outputDefaults' => ['arguments' => [], 'hint_description' => ''],
+        'sort' => ['event_id'],
+    ],
     'admin_navigation' => [
         'dir' => 'admin_navigation',
         'container' => 'admin_navigation',
@@ -346,6 +357,38 @@ const TYPES = [
         'jsonKeys' => ['cron_class', 'cron_method', 'run_rules', 'active'],
         'casts' => ['active' => 'bool'],
         'sort' => ['entry_id'],
+    ],
+    'permissions' => [
+        'dir' => 'permissions',
+        'container' => 'permissions',
+        'childTag' => 'permission',
+        'shape' => 'json',
+        'attributes' => [
+            'permission_group_id',
+            'permission_id',
+            'permission_type',
+            'depend_permission_id',
+            'interface_group_id',
+            'display_order',
+        ],
+        'jsonKeys' => [
+            'permission_type',
+            'interface_group_id',
+            'display_order',
+            'depend_permission_id',
+        ],
+        'casts' => ['display_order' => 'int'],
+        'sort' => ['permission_group_id', 'permission_id'],
+    ],
+    'permission_interface_groups' => [
+        'dir' => 'permission_interface_groups',
+        'container' => 'permission_interface_groups',
+        'childTag' => 'interface_group',
+        'shape' => 'json',
+        'attributes' => ['interface_group_id', 'display_order', 'is_moderator'],
+        'jsonKeys' => ['display_order', 'is_moderator'],
+        'casts' => ['display_order' => 'int', 'is_moderator' => 'bool'],
+        'sort' => ['interface_group_id'],
     ],
     'api_scopes' => [
         'dir' => 'api_scopes',
@@ -402,6 +445,9 @@ function fileNameFor(string $type, array $record): string
             $suffix = md5("{$record['callback_class']}-{$record['callback_method']}-{$record['hint']}");
             return "{$record['event_id']}_{$suffix}.json";
 
+        case 'code_events':
+            return "{$record['event_id']}.json";
+
         case 'admin_navigation':
             return "{$record['navigation_id']}.json";
 
@@ -410,6 +456,12 @@ function fileNameFor(string $type, array $record): string
 
         case 'api_scopes':
             return str_replace(':', '-', $record['api_scope_id']) . '.json';
+
+        case 'permissions':
+            return "{$record['permission_group_id']}-{$record['permission_id']}.json";
+
+        case 'permission_interface_groups':
+            return "{$record['interface_group_id']}.json";
     }
 
     throw new \InvalidArgumentException("No filename rule for type '$type'");
@@ -453,6 +505,16 @@ function fieldsFromPath(string $type, string $relativePath): array
 
         case 'cron_entries':
             return ['entry_id' => basename($relativePath, '.json')];
+
+        case 'code_events':
+            return ['event_id' => basename($relativePath, '.json')];
+
+        case 'permissions':
+            [$groupId, $permissionId] = explode('-', basename($relativePath, '.json'), 2);
+            return ['permission_group_id' => $groupId, 'permission_id' => $permissionId];
+
+        case 'permission_interface_groups':
+            return ['interface_group_id' => basename($relativePath, '.json')];
     }
 
     return [];

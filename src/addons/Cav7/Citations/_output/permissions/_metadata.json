@@ -1,0 +1,20 @@
+{
+    "cav7Citations-editTemplateDrafts.json": {
+        "hash": "78215fbfb4e70bd8a915fea4283e0b0b"
+    },
+    "cav7Citations-issueGrants.json": {
+        "hash": "3b9f377ab6f6eba3f3b476c20d804d52"
+    },
+    "cav7Citations-manageRegimentGrants.json": {
+        "hash": "85bed5c8dfedb4326f72c8b716ee3d0f"
+    },
+    "cav7Citations-publishTemplates.json": {
+        "hash": "0d66820fc306a2d94c78c350d7ec1917"
+    },
+    "cav7Citations-removeGrantMembers.json": {
+        "hash": "6f7fffaa260122891ac55992d7f0570a"
+    },
+    "cav7Citations-viewGrantsTemplates.json": {
+        "hash": "c2e2fb2438325ad048cb25c76baa64a5"
+    }
+}

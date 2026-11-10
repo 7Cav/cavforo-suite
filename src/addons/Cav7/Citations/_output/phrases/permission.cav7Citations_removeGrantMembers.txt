@@ -1,0 +1,1 @@
+Remove members from grants

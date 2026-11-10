@@ -136,6 +136,19 @@ check('a row that moved on stays where it went', $stage->refOf($award, 1) === (i
 check('a deleted row is passed over', $result['left'] === 2 && $result['reverted'] === 0);
 check('a row on the encoded blob with no entry stays', $stage->refOf($record, 50) === $encodedId);
 
+foreach (['citation_grant_member_id', 'citation_regiment_grant_id'] as $link) {
+    [$stage, $first, , $run] = reencoded();
+    $encodedId = $stage->refOf($award, 1);
+    $stage->db->update($award->table(), [$link => 9], 'record_id = ?', [1]);
+    purgeAway($stage, $first);
+    $plan = $stage->reverter()->plan(scope($stage, run: (string) $run));
+    check("a plan still fetches for the unlinked row beside a $link", count($plan) === 1);
+    $stage->rows->point($award, 2, (int) $stage->blob(png(7, 7))['blob_id']);
+    check("but not for a row with only a $link left on it", $stage->reverter()->plan(scope($stage, blob: (string) $encodedId)) === []);
+    $result = $stage->reverter()->apply(scope($stage, blob: (string) $encodedId), null);
+    check("a row with a $link is left encoded", $stage->refOf($award, 1) === $encodedId && $result['reverted'] === 0 && $result['left'] === 2);
+}
+
 // Scope.
 [$stage, $first, $second, $run] = reencoded();
 $other = $stage->refOf($award, 3);

@@ -1,0 +1,1 @@
+That template version prints something about a member, so a regiment grant can't use it.

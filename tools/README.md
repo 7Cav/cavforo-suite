@@ -256,7 +256,7 @@ against what is in the repo.
 Three things worth knowing before you trust a derived tree:
 
 - **It cannot see a type no addon here commits.** The type table covers the
-  eleven types that appear in this repo. A type XenForo adds later, or one this
+  fourteen types that appear in this repo. A type XenForo adds later, or one this
   suite starts using, needs adding to that table; `_data` files for the other
   types are still written, as the empty containers `xf-addon:export` emits.
 - **`_data` is lossy in two known places, and the tool fills them from XenForo's

@@ -1,0 +1,1 @@
+A grant moves only between versions of its own template.

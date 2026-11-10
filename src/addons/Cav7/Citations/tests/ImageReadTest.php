@@ -106,6 +106,33 @@ namespace Cav7\Citations\Tests {
         }
     }
 
+    function target(string $url): object
+    {
+        return new class($url) {
+            public function __construct(private string $url)
+            {
+            }
+
+            public function renderUrl(bool $canonical): string
+            {
+                return ($canonical ? 'https://board.test/' : '') . $this->url;
+            }
+        };
+    }
+
+    function linked(?int $memberId, ?int $regimentId, ?object $member = null, ?object $regiment = null): RosterUserAward
+    {
+        $row = row(500, 3);
+        $row->values += [
+            'citation_grant_member_id' => $memberId,
+            'citation_regiment_grant_id' => $regimentId,
+            'CitationGrantMember' => $member,
+            'CitationRegimentGrant' => $regiment,
+        ];
+
+        return $row;
+    }
+
     function row(int $citationDate, ?int $blobId, bool $blobRowExists = true): RosterUserAward
     {
         $row = new RosterUserAward();
@@ -143,7 +170,13 @@ namespace Cav7\Citations\Tests {
     check('no reference reads the vendor\'s legacy URL', row(500, null)->getImageUrl() === 'legacy/7.jpg?500');
     check('a zero date reads nothing', row(0, 3)->getImageUrl() === null);
     check('a reference to a missing blob row falls back to legacy', row(500, 3, false)->getImageUrl() === 'legacy/7.jpg?500');
-    check('no row has a grant link yet', row(500, 3)->hasGrantLink() === false);
+
+    check('a row with neither link has none', row(500, 3)->hasGrantLink() === false);
+    check('a member link outranks the blob', linked(9, null, target('citations/9.jpg'))->getImageUrl() === 'citations/9.jpg');
+    check('a regiment link reads the grant', linked(null, 4, null, target('citations/regiment/4.jpg'))->getImageUrl() === 'citations/regiment/4.jpg');
+    check('$canonical reaches the render', linked(9, null, target('citations/9.jpg'))->getImageUrl(true) === 'https://board.test/citations/9.jpg');
+    check('a link to a missing member reads nothing', linked(9, null)->getImageUrl() === null);
+    check('a link to a missing grant reads nothing', linked(null, 4)->getImageUrl() === null);
 
     $upload = row(500, 3);
     $upload->citation_date = 900;
@@ -155,6 +188,23 @@ namespace Cav7\Citations\Tests {
     $removal->citation_date = 0;
     $removal->preSave();
     check('a removal clears the reference', $removal->citation_blob_id === null);
+
+    foreach ([[9, null], [null, 4]] as [$memberId, $regimentId]) {
+        $cleared = linked($memberId, $regimentId);
+        $cleared->citation_date = 0;
+        $cleared->preSave();
+        check('a zero date clears the link', !$cleared->hasGrantLink());
+    }
+
+    $restamped = linked(9, null);
+    $restamped->citation_date = 900;
+    $restamped->preSave();
+    check('a new date keeps it', $restamped->citation_grant_member_id === 9);
+
+    $edited = linked(9, null);
+    $edited->details = 'edited';
+    $edited->preSave();
+    check('so does an unrelated save', $edited->citation_grant_member_id === 9);
 
     $both = row(500, 3);
     $both->citation_date = 900;
