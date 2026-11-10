@@ -109,6 +109,33 @@ namespace Cav7\Citations\Service {
                 throw new \XF\PrintableException($this->attachRefusal);
             }
             $this->attached[] = [$kind, $recordId, $grantMemberId];
+            $this->attachedHolding = $this->holding;
+        }
+
+        /** Rows that exist before the save. */
+        public array $rows = [40];
+
+        public ?int $holding = null;
+        public ?int $attachedHolding = null;
+        public bool $rolledBack = false;
+
+        public function makesRow(RowKind $kind, int $recordId): bool
+        {
+            return !in_array($recordId, $this->rows, true);
+        }
+
+        /** Stands in for the transaction: an exception out of $save undoes it. */
+        public function holdingPick(int $grantMemberId, \Closure $save): mixed
+        {
+            $this->holding = $grantMemberId;
+            try {
+                return $save();
+            } catch (\Throwable $e) {
+                $this->rolledBack = true;
+                throw $e;
+            } finally {
+                $this->holding = null;
+            }
         }
 
         public function picker(int $relationId): array
@@ -314,9 +341,24 @@ namespace Cav7\Citations\Tests {
 
     $new = saved(['citation_pick' => '5'], fn (Roster $r) => $r->createsRow = 91);
     check('a new row attaches by the id the vendor gave it', $new->links->attached === [[RowKind::Award, 91, 5]]);
+    check('and saves and attaches with the pick held', $new->links->attachedHolding === 5);
+    check('an existing row saves as before', $picked->links->attachedHolding === null);
 
-    $stale = saved(['record_id' => 40, 'citation_pick' => '5'], fn (Roster $r) => $r->createsRow = 92);
+    $stale = saved(['record_id' => 41, 'citation_pick' => '5'], fn (Roster $r) => $r->createsRow = 92);
     check('a stale record id lands on the row the vendor made instead', $stale->links->attached === [[RowKind::Award, 92, 5]]);
+    check('and counts as a new row', $stale->links->attachedHolding === 5);
+
+    $undone = new Roster();
+    $undone->input = ['citation_pick' => '5'];
+    $undone->createsRow = 93;
+    $undone->links->attachRefusal = 'That citation is gone.';
+    $undoneReply = $undone->actionProfileAwardsSave(new ParameterBag());
+    check(
+        'a refused attach on a new row takes the row back, so a resubmit can\'t duplicate it',
+        $undone->saves === 1 && $undone->links->rolledBack && $undoneReply instanceof Error
+            && $undoneReply->message === \XF::phrase('cav7_cit_row_not_saved', ['reason' => 'That citation is gone.']),
+        json_encode($undoneReply)
+    );
 
     $refused = saved(['record_id' => 40, 'citation_pick' => '5'], fn (Roster $r) => $r->links->refusal = 'refused');
     check('a refusal writes nothing', $refused->saves === 0 && $refused->links->attached === []);

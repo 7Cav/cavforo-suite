@@ -300,6 +300,7 @@
   <phrase title="cav7_cit_revision" version_id="1010070" version_string="1.1.0"><![CDATA[Revision]]></phrase>
   <phrase title="cav7_cit_right" version_id="1020070" version_string="1.2.0"><![CDATA[Right]]></phrase>
   <phrase title="cav7_cit_row_award" version_id="1010070" version_string="1.1.0"><![CDATA[{title} award, {date}]]></phrase>
+  <phrase title="cav7_cit_row_not_saved" version_id="1020070" version_string="1.2.0"><![CDATA[Nothing was saved, because the citation couldn't be attached. {reason}]]></phrase>
   <phrase title="cav7_cit_row_record" version_id="1010070" version_string="1.1.0"><![CDATA[{title} record, {date}]]></phrase>
   <phrase title="cav7_cit_sample_values" version_id="1020070" version_string="1.2.0"><![CDATA[Sample values]]></phrase>
   <phrase title="cav7_cit_save_correction" version_id="1010070" version_string="1.1.0"><![CDATA[Save correction]]></phrase>

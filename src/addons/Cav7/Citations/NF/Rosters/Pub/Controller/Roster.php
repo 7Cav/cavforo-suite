@@ -15,9 +15,10 @@ use XF\PrintableException;
 /**
  * The citation picker on the row forms, and the check around the vendor's save. A refusal
  * comes before the save, so no row or file gets written, and a pick attaches only once the
- * vendor has replied with a redirect. Direct callers of the image services never come through
- * here, so Cav7/EnlistmentDefaults is untouched. delete_image is never refused: a removal is
- * how a linked row takes a file.
+ * vendor has replied with a redirect. A new row commits with its attach or not at all, since
+ * the vendor's form stays filled after an error and a second Save would add a second row.
+ * Direct callers of the image services never come through here, so Cav7/EnlistmentDefaults
+ * is untouched. delete_image is never refused: a removal is how a linked row takes a file.
  *
  * Assumes the vendor reads the file with getFile('upload', false, false), finds the row by
  * record_id alone, makes new rows through RosterUser::getNewAward() and getNewServiceRecord(),
@@ -110,6 +111,20 @@ class Roster extends XFCP_Roster
         // The radio defaults to the row's own pick, so the delete box beside it means No citation.
         if ($pick !== 0 && $this->filter('delete_image', 'bool') && $pick === $links->heldPick($kind, $recordId)) {
             $pick = 0;
+        }
+
+        if ($pick !== 0 && $links->makesRow($kind, $recordId)) {
+            try {
+                return $links->holdingPick($pick, function () use ($save, $links, $kind, $rosterUser, $pick): AbstractReply {
+                    $reply = $save();
+                    if ($reply instanceof Redirect) {
+                        $links->attach($kind, $rosterUser->newRow->record_id, $pick);
+                    }
+                    return $reply;
+                });
+            } catch (PrintableException $e) {
+                return $this->error(\XF::phrase('cav7_cit_row_not_saved', ['reason' => $e->getMessage()]));
+            }
         }
 
         $reply = $save();

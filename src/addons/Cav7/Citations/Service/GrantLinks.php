@@ -66,19 +66,12 @@ class GrantLinks extends AbstractService implements RowClearer
     public function attach(RowKind $kind, int $recordId, int $grantMemberId): void
     {
         $row = $this->rowOrRefuse($kind, $recordId);
-        $grantId = $this->db()->fetchOne('SELECT grant_id FROM xf_cav7_citation_grant_member WHERE grant_member_id = ?', $grantMemberId);
+        $grantId = $this->pickGrant($grantMemberId);
 
         $this->db()->executeTransaction(function () use ($row, $grantMemberId, $grantId): void {
-            // Grant row, then member row, the order removal locks in, so a member can't go
-            // mid-attach and leave a link to nothing. The plain read stays outside: MariaDB
-            // fails a locking read of a row changed since the transaction's first plain read.
-            $this->db()->fetchOne('SELECT grant_id FROM xf_cav7_citation_grant WHERE grant_id = ? FOR UPDATE', (int) $grantId);
-            $milpac = $this->db()->fetchOne(
-                'SELECT relation_id FROM xf_cav7_citation_grant_member WHERE grant_member_id = ? FOR UPDATE',
-                $grantMemberId
-            );
+            $milpac = $this->lockPick($grantId, $grantMemberId);
 
-            $rule = RowSaveRules::pickRefusal($milpac === false ? null : (int) $milpac, (int) $row->relation_id);
+            $rule = RowSaveRules::pickRefusal($milpac, (int) $row->relation_id);
             if ($rule !== null) {
                 throw new PrintableException(\XF::phrase("cav7_cit_refused_$rule"));
             }
@@ -88,6 +81,31 @@ class GrantLinks extends AbstractService implements RowClearer
                 $row->bulkSet($values);
                 $row->save(true, false);
             }
+        });
+    }
+
+    /** Whether a save with this record id makes a row: none, or one that has gone. */
+    public function makesRow(RowKind $kind, int $recordId): bool
+    {
+        return $recordId === 0 || $this->row($kind, $recordId) === null;
+    }
+
+    /**
+     * Runs a save that makes a row in one transaction with the pick locked, so a refused attach
+     * inside it takes the new row back too.
+     *
+     * @template T
+     * @param \Closure(): T $save
+     * @return T
+     */
+    public function holdingPick(int $grantMemberId, \Closure $save): mixed
+    {
+        $grantId = $this->pickGrant($grantMemberId);
+
+        return $this->db()->executeTransaction(function () use ($grantId, $grantMemberId, $save): mixed {
+            $this->lockPick($grantId, $grantMemberId);
+
+            return $save();
         });
     }
 
@@ -178,6 +196,30 @@ class GrantLinks extends AbstractService implements RowClearer
             'title' => $row['kind_title'],
             'date' => gmdate('Y-m-d', $row['row_date']),
         ]), $rows);
+    }
+
+    /** Read before the transaction begins, so lockPick() can come first in it. */
+    private function pickGrant(int $grantMemberId): int
+    {
+        return (int) $this->db()->fetchOne('SELECT grant_id FROM xf_cav7_citation_grant_member WHERE grant_member_id = ?', $grantMemberId);
+    }
+
+    /**
+     * Grant row, then member row, the order removal locks in, so a member can't go mid-attach
+     * and leave a link to nothing. Call it first in the transaction: MariaDB fails a locking
+     * read of a row changed since the transaction's first plain read.
+     *
+     * @return int|null The member's milpac, null once they've gone.
+     */
+    private function lockPick(int $grantId, int $grantMemberId): ?int
+    {
+        $this->db()->fetchOne('SELECT grant_id FROM xf_cav7_citation_grant WHERE grant_id = ? FOR UPDATE', $grantId);
+        $milpac = $this->db()->fetchOne(
+            'SELECT relation_id FROM xf_cav7_citation_grant_member WHERE grant_member_id = ? FOR UPDATE',
+            $grantMemberId
+        );
+
+        return $milpac === false ? null : (int) $milpac;
     }
 
     private function linkedRows(): LinkedRows

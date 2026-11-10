@@ -1799,6 +1799,12 @@
         "version_string": "1.1.0",
         "hash": "7e38b901e8399a70f839a0e680df9301"
     },
+    "cav7_cit_row_not_saved.txt": {
+        "global_cache": false,
+        "version_id": 1020070,
+        "version_string": "1.2.0",
+        "hash": "07d3bbfafe530da89ea55416c33265e7"
+    },
     "cav7_cit_row_record.txt": {
         "global_cache": false,
         "version_id": 1010070,
