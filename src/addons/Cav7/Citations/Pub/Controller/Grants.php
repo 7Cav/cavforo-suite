@@ -457,7 +457,8 @@ class Grants extends AbstractController
         return $this->em()->getRepository('Cav7\Citations:Template')->movableVersions(
             $grant->Version->template_id,
             $grant->template_version_id,
-            "{$grant->kind_type}:{$grant->kind_id}"
+            "{$grant->kind_type}:{$grant->kind_id}",
+            $grant->is_regiment
         );
     }
 
