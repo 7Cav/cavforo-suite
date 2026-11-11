@@ -49,12 +49,19 @@ final class PucSync
         return (bool) \XF::options()->cav7EnlistDefPucSync;
     }
 
-    /** The daily cron entry and the regiment grant listener both call this. */
+    /**
+     * The daily cron entry and the regiment grant listener both call this. Queueing replaces a
+     * queued walk's data, so the restart carries the counts that walk hasn't logged yet.
+     */
     public static function enqueue(): void
     {
-        if (self::isOn()) {
-            \XF::app()->jobManager()->enqueueUnique('cav7EnlistDefPucSync', Job\PucSync::class, [], false);
+        if (!self::isOn()) {
+            return;
         }
+        $jobs = \XF::app()->jobManager();
+        $queued = $jobs->getUniqueJob('cav7EnlistDefPucSync');
+        $counts = $queued ? (unserialize($queued['execute_data'])['counts'] ?? []) : [];
+        $jobs->enqueueUnique('cav7EnlistDefPucSync', Job\PucSync::class, ['counts' => $counts], false);
     }
 
     public function hasLiveGrants(): bool

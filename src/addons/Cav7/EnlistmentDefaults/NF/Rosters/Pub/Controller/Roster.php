@@ -23,9 +23,10 @@ use XF\Mvc\Reply\View;
  * save and edit; a refusal here is an Error reply, which it passes through
  * untouched whichever extension runs first. Re-check on a dev stack after a
  * vendor upgrade: actionAwardsEdit, actionAwardsDelete and
- * actionProfileAwardsSave (NF/Rosters Pub/Controller/Roster.php:401, :423, :451)
- * still exist, save still finds the row by record_id alone and reads award_id,
- * and editing, deleting or adding a PUC row is refused while other awards save.
+ * actionProfileAwardsSave still exist, edit and delete still check permission on
+ * the row's milpac and save on the URL's, save still finds the row by record_id
+ * alone and reads award_id, and editing, deleting or adding a PUC row is refused
+ * while other awards save.
  *
  * The prefill fills the add-milpac form with the enlistment defaults (rank
  * Recruit, position New Recruit when the roster lists it, and Join Date and
@@ -88,18 +89,25 @@ class Roster extends XFCP_Roster
 {
     public function actionAwardsEdit(ParameterBag $params): View|AbstractReply
     {
-        return $this->pucRowRefusal((int) $params->record_id) ?? parent::actionAwardsEdit($params);
+        $row = $this->em()->find('NF\Rosters:RosterUserAward', $params->record_id);
+
+        return $this->pucRowRefusal($row?->RosterUser, $row) ?? parent::actionAwardsEdit($params);
     }
 
     public function actionAwardsDelete(ParameterBag $params): Redirect|View|AbstractReply
     {
-        return $this->pucRowRefusal((int) $params->record_id) ?? parent::actionAwardsDelete($params);
+        $row = $this->em()->find('NF\Rosters:RosterUserAward', $params->record_id);
+
+        return $this->pucRowRefusal($row?->RosterUser, $row) ?? parent::actionAwardsDelete($params);
     }
 
     public function actionProfileAwardsSave(ParameterBag $params): Redirect|Error|AbstractReply
     {
-        return $this->pucRowRefusal($this->filter('record_id', 'int'), $this->filter('award_id', 'int'))
-            ?? parent::actionProfileAwardsSave($params);
+        return $this->pucRowRefusal(
+            $this->em()->find('NF\Rosters:RosterUser', $params->relation_id),
+            $this->em()->find('NF\Rosters:RosterUserAward', $this->filter('record_id', 'int')),
+            $this->filter('award_id', 'int'),
+        ) ?? parent::actionProfileAwardsSave($params);
     }
 
     public function actionAddUser(ParameterBag $params): Redirect|View|Error|AbstractReply
@@ -128,17 +136,15 @@ class Roster extends XFCP_Roster
         return $reply;
     }
 
-    private function pucRowRefusal(int $recordId, ?int $submittedAwardId = null): ?Error
+    /** $milpac is the one the vendor checks permission on, and a visitor without it gets the vendor's answer. */
+    private function pucRowRefusal(?RosterUser $milpac, ?RosterUserAward $row, ?int $submittedAwardId = null): ?Error
     {
-        if (!PucSync::isOn())
+        if (!PucSync::isOn() || !$milpac?->canManageAwards())
         {
             return null;
         }
 
         $sync = PucSync::forApp($this->app());
-        /** @var RosterUserAward|null $row */
-        $row = $recordId ? $this->em()->find('NF\Rosters:RosterUserAward', $recordId) : null;
-
         $refused = ($row && $sync->isPucRow((int) $row->award_id, $row->citation_regiment_grant_id))
             || ($submittedAwardId !== null && $sync->isPucRow($submittedAwardId, null));
 
