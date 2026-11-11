@@ -104,7 +104,7 @@ class Roster extends XFCP_Roster
     public function actionProfileAwardsSave(ParameterBag $params): Redirect|Error|AbstractReply
     {
         return $this->pucRowRefusal(
-            $this->em()->find('NF\Rosters:RosterUser', $params->relation_id),
+            $this->assertRosterUserExists($params->relation_id),
             $this->em()->find('NF\Rosters:RosterUserAward', $this->filter('record_id', 'int')),
             $this->filter('award_id', 'int'),
         ) ?? parent::actionProfileAwardsSave($params);
