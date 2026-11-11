@@ -5,6 +5,7 @@ namespace Cav7\Citations\Repository;
 use Cav7\Citations\Entity\GrantLog;
 use Cav7\Citations\Entity\Signature;
 use Cav7\Citations\Grant\Actor;
+use Cav7\Citations\Grant\GrantRules;
 use Cav7\Citations\Grant\GrantValues;
 use Cav7\Citations\Render\ImageFile;
 use Cav7\Citations\Render\PinnedSignature;
@@ -117,6 +118,26 @@ class Grant extends Repository
             )];
         }
         return $held;
+    }
+
+    /** @return list<int> The awards that take a regiment grant, none when the option isn't a list of ids. */
+    public function regimentAwardIds(): array
+    {
+        return GrantRules::awardList((string) $this->options()->cav7CitRegimentAwardIds) ?? [];
+    }
+
+    /** @return array<int, array{award_id: int, grant_date: int}> By grant id. */
+    public function liveRegimentGrants(): array
+    {
+        $grants = [];
+        foreach ($this->db()->fetchAll(
+            "SELECT grant_id, kind_id, grant_date FROM xf_cav7_citation_grant
+            WHERE is_regiment = 1 AND withdrawn_date = 0 AND kind_type = 'award'
+            ORDER BY grant_id"
+        ) as $row) {
+            $grants[(int) $row['grant_id']] = ['award_id' => (int) $row['kind_id'], 'grant_date' => (int) $row['grant_date']];
+        }
+        return $grants;
     }
 
     public function liveRegimentExists(int $awardId, int $grantDate, int $exceptGrantId = 0): bool

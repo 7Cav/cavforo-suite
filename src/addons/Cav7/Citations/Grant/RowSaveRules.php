@@ -7,12 +7,15 @@ use Cav7\Citations\Storage\RowKind;
 /**
  * What refuses a save on a row, first failure wins. A rule names its phrase.
  *
- * The grant-linked refusal follows the link and ignores the cutover option. The closed-kind
- * refusal follows the kind and needs the option on. The kind checked is the one submitted,
- * so a row refiled in the same save is judged as what it's becoming.
+ * The grant-linked refusals follow the link and ignore the cutover option. A regiment-linked
+ * row refuses any change to its citation, a clear included, since the regiment grant is
+ * what puts it there. A member-linked row can be cleared, which is how it takes a file. The
+ * closed-kind refusal follows the kind and needs the option on. The kind checked is the one
+ * submitted, so a row refiled in the same save is judged as what it's becoming.
  */
 final class RowSaveRules
 {
+    public const CHANGE_ON_REGIMENT_ROW = 'change_on_regiment_row';
     public const FILE_ON_LINKED_ROW = 'file_on_linked_row';
     public const FILE_ON_CLOSED_KIND = 'file_on_closed_kind';
     public const PICK_BEFORE_CUTOVER = 'pick_before_cutover';
@@ -26,7 +29,9 @@ final class RowSaveRules
 
     /**
      * @param int $recordTypeId The submitted record type, ignored on an award.
+     * @param bool $rowRegiment The row holds a regiment grant, which also makes it linked.
      * @param int $rowMilpac The row's own relation_id, or the URL's for a new row.
+     * @param bool $clears The save drops the row's citation: delete_image, or No citation picked.
      * @param int $pick A grant member id, 0 for none.
      * @param int|null $pickMilpac That grant member's relation_id, null if it's gone.
      */
@@ -34,8 +39,10 @@ final class RowSaveRules
         RowKind $kind,
         int $recordTypeId,
         bool $rowLinked,
+        bool $rowRegiment,
         int $rowMilpac,
         bool $hasFile,
+        bool $clears,
         int $pick,
         ?int $pickMilpac,
         bool $cutover,
@@ -43,6 +50,7 @@ final class RowSaveRules
         $open = $kind === RowKind::Record && $recordTypeId === self::OPEN_RECORD_TYPE;
 
         return match (true) {
+            $rowRegiment && ($hasFile || $clears || $pick !== 0) => self::CHANGE_ON_REGIMENT_ROW,
             $hasFile && $rowLinked => self::FILE_ON_LINKED_ROW,
             $hasFile && $cutover && !$open => self::FILE_ON_CLOSED_KIND,
             $pick === 0 => null,

@@ -3,7 +3,9 @@
 namespace Cav7\EnlistmentDefaults\NF\Rosters\Pub\Controller;
 
 use Cav7\EnlistmentDefaults\EnlistmentFormDefaults;
+use Cav7\EnlistmentDefaults\PucSync;
 use NF\Rosters\Entity\RosterUser;
+use NF\Rosters\Entity\RosterUserAward;
 use XF\Mvc\ParameterBag;
 use XF\Mvc\Reply\AbstractReply;
 use XF\Mvc\Reply\Error;
@@ -11,11 +13,25 @@ use XF\Mvc\Reply\Redirect;
 use XF\Mvc\Reply\View;
 
 /**
- * Class extension on the vendor roster controller. The only thing it adds:
- * prefill the add-milpac form with the enlistment defaults (rank Recruit,
- * position New Recruit when the roster lists it, and Join Date and Promotion
- * Date set to today in board time) so a recruiter opens the form with the
- * common case already filled in.
+ * Class extension on the vendor roster controller. Two things: the add-milpac
+ * form prefill, and the PUC row lock.
+ *
+ * The lock: with the PUC sync on, the award edit, delete and save actions refuse
+ * a PUC row before the vendor runs, and save also refuses a submitted PUC award,
+ * so no form adds one or turns another row into one. The add form itself is
+ * left alone; it is blank and offers every award. Cav7/Citations wraps the same
+ * save and edit; a refusal here is an Error reply, which it passes through
+ * untouched whichever extension runs first. Re-check on a dev stack after a
+ * vendor upgrade: actionAwardsEdit, actionAwardsDelete and
+ * actionProfileAwardsSave still exist, edit and delete still check permission on
+ * the row's milpac and save on the URL's, save still finds the row by record_id
+ * alone and reads award_id, and editing, deleting or adding a PUC row is refused
+ * while other awards save.
+ *
+ * The prefill fills the add-milpac form with the enlistment defaults (rank
+ * Recruit, position New Recruit when the roster lists it, and Join Date and
+ * Promotion Date set to today in board time) so a recruiter opens the form with
+ * the common case already filled in.
  *
  * Form-only by design. It touches the milpac entity the GET render hands the
  * form view and nothing else: it never runs on the POST branch, so whatever the
@@ -71,6 +87,29 @@ use XF\Mvc\Reply\View;
  */
 class Roster extends XFCP_Roster
 {
+    public function actionAwardsEdit(ParameterBag $params): View|AbstractReply
+    {
+        $row = $this->em()->find('NF\Rosters:RosterUserAward', $params->record_id);
+
+        return $this->pucRowRefusal($row?->RosterUser, $row) ?? parent::actionAwardsEdit($params);
+    }
+
+    public function actionAwardsDelete(ParameterBag $params): Redirect|View|AbstractReply
+    {
+        $row = $this->em()->find('NF\Rosters:RosterUserAward', $params->record_id);
+
+        return $this->pucRowRefusal($row?->RosterUser, $row) ?? parent::actionAwardsDelete($params);
+    }
+
+    public function actionProfileAwardsSave(ParameterBag $params): Redirect|Error|AbstractReply
+    {
+        return $this->pucRowRefusal(
+            $this->assertRosterUserExists($params->relation_id),
+            $this->em()->find('NF\Rosters:RosterUserAward', $this->filter('record_id', 'int')),
+            $this->filter('award_id', 'int'),
+        ) ?? parent::actionProfileAwardsSave($params);
+    }
+
     public function actionAddUser(ParameterBag $params): Redirect|View|Error|AbstractReply
     {
         $reply = parent::actionAddUser($params);
@@ -95,6 +134,21 @@ class Roster extends XFCP_Roster
         }
 
         return $reply;
+    }
+
+    /** $milpac is the one the vendor checks permission on, and a visitor without it gets the vendor's answer. */
+    private function pucRowRefusal(?RosterUser $milpac, ?RosterUserAward $row, ?int $submittedAwardId = null): ?Error
+    {
+        if (!PucSync::isOn() || !$milpac?->canManageAwards())
+        {
+            return null;
+        }
+
+        $sync = PucSync::forApp($this->app());
+        $refused = ($row && $sync->isPucRow((int) $row->award_id, $row->citation_regiment_grant_id))
+            || ($submittedAwardId !== null && $sync->isPucRow($submittedAwardId, null));
+
+        return $refused ? $this->error(\XF::phrase('cav7_enlist_def_puc_rows_managed')) : null;
     }
 
     private function applyEnlistmentDefaults(View $reply): void

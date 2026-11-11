@@ -30,13 +30,15 @@ function refusal(
     RowKind $kind = RowKind::Record,
     int $type = PROMOTION,
     bool $linked = false,
+    bool $regiment = false,
     int $rowMilpac = 10,
     bool $file = false,
+    bool $clears = false,
     int $pick = 0,
     ?int $pickMilpac = null,
     bool $cutover = false,
 ): ?string {
-    return Rules::refusal($kind, $type, $linked, $rowMilpac, $file, $pick, $pickMilpac, $cutover);
+    return Rules::refusal($kind, $type, $linked || $regiment, $regiment, $rowMilpac, $file, $clears, $pick, $pickMilpac, $cutover);
 }
 
 foreach ([
@@ -58,6 +60,11 @@ foreach ([
     ['a pick from the row\'s milpac passes', refusal(pick: 5, pickMilpac: 10, cutover: true), null],
     ['a pick swaps on a linked row', refusal(linked: true, pick: 5, pickMilpac: 10, cutover: true), null],
     ['a file refusal comes before a pick refusal', refusal(linked: true, file: true, pick: 5), Rules::FILE_ON_LINKED_ROW],
+    ['a member-linked row can be cleared', refusal(RowKind::Award, linked: true, clears: true, cutover: true), null],
+    ['a regiment-linked row saved with no change passes', refusal(RowKind::Award, regiment: true), null],
+    ['a regiment-linked row can\'t be cleared, cutover off', refusal(RowKind::Award, regiment: true, clears: true), Rules::CHANGE_ON_REGIMENT_ROW],
+    ['nor swapped to a pick', refusal(RowKind::Award, regiment: true, pick: 5, pickMilpac: 10, cutover: true), Rules::CHANGE_ON_REGIMENT_ROW],
+    ['nor given a file, which a clear can\'t open the way to', refusal(RowKind::Award, regiment: true, file: true, cutover: true), Rules::CHANGE_ON_REGIMENT_ROW],
 ] as [$label, $actual, $expected]) {
     check("save: $label", $actual === $expected, (string) $actual);
 }

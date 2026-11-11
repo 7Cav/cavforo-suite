@@ -3,7 +3,6 @@
 namespace Cav7\Citations\Pub\Controller;
 
 use Cav7\Citations\Entity\Template;
-use Cav7\Citations\Grant\GrantRules;
 use Cav7\Citations\Repository\Template as TemplateRepository;
 use Cav7\Citations\Service\Drafts;
 use Cav7\Citations\Template\ManagerAccess;
@@ -178,9 +177,7 @@ class Templates extends AbstractManager
     /** @return list<string> */
     private function regimentKinds(): array
     {
-        $ids = GrantRules::awardList((string) $this->options()->cav7CitRegimentAwardIds) ?? [];
-
-        return array_map(fn (int $id): string => "award:$id", $ids);
+        return array_map(fn (int $id): string => "award:$id", $this->repository('Cav7\Citations:Grant')->regimentAwardIds());
     }
 
     private function template(ParameterBag $params): Template

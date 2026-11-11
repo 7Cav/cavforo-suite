@@ -1,5 +1,7 @@
 # Bundle the PUC set in the addon, not clone from a template milpac
 
+**Superseded** by [ADR-0004](0004-puc-rows-follow-regiment-grants.md) on 2026-11-10. PUC rows now follow regiment grants, and the bundled set is gone.
+
 Every new milpac must receive the standing **PUC set** — the dated
 Presidential Unit Citation grants (award 61) and their citation images. The
 images are generalized (the same JPG per date for every member), so the data is

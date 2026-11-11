@@ -18,8 +18,9 @@ _Avoid_: profile (the XenForo user profile is a separate thing), personnel
 jacket, record (ambiguous with service record)
 
 **citation**:
-The document that records something granted to a member, such as an award, a
-promotion or a completed course. A roster row carries at most one.
+The document that records something granted to a member, or to the whole
+regiment, such as an award, a promotion or a completed course. A roster row
+carries at most one.
 _Avoid_: citation for a recommendation's proposed prose, which is the 7Cav Medal
 App's sense of the word; disciplinary citation (a Disciplinary record's image is
 a filed form, and nothing is granted)
@@ -39,8 +40,25 @@ A row's pointer at the **citation blob** that holds its citation image.
 
 **citation upload**:
 A person attaching an image file to a row's citation slot through the roster's
-save forms. When code fills the slot, as `Cav7/EnlistmentDefaults` does with a
-new milpac's PUC set, that is not a citation upload.
+save forms. Code linking a row to a grant, as `Cav7/EnlistmentDefaults`' PUC
+sync does, is not a citation upload.
+
+**grant**:
+A citation an S1 Citations clerk issues to one or more members, or to the whole
+regiment, on one date, with one template, one set of signatories and, when
+written, one citation text. `Cav7/Citations` holds it.
+_Avoid_: grant for one milpac's award row for one PUC, which is a PUC row in
+`Cav7/EnlistmentDefaults`
+
+**grant member**:
+One member of a grant, holding their own name and rank snapshot. It exists
+before any row is attached to it, and one can be attached to any number of rows.
+
+**regiment grant**:
+A grant issued to the whole regiment, with no grant members, that every milpac
+carries. The PUC today.
+_Avoid_: unit citation, since MUC, SUA, AVUA and JMU are unit citations issued
+to members, and open grant, which is retired and had members
 
 **data type**:
 One kind of XenForo add-on data — options, phrases, routes, cron entries. A

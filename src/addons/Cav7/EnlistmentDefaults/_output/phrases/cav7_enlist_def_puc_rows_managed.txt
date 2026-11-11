@@ -1,0 +1,1 @@
+Presidential Unit Citation rows are managed automatically. Every milpac holds one for each of the regiment's Presidential Unit Citations, linked to its certificate, so they can't be added, edited or deleted here.

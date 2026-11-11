@@ -1,12 +1,12 @@
 {
-    "edit_format": "spinbox",
-    "edit_format_params": "min=0\nstep=1",
-    "data_type": "unsigned_integer",
+    "edit_format": "onoff",
+    "edit_format_params": "",
+    "data_type": "boolean",
     "sub_options": [],
     "validation_class": "",
     "validation_method": "",
     "advanced": false,
-    "default_value": "61",
+    "default_value": "0",
     "relations": {
         "cav7EnlistmentDefaults": 10
     }

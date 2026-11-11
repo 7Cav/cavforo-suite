@@ -6,6 +6,9 @@
 - **Amended by:** [ADR-0003](0003-a-prefill-rejection-stays-silent.md), which scopes
   "recorded in the error log and nowhere else" below to the applier path. A value
   the add-form prefill cannot set is dropped silently and deliberately.
+- **Amended by:** [ADR-0004](0004-puc-rows-follow-regiment-grants.md), which
+  replaced the bundled PUC set with the PUC sync. Its daily run repairs a PUC row
+  that failed at creation, as the note under Consequences says.
 
 ## Context
 
@@ -82,3 +85,8 @@ takes a minute.
 A re-apply path is therefore a real gap, deliberately left open. If it is ever wanted
 it is the same shape as the `Cav7/DiscordSyncPatch` resync work and belongs in its own
 issue, not bolted onto the error policy.
+
+**Note (2026-11-10):** [ADR-0004](0004-puc-rows-follow-regiment-grants.md) closed this gap.
+The PUC sync's daily run retries a PUC row that failed at creation, so a dropped
+PUC row stays missing only until the next run that writes it. The paragraphs above
+are the decision as it stood.

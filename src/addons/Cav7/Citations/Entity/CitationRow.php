@@ -32,6 +32,17 @@ trait CitationRow
         return $this->citation_grant_member_id !== null || $this->citation_regiment_grant_id !== null;
     }
 
+    /** The one writer of a regiment link. It doesn't save, so a new row is made and linked in one save. */
+    public function linkRegimentGrant(int $grantId): void
+    {
+        $this->bulkSet([
+            'citation_regiment_grant_id' => $grantId,
+            'citation_grant_member_id' => null,
+            'citation_blob_id' => null,
+            'citation_date' => \XF::$time,
+        ]);
+    }
+
     public function getImageUrl($canonical = false): ?string
     {
         $source = ImageSource::for(

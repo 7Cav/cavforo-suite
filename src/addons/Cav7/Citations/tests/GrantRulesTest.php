@@ -788,6 +788,10 @@ foreach ([
     ],
     'a retypeset that changed something says so' => [LogSummary::of('retypeset', ['before' => []], $names), [['cav7_cit_log_retypeset', []]]],
     'a retypeset that changed nothing says that' => [LogSummary::of('retypeset', ['unchanged' => true], $names), [['cav7_cit_log_retypeset_unchanged', []]]],
+    'a PUC sync gives its counts' => [
+        LogSummary::of('puc_sync', ['added' => 12, 'reset' => 0, 'removed' => 1], $names),
+        [['cav7_cit_log_puc_sync', ['added' => '12', 'reset' => '0', 'removed' => '1']]],
+    ],
 ] as $label => [$actual, $expected]) {
     check("history: $label", $actual === $expected, var_export($actual, true));
 }

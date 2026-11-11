@@ -1,9 +1,9 @@
 {
     "legacy_addon_id": "",
     "title": "7Cav - Enlistment Defaults",
-    "description": "Prefills the add-milpac form, grants the standing PUC set, and writes the first service record when a milpac is created, via NF/Rosters class extensions and without modifying the vendor add-on.",
-    "version_id": 1020070,
-    "version_string": "1.2.0",
+    "description": "Prefills the add-milpac form, writes each new milpac's first service record, and keeps one PUC row per regiment grant on every milpac, via NF/Rosters class extensions.",
+    "version_id": 2000070,
+    "version_string": "2.0.0",
     "dev": "Cav7",
     "dev_url": "https://github.com/7Cav",
     "faq_url": "",
@@ -11,8 +11,8 @@
     "extra_urls": [],
     "require": {
         "php": [
-            "8.0.0",
-            "PHP 8.0+"
+            "8.1.0",
+            "PHP 8.1+"
         ],
         "XF": [
             2030070,
@@ -21,6 +21,14 @@
         "NF/Rosters": [
             2010000,
             "Rosters and Personnel Status Reports 2.1+"
+        ],
+        "Cav7/Citations": [
+            1030070,
+            "7Cav - Citations 1.3.0+"
+        ],
+        "Cav7/RosterAudit": [
+            1020070,
+            "7Cav - Roster Audit Log 1.2.0+"
         ]
     },
     "icon": ""

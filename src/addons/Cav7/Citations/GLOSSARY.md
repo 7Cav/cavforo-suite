@@ -3,8 +3,8 @@
 Stores the roster's citation images as citation blobs and moves them out of the
 vendor's per-row files, and holds the generator that replaces S1's GIMP export and
 the upload. For **milpac**, **citation**, **citation image**, **citation blob**,
-**citation reference** and **citation upload**, see the suite-wide
-[GLOSSARY.md](../../../../GLOSSARY.md).
+**citation reference**, **citation upload**, **grant**, **grant member** and
+**regiment grant**, see the suite-wide [GLOSSARY.md](../../../../GLOSSARY.md).
 
 ## Language
 
@@ -203,22 +203,6 @@ _Avoid_: signature asset
 
 ### Grants
 
-**grant**:
-A citation an S1 Citations clerk issues to one or more members, or to the whole
-regiment, on one date, with one template, one set of signatories and, when written, one
-citation text.
-_Avoid_: grant for one dated PUC award row, which is `Cav7/EnlistmentDefaults`' sense
-
-**grant member**:
-One member of a grant, holding their own name and rank snapshot. It exists before any
-row is attached to it, and one can be attached to any number of rows.
-
-**regiment grant**:
-A grant issued to the whole regiment, with no grant members, that every milpac carries.
-The PUC today.
-_Avoid_: unit citation, since MUC, SUA, AVUA and JMU are unit citations issued to
-members, and open grant, which is retired and had members
-
 **rank snapshot**:
 A rank's printed title, pay grade and abbreviation, copied at issue, on each grant member
 or once on the grant as the template declares. A rename in NF/Rosters never reaches it.
@@ -228,9 +212,10 @@ An award row, or a service record of one record type. Award rows have no record 
 record type alone can't name them.
 
 **grant link**:
-A row's pointer at one grant member, or at a regiment grant. Like a citation image, it
-stays until someone removes or swaps it, the row is deleted, or its grant member is
-removed.
+A row's pointer at one grant member, or at a regiment grant. A link to a grant member,
+like a citation image, stays until someone removes or swaps it, the row is deleted, or
+its grant member is removed. A link to a regiment grant is the PUC sync's to make and
+take away, and a row form can't change it.
 _Avoid_: citation reference, which points at a blob
 
 **attach**:

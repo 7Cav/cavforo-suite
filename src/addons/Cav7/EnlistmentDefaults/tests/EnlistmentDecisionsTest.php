@@ -1,17 +1,12 @@
 <?php
 
 /**
- * Issues #24 and #45 — the pure decision rules behind PUC automation, isolated
- * from the XenForo entities they ultimately drive so every acceptance criterion
- * that is a decision (not a database write) is covered without booting XenForo.
+ * Issues #24 and #45: the pure enlistment rules, covered without booting XenForo.
  *
  * Rules under test (all on Cav7\EnlistmentDefaults\EnlistmentDecisions):
  *
  *  - shouldApply(): fire on a milpac INSERT only. A move or an edit is an
  *    UPDATE and must not fire.
- *  - pendingDates(): idempotency guard — given the PUC dates the milpac already
- *    carries (as award_date timestamps for the PUC award), return only the
- *    bundled dates still missing, so a re-run never duplicates.
  *  - attributionUserId(): the acting visitor when there is a session, else the
  *    configured system fallback user id (CLI, no visitor).
  *  - The canonical enlistment record: a fixed Transfer-typed body.
@@ -28,11 +23,9 @@
 
 namespace Cav7\EnlistmentDefaults\Tests;
 
-require __DIR__ . '/../PucSet.php';
 require __DIR__ . '/../EnlistmentDecisions.php';
 
 use Cav7\EnlistmentDefaults\EnlistmentDecisions;
-use Cav7\EnlistmentDefaults\PucSet;
 
 $failures = 0;
 
@@ -55,47 +48,6 @@ check(
 check(
     'shouldApply() is false on an update (a move or an edit)',
     EnlistmentDecisions::shouldApply(false) === false
-);
-
-// --- pendingDates(): idempotency guard -----------------------------------
-// A brand-new milpac carries no PUC awards: the full set is pending.
-$fresh = EnlistmentDecisions::pendingDates([]);
-check(
-    'a milpac with no PUC awards yet has the whole set pending, in order',
-    $fresh === PucSet::dates(),
-    'got: ' . implode(', ', $fresh)
-);
-
-// A milpac that already carries some PUC dates: only the missing ones remain.
-$existing = [
-    PucSet::awardDateTimestamp('2003-03-18'),
-    PucSet::awardDateTimestamp('2010-09-18'),
-    PucSet::awardDateTimestamp('2021-05-16'),
-];
-$pending = EnlistmentDecisions::pendingDates($existing);
-check(
-    'pendingDates() skips dates the milpac already carries (no duplicates)',
-    $pending === ['2004-09-01', '2009-08-10', '2011-06-02'],
-    'got: ' . implode(', ', $pending)
-);
-
-// A milpac that already carries the full set: nothing pending (re-run is a no-op).
-$full = array_map([PucSet::class, 'awardDateTimestamp'], PucSet::dates());
-check(
-    're-running on a milpac that already has the full set yields nothing pending',
-    EnlistmentDecisions::pendingDates($full) === [],
-    'got: ' . implode(', ', EnlistmentDecisions::pendingDates($full))
-);
-
-// Same-day timestamps that are not exactly midnight still count as "carried":
-// matching is by calendar day, not exact second, so a manually-added grant at
-// any time on a PUC day suppresses the bundled one.
-$noonOn2003 = PucSet::awardDateTimestamp('2003-03-18') + 12 * 3600;
-$pendingNoon = EnlistmentDecisions::pendingDates([$noonOn2003]);
-check(
-    'an existing grant anywhere on a PUC day suppresses that date (day-level match)',
-    !in_array('2003-03-18', $pendingNoon, true),
-    'got: ' . implode(', ', $pendingNoon)
 );
 
 // --- attributionUserId(): visitor, else system fallback ------------------
@@ -121,9 +73,8 @@ check(
 
 // --- enlistmentRecordDate(): the record follows the Join Date, at midnight UTC --
 // Issue #45: the submitted Join Date is a bare calendar day, stamped at midnight
-// UTC of that day independent of the board timezone — the same convention
-// PucSet::awardDateTimestamp() follows — so RosterPatch's UTC floor and
-// rendering leave the entered day unchanged on any board.
+// UTC of that day independent of the board timezone, so RosterPatch's UTC floor
+// and rendering leave the entered day unchanged on any board.
 $creation = 1600000000; // a creation moment that must be ignored when a date is given
 $midnightUtc = \DateTimeImmutable::createFromFormat('!Y-m-d', '2012-05-18', new \DateTimeZone('UTC'))
     ->getTimestamp();

@@ -13,7 +13,7 @@ namespace XF;
 /**
  * @property non-negative-int|null $cav7EnlistDefDefaultPositionId Default position id
  * @property non-negative-int|null $cav7EnlistDefDefaultRankId Default rank id
- * @property non-negative-int|null $cav7EnlistDefPucAwardId PUC award id
+ * @property bool|null $cav7EnlistDefPucSync PUC sync
  * @property non-negative-int|null $cav7EnlistDefRecordTypeId Enlistment record type id
  * @property non-negative-int|null $cav7EnlistDefSystemUserId System fallback user id
  */

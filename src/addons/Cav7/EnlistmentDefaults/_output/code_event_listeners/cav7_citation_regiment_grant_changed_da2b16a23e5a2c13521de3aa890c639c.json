@@ -1,0 +1,9 @@
+{
+    "event_id": "cav7_citation_regiment_grant_changed",
+    "execute_order": 10,
+    "callback_class": "Cav7\\EnlistmentDefaults\\PucSync",
+    "callback_method": "enqueue",
+    "active": true,
+    "hint": "",
+    "description": "Queues the PUC sync when a regiment grant is issued, corrected or withdrawn"
+}

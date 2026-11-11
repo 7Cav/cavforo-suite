@@ -3,7 +3,6 @@
 namespace Cav7\Citations\Service;
 
 use Cav7\Citations\Entity\TemplateVersion;
-use Cav7\Citations\Grant\GrantRules;
 use Cav7\Citations\Render\FontCatalog;
 use Cav7\Citations\Render\VersionRules;
 use Cav7\Citations\Template\FileStore;
@@ -22,7 +21,7 @@ class Publication extends AbstractService
 
         $regimentKinds = array_map(
             fn (int $id): string => "award:$id",
-            GrantRules::awardList((string) $this->app->options()->cav7CitRegimentAwardIds) ?? []
+            $this->repository('Cav7\Citations:Grant')->regimentAwardIds()
         );
 
         $problems = VersionRules::publishProblems(

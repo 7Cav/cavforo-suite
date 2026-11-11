@@ -1,51 +1,35 @@
 # Cav7/EnlistmentDefaults
 
 Pre-fills the add-milpac form with the values a new enlistment almost always
-uses, and applies the standing set of unit citations and the first service
-record the moment a milpac is created — so a recruiter starts from a
-near-complete form and the new member starts with what every member already
-carries. Companion to NF/Rosters; attaches through XenForo class extensions and
-ships none of the vendor's code (same shape as
-[Cav7/RosterAudit](../RosterAudit/README.md)). For **milpac**, **citation**
-and **citation image**, see the suite-wide [GLOSSARY.md](../../../../GLOSSARY.md).
+uses, writes a new milpac's first service record, and keeps one PUC row per
+regiment grant on every milpac. Companion to NF/Rosters; attaches through
+XenForo class extensions and ships none of the vendor's code. For **milpac**,
+**citation**, **citation image**, **grant**, **grant member** and **regiment
+grant**, see the suite-wide [GLOSSARY.md](../../../../GLOSSARY.md).
 
 ## Language
 
 **PUC (Presidential Unit Citation)**:
 A single NF/Rosters award (`award_id` 61, "Army & Air Force Presidential Unit
 Citation") that the unit has earned several times. Each time it was earned is a
-separate dated grant, so a milpac carries _multiple_ PUCs — one per date.
+separate regiment grant, so a milpac carries _multiple_ PUCs, one per grant.
 _Avoid_: treating "PUC" as the whole "Unit Awards" award group (that group also
-holds other unit citations and a separator row); PUC is specifically award 61.
+holds other unit citations and a separator row).
 
-**PUC set**:
-The fixed list of dated PUC grants every milpac is meant to receive — currently
-six dates (2003-03-18, 2004-09-01, 2009-08-10, 2010-09-18, 2011-06-02,
-2021-05-16). The set grows only when the unit earns another PUC; it is bundled
-with the addon, not derived at runtime (see
-`docs/adr/0001-bundle-citation-set.md`).
-_Avoid_: "all unit awards" (only the PUC, award 61, is auto-applied today). Also
-_avoid_ reading "the set" as a guarantee of what a milpac carries — the dates are
-applied one at a time and a milpac can end up holding only some of them (see
-**Dropped grant**).
+**PUC row**:
+One milpac's award row for one PUC, linked to its regiment grant and dated to
+it.
+_Avoid_: grant, which is the regiment grant the row is linked to.
 
-**Dropped grant**:
-A bundled PUC date that failed to apply when the milpac was created and was
-skipped, leaving that milpac permanently short of the full **PUC set**. The
-remaining dates and the **Enlistment record** still apply, so the milpac looks
-ordinary; the only trace is an admin error-log entry. Nothing re-applies it —
-repair is granting the award by hand (see
-`docs/adr/0002-error-log-is-the-only-failure-surface.md`).
-_Avoid_: "failed enlistment" (the milpac is created and the member is enlisted
-either way) and "pending date" (**pending** means not yet carried at the moment
-the set is applied, which is the normal state of every date on a new milpac).
+**PUC sync**:
+The pass that keeps exactly one PUC row per live regiment grant on every milpac
+on every roster: when a milpac is created, when a regiment grant is issued,
+corrected or withdrawn, and daily.
+_Avoid_: a bare "sync" or "resync", which belong to `Cav7/DiscordSyncPatch`.
 
-**Citation**:
-Defined suite-wide, in the root [GLOSSARY.md](../../../../GLOSSARY.md). In this
-addon it is always a PUC's. Each PUC date has one citation image, the same for
-every member who carries that date, so the addon bundles one image per date
-instead of producing one per member.
-_Avoid_: per-member or personalized citations (they are unit-level documents).
+**Strip**:
+The PUC sync's first run, which an operator starts from the CLI. It replaces
+every PUC row made before the sync with linked ones, and turns the sync on.
 
 **Enlistment record**:
 The single first `ServiceRecord` written when a milpac is created: type
@@ -81,39 +65,34 @@ exception a recruiter just overrides.
 
 ## Flagged ambiguities
 
-- **"A set of PUCs" vs "the PUC"** — resolved: one award (61) granted on each of
-  the six dates the unit earned it, not a set of distinct awards. The
-  "Unit Awards" group's other entries (Joint Meritorious, Valorous, etc.) are
-  _not_ auto-applied.
-- **Create vs move** — only a _new_ `RosterUser` row (`Service\Profile\Adder`)
-  is a milpac creation. Moving a member between rosters
-  (`Service\Profile\Mover`) updates the existing row, so it never triggers this
-  addon. Re-applying PUCs to an existing milpac is explicitly never done.
-- **Applied vs carried** — resolved: the **PUC set** is what the addon tries to
-  apply, not what the milpac is guaranteed to hold afterwards. Each date is
-  applied independently, so a failure on one leaves a **Dropped grant** and the
-  other dates still land. A milpac carrying five of six PUCs is a real state, and
-  an unremarkable-looking one.
-- **Prefill vs apply** — two different moments. The **Enlistment defaults** are
+- **"A set of PUCs" vs "the PUC"**: resolved. One award (61) granted on each
+  date the unit earned it, not a set of distinct awards. The "Unit Awards"
+  group's other entries (Joint Meritorious, Valorous, etc.) are issued to
+  members, not to the regiment.
+- **Create vs move**: only a _new_ `RosterUser` row (`Service\Profile\Adder`)
+  is a milpac creation, and only creation writes the enlistment record. Moving a
+  member between rosters (`Service\Profile\Mover`) updates the existing row; its
+  PUC rows stay, and the PUC sync keeps them like any other milpac's.
+- **Prefill vs apply**: two different moments. The **Enlistment defaults** are
   the add-form's _initial state_ (the recruiter sees and edits them before
-  saving); the PUC set and the Enlistment record are _applied on save_. Prefill
-  is form-only; the record-follows-Join-Date rule is global — any new milpac's
+  saving); the PUC rows and the Enlistment record are _applied on save_. Prefill
+  is form-only; the record-follows-Join-Date rule is global, so any new milpac's
   record tracks whatever Join Date it ends up with, however it was created.
 
 ## Example dialogue
 
-> **Dev:** A member just got moved from the reserve roster to active — do they
-> get the PUC set again?
+> **Dev:** A member just got moved from the reserve roster to active. Do they
+> get their PUCs again?
 >
-> **Expert:** No. That's a move, not a creation — same `RosterUser` row, just a
-> new `roster_id`. PUCs are applied once, when the milpac is first created, and
-> never re-applied.
+> **Expert:** They never lost them. That's a move, not a creation: same
+> `RosterUser` row, new `roster_id`. The PUC sync keeps one PUC row per regiment
+> grant on every milpac, whatever roster it's on.
 >
 > **Dev:** And if someone who left years ago comes back?
 >
-> **Expert:** Coming back means a brand-new milpac, so yes — they get the full
-> PUC set and the enlistment record, same as anyone else. "New" means a new
-> record on this site, not their first time in the org.
+> **Expert:** Coming back means a brand-new milpac, so they get their PUC rows
+> and the enlistment record, same as anyone else. "New" means a new record on
+> this site, not their first time in the org.
 >
 > **Dev:** The add form defaults the rank to Recruit. What if I'm adding someone
 > to Arlington Memorial Cemetery?
