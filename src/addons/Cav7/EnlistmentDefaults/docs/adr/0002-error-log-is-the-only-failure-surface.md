@@ -87,5 +87,6 @@ it is the same shape as the `Cav7/DiscordSyncPatch` resync work and belongs in i
 issue, not bolted onto the error policy.
 
 **Note (2026-11-10):** [ADR-0004](0004-puc-rows-follow-regiment-grants.md) closed this gap.
-The PUC sync's daily run puts back a PUC row that failed at creation, so a dropped
-PUC row lasts a day at most. The paragraphs above are the decision as it stood.
+The PUC sync's daily run retries a PUC row that failed at creation, so a dropped
+PUC row stays missing only until the next run that writes it. The paragraphs above
+are the decision as it stood.
