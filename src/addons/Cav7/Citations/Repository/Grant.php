@@ -180,10 +180,12 @@ class Grant extends Repository
     }
 
     /** @return array<string, string> Kind titles by `award:<id>` or `record_type:<id>`, what the list can filter on. */
-    public function issuedKinds(): array
+    public function issuedKinds(bool $withRegiment): array
     {
         return $this->db()->fetchPairs(
-            "SELECT DISTINCT CONCAT(kind_type, ':', kind_id), kind_title FROM xf_cav7_citation_grant ORDER BY kind_title"
+            "SELECT DISTINCT CONCAT(kind_type, ':', kind_id), kind_title FROM xf_cav7_citation_grant"
+            . ($withRegiment ? '' : ' WHERE is_regiment = 0')
+            . ' ORDER BY kind_title'
         );
     }
 

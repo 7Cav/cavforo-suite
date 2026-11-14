@@ -44,7 +44,7 @@ class Grants extends AbstractController
             throw $this->exception($this->noPermission());
         }
 
-        $regiment = $this->regiment($params);
+        $regiment = $this->regiment($params, $action);
         if ($regiment !== null && !PageAccess::allows($action, $actor, $regiment)) {
             throw $this->exception($this->noPermission());
         }
@@ -296,7 +296,7 @@ class Grants extends AbstractController
             'names' => $repo->memberSummaries($grants === [] ? [] : $grants->keys()),
             'corrections' => $repo->lastCorrections($shownIds),
             'filters' => $filters,
-            'kinds' => $repo->issuedKinds(),
+            'kinds' => $repo->issuedKinds($actor->canOpenGrant(true)),
             'canIssue' => PageAccess::allows('issue', $actor, null),
             'canSeeRegiment' => $actor->canOpenGrant(true),
             'page' => $page,
@@ -529,10 +529,14 @@ class Grants extends AbstractController
     }
 
     /** Null until a grant or a posted kind says which. */
-    private function regiment(ParameterBag $params): ?bool
+    private function regiment(ParameterBag $params, string $action): ?bool
     {
         if ($params->grant_id) {
             return $this->grant($params)->is_regiment;
+        }
+        // On the list, kind is a filter, and each section already shows only to who may open it.
+        if ($action === 'index') {
+            return null;
         }
 
         $kind = GrantForm::kind($this->filter('kind', 'str'));
