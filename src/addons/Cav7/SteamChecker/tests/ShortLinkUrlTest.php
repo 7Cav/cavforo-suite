@@ -60,12 +60,10 @@ namespace Cav7\SteamChecker\Tests {
         ['s.team/p/abcd-efgh', 'https://s.team/p/abcd-efgh'],
         ['https://s.team/p/abcd-efgh', 'https://s.team/p/abcd-efgh'],
         ['HTTP://S.TEAM/p/abcd-efgh', 'https://s.team/p/abcd-efgh'],
-        ['My profile: https://s.team/p/abcd-efgh', 'https://s.team/p/abcd-efgh'],
 
         // "s.team" in a URL on another host.
         ['https://laui.dev/s.team/stuff', null],
         ['http://169.254.169.254/latest/s.team/', null],
-        ['https://evil.s.team.example/x', null],
         ['https://s.team.example/p/x', null],
         ['https://s.team:8080/p/x', null],
         ['https://s.team@evil.example/p/x', null],

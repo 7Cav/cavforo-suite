@@ -344,7 +344,7 @@ class SteamChecker
         //    s.team/p/ friend-invite links serve an HTML page rather than doing
         //    a plain HTTP redirect, so a HEAD request is not sufficient.
         //    Only the path comes from the user: the host is always s.team.
-        if (preg_match('#(?:^|\s)(?:https?://)?s\.team(/\S*)#i', $raw, $m)) {
+        if (preg_match('#^(?:https?://)?s\.team(/\S*)#i', $raw, $m)) {
             return $this->resolveSteamShortLink('https://s.team' . $m[1]);
         }
 
