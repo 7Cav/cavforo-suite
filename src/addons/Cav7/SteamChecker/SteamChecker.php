@@ -343,8 +343,9 @@ class SteamChecker
         //    in both the final redirect destination and the response body.
         //    s.team/p/ friend-invite links serve an HTML page rather than doing
         //    a plain HTTP redirect, so a HEAD request is not sufficient.
-        if (stripos($raw, 's.team/') !== false) {
-            return $this->resolveSteamShortLink($raw);
+        //    Only the path comes from the user: the host is always s.team.
+        if (preg_match('#^(?:https?://)?s\.team(/\S*)#i', $raw, $m)) {
+            return $this->resolveSteamShortLink('https://s.team' . $m[1]);
         }
 
         // Unrecognised format
@@ -395,10 +396,6 @@ class SteamChecker
      */
     protected function resolveSteamShortLink(string $url): ?string
     {
-        if (!preg_match('#^https?://#i', $url)) {
-            $url = 'https://' . $url;
-        }
-
         // Friend invite links have the form s.team/p/{invite_code}/{confirm_token}.
         // The confirmation token is only needed for the friend-accept UI; the invite
         // code alone is a public profile shortlink that resolves without a Steam
