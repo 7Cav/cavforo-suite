@@ -7,10 +7,11 @@
  * reopen it.
  *
  * Every row is an explicit input and a literal expected outcome from the spec
- * on issue #288, or for alert keys the spec on issue #321. The hook facts and
- * the tokens are fixtures; the hash comes from Token's public API, which is
- * the seam HookCall matches through. Nothing here recomputes a title, a
- * message or a key hash the way the code does.
+ * on issue #288, for alert keys the spec on issue #321, or for line ends the
+ * spec on issue #331. The hook facts and the tokens are fixtures; the hash
+ * comes from Token's public API, which is the seam HookCall matches through.
+ * Nothing here recomputes a title, a message or a key hash the way the code
+ * does.
  *
  * What a test cannot reach is verified by hand on the dev stack: the key
  * table, the vendor's Replier and its notifications, the ticket option that
@@ -391,6 +392,60 @@ check(
     $keyAsa->keyHash() !== null && $keyAbo->keyHash() !== null && $keyAsa->keyHash() !== $keyAbo->keyHash()
 );
 
+// ---------------------------------------------------------------------------
+// A line ends only at CR LF, CR or LF, for the title as for key lines. Every
+// other character belongs to its line, whatever bytes encode it: many UTF-8
+// letters contain byte 0x85, which a byte-wise split takes for a line end.
+// ---------------------------------------------------------------------------
+$titleRows = [
+    "Åsa down\nmore" => 'Åsa down',
+    "хост-1 down\nmore" => 'хост-1 down',
+    "Zażółć gęślą jaźń\nmore" => 'Zażółć gęślą jaźń',
+    "Disk full 😅\nmore" => 'Disk full 😅',
+    "Plain first\nÅsa second" => 'Plain first',
+    "Åsa down\rmore" => 'Åsa down',
+];
+foreach ($titleRows as $content => $expected) {
+    $title = call($hook, ['content' => $content])->title();
+    check(
+        'content ' . json_encode($content, JSON_UNESCAPED_UNICODE) . ' gives the title ' . json_encode($expected, JSON_UNESCAPED_UNICODE),
+        $title === $expected,
+        'got ' . var_export($title, true)
+    );
+}
+
+// Every code point but CR, LF and the surrogates, so a byte-wise split fails
+// on whichever character it trips on.
+$titleCuts = $messageChanges = $keyCuts = [];
+for ($cp = 0; $cp <= 0x10FFFF; $cp++) {
+    if ($cp === 0x0A || $cp === 0x0D || ($cp >= 0xD800 && $cp <= 0xDFFF)) {
+        continue;
+    }
+    $c = mb_chr($cp, 'UTF-8');
+    $content = "a{$c}b\nmore";
+    $swept = call($hook, ['content' => $content]);
+    if ($swept->title() !== "a{$c}b") {
+        $titleCuts[] = sprintf('U+%04X', $cp);
+    }
+    if ($swept->message() !== $content) {
+        $messageChanges[] = sprintf('U+%04X', $cp);
+    }
+    if (call($hook, ['content' => "Alert key: a{$c}b"])->keyHash()
+        === call($hook, ['content' => "Alert key: a{$c}c"])->keyHash()
+    ) {
+        $keyCuts[] = sprintf('U+%04X', $cp);
+    }
+}
+
+function sweepDetail(array $codePoints): string
+{
+    return count($codePoints) . ' code points, first ' . implode(' ', array_slice($codePoints, 0, 5));
+}
+
+check('every character in a content\'s first line stays in the title', $titleCuts === [], sweepDetail($titleCuts));
+check('every character in a content stays in the message', $messageChanges === [], sweepDetail($messageChanges));
+check('every character in a key line stays in the key', $keyCuts === [], sweepDetail($keyCuts));
+
 // The answer carries a hash, never the key: a healthchecks.io check's UUID is
 // also the secret that pings it, and the hash is what gets stored.
 $uuidKey = call($hook, ['content' => "nightly-backup is down\nAlert key: d1665499-e827-441f-bf13-8f15e8f4c0b9"]);
@@ -588,6 +643,14 @@ check(
     'a reply carries the call\'s message after its title',
     str_contains($replyRest, 'M-body'),
     'got ' . var_export($titled->replyMessage(), true)
+);
+
+$keyedAsa = call($hook, ['content' => "Åsa down\nmore\nAlert key: disk"]);
+
+check(
+    'a reply starts with the whole title the content gave',
+    str_starts_with($keyedAsa->replyMessage(), "Åsa down\n"),
+    'got ' . var_export($keyedAsa->replyMessage(), true)
 );
 
 check(
