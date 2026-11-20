@@ -76,6 +76,13 @@ final class HookCall
      */
     public const TITLE_MAX_LENGTH = 150;
 
+    /**
+     * Only CR LF, CR and LF end a line. PCRE's \R also takes form feed,
+     * vertical tab and byte 0x85, which sits inside the UTF-8 of letters such
+     * as Å, and would cut the line in the middle of one.
+     */
+    private const LINE_BREAK = '/(\r\n|\r|\n)/';
+
     private string $outcome;
 
     private string $title;
@@ -219,11 +226,8 @@ final class HookCall
             return $value;
         }
         // Lines and the breaks between them, alternating, so the text that
-        // stays keeps the breaks it was sent with. Only CR LF, CR and LF end
-        // a line. PCRE's \R also takes form feed, vertical tab and byte 0x85,
-        // the last byte of letters such as Å in UTF-8, and would cut a key
-        // short there.
-        $pieces = preg_split('/(\r\n|\r|\n)/', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
+        // stays keeps the breaks it was sent with.
+        $pieces = preg_split(self::LINE_BREAK, $value, -1, PREG_SPLIT_DELIM_CAPTURE);
         $kept = [];
         for ($i = 0; $i < count($pieces); $i += 2) {
             if (preg_match('/^[ \t]*(alert key|all-clear)[ \t]*:(.*)$/i', $pieces[$i], $m)) {
@@ -254,7 +258,7 @@ final class HookCall
      */
     private static function firstLine(string $text): string
     {
-        foreach (preg_split('/\R/', $text) as $line) {
+        foreach (preg_split(self::LINE_BREAK, $text) as $line) {
             $line = trim($line);
             if ($line !== '') {
                 return $line;
