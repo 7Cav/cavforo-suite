@@ -77,7 +77,9 @@ class TicketOpener
                     $this->open($schedule, $today);
                 });
             } catch (\Throwable $e) {
-                \XF::logException($e, false, sprintf(
+                // Rollback on: a throw from the Creator leaves XenForo's transaction
+                // state open, and every later write in this cron job would run under it.
+                \XF::logException($e, true, sprintf(
                     '[Cav7/TicketSchedule] Schedule %d "%s" could not open its ticket; its due date %s is unchanged and the next run retries: ',
                     $schedule->schedule_id,
                     $schedule->title,
