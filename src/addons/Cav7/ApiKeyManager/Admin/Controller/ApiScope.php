@@ -43,13 +43,22 @@ class ApiScope extends \XF\Admin\Controller\AbstractController
     {
         /** @var \XF\Repository\UserGroup $userGroupRepo */
         $userGroupRepo = $this->repository('XF:UserGroup');
+        $userGroups = $userGroupRepo->getUserGroupTitlePairs();
+
+        // A scope can still name usergroups that were deleted. Each needs an
+        // option, or an unchanged save drops it and an emptied list ungates
+        // the scope for every key.
+        foreach (array_filter(array_map('intval', explode(',', $scope->user_group_ids))) as $groupId)
+        {
+            $userGroups[$groupId] ??= \XF::phrase('deleted') . " #$groupId";
+        }
 
         return $this->view(
             'Cav7\ApiKeyManager:ApiScope\Edit',
             'cav7_api_scope_edit',
             [
                 'scope'      => $scope,
-                'userGroups' => $userGroupRepo->getUserGroupTitlePairs(),
+                'userGroups' => $userGroups,
             ]
         );
     }
