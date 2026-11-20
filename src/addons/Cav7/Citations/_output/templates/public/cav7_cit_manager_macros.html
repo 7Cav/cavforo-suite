@@ -51,10 +51,10 @@
 			<label class="iconic iconic--checkbox iconic--labelled"><input type="checkbox" class="js-showBoxes" checked="checked" /><i aria-hidden="true"></i><span class="iconic-label">{{ phrase('cav7_cit_show_field_boxes') }}</span></label>
 			<xf:if is="$placing">
 				<div class="cav7Plate-boxInputs">
-					<label>X <input type="number" class="input input--number js-boxMirror" data-key="x" disabled="disabled" /></label>
-					<label>Y <input type="number" class="input input--number js-boxMirror" data-key="y" disabled="disabled" /></label>
-					<label>{{ phrase('cav7_cit_width') }} <input type="number" class="input input--number js-boxMirror" data-key="w" disabled="disabled" /></label>
-					<label>{{ phrase('cav7_cit_height') }} <input type="number" class="input input--number js-boxMirror" data-key="h" disabled="disabled" /></label>
+					<label>X <input type="number" class="input input--number js-boxMirror" data-key="x" min="0" step="1" disabled="disabled" /></label>
+					<label>Y <input type="number" class="input input--number js-boxMirror" data-key="y" min="0" step="1" disabled="disabled" /></label>
+					<label>{{ phrase('cav7_cit_width') }} <input type="number" class="input input--number js-boxMirror" data-key="w" min="1" step="1" disabled="disabled" /></label>
+					<label>{{ phrase('cav7_cit_height') }} <input type="number" class="input input--number js-boxMirror" data-key="h" min="1" step="1" disabled="disabled" /></label>
 				</div>
 			</xf:if>
 			<span class="cav7Plate-closeHint">{{ phrase('cav7_cit_zoom_close_hint') }}</span>

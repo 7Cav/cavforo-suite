@@ -177,15 +177,23 @@
 				? ZOOMS.filter(zoom => zoom > current)
 				: ZOOMS.filter(zoom => zoom < current).reverse()
 
-			this.applyZoom(levels.length ? levels[0] : (direction > 0 ? this.scale : null))
+			if (levels.length)
+			{
+				this.applyZoom(levels[0])
+			}
+			else if (direction < 0)
+			{
+				this.applyZoom(null)
+			}
 		},
 
 		applyZoom (scale)
 		{
 			const viewport = this.viewport
 			const from = this.scale ?? this.fitScale()
-			let centreX = (viewport.scrollLeft + viewport.clientWidth / 2) / from
-			let centreY = (viewport.scrollTop + viewport.clientHeight / 2) / from
+			// The middle of the plate in view, not of the viewport, which can run past a small plate.
+			let centreX = (viewport.scrollLeft + Math.min(viewport.clientWidth, this.stage.offsetWidth) / 2) / from
+			let centreY = (viewport.scrollTop + Math.min(viewport.clientHeight, this.stage.offsetHeight) / 2) / from
 
 			// The box being placed is what S1 is after, unless they have panned away from it.
 			const box = this.selected
@@ -290,6 +298,11 @@
 
 			minimap.addEventListener('pointerdown', event =>
 			{
+				if (event.pointerType === 'mouse' && event.button !== 0)
+				{
+					return
+				}
+
 				minimap.setPointerCapture(event.pointerId)
 				jump(event)
 			})
