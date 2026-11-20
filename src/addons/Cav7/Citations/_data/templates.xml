@@ -1148,8 +1148,14 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 		cursor: grabbing;
 	}
 
-	.cav7Plate-report,
 	.cav7Plate-sample
+	{
+		display: none;
+	}
+
+	// The render's warnings stay in sight while a box is edited from the toolbar.
+	.cav7Fit:not(:has(.cav7Fit-warn)),
+	.cav7Fit tr:not(:has(.cav7Fit-warn))
 	{
 		display: none;
 	}
