@@ -64,6 +64,10 @@
 				{
 					event.preventDefault()
 				}
+				else if (event.key === 'Tab')
+				{
+					this.wrapTab(event)
+				}
 			})
 			this.target.addEventListener('focusout', event =>
 			{
@@ -313,6 +317,23 @@
 					jump(event)
 				}
 			})
+		},
+
+		// Tab past either end of the window comes round to the other end, as in a dialog.
+		wrapTab (event)
+		{
+			const stops = [...this.target.querySelectorAll('button, input:enabled, .js-plateViewport')]
+				.filter(stop => stop.getClientRects().length)
+			const from = document.activeElement
+			const to = event.shiftKey
+				? (from === stops[0] || from === this.target) && stops.at(-1)
+				: from === stops.at(-1) && stops[0]
+
+			if (to)
+			{
+				event.preventDefault()
+				to.focus()
+			}
 		},
 
 		drawMinimap ()

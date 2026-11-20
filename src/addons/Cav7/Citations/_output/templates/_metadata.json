@@ -60,14 +60,14 @@
         "hash": "109c11bd6f1ef2f3d3931b92e1e85810"
     },
     "public/cav7_cit_manager_macros.html": {
-        "version_id": 1030070,
-        "version_string": "1.3.0",
+        "version_id": 1040070,
+        "version_string": "1.4.0",
         "hash": "e751aef8087bf0481b584e02ab04a5b8"
     },
     "public/cav7_cit_pages.less": {
-        "version_id": 1030070,
-        "version_string": "1.3.0",
-        "hash": "7cd0eb04b1c278d77fe14072c3e0e2bc"
+        "version_id": 1040070,
+        "version_string": "1.4.0",
+        "hash": "314ab2fb06abf1bf0154b2cb890c40b1"
     },
     "public/cav7_cit_pay_grades.html": {
         "version_id": 1020070,
@@ -110,8 +110,8 @@
         "hash": "2598d0a751bd0515ba7e39741a1c21ef"
     },
     "public/cav7_cit_version_field.html": {
-        "version_id": 1030070,
-        "version_string": "1.3.0",
+        "version_id": 1040070,
+        "version_string": "1.4.0",
         "hash": "3c35ad850de3c64379085189ab5ca7ca"
     },
     "public/cav7_cit_version_move.html": {

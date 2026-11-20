@@ -697,7 +697,7 @@
 	</xf:form>
 </xf:if>
 ]]></template>
-  <template type="public" title="cav7_cit_manager_macros" version_id="1030070" version_string="1.3.0"><![CDATA[<xf:macro id="state_label" arg-state="!">
+  <template type="public" title="cav7_cit_manager_macros" version_id="1040070" version_string="1.4.0"><![CDATA[<xf:macro id="state_label" arg-state="!">
 	<xf:if is="$state == 'draft'">
 		<span class="label label--yellow">{{ phrase('cav7_cit_draft') }}</span>
 	<xf:elseif is="$state == 'published'" />
@@ -823,7 +823,7 @@
 	</div>
 </xf:macro>
 ]]></template>
-  <template type="public" title="cav7_cit_pages.less" version_id="1030070" version_string="1.3.0"><![CDATA[.cav7GrantLayout
+  <template type="public" title="cav7_cit_pages.less" version_id="1040070" version_string="1.4.0"><![CDATA[.cav7GrantLayout
 {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) ~"clamp(280px, 38%, 440px)";
@@ -1136,7 +1136,6 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 		flex: 1;
 		min-height: 0;
 		max-height: none;
-		overscroll-behavior: contain;
 	}
 
 	.cav7Plate-stage
@@ -1795,7 +1794,7 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 	</div>
 </div>
 ]]></template>
-  <template type="public" title="cav7_cit_version_field" version_id="1030070" version_string="1.3.0"><![CDATA[<xf:title>{{ $originalKey ? phrase('cav7_cit_field_x', {'key': $originalKey}) : phrase('cav7_cit_add_field') }}</xf:title>
+  <template type="public" title="cav7_cit_version_field" version_id="1040070" version_string="1.4.0"><![CDATA[<xf:title>{{ $originalKey ? phrase('cav7_cit_field_x', {'key': $originalKey}) : phrase('cav7_cit_add_field') }}</xf:title>
 <xf:breadcrumb href="{{ link('rosters/citation-versions', $version) }}">{{ phrase('cav7_cit_x_version_y', {'title': $version.Template.title, 'number': $version.version_number}) }}</xf:breadcrumb>
 <xf:css src="cav7_cit_pages.less" />
 <xf:js src="Cav7/Citations/manager.js" addon="Cav7/Citations" min="1" />
