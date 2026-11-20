@@ -277,6 +277,139 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 	}
 }
 
+.cav7Plate-boxInputs,
+.cav7Plate-closeHint,
+.cav7Plate-minimap
+{
+	display: none;
+}
+
+// Zoomed, the preview is a popover: the top layer fills the window whatever column or overlay it sits in.
+.cav7Plate:popover-open
+{
+	display: flex;
+	flex-direction: column;
+	inset: 0;
+	width: auto;
+	height: auto;
+	max-width: none;
+	max-height: none;
+	margin: 0;
+	padding: @xf-paddingMedium;
+	border: 0;
+	color: @xf-textColor;
+	background: @xf-pageBg;
+	overscroll-behavior: contain;
+
+	.cav7Plate-tools
+	{
+		margin-top: 0;
+	}
+
+	.cav7Plate-frame
+	{
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	.cav7Plate-viewport
+	{
+		flex: 1;
+		min-height: 0;
+		max-height: none;
+	}
+
+	.cav7Plate-stage
+	{
+		cursor: grab;
+	}
+
+	.is-dragging .cav7Plate-stage
+	{
+		cursor: grabbing;
+	}
+
+	.cav7Plate-sample
+	{
+		display: none;
+	}
+
+	// The render's warnings stay in sight while a box is edited from the toolbar.
+	.cav7Fit:not(:has(.cav7Fit-warn)),
+	.cav7Fit tr:not(:has(.cav7Fit-warn))
+	{
+		display: none;
+	}
+
+	.cav7Plate-boxInputs
+	{
+		display: flex;
+		flex-wrap: wrap;
+		gap: @xf-paddingMedium;
+
+		label
+		{
+			display: flex;
+			gap: @xf-paddingSmall;
+			align-items: center;
+			color: @xf-textColorMuted;
+		}
+
+		input
+		{
+			width: 80px;
+		}
+	}
+
+	.cav7Plate-closeHint
+	{
+		display: inline;
+		margin-left: auto;
+		color: @xf-textColorMuted;
+	}
+
+	.cav7Plate-minimap
+	{
+		display: block;
+	}
+}
+
+// The minimap sits in the viewport's corner, clear of its scrollbars.
+.cav7Plate-frame
+{
+	position: relative;
+}
+
+.cav7Plate-minimap
+{
+	position: absolute;
+	right: (@xf-paddingLarge * 2);
+	bottom: (@xf-paddingLarge * 2);
+	width: 160px;
+	line-height: 0;
+	border: 1px solid @xf-textColor;
+	box-shadow: 0 0 0 1px @xf-pageBg;
+	cursor: pointer;
+	touch-action: none;
+
+	img
+	{
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+}
+
+.cav7Plate-minimapView
+{
+	position: absolute;
+	box-sizing: border-box;
+	border: 2px solid @xf-textColorAttention;
+	pointer-events: none;
+}
+
 .cav7Plate-box
 {
 	position: absolute;

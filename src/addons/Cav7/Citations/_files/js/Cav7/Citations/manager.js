@@ -1,8 +1,8 @@
 /**
  * Cav7/Citations: the template and signature previews. The images are always the server's
- * render; this only zooms the template one, draws the field boxes over it as page chrome, and
- * asks for a new render when a value changes. Zoom and scroll belong to the elements here, so a
- * new render leaves both alone.
+ * render; this only zooms the template one into a full-window view, draws the field boxes over
+ * it as page chrome, and asks for a new render when a value changes. Zoom and scroll belong to
+ * the elements here, so a new render leaves both alone.
  */
 ((window, document) =>
 {
@@ -31,14 +31,60 @@
 			this.image = this.target.querySelector('.js-plateImage')
 			this.report = this.target.querySelector('.js-plateReport')
 			this.label = this.target.querySelector('.js-zoomLabel')
+			this.minimap = this.target.querySelector('.js-plateMinimap')
+			this.minimapImage = this.target.querySelector('.js-plateMinimapImage')
+			this.minimapView = this.target.querySelector('.js-plateMinimapView')
+			this.mirrors = [...this.target.querySelectorAll('.js-boxMirror')]
 
-			this.stage.style.aspectRatio = `${this.options.plateWidth} / ${this.options.plateHeight}`
+			const aspect = `${this.options.plateWidth} / ${this.options.plateHeight}`
+			this.stage.style.aspectRatio = aspect
+			this.minimap.style.aspectRatio = aspect
 			this.drawBoxes()
 			this.applyZoom(null)
 
 			this.target.querySelector('.js-zoomIn').addEventListener('click', () => this.step(1))
 			this.target.querySelector('.js-zoomOut').addEventListener('click', () => this.step(-1))
 			this.target.querySelector('.js-zoomFit').addEventListener('click', () => this.applyZoom(null))
+			// While the window is open it covers the form: Esc closes the window but not the field
+			// editor overlay, Enter in one of its inputs must not save the form, and focus headed for
+			// a control behind it stays on the plate.
+			this.target.addEventListener('keydown', event =>
+			{
+				if (!this.target.hasAttribute('popover'))
+				{
+					return
+				}
+
+				if (event.key === 'Escape')
+				{
+					event.stopPropagation()
+					this.applyZoom(null)
+				}
+				else if (event.key === 'Enter' && event.target.matches('input'))
+				{
+					event.preventDefault()
+				}
+				else if (event.key === 'Tab')
+				{
+					this.wrapTab(event)
+				}
+			})
+			this.target.addEventListener('focusout', event =>
+			{
+				if (this.target.hasAttribute('popover') && event.relatedTarget && !this.target.contains(event.relatedTarget))
+				{
+					this.viewport.focus({ preventScroll: true })
+				}
+			})
+			this.listenForPan()
+			this.listenForMinimap()
+
+			// The form hides behind the window, so its box inputs ride along in the toolbar. The input
+			// event still bubbles to the form, which moves the box and sends the render.
+			this.mirrors.forEach(mirror => mirror.addEventListener('input', () =>
+			{
+				this.boxInput(mirror.dataset.key).value = mirror.value
+			}))
 			this.target.querySelector('.js-showBoxes').addEventListener('change', event =>
 			{
 				this.stage.classList.toggle('is-boxesHidden', !event.target.checked)
@@ -109,6 +155,13 @@
 			const value = name => parseInt(this.boxInput(name).value, 10) || 0
 
 			this.place(this.selected, { x: value('x'), y: value('y'), w: value('w'), h: value('h') })
+			this.mirrors.forEach(mirror =>
+			{
+				if (mirror !== document.activeElement)
+				{
+					mirror.value = this.boxInput(mirror.dataset.key).value
+				}
+			})
 		},
 
 		fitScale ()
@@ -118,37 +171,201 @@
 
 		step (direction)
 		{
+			if (this.scale === null && direction < 0)
+			{
+				return
+			}
+
 			const current = this.scale ?? this.fitScale()
 			const levels = direction > 0
 				? ZOOMS.filter(zoom => zoom > current)
 				: ZOOMS.filter(zoom => zoom < current).reverse()
 
-			this.applyZoom(levels.length ? levels[0] : (direction > 0 ? this.scale : null))
+			if (levels.length)
+			{
+				this.applyZoom(levels[0])
+			}
+			else if (direction < 0)
+			{
+				this.applyZoom(null)
+			}
 		},
 
 		applyZoom (scale)
 		{
 			const viewport = this.viewport
 			const from = this.scale ?? this.fitScale()
-			const to = scale ?? this.fitScale()
-			let centreX = (viewport.scrollLeft + viewport.clientWidth / 2) / from
-			let centreY = (viewport.scrollTop + viewport.clientHeight / 2) / from
+			// The middle of the plate in view, not of the viewport, which can run past a small plate.
+			let centreX = (viewport.scrollLeft + Math.min(viewport.clientWidth, this.stage.offsetWidth) / 2) / from
+			let centreY = (viewport.scrollTop + Math.min(viewport.clientHeight, this.stage.offsetHeight) / 2) / from
 
-			// Coming in from the whole plate, the box being placed is what S1 is after.
-			if (this.scale === null && scale !== null && this.selected)
+			// The box being placed is what S1 is after, unless they have panned away from it.
+			const box = this.selected
+			const boxInView = box
+				&& box.offsetLeft < viewport.scrollLeft + viewport.clientWidth && box.offsetLeft + box.offsetWidth > viewport.scrollLeft
+				&& box.offsetTop < viewport.scrollTop + viewport.clientHeight && box.offsetTop + box.offsetHeight > viewport.scrollTop
+			if (scale !== null && box && (this.scale === null || boxInView))
 			{
-				const box = this.selected
 				centreX = (box.offsetLeft + box.offsetWidth / 2) / from
 				centreY = (box.offsetTop + box.offsetHeight / 2) / from
 			}
 
+			if ((this.scale === null) !== (scale === null))
+			{
+				this.showWindow(scale !== null)
+			}
 			this.scale = scale
+			const to = scale ?? this.fitScale()
 			this.stage.style.width = scale === null ? '100%' : `${this.options.plateWidth * scale}px`
 			this.stage.classList.toggle('is-pixelated', scale !== null)
 			this.label.textContent = scale === null ? '' : `${scale * 100}%`
 
 			viewport.scrollLeft = centreX * to - viewport.clientWidth / 2
 			viewport.scrollTop = centreY * to - viewport.clientHeight / 2
+			this.drawMinimap()
+		},
+
+		// The popover attribute is only set while zoomed: a closed popover is display: none. A
+		// browser with no popovers zooms inside the column, as before.
+		showWindow (show)
+		{
+			if (!this.target.showPopover)
+			{
+				return
+			}
+
+			// Disabled while hidden, so the copies take no part in the form's validation.
+			this.mirrors.forEach(mirror => mirror.disabled = !show)
+
+			if (show)
+			{
+				// A popover has no role of its own; the plate image's alt is the localized name.
+				this.target.setAttribute('role', 'dialog')
+				this.target.setAttribute('aria-label', this.image.alt)
+				this.target.popover = 'manual'
+				this.target.showPopover()
+				if (!this.target.contains(document.activeElement))
+				{
+					this.viewport.focus({ preventScroll: true })
+				}
+			}
+			else
+			{
+				// Hiding drops focus to the body, where Esc no longer reaches the field editor overlay.
+				// A control that hides with the zoom, such as a toolbar box input, hands it to the viewport.
+				const focused = document.activeElement
+				this.target.hidePopover()
+				this.target.removeAttribute('popover')
+				this.target.removeAttribute('role')
+				this.target.removeAttribute('aria-label')
+				const back = this.target.contains(focused) && focused.getClientRects().length ? focused : this.viewport
+				back.focus({ preventScroll: true })
+			}
+		},
+
+		// Mouse only: touch already pans the viewport natively.
+		listenForPan ()
+		{
+			const viewport = this.viewport
+			let grab = null
+
+			viewport.addEventListener('pointerdown', event =>
+			{
+				if (this.scale === null || event.pointerType !== 'mouse' || event.button !== 0 || !this.stage.contains(event.target))
+				{
+					return
+				}
+
+				event.preventDefault()
+				viewport.setPointerCapture(event.pointerId)
+				viewport.classList.add('is-dragging')
+				grab = { id: event.pointerId, x: event.clientX + viewport.scrollLeft, y: event.clientY + viewport.scrollTop }
+			})
+			// By id, not by capture: a touch gets an implicit capture of its own.
+			viewport.addEventListener('pointermove', event =>
+			{
+				if (grab?.id === event.pointerId)
+				{
+					viewport.scrollLeft = grab.x - event.clientX
+					viewport.scrollTop = grab.y - event.clientY
+				}
+			})
+			viewport.addEventListener('lostpointercapture', event =>
+			{
+				if (grab?.id === event.pointerId)
+				{
+					grab = null
+					viewport.classList.remove('is-dragging')
+				}
+			})
+			viewport.addEventListener('scroll', () => this.drawMinimap())
+			new ResizeObserver(() => this.drawMinimap()).observe(viewport)
+		},
+
+		// Pressing or dragging on the minimap centres the view on that spot of the plate.
+		listenForMinimap ()
+		{
+			const minimap = this.minimap
+			const jump = event =>
+			{
+				const rect = minimap.getBoundingClientRect()
+				this.viewport.scrollLeft = (event.clientX - rect.left) / rect.width * this.stage.offsetWidth - this.viewport.clientWidth / 2
+				this.viewport.scrollTop = (event.clientY - rect.top) / rect.height * this.stage.offsetHeight - this.viewport.clientHeight / 2
+			}
+
+			minimap.addEventListener('pointerdown', event =>
+			{
+				if (event.pointerType === 'mouse' && event.button !== 0)
+				{
+					return
+				}
+
+				minimap.setPointerCapture(event.pointerId)
+				jump(event)
+			})
+			minimap.addEventListener('pointermove', event =>
+			{
+				if (minimap.hasPointerCapture(event.pointerId))
+				{
+					jump(event)
+				}
+			})
+		},
+
+		// Tab past either end of the window comes round to the other end, as in a dialog.
+		wrapTab (event)
+		{
+			const stops = [...this.target.querySelectorAll('button, input:enabled, .js-plateViewport')]
+				.filter(stop => stop.getClientRects().length)
+			const from = document.activeElement
+			const to = event.shiftKey
+				? (from === stops[0] || from === this.target) && stops.at(-1)
+				: from === stops.at(-1) && stops[0]
+
+			if (to)
+			{
+				event.preventDefault()
+				to.focus()
+			}
+		},
+
+		drawMinimap ()
+		{
+			if (this.scale === null)
+			{
+				return
+			}
+
+			const viewport = this.viewport
+			const width = this.stage.offsetWidth
+			const height = this.stage.offsetHeight
+
+			Object.assign(this.minimapView.style, {
+				left: `${viewport.scrollLeft / width * 100}%`,
+				top: `${viewport.scrollTop / height * 100}%`,
+				width: `${Math.min(1, viewport.clientWidth / width) * 100}%`,
+				height: `${Math.min(1, viewport.clientHeight / height) * 100}%`,
+			})
 		},
 
 		insertPlaceholder (text)
@@ -187,6 +404,7 @@
 				if (response.src)
 				{
 					this.image.src = response.src
+					this.minimapImage.src = response.src
 				}
 
 				XF.setupHtmlInsert(response.html, html =>

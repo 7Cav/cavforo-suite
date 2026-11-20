@@ -2303,6 +2303,12 @@
         "version_string": "1.2.0",
         "hash": "e80f6cee722d0089169115730db358cb"
     },
+    "cav7_cit_zoom_close_hint.txt": {
+        "global_cache": false,
+        "version_id": 1040070,
+        "version_string": "1.4.0",
+        "hash": "efc30134df908fba5d89a627b63d6887"
+    },
     "cav7_cit_zoom_fit.txt": {
         "global_cache": false,
         "version_id": 1020070,
