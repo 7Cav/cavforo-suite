@@ -403,6 +403,7 @@ $titleRows = [
     "Zażółć gęślą jaźń\nmore" => 'Zażółć gęślą jaźń',
     "Disk full 😅\nmore" => 'Disk full 😅',
     "Plain first\nÅsa second" => 'Plain first',
+    "Åsa down\rmore" => 'Åsa down',
 ];
 foreach ($titleRows as $content => $expected) {
     $title = call($hook, ['content' => $content])->title();
