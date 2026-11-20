@@ -86,7 +86,7 @@
 				<div class="cav7FieldEditor-preview">
 					<div class="u-muted">{{ phrase('cav7_cit_preview_with_sample_data') }}</div>
 					<xf:if is="$version.plate_format">
-						<xf:macro id="cav7_cit_manager_macros::plate_preview" arg-version="{$version}" arg-panel="{$panel}" arg-placing="{{ true }}" />
+						<xf:macro id="cav7_cit_manager_macros::plate_preview" arg-version="{$version}" arg-panel="{$panel}" arg-placing="{$canEdit}" />
 					<xf:else />
 						<div class="cav7Preview-empty">{{ phrase('cav7_cit_preview_no_plate') }}</div>
 					</xf:if>

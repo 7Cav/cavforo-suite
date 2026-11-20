@@ -750,10 +750,10 @@
 			<label class="iconic iconic--checkbox iconic--labelled"><input type="checkbox" class="js-showBoxes" checked="checked" /><i aria-hidden="true"></i><span class="iconic-label">{{ phrase('cav7_cit_show_field_boxes') }}</span></label>
 			<xf:if is="$placing">
 				<div class="cav7Plate-boxInputs">
-					<label>X <input type="number" class="input input--number js-boxMirror" data-key="x" min="0" step="1" /></label>
-					<label>Y <input type="number" class="input input--number js-boxMirror" data-key="y" min="0" step="1" /></label>
-					<label>{{ phrase('cav7_cit_width') }} <input type="number" class="input input--number js-boxMirror" data-key="w" min="1" step="1" /></label>
-					<label>{{ phrase('cav7_cit_height') }} <input type="number" class="input input--number js-boxMirror" data-key="h" min="1" step="1" /></label>
+					<label>X <input type="number" class="input input--number js-boxMirror" data-key="x" /></label>
+					<label>Y <input type="number" class="input input--number js-boxMirror" data-key="y" /></label>
+					<label>{{ phrase('cav7_cit_width') }} <input type="number" class="input input--number js-boxMirror" data-key="w" /></label>
+					<label>{{ phrase('cav7_cit_height') }} <input type="number" class="input input--number js-boxMirror" data-key="h" /></label>
 				</div>
 			</xf:if>
 			<span class="cav7Plate-closeHint">{{ phrase('cav7_cit_zoom_close_hint') }}</span>
@@ -1135,6 +1135,7 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 		flex: 1;
 		min-height: 0;
 		max-height: none;
+		overscroll-behavior: contain;
 	}
 
 	.cav7Plate-stage
@@ -1881,7 +1882,7 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 				<div class="cav7FieldEditor-preview">
 					<div class="u-muted">{{ phrase('cav7_cit_preview_with_sample_data') }}</div>
 					<xf:if is="$version.plate_format">
-						<xf:macro id="cav7_cit_manager_macros::plate_preview" arg-version="{$version}" arg-panel="{$panel}" arg-placing="{{ true }}" />
+						<xf:macro id="cav7_cit_manager_macros::plate_preview" arg-version="{$version}" arg-panel="{$panel}" arg-placing="{$canEdit}" />
 					<xf:else />
 						<div class="cav7Preview-empty">{{ phrase('cav7_cit_preview_no_plate') }}</div>
 					</xf:if>

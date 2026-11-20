@@ -54,15 +54,34 @@
 					this.applyZoom(null)
 				}
 			})
+			this.target.addEventListener('focusout', event =>
+			{
+				// The zoom covers the page, so focus headed for a control behind it stays on the plate.
+				if (this.scale !== null && event.relatedTarget && !this.target.contains(event.relatedTarget))
+				{
+					this.viewport.focus({ preventScroll: true })
+				}
+			})
 			this.listenForPan()
 			this.listenForMinimap()
 
 			// The form hides behind the zoom, so its box inputs ride along in the toolbar. The input
-			// event still bubbles to the form, which moves the box and sends the render.
-			this.mirrors.forEach(mirror => mirror.addEventListener('input', () =>
+			// event still bubbles to the form, which moves the box and sends the render. Enter would
+			// submit that form, saving the field from behind the zoom.
+			this.mirrors.forEach(mirror =>
 			{
-				this.boxInput(mirror.dataset.key).value = mirror.value
-			}))
+				mirror.addEventListener('input', () =>
+				{
+					this.boxInput(mirror.dataset.key).value = mirror.value
+				})
+				mirror.addEventListener('keydown', event =>
+				{
+					if (event.key === 'Enter')
+					{
+						event.preventDefault()
+					}
+				})
+			})
 			this.target.querySelector('.js-showBoxes').addEventListener('change', event =>
 			{
 				this.stage.classList.toggle('is-boxesHidden', !event.target.checked)
@@ -149,6 +168,11 @@
 
 		step (direction)
 		{
+			if (this.scale === null && direction < 0)
+			{
+				return
+			}
+
 			const current = this.scale ?? this.fitScale()
 			const levels = direction > 0
 				? ZOOMS.filter(zoom => zoom > current)
@@ -164,16 +188,28 @@
 			let centreX = (viewport.scrollLeft + viewport.clientWidth / 2) / from
 			let centreY = (viewport.scrollTop + viewport.clientHeight / 2) / from
 
-			// Coming in from the whole plate, the box being placed is what S1 is after.
-			if (this.scale === null && scale !== null && this.selected)
+			// The box being placed is what S1 is after, on any axis where the plate did not overflow
+			// and the view's centre says nothing.
+			if (scale !== null && this.selected)
 			{
 				const box = this.selected
-				centreX = (box.offsetLeft + box.offsetWidth / 2) / from
-				centreY = (box.offsetTop + box.offsetHeight / 2) / from
+				const fromFit = this.scale === null
+
+				if (fromFit || viewport.scrollWidth <= viewport.clientWidth)
+				{
+					centreX = (box.offsetLeft + box.offsetWidth / 2) / from
+				}
+				if (fromFit || viewport.scrollHeight <= viewport.clientHeight)
+				{
+					centreY = (box.offsetTop + box.offsetHeight / 2) / from
+				}
 			}
 
+			if ((this.scale === null) !== (scale === null))
+			{
+				this.showWindow(scale !== null)
+			}
 			this.scale = scale
-			this.showWindow(scale !== null)
 			const to = scale ?? this.fitScale()
 			this.stage.style.width = scale === null ? '100%' : `${this.options.plateWidth * scale}px`
 			this.stage.classList.toggle('is-pixelated', scale !== null)
@@ -184,10 +220,11 @@
 			this.drawMinimap()
 		},
 
-		// The popover attribute is only set while zoomed: a closed popover is display: none.
+		// The popover attribute is only set while zoomed: a closed popover is display: none. A
+		// browser with no popovers zooms inside the column, as before.
 		showWindow (show)
 		{
-			if (show === this.target.matches(':popover-open'))
+			if (!this.target.showPopover)
 			{
 				return
 			}
@@ -196,14 +233,20 @@
 			{
 				this.target.popover = 'manual'
 				this.target.showPopover()
-				this.viewport.focus({ preventScroll: true })
+				if (!this.target.contains(document.activeElement))
+				{
+					this.viewport.focus({ preventScroll: true })
+				}
 			}
 			else
 			{
+				// Hiding drops focus to the body, where Esc no longer reaches the field editor overlay.
+				// A control that hides with the zoom, such as a toolbar box input, hands it to the viewport.
+				const focused = document.activeElement
 				this.target.hidePopover()
 				this.target.removeAttribute('popover')
-				// Hiding drops focus to the body, where Esc no longer reaches the field editor overlay.
-				this.viewport.focus({ preventScroll: true })
+				const back = this.target.contains(focused) && focused.checkVisibility() ? focused : this.viewport
+				back.focus({ preventScroll: true })
 			}
 		},
 
@@ -235,6 +278,7 @@
 			})
 			viewport.addEventListener('lostpointercapture', () => viewport.classList.remove('is-dragging'))
 			viewport.addEventListener('scroll', () => this.drawMinimap())
+			new ResizeObserver(() => this.drawMinimap()).observe(viewport)
 		},
 
 		// Pressing or dragging on the minimap centres the view on that spot of the plate.
