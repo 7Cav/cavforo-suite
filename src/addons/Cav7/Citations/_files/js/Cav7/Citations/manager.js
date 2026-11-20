@@ -1,8 +1,8 @@
 /**
  * Cav7/Citations: the template and signature previews. The images are always the server's
- * render; this only zooms the template one, draws the field boxes over it as page chrome, and
- * asks for a new render when a value changes. Zoom and scroll belong to the elements here, so a
- * new render leaves both alone.
+ * render; this only zooms the template one into a full-window view, draws the field boxes over
+ * it as page chrome, and asks for a new render when a value changes. Zoom and scroll belong to
+ * the elements here, so a new render leaves both alone.
  */
 ((window, document) =>
 {
@@ -31,14 +31,38 @@
 			this.image = this.target.querySelector('.js-plateImage')
 			this.report = this.target.querySelector('.js-plateReport')
 			this.label = this.target.querySelector('.js-zoomLabel')
+			this.minimap = this.target.querySelector('.js-plateMinimap')
+			this.minimapImage = this.target.querySelector('.js-plateMinimapImage')
+			this.minimapView = this.target.querySelector('.js-plateMinimapView')
+			this.mirrors = [...this.target.querySelectorAll('.js-boxMirror')]
 
-			this.stage.style.aspectRatio = `${this.options.plateWidth} / ${this.options.plateHeight}`
+			const aspect = `${this.options.plateWidth} / ${this.options.plateHeight}`
+			this.stage.style.aspectRatio = aspect
+			this.minimap.style.aspectRatio = aspect
 			this.drawBoxes()
 			this.applyZoom(null)
 
 			this.target.querySelector('.js-zoomIn').addEventListener('click', () => this.step(1))
 			this.target.querySelector('.js-zoomOut').addEventListener('click', () => this.step(-1))
 			this.target.querySelector('.js-zoomFit').addEventListener('click', () => this.applyZoom(null))
+			this.target.addEventListener('keydown', event =>
+			{
+				// Stopped here, so an Esc that closes the zoom does not also close the field editor overlay.
+				if (event.key === 'Escape' && this.scale !== null)
+				{
+					event.stopPropagation()
+					this.applyZoom(null)
+				}
+			})
+			this.listenForPan()
+			this.listenForMinimap()
+
+			// The form hides behind the zoom, so its box inputs ride along in the toolbar. The input
+			// event still bubbles to the form, which moves the box and sends the render.
+			this.mirrors.forEach(mirror => mirror.addEventListener('input', () =>
+			{
+				this.boxInput(mirror.dataset.key).value = mirror.value
+			}))
 			this.target.querySelector('.js-showBoxes').addEventListener('change', event =>
 			{
 				this.stage.classList.toggle('is-boxesHidden', !event.target.checked)
@@ -109,6 +133,13 @@
 			const value = name => parseInt(this.boxInput(name).value, 10) || 0
 
 			this.place(this.selected, { x: value('x'), y: value('y'), w: value('w'), h: value('h') })
+			this.mirrors.forEach(mirror =>
+			{
+				if (mirror !== document.activeElement)
+				{
+					mirror.value = this.boxInput(mirror.dataset.key).value
+				}
+			})
 		},
 
 		fitScale ()
@@ -130,7 +161,6 @@
 		{
 			const viewport = this.viewport
 			const from = this.scale ?? this.fitScale()
-			const to = scale ?? this.fitScale()
 			let centreX = (viewport.scrollLeft + viewport.clientWidth / 2) / from
 			let centreY = (viewport.scrollTop + viewport.clientHeight / 2) / from
 
@@ -143,12 +173,112 @@
 			}
 
 			this.scale = scale
+			this.showWindow(scale !== null)
+			const to = scale ?? this.fitScale()
 			this.stage.style.width = scale === null ? '100%' : `${this.options.plateWidth * scale}px`
 			this.stage.classList.toggle('is-pixelated', scale !== null)
 			this.label.textContent = scale === null ? '' : `${scale * 100}%`
 
 			viewport.scrollLeft = centreX * to - viewport.clientWidth / 2
 			viewport.scrollTop = centreY * to - viewport.clientHeight / 2
+			this.drawMinimap()
+		},
+
+		// The popover attribute is only set while zoomed: a closed popover is display: none.
+		showWindow (show)
+		{
+			if (show === this.target.matches(':popover-open'))
+			{
+				return
+			}
+
+			if (show)
+			{
+				this.target.popover = 'manual'
+				this.target.showPopover()
+				this.viewport.focus({ preventScroll: true })
+			}
+			else
+			{
+				this.target.hidePopover()
+				this.target.removeAttribute('popover')
+				// Hiding drops focus to the body, where Esc no longer reaches the field editor overlay.
+				this.viewport.focus({ preventScroll: true })
+			}
+		},
+
+		// Mouse only: touch already pans the viewport natively.
+		listenForPan ()
+		{
+			const viewport = this.viewport
+			let grab = null
+
+			viewport.addEventListener('pointerdown', event =>
+			{
+				if (this.scale === null || event.pointerType !== 'mouse' || event.button !== 0 || !this.stage.contains(event.target))
+				{
+					return
+				}
+
+				event.preventDefault()
+				viewport.setPointerCapture(event.pointerId)
+				viewport.classList.add('is-dragging')
+				grab = { x: event.clientX + viewport.scrollLeft, y: event.clientY + viewport.scrollTop }
+			})
+			viewport.addEventListener('pointermove', event =>
+			{
+				if (viewport.hasPointerCapture(event.pointerId))
+				{
+					viewport.scrollLeft = grab.x - event.clientX
+					viewport.scrollTop = grab.y - event.clientY
+				}
+			})
+			viewport.addEventListener('lostpointercapture', () => viewport.classList.remove('is-dragging'))
+			viewport.addEventListener('scroll', () => this.drawMinimap())
+		},
+
+		// Pressing or dragging on the minimap centres the view on that spot of the plate.
+		listenForMinimap ()
+		{
+			const minimap = this.minimap
+			const jump = event =>
+			{
+				const rect = minimap.getBoundingClientRect()
+				this.viewport.scrollLeft = (event.clientX - rect.left) / rect.width * this.stage.offsetWidth - this.viewport.clientWidth / 2
+				this.viewport.scrollTop = (event.clientY - rect.top) / rect.height * this.stage.offsetHeight - this.viewport.clientHeight / 2
+			}
+
+			minimap.addEventListener('pointerdown', event =>
+			{
+				minimap.setPointerCapture(event.pointerId)
+				jump(event)
+			})
+			minimap.addEventListener('pointermove', event =>
+			{
+				if (minimap.hasPointerCapture(event.pointerId))
+				{
+					jump(event)
+				}
+			})
+		},
+
+		drawMinimap ()
+		{
+			if (this.scale === null)
+			{
+				return
+			}
+
+			const viewport = this.viewport
+			const width = this.stage.offsetWidth
+			const height = this.stage.offsetHeight
+
+			Object.assign(this.minimapView.style, {
+				left: `${viewport.scrollLeft / width * 100}%`,
+				top: `${viewport.scrollTop / height * 100}%`,
+				width: `${Math.min(1, viewport.clientWidth / width) * 100}%`,
+				height: `${Math.min(1, viewport.clientHeight / height) * 100}%`,
+			})
 		},
 
 		insertPlaceholder (text)
@@ -187,6 +317,7 @@
 				if (response.src)
 				{
 					this.image.src = response.src
+					this.minimapImage.src = response.src
 				}
 
 				XF.setupHtmlInsert(response.html, html =>

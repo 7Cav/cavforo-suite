@@ -384,6 +384,7 @@
   <phrase title="cav7_cit_x_px" version_id="1020070" version_string="1.2.0"><![CDATA[{size}px]]></phrase>
   <phrase title="cav7_cit_x_retired" version_id="1010070" version_string="1.1.0"><![CDATA[{name} (retired)]]></phrase>
   <phrase title="cav7_cit_x_version_y" version_id="1020070" version_string="1.2.0"><![CDATA[{title}: version {number}]]></phrase>
+  <phrase title="cav7_cit_zoom_close_hint" version_id="1030070" version_string="1.3.0"><![CDATA[Esc or Fit to close]]></phrase>
   <phrase title="cav7_cit_zoom_fit" version_id="1020070" version_string="1.2.0"><![CDATA[Fit]]></phrase>
   <phrase title="cav7_cit_zoom_in" version_id="1020070" version_string="1.2.0"><![CDATA[Zoom in]]></phrase>
   <phrase title="cav7_cit_zoom_out" version_id="1020070" version_string="1.2.0"><![CDATA[Zoom out]]></phrase>

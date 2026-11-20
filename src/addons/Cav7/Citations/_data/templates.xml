@@ -697,7 +697,7 @@
 	</xf:form>
 </xf:if>
 ]]></template>
-  <template type="public" title="cav7_cit_manager_macros" version_id="1020070" version_string="1.2.0"><![CDATA[<xf:macro id="state_label" arg-state="!">
+  <template type="public" title="cav7_cit_manager_macros" version_id="1030070" version_string="1.3.0"><![CDATA[<xf:macro id="state_label" arg-state="!">
 	<xf:if is="$state == 'draft'">
 		<span class="label label--yellow">{{ phrase('cav7_cit_draft') }}</span>
 	<xf:elseif is="$state == 'published'" />
@@ -734,8 +734,8 @@
 	</dl>
 </xf:macro>
 
-<xf:macro id="plate_preview" arg-version="!" arg-panel="!">
-	<div class="cav7Plate" data-xf-init="cav7-plate-preview"
+<xf:macro id="plate_preview" arg-version="!" arg-panel="!" arg-placing="{{ false }}">
+	<div class="cav7Plate" data-xf-init="cav7-plate-preview" tabindex="-1"
 		data-preview-url="{{ link('rosters/citation-versions/preview', $version) }}"
 		data-plate-width="{$version.plate_width}" data-plate-height="{$version.plate_height}"
 		data-boxes="{$panel.boxes}">
@@ -748,15 +748,29 @@
 			</div>
 			<span class="cav7Plate-zoom js-zoomLabel" aria-live="polite"></span>
 			<label class="iconic iconic--checkbox iconic--labelled"><input type="checkbox" class="js-showBoxes" checked="checked" /><i aria-hidden="true"></i><span class="iconic-label">{{ phrase('cav7_cit_show_field_boxes') }}</span></label>
+			<xf:if is="$placing">
+				<div class="cav7Plate-boxInputs">
+					<label>X <input type="number" class="input input--number js-boxMirror" data-key="x" min="0" step="1" /></label>
+					<label>Y <input type="number" class="input input--number js-boxMirror" data-key="y" min="0" step="1" /></label>
+					<label>{{ phrase('cav7_cit_width') }} <input type="number" class="input input--number js-boxMirror" data-key="w" min="1" step="1" /></label>
+					<label>{{ phrase('cav7_cit_height') }} <input type="number" class="input input--number js-boxMirror" data-key="h" min="1" step="1" /></label>
+				</div>
+			</xf:if>
+			<span class="cav7Plate-closeHint">{{ phrase('cav7_cit_zoom_close_hint') }}</span>
 		</div>
 
 		<div class="cav7Plate-viewport js-plateViewport" tabindex="0">
 			<div class="cav7Plate-stage js-plateStage">
-				<img class="js-plateImage" alt="{{ phrase('cav7_cit_preview')|for_attr }}" />
+				<img class="js-plateImage" alt="{{ phrase('cav7_cit_preview')|for_attr }}" draggable="false" />
 			</div>
 		</div>
 
-		<div class="js-plateReport"></div>
+		<div class="cav7Plate-minimap js-plateMinimap" aria-hidden="true">
+			<img class="js-plateMinimapImage" alt="" draggable="false" />
+			<div class="cav7Plate-minimapView js-plateMinimapView"></div>
+		</div>
+
+		<div class="cav7Plate-report js-plateReport"></div>
 
 		<details class="cav7Plate-sample">
 			<summary>{{ phrase('cav7_cit_sample_values') }}</summary>
@@ -809,7 +823,7 @@
 	</div>
 </xf:macro>
 ]]></template>
-  <template type="public" title="cav7_cit_pages.less" version_id="1020070" version_string="1.2.0"><![CDATA[.cav7GrantLayout
+  <template type="public" title="cav7_cit_pages.less" version_id="1030070" version_string="1.3.0"><![CDATA[.cav7GrantLayout
 {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) ~"clamp(280px, 38%, 440px)";
@@ -1086,6 +1100,118 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 	{
 		display: none;
 	}
+}
+
+.cav7Plate-boxInputs,
+.cav7Plate-closeHint,
+.cav7Plate-minimap
+{
+	display: none;
+}
+
+// Zoomed, the preview is a popover: the top layer fills the window whatever column or overlay it sits in.
+.cav7Plate:popover-open
+{
+	display: flex;
+	flex-direction: column;
+	inset: 0;
+	width: auto;
+	height: auto;
+	max-width: none;
+	max-height: none;
+	margin: 0;
+	padding: @xf-paddingMedium;
+	border: 0;
+	color: @xf-textColor;
+	background: @xf-pageBg;
+
+	.cav7Plate-tools
+	{
+		margin-top: 0;
+	}
+
+	.cav7Plate-viewport
+	{
+		flex: 1;
+		min-height: 0;
+		max-height: none;
+	}
+
+	.cav7Plate-stage
+	{
+		cursor: grab;
+	}
+
+	.is-dragging .cav7Plate-stage
+	{
+		cursor: grabbing;
+	}
+
+	.cav7Plate-report,
+	.cav7Plate-sample
+	{
+		display: none;
+	}
+
+	.cav7Plate-boxInputs
+	{
+		display: flex;
+		flex-wrap: wrap;
+		gap: @xf-paddingMedium;
+
+		label
+		{
+			display: flex;
+			gap: @xf-paddingSmall;
+			align-items: center;
+			color: @xf-textColorMuted;
+		}
+
+		input
+		{
+			width: 80px;
+		}
+	}
+
+	.cav7Plate-closeHint
+	{
+		display: inline;
+		margin-left: auto;
+		color: @xf-textColorMuted;
+	}
+
+	.cav7Plate-minimap
+	{
+		display: block;
+	}
+}
+
+.cav7Plate-minimap
+{
+	position: absolute;
+	right: (@xf-paddingLarge * 2);
+	bottom: (@xf-paddingLarge * 2);
+	width: 160px;
+	line-height: 0;
+	border: 1px solid @xf-textColor;
+	box-shadow: 0 0 0 1px @xf-pageBg;
+	cursor: pointer;
+	touch-action: none;
+
+	img
+	{
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+}
+
+.cav7Plate-minimapView
+{
+	position: absolute;
+	box-sizing: border-box;
+	border: 2px solid @xf-textColorAttention;
+	pointer-events: none;
 }
 
 .cav7Plate-box
@@ -1667,7 +1793,7 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 	</div>
 </div>
 ]]></template>
-  <template type="public" title="cav7_cit_version_field" version_id="1020070" version_string="1.2.0"><![CDATA[<xf:title>{{ $originalKey ? phrase('cav7_cit_field_x', {'key': $originalKey}) : phrase('cav7_cit_add_field') }}</xf:title>
+  <template type="public" title="cav7_cit_version_field" version_id="1030070" version_string="1.3.0"><![CDATA[<xf:title>{{ $originalKey ? phrase('cav7_cit_field_x', {'key': $originalKey}) : phrase('cav7_cit_add_field') }}</xf:title>
 <xf:breadcrumb href="{{ link('rosters/citation-versions', $version) }}">{{ phrase('cav7_cit_x_version_y', {'title': $version.Template.title, 'number': $version.version_number}) }}</xf:breadcrumb>
 <xf:css src="cav7_cit_pages.less" />
 <xf:js src="Cav7/Citations/manager.js" addon="Cav7/Citations" min="1" />
@@ -1755,7 +1881,7 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 				<div class="cav7FieldEditor-preview">
 					<div class="u-muted">{{ phrase('cav7_cit_preview_with_sample_data') }}</div>
 					<xf:if is="$version.plate_format">
-						<xf:macro id="cav7_cit_manager_macros::plate_preview" arg-version="{$version}" arg-panel="{$panel}" />
+						<xf:macro id="cav7_cit_manager_macros::plate_preview" arg-version="{$version}" arg-panel="{$panel}" arg-placing="{{ true }}" />
 					<xf:else />
 						<div class="cav7Preview-empty">{{ phrase('cav7_cit_preview_no_plate') }}</div>
 					</xf:if>
