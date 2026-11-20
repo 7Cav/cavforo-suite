@@ -45,19 +45,29 @@
 			this.target.querySelector('.js-zoomIn').addEventListener('click', () => this.step(1))
 			this.target.querySelector('.js-zoomOut').addEventListener('click', () => this.step(-1))
 			this.target.querySelector('.js-zoomFit').addEventListener('click', () => this.applyZoom(null))
+			// While the window is open it covers the form: Esc closes the window but not the field
+			// editor overlay, Enter in one of its inputs must not save the form, and focus headed for
+			// a control behind it stays on the plate.
 			this.target.addEventListener('keydown', event =>
 			{
-				// Stopped here, so an Esc that closes the zoom does not also close the field editor overlay.
-				if (event.key === 'Escape' && this.scale !== null)
+				if (!this.target.hasAttribute('popover'))
+				{
+					return
+				}
+
+				if (event.key === 'Escape')
 				{
 					event.stopPropagation()
 					this.applyZoom(null)
 				}
+				else if (event.key === 'Enter' && event.target.matches('input'))
+				{
+					event.preventDefault()
+				}
 			})
 			this.target.addEventListener('focusout', event =>
 			{
-				// The zoom covers the page, so focus headed for a control behind it stays on the plate.
-				if (this.scale !== null && event.relatedTarget && !this.target.contains(event.relatedTarget))
+				if (this.target.hasAttribute('popover') && event.relatedTarget && !this.target.contains(event.relatedTarget))
 				{
 					this.viewport.focus({ preventScroll: true })
 				}
@@ -65,23 +75,12 @@
 			this.listenForPan()
 			this.listenForMinimap()
 
-			// The form hides behind the zoom, so its box inputs ride along in the toolbar. The input
-			// event still bubbles to the form, which moves the box and sends the render. Enter would
-			// submit that form, saving the field from behind the zoom.
-			this.mirrors.forEach(mirror =>
+			// The form hides behind the window, so its box inputs ride along in the toolbar. The input
+			// event still bubbles to the form, which moves the box and sends the render.
+			this.mirrors.forEach(mirror => mirror.addEventListener('input', () =>
 			{
-				mirror.addEventListener('input', () =>
-				{
-					this.boxInput(mirror.dataset.key).value = mirror.value
-				})
-				mirror.addEventListener('keydown', event =>
-				{
-					if (event.key === 'Enter')
-					{
-						event.preventDefault()
-					}
-				})
-			})
+				this.boxInput(mirror.dataset.key).value = mirror.value
+			}))
 			this.target.querySelector('.js-showBoxes').addEventListener('change', event =>
 			{
 				this.stage.classList.toggle('is-boxesHidden', !event.target.checked)
@@ -188,21 +187,15 @@
 			let centreX = (viewport.scrollLeft + viewport.clientWidth / 2) / from
 			let centreY = (viewport.scrollTop + viewport.clientHeight / 2) / from
 
-			// The box being placed is what S1 is after, on any axis where the plate did not overflow
-			// and the view's centre says nothing.
-			if (scale !== null && this.selected)
+			// The box being placed is what S1 is after, unless they have panned away from it.
+			const box = this.selected
+			const boxInView = box
+				&& box.offsetLeft < viewport.scrollLeft + viewport.clientWidth && box.offsetLeft + box.offsetWidth > viewport.scrollLeft
+				&& box.offsetTop < viewport.scrollTop + viewport.clientHeight && box.offsetTop + box.offsetHeight > viewport.scrollTop
+			if (scale !== null && box && (this.scale === null || boxInView))
 			{
-				const box = this.selected
-				const fromFit = this.scale === null
-
-				if (fromFit || viewport.scrollWidth <= viewport.clientWidth)
-				{
-					centreX = (box.offsetLeft + box.offsetWidth / 2) / from
-				}
-				if (fromFit || viewport.scrollHeight <= viewport.clientHeight)
-				{
-					centreY = (box.offsetTop + box.offsetHeight / 2) / from
-				}
+				centreX = (box.offsetLeft + box.offsetWidth / 2) / from
+				centreY = (box.offsetTop + box.offsetHeight / 2) / from
 			}
 
 			if ((this.scale === null) !== (scale === null))
@@ -229,6 +222,9 @@
 				return
 			}
 
+			// Disabled while hidden, so the copies take no part in the form's validation.
+			this.mirrors.forEach(mirror => mirror.disabled = !show)
+
 			if (show)
 			{
 				this.target.popover = 'manual'
@@ -245,7 +241,7 @@
 				const focused = document.activeElement
 				this.target.hidePopover()
 				this.target.removeAttribute('popover')
-				const back = this.target.contains(focused) && focused.checkVisibility() ? focused : this.viewport
+				const back = this.target.contains(focused) && focused.getClientRects().length ? focused : this.viewport
 				back.focus({ preventScroll: true })
 			}
 		},
