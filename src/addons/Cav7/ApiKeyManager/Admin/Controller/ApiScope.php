@@ -121,7 +121,8 @@ class ApiScope extends \XF\Admin\Controller\AbstractController
         );
     }
 
-    protected function assertScopeExists(int $scopeId): ApiKeyScopeDef
+    // A route with no scope id gives null, and find() returns null for a null id.
+    protected function assertScopeExists(?int $scopeId): ApiKeyScopeDef
     {
         /** @var ApiKeyScopeDef|null $scope */
         $scope = $this->em()->find('Cav7\ApiKeyManager:ApiKeyScopeDef', $scopeId);
