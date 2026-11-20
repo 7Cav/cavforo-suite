@@ -25,7 +25,7 @@ define the terms. [docs/adr](docs/adr/) has the reasons behind the generator.
   art upload, and every draw need it, so XenForo refuses the install without it.
 - GD on the same PHP. Imagick can't report its FreeType version, so a typesetting reads
   it from GD and records `unknown` without it.
-- `Cav7/RosterAudit` 1.1.3+ if that addon is installed. An older version logs a line
+- `Cav7/RosterAudit` 1.2.0+ if that addon is installed. An older version logs a line
   every time an upload clears a citation reference. It logs every change to a grant link
   with no help from this addon.
 - Local `data` and `internal_data` directories. The sweep reads files directly and
@@ -34,8 +34,10 @@ define the terms. [docs/adr](docs/adr/) has the reasons behind the generator.
 
 ## Installation
 
-1. Install the release zip through the admin panel, or copy `src/addons/Cav7/Citations`
-   to the same path and run `php cmd.php xf-addon:install Cav7/Citations`.
+1. Install the release zip through the admin panel, or copy all of the zip's `upload/`
+   into the board root and run `php cmd.php xf-addon:install Cav7/Citations`. The
+   template manager and grant pages load their scripts from `js/Cav7/Citations/`, which
+   sits outside the addon directory.
 2. Add the nginx lines from the [runbook](docs/runbook.md#nginx).
 
 The install creates the `xf_cav7_citation_*` tables, adds `citation_blob_id`,

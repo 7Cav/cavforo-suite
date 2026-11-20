@@ -36,7 +36,7 @@ every render with a 404. Keep `/citations/` out of it, and leave its headers to 
 The data volume must support hard links, because the sweep puts kept-aside files back
 with `link()`.
 
-1. Install `Cav7/RosterAudit` 1.1.3 or later, then this addon.
+1. Install `Cav7/RosterAudit` 1.2.0 or later, then this addon.
 2. Add the nginx lines.
 3. `cav7-citations:sweep --dry-run`. Read the orphan list and the damage. Size the run
    from a fresh row count. Disk stays near today's total, because each legacy file goes
