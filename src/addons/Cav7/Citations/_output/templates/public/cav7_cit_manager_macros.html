@@ -60,15 +60,17 @@
 			<span class="cav7Plate-closeHint">{{ phrase('cav7_cit_zoom_close_hint') }}</span>
 		</div>
 
-		<div class="cav7Plate-viewport js-plateViewport" tabindex="0">
-			<div class="cav7Plate-stage js-plateStage">
-				<img class="js-plateImage" alt="{{ phrase('cav7_cit_preview')|for_attr }}" draggable="false" />
+		<div class="cav7Plate-frame">
+			<div class="cav7Plate-viewport js-plateViewport" tabindex="0">
+				<div class="cav7Plate-stage js-plateStage">
+					<img class="js-plateImage" alt="{{ phrase('cav7_cit_preview')|for_attr }}" draggable="false" />
+				</div>
 			</div>
-		</div>
 
-		<div class="cav7Plate-minimap js-plateMinimap" aria-hidden="true">
-			<img class="js-plateMinimapImage" alt="" draggable="false" />
-			<div class="cav7Plate-minimapView js-plateMinimapView"></div>
+			<div class="cav7Plate-minimap js-plateMinimap" aria-hidden="true">
+				<img class="js-plateMinimapImage" alt="" draggable="false" />
+				<div class="cav7Plate-minimapView js-plateMinimapView"></div>
+			</div>
 		</div>
 
 		<div class="cav7Plate-report js-plateReport"></div>

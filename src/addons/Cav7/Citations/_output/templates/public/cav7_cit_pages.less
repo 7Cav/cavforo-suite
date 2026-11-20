@@ -306,6 +306,14 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 		margin-top: 0;
 	}
 
+	.cav7Plate-frame
+	{
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		min-height: 0;
+	}
+
 	.cav7Plate-viewport
 	{
 		flex: 1;
@@ -329,6 +337,12 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 	}
 
 	// The render's warnings stay in sight while a box is edited from the toolbar.
+	.cav7Plate-report
+	{
+		max-height: 25vh;
+		overflow-y: auto;
+	}
+
 	.cav7Fit:not(:has(.cav7Fit-warn)),
 	.cav7Fit tr:not(:has(.cav7Fit-warn))
 	{
@@ -366,6 +380,12 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 	{
 		display: block;
 	}
+}
+
+// The minimap sits in the viewport's corner, clear of its scrollbars.
+.cav7Plate-frame
+{
+	position: relative;
 }
 
 .cav7Plate-minimap

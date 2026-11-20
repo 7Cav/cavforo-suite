@@ -759,15 +759,17 @@
 			<span class="cav7Plate-closeHint">{{ phrase('cav7_cit_zoom_close_hint') }}</span>
 		</div>
 
-		<div class="cav7Plate-viewport js-plateViewport" tabindex="0">
-			<div class="cav7Plate-stage js-plateStage">
-				<img class="js-plateImage" alt="{{ phrase('cav7_cit_preview')|for_attr }}" draggable="false" />
+		<div class="cav7Plate-frame">
+			<div class="cav7Plate-viewport js-plateViewport" tabindex="0">
+				<div class="cav7Plate-stage js-plateStage">
+					<img class="js-plateImage" alt="{{ phrase('cav7_cit_preview')|for_attr }}" draggable="false" />
+				</div>
 			</div>
-		</div>
 
-		<div class="cav7Plate-minimap js-plateMinimap" aria-hidden="true">
-			<img class="js-plateMinimapImage" alt="" draggable="false" />
-			<div class="cav7Plate-minimapView js-plateMinimapView"></div>
+			<div class="cav7Plate-minimap js-plateMinimap" aria-hidden="true">
+				<img class="js-plateMinimapImage" alt="" draggable="false" />
+				<div class="cav7Plate-minimapView js-plateMinimapView"></div>
+			</div>
 		</div>
 
 		<div class="cav7Plate-report js-plateReport"></div>
@@ -1131,6 +1133,14 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 		margin-top: 0;
 	}
 
+	.cav7Plate-frame
+	{
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		min-height: 0;
+	}
+
 	.cav7Plate-viewport
 	{
 		flex: 1;
@@ -1154,6 +1164,12 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 	}
 
 	// The render's warnings stay in sight while a box is edited from the toolbar.
+	.cav7Plate-report
+	{
+		max-height: 25vh;
+		overflow-y: auto;
+	}
+
 	.cav7Fit:not(:has(.cav7Fit-warn)),
 	.cav7Fit tr:not(:has(.cav7Fit-warn))
 	{
@@ -1191,6 +1207,12 @@ form:has(.cav7Picker--linked):not(:has(.js-citationPicker[hidden])) label.iconic
 	{
 		display: block;
 	}
+}
+
+// The minimap sits in the viewport's corner, clear of its scrollbars.
+.cav7Plate-frame
+{
+	position: relative;
 }
 
 .cav7Plate-minimap
