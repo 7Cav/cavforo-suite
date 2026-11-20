@@ -239,6 +239,9 @@
 
 			if (show)
 			{
+				// A popover has no role of its own; the plate image's alt is the localized name.
+				this.target.setAttribute('role', 'dialog')
+				this.target.setAttribute('aria-label', this.image.alt)
 				this.target.popover = 'manual'
 				this.target.showPopover()
 				if (!this.target.contains(document.activeElement))
@@ -253,6 +256,8 @@
 				const focused = document.activeElement
 				this.target.hidePopover()
 				this.target.removeAttribute('popover')
+				this.target.removeAttribute('role')
+				this.target.removeAttribute('aria-label')
 				const back = this.target.contains(focused) && focused.getClientRects().length ? focused : this.viewport
 				back.focus({ preventScroll: true })
 			}
@@ -274,17 +279,25 @@
 				event.preventDefault()
 				viewport.setPointerCapture(event.pointerId)
 				viewport.classList.add('is-dragging')
-				grab = { x: event.clientX + viewport.scrollLeft, y: event.clientY + viewport.scrollTop }
+				grab = { id: event.pointerId, x: event.clientX + viewport.scrollLeft, y: event.clientY + viewport.scrollTop }
 			})
+			// By id, not by capture: a touch gets an implicit capture of its own.
 			viewport.addEventListener('pointermove', event =>
 			{
-				if (viewport.hasPointerCapture(event.pointerId))
+				if (grab?.id === event.pointerId)
 				{
 					viewport.scrollLeft = grab.x - event.clientX
 					viewport.scrollTop = grab.y - event.clientY
 				}
 			})
-			viewport.addEventListener('lostpointercapture', () => viewport.classList.remove('is-dragging'))
+			viewport.addEventListener('lostpointercapture', event =>
+			{
+				if (grab?.id === event.pointerId)
+				{
+					grab = null
+					viewport.classList.remove('is-dragging')
+				}
+			})
 			viewport.addEventListener('scroll', () => this.drawMinimap())
 			new ResizeObserver(() => this.drawMinimap()).observe(viewport)
 		},
